@@ -1,2 +1,8 @@
 __pycache__/
 *.pyc
+
+# pipeline run-state / evidence (machine-specific, never commit)
+specs/
+examples/specs/
+*.build-probe-ok
+.lifecycle-secret/
