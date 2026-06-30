@@ -24,6 +24,7 @@ OHOS(rk3568,C/C++ 系统组件)的完整研发生命周期,直到代码上库:
 | **密钥隔离** | per-run 密钥(32B,mode 600)存于 `~/.claude/.lifecycle-secret/<run>`,**不在**证据目录内,模型无法据此伪造签名。 |
 | **真机 RTC 无关** | 设备 RTC 错乱,新鲜度不靠时间戳,而靠 per-run **nonce** + `/proc/uptime` 单调锚 + 内容切窗 + sha256。 |
 | **抗事后篡改** | 任何阶段事后被改动证据文件 → `verify-all` 重校验时 sha256/HMAC 失配 → 该阶段降级回退,必须重跑。 |
+| **改码回 P1 重走** | P1 通过时锁定代码指纹(组件仓 `HEAD+diff` 的 sha256)。任何阶段发现 bug 改了码 → `advance P2..P6` 因指纹漂移被拒,必须 `advance.py reset` 回 P1 踏实重走;`verify-all` 也按漂移自动回退。 |
 
 > 已用真证据验证:篡改任一 evidence 字节 → sha256 失配被拒;伪造 manifest verdict
 > 为 PASS → HMAC 失配被拒。详见文末「验证记录」。
@@ -139,7 +140,7 @@ P0 会把探测到的序列号回填进 `pipeline.json` 与 `evidence/phase0/env
 | **P2 编译** | ohos-dev-build-execution-diagnosis / ohos-build-flash | `gate_build.py` | build.sh exit 0 **且** 输出含 `=====build…successful=====` 且无 error 横幅 | `build_stdout.log`、`build_banner.txt`(失败再加 `error_distill.txt`) |
 | **P3 测试** | ohos-test-ut-generation / tdd-enforcer | `gate_test_ut.py` | 编出测试二进制 + developer_test 本次**新建**报告 + `tests>0 && failures==0 && errors==0` | `summary_report.xml`、`result_*.xml`、`start_sh_stdout.txt`、`report_dir.txt` |
 | **P4 真机** | ohos-build-flash / ohos-dev-hdc-command-usage | `gate_device_func.py` | 部署命令全 exit 0 + hilog 含**本次 nonce** + 含 marker + uptime 单调;**证据 PASS 后停下,人工核对真机真实结果并 `consent --phase 4` 才推进** | `hilog_capture.txt`、`device_cmds.txt`、`run_meta.txt` |
-| **P5 集成** | ohos-build-flash / developer_test(MST) | `gate_integration.py`(或 `gate_device_func.py --phase 5`) | 集成 summary `failures==0 && errors==0 && tests>0` + 新报告目录 | `summary_report.xml`、`start_sh_stdout.txt`、`report_dir.txt` |
+| **P5 集成** | ohos-build-flash / developer_test(MST)/ **ohos-dev-cpp-coding-style** | `gate_integration.py`(或 `gate_device_func.py --phase 5`) | 集成 summary `failures==0 && errors==0 && tests>0` **且 代码 review 通过**(oh_cpp_guard 改动 C/C++ 合规)| `summary_report.xml`、`review_report.txt`、`report_dir.txt` |
 | **P6 上库** | ohos-ci-gitcode-cli-usage / -gitcode-pr-review / -security-code-review / -openharmony-ci-analysis | `gate_upload_ci.py` | P1–P5 全过 + consent 令牌 + PR 已建 + CI `overall∈{success,passed}` + PR head SHA==push SHA | `pr.json`、`ci_status.json`、`pr_create.txt` |
 
 每个阶段在 Claude Code 里的"做事"细节见 `skills/ohos-ar-dev-phases/phaseN-*.md`。
@@ -181,7 +182,8 @@ $REPO/specs/pipeline/{YYYYMMDD}-{slug}/
 advance.py  init        --git-dir <组件> --build-target <t> --part <p> [--base-commit <sha>]
             advance     --phase N
             consent     --phase N --token <s>   # 记录 P4 真机/P6 上库 的人工确认
-            verify-all                          # 重校验已通过阶段(被篡改则回退)
+            reset       --reason <s>            # 改了代码 → 回 P1 重走(打回 P1-P6)
+            verify-all                          # 重校验已通过阶段(篡改/代码漂移则回退)
             status
 gate_env_init.py    --pipeline-dir P
 gate_develop.py     --pipeline-dir P [--no-style]

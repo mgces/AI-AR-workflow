@@ -24,6 +24,7 @@
 - HMAC 用 per-run 密钥校验通过(防伪造/篡改);
 - 记录里每个 artifact 文件存在且当前 sha256 与记录一致(防事后替换);
 - (P4 真机 / P6 上库)`consent_tokens[str(phase)]` 非空——证据 PASS 后还需人工核对真实结果并签字,否则 `advance` HOLD。
+- (P2–P6)代码指纹未漂移:当前组件仓 `HEAD+diff` 的 sha256 必须等于 P1 通过时锁定的 `code_fingerprint`;改过码就拒绝,要求 `advance.py reset` 回 P1 重走。
 
 任一不满足 → `advance.py` 非 0 退出、不改状态。
 

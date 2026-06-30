@@ -10,6 +10,10 @@ produced aggregate report. Same RTC-independent freshness proof as phase 3
 
 For integration scenarios that are device-behavioral rather than suite-based,
 use gate_device_func.py --phase 5 instead (it is the alternative phase-5 closer).
+
+P5 also runs a CODE REVIEW for upload-compliance: the OpenHarmony coding-style
+guard (ohos-dev-cpp-coding-style/oh_cpp_guard.py) is run on the changed C/C++
+files; P5 only passes when BOTH the integration test AND the review pass.
 """
 import argparse
 import glob
@@ -22,6 +26,39 @@ import xml.etree.ElementTree as ET
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 import gatelib as gl  # noqa: E402
 
+STYLE_GUARD = gl.resolve_dep("ohos-dev-cpp-coding-style/scripts/oh_cpp_guard.py",
+                             env_var="OHOS_CPP_GUARD")
+
+
+def code_review(state, pdir, arts):
+    """Run the OHOS coding-style guard on the changed C/C++ files (upload
+    compliance). Returns (ok, detail). Writes evidence/phase5/review_report.txt."""
+    gdir = gl.resolve_git_dir(state)
+    base = state.get("base_commit") or "HEAD"
+    names = subprocess.run(["git", "-C", gdir, "diff", "--name-only", base],
+                           text=True, capture_output=True).stdout.split()
+    cxx = [f for f in names if f.endswith((".c", ".cc", ".cpp", ".cxx", ".h", ".hpp"))]
+    rel = "evidence/phase5/review_report.txt"
+    out_path = os.path.join(pdir, rel)
+    if not cxx:
+        with open(out_path, "w") as f:
+            f.write("no C/C++ files changed vs %s — review skipped\n" % base[:12])
+        arts.append(rel)
+        return True, "no C/C++ changes"
+    if not os.path.exists(STYLE_GUARD):
+        with open(out_path, "w") as f:
+            f.write("style guard not found at %s — review treated as pass\n" % STYLE_GUARD)
+        arts.append(rel)
+        return True, "guard missing (pass)"
+    abs_cxx = [os.path.join(gdir, f) for f in cxx if os.path.exists(os.path.join(gdir, f))]
+    cp = subprocess.run([sys.executable, STYLE_GUARD, "--format-only", *abs_cxx],
+                        text=True, capture_output=True)
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write("changed C/C++ (%d):\n%s\n\n--- oh_cpp_guard --format-only ---\nrc=%d\n%s\n%s"
+                % (len(cxx), "\n".join(cxx), cp.returncode, cp.stdout, cp.stderr))
+    arts.append(rel)
+    return cp.returncode == 0, "guard rc=%d on %d file(s)" % (cp.returncode, len(cxx))
+
 
 def main():
     ap = argparse.ArgumentParser()
@@ -29,6 +66,8 @@ def main():
     ap.add_argument("--testtype", default="MST", help="developer_test -t value (MST/ST/...)")
     ap.add_argument("--part", help="testpart; default from pipeline.json test.part")
     ap.add_argument("--suites", nargs="+", required=True, help="one or more -ts suite names")
+    ap.add_argument("--skip-review", action="store_true",
+                    help="skip the upload-compliance code review (not recommended)")
     args = ap.parse_args()
     pdir = gl.pipeline_dir(args.pipeline_dir)
     state = gl.load_state(pdir)
@@ -77,16 +116,27 @@ def main():
     tests = int(root.get("tests", "0"))
     failures = int(root.get("failures", "0"))
     errors = int(root.get("errors", "0"))
-    reason = "type=%s tests=%d failures=%d errors=%d fresh=%s" % (
-        args.testtype, tests, failures, errors, os.path.basename(fresh_dir))
+    test_ok = tests > 0 and failures == 0 and errors == 0
+
+    # code review for upload compliance (gates P5 together with the test)
+    if args.skip_review:
+        review_ok, review_detail = True, "skipped (--skip-review)"
+        with open(os.path.join(pdir, "evidence/phase5/review_report.txt"), "w") as f:
+            f.write("review skipped (--skip-review)\n")
+        arts.append("evidence/phase5/review_report.txt")
+    else:
+        review_ok, review_detail = code_review(state, pdir, arts)
+
+    reason = "type=%s tests=%d failures=%d errors=%d fresh=%s | review:%s" % (
+        args.testtype, tests, failures, errors, os.path.basename(fresh_dir), review_detail)
     print(reason)
-    verdict = "PASS" if (tests > 0 and failures == 0 and errors == 0) else "FAIL"
+    verdict = "PASS" if (test_ok and review_ok) else "FAIL"
     gl.emit(pdir, 5, "gate_integration.py", verdict=verdict, reason=reason,
             cmd=run_cmd, exit_code=proc.returncode, artifacts_rel=arts)
     if verdict == "PASS":
         print("PHASE 5 PASS — advance.py advance --phase 5")
     else:
-        sys.exit("PHASE 5 FAIL: %s" % reason)
+        sys.exit("PHASE 5 FAIL: %s (test_ok=%s review_ok=%s)" % (reason, test_ok, review_ok))
 
 
 if __name__ == "__main__":

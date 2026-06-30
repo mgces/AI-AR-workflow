@@ -26,6 +26,7 @@ evidence/
   "base_commit": "<phase1 起点 SHA>",
   "current_phase": 0,
   "consent_tokens": {},
+  "code_fingerprint": null,
   "phases": [
     { "id": 0, "name": "bootstrap",        "status": "passed",
       "manifest_ref": "<闭合记录的 id>", "closed_at_utc": "..." },
@@ -48,3 +49,7 @@ evidence/
 `consent_tokens` 记录需人工签字的阶段令牌(`{"4": "...", "6": "..."}`):**P4 真机功能测试**
 与 **P6 上库** 在证据 PASS 后需人工核对真实结果/审批,`advance.py consent --phase N --token <人>`
 写入后该阶段才可 `advance`。没有对应令牌时 `advance --phase 4|6` 会 HOLD,不推进。
+
+`code_fingerprint`:P1(开发)通过时锁定的代码指纹(组件仓 `HEAD + git diff` 的 sha256)。
+P2–P6 推进前会比对当前指纹,**一旦改过代码就拒绝推进**,要求 `advance.py reset` 回 P1 重走;
+`reset` 会把 P1–P6 打回 pending、清空 `consent_tokens` 与 `code_fingerprint`(P0 保留)。

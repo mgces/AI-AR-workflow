@@ -47,6 +47,7 @@ def cmd_init(args):
         "base_commit": args.base_commit,
         "current_phase": 0,
         "consent_tokens": {},
+        "code_fingerprint": None,
         "phases": [
             {"id": i, "name": n, "status": "pending",
              "manifest_ref": None, "closed_at_utc": None}
@@ -82,6 +83,21 @@ def cmd_advance(args):
             "  3) then re-run: advance.py --pipeline-dir <PDIR> advance --phase %d"
             % (phase, CONSENT_PHASES[phase], ev, phase, phase))
 
+    # CODE-DRIFT CONTROL: once P1 locks the code fingerprint, every later phase is
+    # validated against THAT code. If the code changed since (a fix was needed),
+    # all downstream evidence is stale — refuse and force a rewalk from P1.
+    locked = state.get("code_fingerprint")
+    if phase >= 2 and locked:
+        now_fp = gl.code_fingerprint(state)
+        if now_fp != locked:
+            sys.exit(
+                "REFUSED: code changed since P1 (fingerprint %s.. != locked %s..).\n"
+                "Any fix that touches code means the build/test/device evidence no "
+                "longer matches the current code.\n"
+                "Rewalk from development:\n"
+                "  advance.py --pipeline-dir <PDIR> reset --reason \"<what you fixed>\"\n"
+                "then redo P1→ in order." % (now_fp[:8], locked[:8]))
+
     ok, reason, entry = gl.validate_closing_entry(pdir, phase)
     if not ok:
         sys.exit("REFUSED: cannot close phase %d — %s" % (phase, reason))
@@ -90,6 +106,9 @@ def cmd_advance(args):
     pe["status"] = "passed"
     pe["manifest_ref"] = gl.entry_id(entry)
     pe["closed_at_utc"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    # P1 locks the code fingerprint that P2..P6 must keep matching.
+    if phase == 1:
+        state["code_fingerprint"] = gl.code_fingerprint(state)
     if phase < gl.MAX_PHASE:
         state["current_phase"] = phase + 1
         state["phases"][phase + 1]["status"] = "pending"
@@ -119,10 +138,50 @@ def cmd_consent(args):
           % (args.phase, CONSENT_PHASES[args.phase], args.token))
 
 
+def cmd_reset(args):
+    """Rewind the pipeline to P1 (development) — used whenever a fix touches code.
+    Marks P1..P6 pending, clears consent + code fingerprint, keeps P0 (env) intact.
+    Recorded in the manifest so the rewalk is auditable."""
+    pdir = gl.pipeline_dir(args.pipeline_dir)
+    state = gl.load_state(pdir)
+    for pe in state["phases"]:
+        if pe["id"] >= 1:
+            pe["status"] = "pending"
+            pe["manifest_ref"] = None
+            pe["closed_at_utc"] = None
+    state["current_phase"] = 1
+    state["consent_tokens"] = {}
+    state["code_fingerprint"] = None
+    gl.save_state(pdir, state)
+    # leave an audit trail (unsigned info entry is fine; it grants no progress)
+    try:
+        gl.emit(pdir, 1, "advance.py:reset", verdict="INFO",
+                reason="pipeline reset to P1: %s" % (args.reason or "code change"),
+                artifacts_rel=[])
+    except Exception:
+        pass
+    print("RESET → P1 (develop). Reason: %s" % (args.reason or "code change"))
+    print("Redo P1→P6 in order; downstream evidence was invalidated.")
+
+
 def cmd_verify_all(args):
     pdir = gl.pipeline_dir(args.pipeline_dir)
     state = gl.load_state(pdir)
     bad = 0
+    # code-drift check: if code changed since P1 locked, rewind to P1.
+    locked = state.get("code_fingerprint")
+    if locked and gl.code_fingerprint(state) != locked:
+        for pe in state["phases"]:
+            if pe["id"] >= 1:
+                pe["status"] = "pending"
+                pe["manifest_ref"] = None
+                pe["closed_at_utc"] = None
+        state["current_phase"] = 1
+        state["consent_tokens"] = {}
+        state["code_fingerprint"] = None
+        gl.save_state(pdir, state)
+        sys.exit("verify-all: code changed since P1 — pipeline rewound to P1, "
+                 "rewalk from development.")
     for pe in state["phases"]:
         if pe["status"] != "passed":
             continue
@@ -183,6 +242,11 @@ def main():
                    help="phase to sign off (4 device test, 6 upload)")
     p.add_argument("--token", required=True)
     p.set_defaults(func=cmd_consent)
+
+    p = sub.add_parser("reset", help="rewind to P1 (development) — use whenever a "
+                                     "fix touches code; invalidates downstream phases")
+    p.add_argument("--reason", default="", help="what was fixed (audit trail)")
+    p.set_defaults(func=cmd_reset)
 
     p = sub.add_parser("verify-all")
     p.set_defaults(func=cmd_verify_all)

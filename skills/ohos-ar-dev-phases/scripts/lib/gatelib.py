@@ -142,6 +142,31 @@ def verify_sig(entry, secret):
 
 
 # ----------------------------------------------------------------------------
+# code fingerprint — identifies the exact code state a phase was validated
+# against (component repo HEAD + full working-tree diff). If it changes, every
+# downstream phase's evidence is stale and the pipeline must rewalk from P1.
+# ----------------------------------------------------------------------------
+def resolve_git_dir(state):
+    repo = state["repo"]
+    g = state.get("git_dir", repo) or repo
+    return g if os.path.isabs(g) else os.path.join(repo, g)
+
+
+def code_fingerprint(state):
+    import subprocess
+    gdir = resolve_git_dir(state)
+    head = subprocess.run(["git", "-C", gdir, "rev-parse", "HEAD"],
+                          text=True, capture_output=True).stdout.strip()
+    diff = subprocess.run(["git", "-C", gdir, "diff", "HEAD"],
+                          text=True, capture_output=True).stdout
+    h = hashlib.sha256()
+    h.update(head.encode("utf-8"))
+    h.update(b"\0")
+    h.update(diff.encode("utf-8", "replace"))
+    return h.hexdigest()
+
+
+# ----------------------------------------------------------------------------
 # hashing
 # ----------------------------------------------------------------------------
 def sha256_file(path):
