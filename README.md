@@ -122,59 +122,11 @@ P0 会把探测到的序列号回填进 `pipeline.json` 与 `evidence/phase0/env
 
 ## 5. 快速开始(完整一轮命令)
 
-```bash
-REPO="${OHOS_ROOT:-$HOME/ohos/master}"          # 你的 OHOS 仓根(按需修改)
-export OHOS_ROOT="$REPO"
-S=~/code/AI-AR-workflow/skills/ohos-ar-dev-phases/scripts     # 或 ~/.claude/skills/...
-RUN=$(date +%Y%m%d)-<ar-slug>
-export PDIR=$REPO/specs/pipeline/$RUN
-mkdir -p "$PDIR"; printf '%s\n' "<把已澄清的 AR 原文写这里>" > "$PDIR/ar.md"
+| 阶段 | 命令 | 功能 | 实例 | 
+|---|---|---|---|---|
+| **1** | /ohos-ar-dev-init | 检测OHOS环境 | `/ohos-ar-dev-init` |
+| **2** | /ohos-ar-dev-workflow | 开始AR流程开发 | `/ohos-ar-dev-workflow 在base/hiviewdfx/hiview下面新增一个应用线程泄漏检测插件，阈值3000，超过3000阈值之后调用hidumper sa的能力获取进程线程维测并且保存在data/log/reliability/resource_leak/thread_leak/中` |
 
-# 初始化状态机(注意 --git-dir 指向改动的组件子仓)
-python3 $S/advance.py --pipeline-dir "$PDIR" init \
-    --git-dir base/hiviewdfx/hiview \
-    --build-target <你的GN目标> --part <testpart>
-
-# ── P0 环境+真机预检 ──
-python3 $S/gate_env_init.py --pipeline-dir "$PDIR"
-python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 0
-
-# ── P1 代码开发(先用 sa-codegen/tdd-enforcer 等写代码,再门控)──
-python3 $S/gate_develop.py --pipeline-dir "$PDIR"          # 无C/C++改动加 --no-style
-python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 1
-
-# ── P2 编译验证 ──
-python3 $S/gate_build.py --pipeline-dir "$PDIR"            # target 取自 pipeline.json
-python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 2
-
-# ── P3 测试用例编写与验证(先用 ohos-test-ut-generation 生成,再门控)──
-python3 $S/gate_test_ut.py --pipeline-dir "$PDIR" \
-    --test-target <UT的GN目标> --suite <套件二进制名> [--part <testpart>]
-python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 3
-
-# ── P4 真机功能测试(自己准备 deploy.sh / scenario.sh,见 phase4 文档)──
-python3 $S/gate_device_func.py --pipeline-dir "$PDIR" \
-    --deploy-script /path/deploy.sh --scenario-script /path/scenario.sh \
-    --marker "<功能成功标记字符串>"
-python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 4
-
-# ── P5 集成功能测试(套件型;或用 gate_device_func.py --phase 5 做设备行为型)──
-python3 $S/gate_integration.py --pipeline-dir "$PDIR" \
-    --testtype MST --suites <suite1> [<suite2> ...]
-python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 5
-
-# ── P6 代码上库(唯一对外不可逆;先 DRY,人工同意后 push)──
-python3 $S/gate_upload_ci.py --pipeline-dir "$PDIR" \
-    --repo-slug <owner/repo> --branch <local_branch> --base master --title "<title>"   # DRY
-python3 $S/advance.py --pipeline-dir "$PDIR" consent --token "<审批人/工单号>"
-python3 $S/gate_upload_ci.py --pipeline-dir "$PDIR" \
-    --repo-slug <owner/repo> --branch <local_branch> --base master --title "<title>" --allow-push
-python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 6
-
-# 随时查看进度 / 断点恢复
-python3 $S/advance.py --pipeline-dir "$PDIR" status
-python3 $S/advance.py --pipeline-dir "$PDIR" verify-all     # 重校验,被篡改则回退
-```
 
 ---
 
