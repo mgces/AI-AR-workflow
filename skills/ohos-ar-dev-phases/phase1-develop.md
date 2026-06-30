@@ -4,7 +4,7 @@
 - 系统能力/SA:`ohos-dev-sa-codegen`。NAPI 模块:`ohos-dev-napi-module`。
 - 编码规范:`ohos-dev-cpp-coding-style`(改完用它自查)。
 - 若该 AR 有可测行为,优先 `tdd-enforcer`:先写失败测试,再写实现(P3 会真机验证)。
-- 在 `$PDIR/ar.md` 对照 AR 落实代码改动到 `/home/user/ohos/master` 下相应组件。
+- 在 `$PDIR/ar.md` 对照 AR 落实代码改动到 `$OHOS_ROOT` 下相应组件。
 
 ## 门控
 ```bash

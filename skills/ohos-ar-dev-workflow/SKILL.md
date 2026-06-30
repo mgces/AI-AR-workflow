@@ -39,13 +39,14 @@ GN 构建目标(`build_target`)、测试 `testpart` 与套件名、目标二进�
 - 若 `specs/initialized.flag` 不存在或环境未就绪 → 先跑技能 `ohos-ar-dev-init`。
 - 为本次 AR 建运行态目录并初始化状态机:
   ```bash
+  OHOS_ROOT="${OHOS_ROOT:-$HOME/ohos/master}"   # OHOS 仓根(按需修改)
   RUN=$(date +%Y%m%d)-<ar-slug>
-  PDIR=/home/user/ohos/master/specs/pipeline/$RUN
+  PDIR=$OHOS_ROOT/specs/pipeline/$RUN
   mkdir -p "$PDIR"; printf '%s\n' "<AR 原文>" > "$PDIR/ar.md"
   S=~/.claude/skills/ohos-ar-dev-phases/scripts
   python3 $S/advance.py --pipeline-dir "$PDIR" init \
       --build-target <gn_target> --part <testpart> \
-      --base-commit "$(git -C /home/user/ohos/master rev-parse HEAD)"
+      --base-commit "$(git -C $OHOS_ROOT rev-parse HEAD)"
   ```
 - 跑 P0 预检并推进:
   ```bash

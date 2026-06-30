@@ -1,6 +1,6 @@
 # pipeline.json 状态结构
 
-每个 AR 一个运行态目录:`/home/user/ohos/master/specs/pipeline/{YYYYMMDD}-{ar-slug}/`
+每个 AR 一个运行态目录:`$OHOS_ROOT/specs/pipeline/{YYYYMMDD}-{ar-slug}/`
 
 ```
 pipeline.json          # 规范状态;只有 advance.py 写
@@ -18,7 +18,7 @@ evidence/
 {
   "run_id": "20260629-<slug>",
   "ar": "20260629-<slug>",
-  "repo": "/home/user/ohos/master",
+  "repo": "$OHOS_ROOT",
   "product": "rk3568",
   "device_serial": "",
   "build_target": "<gn target>",

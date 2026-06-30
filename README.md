@@ -92,7 +92,7 @@ done
 
 | 依赖 | 说明 | 检查 |
 |---|---|---|
-| OHOS 代码仓 | repo 多仓树,如 `/home/user/ohos/master` | `out/ohos_config.json` 产品=rk3568 |
+| OHOS 代码仓 | repo 多仓树,如 `$OHOS_ROOT` | `out/ohos_config.json` 产品=rk3568 |
 | 构建环境 | `./build.sh` 可用 | P0 `gate_env_init.py` 自检 |
 | 真机 rk3568 | 经 hdc 可达,**序列号自动探测**(不写死) | P0 自检 `dev_assert_online` |
 | developer_test | `test/testfwk/developer_test/start.sh` | P0 自检 |
@@ -123,7 +123,8 @@ P0 会把探测到的序列号回填进 `pipeline.json` 与 `evidence/phase0/env
 ## 5. 快速开始(完整一轮命令)
 
 ```bash
-REPO=/home/user/ohos/master
+REPO="${OHOS_ROOT:-$HOME/ohos/master}"          # 你的 OHOS 仓根(按需修改)
+export OHOS_ROOT="$REPO"
 S=~/code/AI-AR-workflow/skills/ohos-ar-dev-phases/scripts     # 或 ~/.claude/skills/...
 RUN=$(date +%Y%m%d)-<ar-slug>
 export PDIR=$REPO/specs/pipeline/$RUN

@@ -140,7 +140,9 @@ def main():
 
     p = sub.add_parser("init")
     p.add_argument("--run-id")
-    p.add_argument("--repo", default="/home/user/ohos/master")
+    p.add_argument("--repo", default=os.environ.get("OHOS_ROOT", os.getcwd()),
+                   help="OHOS repo root (build/developer_test base); "
+                        "defaults to $OHOS_ROOT or the current directory")
     p.add_argument("--git-dir", help="component git repo (repo-managed tree); "
                                      "defaults to --repo. For OHOS use the changed "
                                      "component path, e.g. base/hiviewdfx/hiview")
