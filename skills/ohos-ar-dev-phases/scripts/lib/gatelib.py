@@ -48,7 +48,7 @@ def resolve_dep(rel_subpath, env_var=None):
     Returns the first existing path, else the sibling guess (caller may warn)."""
     if env_var and os.environ.get(env_var):
         return os.environ[env_var]
-    # this file: <SKILLS>/ohos-lifecycle-phases/scripts/lib/gatelib.py
+    # this file: <SKILLS>/ohos-ar-dev-phases/scripts/lib/gatelib.py
     skills_root = os.path.dirname(os.path.dirname(os.path.dirname(
         os.path.dirname(os.path.abspath(__file__)))))
     sibling = os.path.join(skills_root, rel_subpath)

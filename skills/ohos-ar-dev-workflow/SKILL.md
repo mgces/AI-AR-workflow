@@ -1,5 +1,5 @@
 ---
-name: ohos-lifecycle-workflow
+name: ohos-ar-dev-workflow
 description: >
   端到端编排 OHOS(rk3568)研发生命周期:从已澄清的 AR(架构需求)出发,自动推进
   代码开发→编译验证→测试用例编写与验证→真机功能测试→集成功能测试→代码上库review。
@@ -36,13 +36,13 @@ GN 构建目标(`build_target`)、测试 `testpart` 与套件名、目标二进�
 
 ## 步骤 0:初始化检查
 
-- 若 `specs/initialized.flag` 不存在或环境未就绪 → 先跑技能 `ohos-lifecycle-init`。
+- 若 `specs/initialized.flag` 不存在或环境未就绪 → 先跑技能 `ohos-ar-dev-init`。
 - 为本次 AR 建运行态目录并初始化状态机:
   ```bash
   RUN=$(date +%Y%m%d)-<ar-slug>
   PDIR=/home/user/ohos/master/specs/pipeline/$RUN
   mkdir -p "$PDIR"; printf '%s\n' "<AR 原文>" > "$PDIR/ar.md"
-  S=~/.claude/skills/ohos-lifecycle-phases/scripts
+  S=~/.claude/skills/ohos-ar-dev-phases/scripts
   python3 $S/advance.py --pipeline-dir "$PDIR" init \
       --build-target <gn_target> --part <testpart> \
       --base-commit "$(git -C /home/user/ohos/master rev-parse HEAD)"
@@ -57,7 +57,7 @@ GN 构建目标(`build_target`)、测试 `testpart` 与套件名、目标二进�
 
 读 `advance.py --pipeline-dir "$PDIR" status` 得到 `current_phase`,从那一阶段开始,
 对每个阶段执行【做事 → 跑门控 → advance】。各阶段的"做事"技能、门控命令、通过条件见
-`../ohos-lifecycle-phases/SKILL.md` 与 `phaseN-*.md`。阶段顺序固定、不可跳过:
+`../ohos-ar-dev-phases/SKILL.md` 与 `phaseN-*.md`。阶段顺序固定、不可跳过:
 
 | 阶段 | 做事(调用技能) | 门控脚本 | 结束证据 |
 |---|---|---|---|

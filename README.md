@@ -36,11 +36,11 @@ OHOS(rk3568,C/C++ 系统组件)的完整研发生命周期,直到代码上库:
 AI-AR-workflow/
 ├── README.md                              ← 本文件
 └── skills/
-    ├── ohos-lifecycle-workflow/           ← thin 入口(编排器):路由/init/调度/断点恢复
+    ├── ohos-ar-dev-workflow/           ← thin 入口(编排器):路由/init/调度/断点恢复
     │   ├── SKILL.md
     │   ├── README.md                      ← 架构图
     │   └── references/                     ← 门控契约 / 防伪协议 / 状态结构
-    ├── ohos-lifecycle-phases/             ← thick 阶段说明 + 承重脚本
+    ├── ohos-ar-dev-phases/             ← thick 阶段说明 + 承重脚本
     │   ├── SKILL.md
     │   ├── phase1-develop.md … phase6-upload-review.md
     │   └── scripts/                        ★ 系统承重核心
@@ -53,7 +53,7 @@ AI-AR-workflow/
     │       ├── gate_integration.py         ← P5 集成(MST 套件)
     │       ├── gate_upload_ci.py           ← P6 上库(oh-gc PR + CI 绿,SHA 绑定)
     │       └── lib/{gatelib.py, device.sh} ← 签名账本 + hdc-over-WSL helper
-    ├── ohos-lifecycle-init/               ← 一次性环境配置
+    ├── ohos-ar-dev-init/               ← 一次性环境配置
     │
     └── (被各阶段调用的现有能力技能,随包携带)
         ohos-dev-sa-codegen/  ohos-dev-napi-module/  ohos-dev-cpp-coding-style/
@@ -78,7 +78,7 @@ for d in ~/code/AI-AR-workflow/skills/*/ ; do
 done
 ```
 之后在 Claude Code 里说「跑流水线 / 从这个 AR 自动开发到上库」即可触发
-`ohos-lifecycle-workflow`。
+`ohos-ar-dev-workflow`。
 
 > 依赖技能的脚本路径会自动解析:门控脚本按 `环境变量 → 包内同级技能 → ~/.claude/skills`
 > 顺序查找 `oh_cpp_guard.py` / `openharmony_ci.py`,所以软链或就地用都能工作。
@@ -124,7 +124,7 @@ P0 会把探测到的序列号回填进 `pipeline.json` 与 `evidence/phase0/env
 
 ```bash
 REPO=/home/user/ohos/master
-S=~/code/AI-AR-workflow/skills/ohos-lifecycle-phases/scripts     # 或 ~/.claude/skills/...
+S=~/code/AI-AR-workflow/skills/ohos-ar-dev-phases/scripts     # 或 ~/.claude/skills/...
 RUN=$(date +%Y%m%d)-<ar-slug>
 export PDIR=$REPO/specs/pipeline/$RUN
 mkdir -p "$PDIR"; printf '%s\n' "<把已澄清的 AR 原文写这里>" > "$PDIR/ar.md"
@@ -181,7 +181,7 @@ python3 $S/advance.py --pipeline-dir "$PDIR" verify-all     # 重校验,被篡�
 
 | 阶段 | 做事(调用的技能) | 门控脚本 | 通过条件 | 落盘证据(`evidence/phaseN/`) |
 |---|---|---|---|---|
-| **P0** | ohos-lifecycle-init | `gate_env_init.py` | build/git/testfwk/hdc 二进制/真机(自动探测并记录序列号)全部就绪;oh-gc 软告警 | `env.json` |
+| **P0** | ohos-ar-dev-init | `gate_env_init.py` | build/git/testfwk/hdc 二进制/真机(自动探测并记录序列号)全部就绪;oh-gc 软告警 | `env.json` |
 | **P1 开发** | ohos-dev-sa-codegen / -napi-module / -cpp-coding-style / tdd-enforcer | `gate_develop.py` | 相对 `base_commit` 有改动 **且** 风格检查通过 | `diff.patch`、`changed_files.txt`、`style_report.txt` |
 | **P2 编译** | ohos-dev-build-execution-diagnosis / ohos-build-flash | `gate_build.py` | build.sh exit 0 **且** 输出含 `=====build…successful=====` 且无 error 横幅 | `build_stdout.log`、`build_banner.txt`(失败再加 `error_distill.txt`) |
 | **P3 测试** | ohos-test-ut-generation / tdd-enforcer | `gate_test_ut.py` | 编出测试二进制 + developer_test 本次**新建**报告 + `tests>0 && failures==0 && errors==0` | `summary_report.xml`、`result_*.xml`、`start_sh_stdout.txt`、`report_dir.txt` |
@@ -189,7 +189,7 @@ python3 $S/advance.py --pipeline-dir "$PDIR" verify-all     # 重校验,被篡�
 | **P5 集成** | ohos-build-flash / developer_test(MST) | `gate_integration.py`(或 `gate_device_func.py --phase 5`) | 集成 summary `failures==0 && errors==0 && tests>0` + 新报告目录 | `summary_report.xml`、`start_sh_stdout.txt`、`report_dir.txt` |
 | **P6 上库** | ohos-ci-gitcode-cli-usage / -gitcode-pr-review / -security-code-review / -openharmony-ci-analysis | `gate_upload_ci.py` | P1–P5 全过 + consent 令牌 + PR 已建 + CI `overall∈{success,passed}` + PR head SHA==push SHA | `pr.json`、`ci_status.json`、`pr_create.txt` |
 
-每个阶段在 Claude Code 里的"做事"细节见 `skills/ohos-lifecycle-phases/phaseN-*.md`。
+每个阶段在 Claude Code 里的"做事"细节见 `skills/ohos-ar-dev-phases/phaseN-*.md`。
 
 ---
 
@@ -204,7 +204,7 @@ $REPO/specs/pipeline/{YYYYMMDD}-{slug}/
     ├── manifest.jsonl   # 追加式 HMAC 签名证据账本(真相所在)
     └── phase0/ … phase6/  # 各阶段真实产物
 ```
-`pipeline.json` 字段说明见 `skills/ohos-lifecycle-workflow/references/pipeline-schema.md`。
+`pipeline.json` 字段说明见 `skills/ohos-ar-dev-workflow/references/pipeline-schema.md`。
 
 ---
 
@@ -222,7 +222,7 @@ $REPO/specs/pipeline/{YYYYMMDD}-{slug}/
 
 ---
 
-## 9. 脚本速查(`skills/ohos-lifecycle-phases/scripts/`)
+## 9. 脚本速查(`skills/ohos-ar-dev-phases/scripts/`)
 
 ```
 advance.py  init        --git-dir <组件> --build-target <t> --part <p> [--base-commit <sha>]
@@ -261,4 +261,4 @@ gate_upload_ci.py   --pipeline-dir P --repo-slug owner/repo --branch B [--base m
 
 「thin 入口 + thick 阶段 skill + 确定性门控脚本」三层,借鉴 AID/MigBot 工作流,但
 **阶段边界是脚本门控,不是用户点头**(全自动,仅 P6 push 保留一次性人工同意)。
-架构图见 `skills/ohos-lifecycle-workflow/README.md`。
+架构图见 `skills/ohos-ar-dev-workflow/README.md`。

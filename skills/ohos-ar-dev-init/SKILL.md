@@ -1,12 +1,12 @@
 ---
-name: ohos-lifecycle-init
+name: ohos-ar-dev-init
 description: >
   一次性初始化并校验 OHOS 生命周期流水线所需的各项能力:代码仓/build.sh/developer_test/
   hdc 二进制/真机连通(自动探测设备序列号)/oh-gc,建立 specs/pipeline 目录约定,写
-  specs/initialized.flag。当用户首次跑 ohos-lifecycle-workflow 或说"初始化流水线环境"时触发。
+  specs/initialized.flag。当用户首次跑 ohos-ar-dev-workflow 或说"初始化流水线环境"时触发。
 ---
 
-# ohos-lifecycle-init — 流水线环境初始化与能力校验
+# ohos-ar-dev-init — 流水线环境初始化与能力校验
 
 mirror aid-init,面向 OHOS 全量仓 + 真机。一次性、幂等。**不写死任何机器特定值**
 (IP、设备序列号都在运行时解析/探测)。
@@ -44,7 +44,7 @@ mirror aid-init,面向 OHOS 全量仓 + 真机。一次性、幂等。**不写�
 
 ## 产物
 - `specs/initialized.flag`(记录仓路径、产品、连接方式、探测到的序列号、检查时间)。
-- 之后由 `ohos-lifecycle-workflow` 为每个 AR 在 `specs/pipeline/{date}-{slug}/` 起独立流水线。
+- 之后由 `ohos-ar-dev-workflow` 为每个 AR 在 `specs/pipeline/{date}-{slug}/` 起独立流水线。
 
 > 本技能负责首次环境就绪与 flag 落盘;P0 `gate_env_init.py` 负责每次运行的可验证能力预检
 > (它产 HMAC 签名证据并允许 `advance --phase 0`)。
