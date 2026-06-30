@@ -23,7 +23,7 @@
 - 该阶段最后一条 manifest 记录 `verdict=="PASS"`;
 - HMAC 用 per-run 密钥校验通过(防伪造/篡改);
 - 记录里每个 artifact 文件存在且当前 sha256 与记录一致(防事后替换);
-- (仅 P6)`upload_consent_token` 非空。
+- (P4 真机 / P6 上库)`consent_tokens[str(phase)]` 非空——证据 PASS 后还需人工核对真实结果并签字,否则 `advance` HOLD。
 
 任一不满足 → `advance.py` 非 0 退出、不改状态。
 

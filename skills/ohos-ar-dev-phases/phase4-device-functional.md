@@ -27,7 +27,15 @@ python3 $S/gate_device_func.py --pipeline-dir "$PDIR" \
 抓取文本含**本次 nonce** **且** 含 `--marker` **且** `uptime_after > uptime_before > 0`
 **且** 部署命令全 exit 0。
 
-## 通过后
+## ⚠️ 真机结果需人工确认(本阶段特殊)
+P4 与其它阶段不同:门控产出证据为 PASS 后**不自动放行**。脚本会停下并把真机真实结果与
+所有产物路径打印出来(含 hilog 抓取末尾片段),**等待人工核对真机测试结果**。编排器到这里
+**必须停住、把这些真实结果与产物呈现给用户,等用户确认**,不得自行继续。
+
+人工确认真机结果可接受后,记录 consent 再推进:
 ```bash
-python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 4
+python3 $S/advance.py --pipeline-dir "$PDIR" consent --phase 4 --token <审核人>
+python3 $S/advance.py --pipeline-dir "$PDIR" advance  --phase 4
 ```
+`advance --phase 4` 在没有 phase-4 consent 时会 **HOLD**(打印复核指引,不推进);
+有 consent 且证据 PASS 才推进到 P5。consent 也是 `pipeline.json` 状态、由 `advance.py` 写。

@@ -31,8 +31,10 @@ GN 构建目标(`build_target`)、测试 `testpart` 与套件名、目标二进�
    最多自动重试 3 次,仍失败则停下并把真实失败日志呈现给用户。
 4. **真机/真实日志是阶段产出**。P3/P4/P5 的结束证据必须是设备上真实跑出来的报告/hilog,
    不是你写的文字。设备 RTC 错乱,新鲜度靠 nonce + `/proc/uptime` + 新建报告目录,不靠时间戳。
-5. **上库 push 是唯一对外不可逆动作**。即使全自动,P6 的 push 默认停下,需人工一次性同意
-   (`advance.py consent`)后才执行。
+5. **P4 真机结果 与 P6 上库 需人工确认**。这两个阶段证据 PASS 后**不自动放行**:必须停下,
+   把真机/真实结果与所有产物路径呈现给用户,等用户确认;用户同意后
+   `advance.py consent --phase 4|6 --token <人>` 再 `advance`。没令牌时 `advance` 会 HOLD。
+   P6 的 push 仍是唯一对外不可逆动作。
 
 ## 步骤 0:初始化检查
 
@@ -65,9 +67,9 @@ GN 构建目标(`build_target`)、测试 `testpart` 与套件名、目标二进�
 | P1 开发 | sa-codegen / napi-module / cpp-coding-style / tdd-enforcer | `gate_develop.py` | git diff + 风格报告 |
 | P2 编译 | build-execution-diagnosis / build-flash | `gate_build.py` | build.log 成功横幅 |
 | P3 测试 | test-ut-generation / tdd-enforcer | `gate_test_ut.py` | developer_test summary_report.xml |
-| P4 真机 | build-flash / hdc-command-usage | `gate_device_func.py` | 含 nonce 的真机 hilog |
+| P4 真机 | build-flash / hdc-command-usage | `gate_device_func.py` | 含 nonce 的真机 hilog **+ 人工确认(consent --phase 4)** |
 | P5 集成 | build-flash / developer_test MST | `gate_integration.py`(或 `gate_device_func.py --phase 5`) | 集成 summary / 真机 hilog |
-| P6 上库 | gitcode-cli / gitcode-pr-review / security-code-review / openharmony-ci-analysis | `gate_upload_ci.py` | PR + CI 绿(SHA 绑定) |
+| P6 上库 | gitcode-cli / gitcode-pr-review / security-code-review / openharmony-ci-analysis | `gate_upload_ci.py` | PR + CI 绿(SHA 绑定)**+ 人工确认(consent --phase 6)** |
 
 每阶段成功后,同步更新 `TodoWrite` 与 `$PDIR/todo.md`(双轨,便于断点恢复)。
 

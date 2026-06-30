@@ -5,7 +5,7 @@ gate_upload_ci.py — Phase 6 (code upload + review). The only outward, irrevers
 
 Hard prerequisites (read from pipeline.json / manifest):
   * phases 1..5 all status==passed;
-  * upload_consent_token recorded (human approved the push) — also re-checked by
+  * consent for phase 6 recorded (human approved the push) — also re-checked by
     advance.py, so this cannot be bypassed.
 
 The push itself only happens with --allow-push. Without it the gate runs in
@@ -64,13 +64,13 @@ def main():
     if not args.allow_push and not args.pr:
         print("DRY RUN (no --allow-push). Would push branch '%s' to %s and open PR "
               "(base=%s). head=%s" % (args.branch, args.repo_slug, args.base, head_sha[:12]))
-        print("To proceed: record consent (advance.py consent --token ...) then "
-              "re-run with --allow-push.")
+        print("To proceed: record consent (advance.py consent --phase 6 --token ...) "
+              "then re-run with --allow-push.")
         return  # no PASS emitted
 
-    if not state.get("upload_consent_token"):
-        sys.exit("PHASE 6 BLOCKED: no upload_consent_token. Record it with "
-                 "`advance.py consent --token <token>` after human approval.")
+    if not state.get("consent_tokens", {}).get("6"):
+        sys.exit("PHASE 6 BLOCKED: no consent for phase 6. Record it with "
+                 "`advance.py consent --phase 6 --token <token>` after human approval.")
 
     pr_number = args.pr
     if pr_number is None:

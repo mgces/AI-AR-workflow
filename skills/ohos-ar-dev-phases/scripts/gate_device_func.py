@@ -124,7 +124,23 @@ def main():
     gl.emit(pdir, phase, "gate_device_func.py", verdict=verdict, reason=reason,
             cmd=args.scenario_script, nonce=nonce, artifacts_rel=arts)
     if verdict == "PASS":
-        print("PHASE %d PASS — advance.py advance --phase %d" % (phase, phase))
+        # P4 device-test result needs human sign-off: stop here, surface the real
+        # results + artifacts, do NOT auto-advance.
+        print("\n" + "=" * 64)
+        print("PHASE %d 真机测试证据已产出 —— 等待人工确认" % phase)
+        print("=" * 64)
+        print("verdict : PASS (%s)" % reason)
+        print("nonce   : %s" % nonce)
+        print("产物(请人工核对真机真实结果):")
+        for a in arts:
+            print("  - %s" % os.path.join(pdir, a))
+        # show a short tail of the captured device log so the reviewer sees real output
+        tail = "\n".join(cap_text.strip().splitlines()[-15:])
+        print("\nhilog 抓取末尾片段:\n%s" % (tail or "(空)"))
+        print("\n下一步(人工确认真机结果可接受后):")
+        print("  advance.py --pipeline-dir %s consent --phase %d --token <审核人>" % (pdir, phase))
+        print("  advance.py --pipeline-dir %s advance --phase %d" % (pdir, phase))
+        print("=" * 64)
     else:
         sys.exit("PHASE %d FAIL: %s" % (phase, reason))
 

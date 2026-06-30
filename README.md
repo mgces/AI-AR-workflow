@@ -138,7 +138,7 @@ P0 会把探测到的序列号回填进 `pipeline.json` 与 `evidence/phase0/env
 | **P1 开发** | ohos-dev-sa-codegen / -napi-module / -cpp-coding-style / tdd-enforcer | `gate_develop.py` | 相对 `base_commit` 有改动 **且** 风格检查通过 | `diff.patch`、`changed_files.txt`、`style_report.txt` |
 | **P2 编译** | ohos-dev-build-execution-diagnosis / ohos-build-flash | `gate_build.py` | build.sh exit 0 **且** 输出含 `=====build…successful=====` 且无 error 横幅 | `build_stdout.log`、`build_banner.txt`(失败再加 `error_distill.txt`) |
 | **P3 测试** | ohos-test-ut-generation / tdd-enforcer | `gate_test_ut.py` | 编出测试二进制 + developer_test 本次**新建**报告 + `tests>0 && failures==0 && errors==0` | `summary_report.xml`、`result_*.xml`、`start_sh_stdout.txt`、`report_dir.txt` |
-| **P4 真机** | ohos-build-flash / ohos-dev-hdc-command-usage | `gate_device_func.py` | 部署命令全 exit 0 + hilog 含**本次 nonce** + 含 marker + uptime 单调 | `hilog_capture.txt`、`device_cmds.txt`、`run_meta.txt` |
+| **P4 真机** | ohos-build-flash / ohos-dev-hdc-command-usage | `gate_device_func.py` | 部署命令全 exit 0 + hilog 含**本次 nonce** + 含 marker + uptime 单调;**证据 PASS 后停下,人工核对真机真实结果并 `consent --phase 4` 才推进** | `hilog_capture.txt`、`device_cmds.txt`、`run_meta.txt` |
 | **P5 集成** | ohos-build-flash / developer_test(MST) | `gate_integration.py`(或 `gate_device_func.py --phase 5`) | 集成 summary `failures==0 && errors==0 && tests>0` + 新报告目录 | `summary_report.xml`、`start_sh_stdout.txt`、`report_dir.txt` |
 | **P6 上库** | ohos-ci-gitcode-cli-usage / -gitcode-pr-review / -security-code-review / -openharmony-ci-analysis | `gate_upload_ci.py` | P1–P5 全过 + consent 令牌 + PR 已建 + CI `overall∈{success,passed}` + PR head SHA==push SHA | `pr.json`、`ci_status.json`、`pr_create.txt` |
 
@@ -180,7 +180,7 @@ $REPO/specs/pipeline/{YYYYMMDD}-{slug}/
 ```
 advance.py  init        --git-dir <组件> --build-target <t> --part <p> [--base-commit <sha>]
             advance     --phase N
-            consent     --token <s>            # 记录 P6 一次性人工同意
+            consent     --phase N --token <s>   # 记录 P4 真机/P6 上库 的人工确认
             verify-all                          # 重校验已通过阶段(被篡改则回退)
             status
 gate_env_init.py    --pipeline-dir P
@@ -213,5 +213,5 @@ gate_upload_ci.py   --pipeline-dir P --repo-slug owner/repo --branch B [--base m
 ## 11. 设计范式
 
 「thin 入口 + thick 阶段 skill + 确定性门控脚本」三层,借鉴 AID/MigBot 工作流,但
-**阶段边界是脚本门控,不是用户点头**(全自动,仅 P6 push 保留一次性人工同意)。
+**阶段边界是脚本门控,不是用户点头**(证据自动放行;仅 **P4 真机结果** 与 **P6 上库** 在证据 PASS 后停下等人工确认)。
 架构图见 `skills/ohos-ar-dev-workflow/README.md`。

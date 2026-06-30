@@ -19,7 +19,7 @@ P1–P5 全部 `status==passed`(看 `advance.py status`)。
    ```
 2. **人工同意**后记录一次性令牌:
    ```bash
-   python3 $S/advance.py --pipeline-dir "$PDIR" consent --token "<approver-or-ticket>"
+   python3 $S/advance.py --pipeline-dir "$PDIR" consent --phase 6 --token "<approver-or-ticket>"
    ```
 3. 正式 push + 建 PR + 校验 CI:
    ```bash

@@ -25,7 +25,7 @@ evidence/
   "test": { "part": "<testpart>", "ut_suites": [], "mst_suites": [] },
   "base_commit": "<phase1 起点 SHA>",
   "current_phase": 0,
-  "upload_consent_token": null,
+  "consent_tokens": {},
   "phases": [
     { "id": 0, "name": "bootstrap",        "status": "passed",
       "manifest_ref": "<闭合记录的 id>", "closed_at_utc": "..." },
@@ -44,3 +44,7 @@ evidence/
 
 `device_serial` 初始为空,由 P0 `gate_env_init.py` 在真机上自动探测(`hdc list targets` 唯一设备)
 后回填,或由 `init --device-serial` / 环境变量 `$DEVICE_SERIAL` 显式指定。**不写死任何机器特定值。**
+
+`consent_tokens` 记录需人工签字的阶段令牌(`{"4": "...", "6": "..."}`):**P4 真机功能测试**
+与 **P6 上库** 在证据 PASS 后需人工核对真实结果/审批,`advance.py consent --phase N --token <人>`
+写入后该阶段才可 `advance`。没有对应令牌时 `advance --phase 4|6` 会 HOLD,不推进。

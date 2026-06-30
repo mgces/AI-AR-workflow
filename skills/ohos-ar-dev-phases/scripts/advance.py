@@ -23,6 +23,10 @@ import time
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 import gatelib as gl  # noqa: E402
 
+# Phases whose evidence gate must be followed by an explicit human sign-off
+# before advancing (the pipeline stops and shows real results/artifacts first).
+CONSENT_PHASES = {4: "device functional test", 6: "upload push"}
+
 
 def cmd_init(args):
     pdir = gl.pipeline_dir(args.pipeline_dir)
@@ -42,7 +46,7 @@ def cmd_init(args):
         "test": {"part": args.part, "ut_suites": [], "mst_suites": []},
         "base_commit": args.base_commit,
         "current_phase": 0,
-        "upload_consent_token": None,
+        "consent_tokens": {},
         "phases": [
             {"id": i, "name": n, "status": "pending",
              "manifest_ref": None, "closed_at_utc": None}
@@ -63,11 +67,20 @@ def cmd_advance(args):
         sys.exit("ERROR: refusing to close phase %d; current_phase is %d "
                  "(phases must close in order)" % (phase, cur))
 
-    # Upload phase carries an extra, non-bypassable consent gate.
-    if phase == 6 and not state.get("upload_consent_token"):
-        sys.exit("ERROR: phase 6 (upload) requires upload_consent_token in "
-                 "pipeline.json. Re-run advance with --consent <token> only "
-                 "after a human approved the push.")
+    # Phases that require an explicit human sign-off AFTER their evidence gate
+    # passes: the pipeline must stop, show the real results/artifacts, and only
+    # advance once a person reviewed them and recorded consent.
+    #   P4 = real-device functional test result review
+    #   P6 = irreversible upload push
+    if phase in CONSENT_PHASES and not state.get("consent_tokens", {}).get(str(phase)):
+        ev = os.path.join(pdir, "evidence", "phase%d" % phase)
+        sys.exit(
+            "HOLD: phase %d (%s) passed its evidence gate but needs human review.\n"
+            "  1) inspect the real results + artifacts in: %s\n"
+            "  2) if the device/test result is acceptable, record consent:\n"
+            "     advance.py --pipeline-dir <PDIR> consent --phase %d --token <reviewer>\n"
+            "  3) then re-run: advance.py --pipeline-dir <PDIR> advance --phase %d"
+            % (phase, CONSENT_PHASES[phase], ev, phase, phase))
 
     ok, reason, entry = gl.validate_closing_entry(pdir, phase)
     if not ok:
@@ -90,14 +103,20 @@ def cmd_advance(args):
 
 
 def cmd_consent(args):
-    """Record the one-time human consent token for the irreversible upload push."""
+    """Record a one-time human consent token for a phase that requires sign-off
+    (P4 device-test review, P6 upload push). Only meaningful after the phase's
+    evidence gate has produced its real results for a human to inspect."""
     pdir = gl.pipeline_dir(args.pipeline_dir)
     state = gl.load_state(pdir)
     if not args.token:
         sys.exit("ERROR: --token required")
-    state["upload_consent_token"] = args.token
+    if args.phase not in CONSENT_PHASES:
+        sys.exit("ERROR: phase %d does not take consent (consent phases: %s)"
+                 % (args.phase, ", ".join(str(p) for p in CONSENT_PHASES)))
+    state.setdefault("consent_tokens", {})[str(args.phase)] = args.token
     gl.save_state(pdir, state)
-    print("recorded upload consent token.")
+    print("recorded consent for phase %d (%s): %s"
+          % (args.phase, CONSENT_PHASES[args.phase], args.token))
 
 
 def cmd_verify_all(args):
@@ -160,6 +179,8 @@ def main():
     p.set_defaults(func=cmd_advance)
 
     p = sub.add_parser("consent")
+    p.add_argument("--phase", type=int, required=True,
+                   help="phase to sign off (4 device test, 6 upload)")
     p.add_argument("--token", required=True)
     p.set_defaults(func=cmd_consent)
 

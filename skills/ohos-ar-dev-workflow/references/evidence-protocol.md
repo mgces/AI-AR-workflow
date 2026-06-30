@@ -33,4 +33,11 @@
 - 真实证据 = 已创建的 PR(号/URL/head SHA)+ `openharmony_ci.py` 对该 PR `overall==success`。
 - CI 状态绑定到**本次 push 的不可变 commit SHA**:PR head SHA 必须等于本地 push 的 SHA,
   杜绝"旧 commit 的绿"冒充。
-- push 为唯一对外不可逆动作:无 `--allow-push` 时只做 DRY(不产 PASS);需 `consent` 令牌。
+- push 为唯一对外不可逆动作:无 `--allow-push` 时只做 DRY(不产 PASS);需 `consent --phase 6` 令牌。
+
+## 5. 人工确认门(P4 真机 / P6 上库)
+
+证据 PASS 不等于自动放行。**P4 真机功能测试** 与 **P6 上库** 两个阶段,门控产出真实证据后
+**停下并把真实结果/产物路径呈现给人**(P4 还打印 hilog 末尾片段),等人工核对真机/上库结果。
+人工认可后 `advance.py consent --phase 4|6 --token <人>` 写入 `consent_tokens`,`advance` 才放行;
+缺令牌时 `advance --phase 4|6` 直接 HOLD 不推进。consent 也是 `pipeline.json` 状态、只由 `advance.py` 写。
