@@ -18,7 +18,8 @@ Capabilities checked (HARD = blocks; SOFT = warns only):
   testfwk     HARD  test/testfwk/developer_test/start.sh        -> P3/P5
   hdc_bin     HARD  an hdc binary is resolvable                 -> P0/P4/P5
   device      HARD  a unique device is online (records serial)  -> P4/P5
-  oh_gc       SOFT  oh-gc CLI available                         -> P6
+
+oh-gc (gitcode CLI, P6) is NOT checked here on purpose — install it before P6.
 """
 import argparse
 import json
@@ -164,10 +165,8 @@ def main():
     add("device", "HARD", don.returncode == 0 and bool(serial),
         "serial=%s" % (serial or (don.stderr.strip() or "no unique device")), "P4/P5")
 
-    # oh-gc (soft, P6 only)
-    oh = run("oh-gc --version")
-    add("oh_gc", "SOFT", oh.returncode == 0,
-        (oh.stdout or oh.stderr).strip()[:120] or "not installed", "P6")
+    # NOTE: oh-gc (gitcode CLI) is only needed at P6 (upload). It is intentionally
+    # NOT checked here — install/login it right before P6. See phase6-upload-review.md.
 
     # persist detected serial into state if not already pinned (config, not status)
     if serial and not state.get("device_serial"):

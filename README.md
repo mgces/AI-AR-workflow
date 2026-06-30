@@ -96,7 +96,7 @@ done
 | 构建环境 | `./build.sh` 可用 | P0 `gate_env_init.py` 自检 |
 | 真机 rk3568 | 经 hdc 可达,**序列号自动探测**(不写死) | P0 自检 `dev_assert_online` |
 | developer_test | `test/testfwk/developer_test/start.sh` | P0 自检 |
-| `oh-gc`(P6 才需) | `npm i -g @oh-gc/cli@latest` + `oh-gc auth login` | P0 软告警 |
+| `oh-gc`(P6 才需) | `npm i -g @oh-gc/cli@latest` + `oh-gc auth login` | **不在 P0 校验**;P6 前装好即可 |
 
 > ⚠️ **OHOS 根目录不是 git 仓**(每个组件子目录才是)。`init` 时必须用 `--git-dir`
 > 指定你改动的**组件路径**(如 `base/hiviewdfx/hiview`);`build_target` 与
@@ -182,7 +182,7 @@ python3 $S/advance.py --pipeline-dir "$PDIR" verify-all     # 重校验,被篡�
 
 | 阶段 | 做事(调用的技能) | 门控脚本 | 通过条件 | 落盘证据(`evidence/phaseN/`) |
 |---|---|---|---|---|
-| **P0** | ohos-ar-dev-init | `gate_env_init.py` | build/git/testfwk/hdc 二进制/真机(自动探测并记录序列号)全部就绪;oh-gc 软告警 | `env.json` |
+| **P0** | ohos-ar-dev-init | `gate_env_init.py` | build/compile/git/testfwk/hdc 二进制/真机(自动探测并记录序列号)全部就绪 | `env.json` |
 | **P1 开发** | ohos-dev-sa-codegen / -napi-module / -cpp-coding-style / tdd-enforcer | `gate_develop.py` | 相对 `base_commit` 有改动 **且** 风格检查通过 | `diff.patch`、`changed_files.txt`、`style_report.txt` |
 | **P2 编译** | ohos-dev-build-execution-diagnosis / ohos-build-flash | `gate_build.py` | build.sh exit 0 **且** 输出含 `=====build…successful=====` 且无 error 横幅 | `build_stdout.log`、`build_banner.txt`(失败再加 `error_distill.txt`) |
 | **P3 测试** | ohos-test-ut-generation / tdd-enforcer | `gate_test_ut.py` | 编出测试二进制 + developer_test 本次**新建**报告 + `tests>0 && failures==0 && errors==0` | `summary_report.xml`、`result_*.xml`、`start_sh_stdout.txt`、`report_dir.txt` |
@@ -214,7 +214,7 @@ $REPO/specs/pipeline/{YYYYMMDD}-{slug}/
 | 现象 | 原因 / 处理 |
 |---|---|
 | P0 `git_head` BAD | 用 `--git-dir` 指定**组件子仓**,而非 repo 根(根目录无 `.git`)。 |
-| P0 `oh_gc` BAD | 软告警,不阻塞 P0;P6 前再 `npm i -g @oh-gc/cli@latest && oh-gc auth login`。 |
+| P6 缺 `oh-gc` | init 不再检查 oh-gc;P6 前 `npm i -g @oh-gc/cli@latest && oh-gc auth login`。 |
 | P0 `device_online` BAD | 检查 hdc daemon 与 `HDC_HOST_OVERRIDE`/`DEVICE_SERIAL`;`device.sh` 默认从 WSL 默认网关取 Windows IP。 |
 | P2 横幅没识别到 | build.sh 横幅打在 **stdout**,且 `out/rk3568/build.log` 可能轮转/为空;门控已改为捕获 build.sh stdout 并用正则判定。 |
 | P4 抓取里没有 nonce | scenario 脚本要让组件把 `$GATE_NONCE` 打进设备日志(`hilog`/`log -t … NONCE=$GATE_NONCE`),否则无法证明日志是本次的。 |

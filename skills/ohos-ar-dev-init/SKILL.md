@@ -2,7 +2,7 @@
 name: ohos-ar-dev-init
 description: >
   一次性初始化并校验 OHOS 生命周期流水线所需的各项能力:代码仓/build.sh/developer_test/
-  hdc 二进制/真机连通(自动探测设备序列号)/oh-gc,建立 specs/pipeline 目录约定,写
+  hdc 二进制/真机连通(自动探测设备序列号),建立 specs/pipeline 目录约定,写
   specs/initialized.flag。当用户首次跑 ohos-ar-dev-workflow 或说"初始化流水线环境"时触发。
 ---
 
@@ -57,7 +57,8 @@ python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 0
 | testfwk | HARD | `test/testfwk/developer_test/start.sh` 存在 | P3/P5 |
 | hdc_bin | HARD | 能解析到 hdc 二进制 | P0/P4/P5 |
 | device | HARD | 唯一真机在线(自动探测并记录序列号) | P4/P5 |
-| oh_gc | SOFT | `oh-gc --version`(P6 才需,`npm i -g @oh-gc/cli@latest`) | P6 |
+
+> P6 上库用的 gitcode CLI `oh-gc` **不在 init 校验**;P6 前再 `npm i -g @oh-gc/cli@latest && oh-gc auth login` 即可。
 
 > 💡 compile 探针默认编译 `hiview_package` 来验证整套构建工具链可用(GN+ninja+ccache)。
 > **每个仓只在首次 init 编译一次**(通过后写 `specs/.build-probe-ok` 标记),之后 init 自动跳过,
