@@ -11,9 +11,21 @@ description: >
 mirror aid-init,面向 OHOS 全量仓 + 真机。一次性、幂等。**不写死任何机器特定值**
 (IP、设备序列号都在运行时解析/探测)。
 
+## 脚本位置(重要)
+
+本技能目录**只含 SKILL.md**,没有自己的 `scripts/`。所有门控脚本(`gate_env_init.py`、
+`advance.py`)与公共库(`lib/gatelib.py`、`lib/device.sh`)统一放在**同级技能
+`ohos-ar-dev-phases/scripts/`** 里(它们共享 `gatelib`/`advance`,不重复一份)。
+本技能引用到的 `gate_env_init.py`、`lib/device.sh` 都指这里:
+
+```bash
+S=~/.claude/skills/ohos-ar-dev-phases/scripts   # 安装态;包内则 ~/code/AI-AR-workflow/skills/ohos-ar-dev-phases/scripts
+ls "$S/gate_env_init.py" "$S/lib/device.sh"     # 确认存在
+```
+
 ## 连接配置(可移植,全部来自环境,不硬编码)
 
-`scripts/lib/device.sh` 按以下优先级解析,换机器无需改代码:
+`$S/lib/device.sh` 按以下优先级解析,换机器无需改代码:
 
 | 项 | 解析顺序 |
 |---|---|
@@ -25,10 +37,17 @@ mirror aid-init,面向 OHOS 全量仓 + 真机。一次性、幂等。**不写�
 - WSL→Windows hdc 桥接:`export HDC_WIN_PORT=10086`(IP 自动从默认网关取,不写死)。
 - 任意远端/多设备:`export HDC_HOST_OVERRIDE=<ip:port>` 和/或 `export DEVICE_SERIAL=<serial>`。
 
-## 能力校验(P0 门控 `gate_env_init.py` 落地,产签名证据)
+## 能力校验(P0 门控 `$S/gate_env_init.py` 落地,产签名证据)
 
 逐项探测,**HARD 缺失即阻塞**,SOFT 仅告警;并把探测到的设备序列号回填进
-`pipeline.json` 与 `evidence/phase0/env.json`:
+`pipeline.json` 与 `evidence/phase0/env.json`。先 `advance.py init` 建好运行态再跑校验:
+
+```bash
+python3 $S/advance.py --pipeline-dir "$PDIR" init --git-dir <组件路径> --build-target <gn目标> --part <testpart>
+python3 $S/gate_env_init.py --pipeline-dir "$PDIR"            # 逐项能力校验,产证据
+python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 0
+```
+
 
 | 能力 | 级别 | 校验内容 | 服务阶段 |
 |---|---|---|---|
@@ -46,5 +65,5 @@ mirror aid-init,面向 OHOS 全量仓 + 真机。一次性、幂等。**不写�
 - `specs/initialized.flag`(记录仓路径、产品、连接方式、探测到的序列号、检查时间)。
 - 之后由 `ohos-ar-dev-workflow` 为每个 AR 在 `specs/pipeline/{date}-{slug}/` 起独立流水线。
 
-> 本技能负责首次环境就绪与 flag 落盘;P0 `gate_env_init.py` 负责每次运行的可验证能力预检
-> (它产 HMAC 签名证据并允许 `advance --phase 0`)。
+> 本技能负责首次环境就绪与 flag 落盘;P0 `$S/gate_env_init.py` 负责每次运行的可验证能力预检
+> (它产 HMAC 签名证据并允许 `advance --phase 0`)。脚本本体在 `ohos-ar-dev-phases/scripts/`。
