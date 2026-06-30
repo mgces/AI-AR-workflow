@@ -141,7 +141,7 @@ P0 会把探测到的序列号回填进 `pipeline.json` 与 `evidence/phase0/env
 | **P3 测试** | ohos-test-ut-generation / tdd-enforcer | `gate_test_ut.py` | 编出测试二进制 + developer_test 本次**新建**报告 + `tests>0 && failures==0 && errors==0` | `summary_report.xml`、`result_*.xml`、`start_sh_stdout.txt`、`report_dir.txt` |
 | **P4 真机** | ohos-build-flash / ohos-dev-hdc-command-usage | `gate_device_func.py` | 部署命令全 exit 0 + hilog 含**本次 nonce** + 含 marker + uptime 单调;**证据 PASS 后停下,人工核对真机真实结果并 `consent --phase 4` 才推进** | `hilog_capture.txt`、`device_cmds.txt`、`run_meta.txt` |
 | **P5 集成** | ohos-build-flash / developer_test(MST)/ **ohos-dev-cpp-coding-style** | `gate_integration.py`(或 `gate_device_func.py --phase 5`) | 集成 summary `failures==0 && errors==0 && tests>0` **且 代码 review 通过**(oh_cpp_guard 改动 C/C++ 合规)| `summary_report.xml`、`review_report.txt`、`report_dir.txt` |
-| **P6 上库** | ohos-ci-gitcode-cli-usage / -gitcode-pr-review / -security-code-review / -openharmony-ci-analysis | `gate_upload_ci.py` | P1–P5 全过 + consent 令牌 + PR 已建 + CI `overall∈{success,passed}` + PR head SHA==push SHA | `pr.json`、`ci_status.json`、`pr_create.txt` |
+| **P6 上库** | ohos-ci-gitcode-cli-usage / -gitcode-pr-review / -security-code-review / -openharmony-ci-analysis | `gate_upload_ci.py` | P1–P5 全过 + **上库前落全部代码 diff 供人工确认** + consent --phase 6 + PR 已建 + CI `overall∈{success,passed}` + PR head SHA==push SHA | `full_diff.patch`、`full_diff.stat.txt`、`pr.json`、`ci_status.json` |
 
 每个阶段在 Claude Code 里的"做事"细节见 `skills/ohos-ar-dev-phases/phaseN-*.md`。
 

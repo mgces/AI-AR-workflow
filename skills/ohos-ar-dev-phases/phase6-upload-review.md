@@ -17,6 +17,9 @@ P1–P5 全部 `status==passed`(看 `advance.py status`)。
    python3 $S/gate_upload_ci.py --pipeline-dir "$PDIR" \
        --repo-slug <owner/repo> --branch <local_branch> --base master --title "<title>"
    ```
+   DRY 会**把全部代码改动的 diff 落到 `evidence/phase6/`**(`full_diff.patch` +
+   `full_diff.stat.txt`,相对 `base_commit`)并打印改动统计,**作为上库前给人工确认的内容**。
+   编排器到这里必须停下,把这份 diff/统计呈现给用户核对。
 2. **人工同意**后记录一次性令牌:
    ```bash
    python3 $S/advance.py --pipeline-dir "$PDIR" consent --phase 6 --token "<approver-or-ticket>"

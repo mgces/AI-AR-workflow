@@ -34,6 +34,22 @@ def run(cmd, cwd=None):
     return subprocess.run(cmd, shell=True, text=True, capture_output=True, cwd=cwd)
 
 
+def write_full_diff(state, gdir, pdir):
+    """Dump the full diff of ALL modified code (component repo vs base_commit)
+    into evidence/phase6 so a human can review the exact changes before upload.
+    Returns (rel_path, stat_summary)."""
+    base = state.get("base_commit") or "HEAD"
+    diff = run("git -C %s diff %s" % (gdir, base)).stdout
+    stat = run("git -C %s diff --stat %s" % (gdir, base)).stdout.strip()
+    rel = "evidence/phase6/full_diff.patch"
+    with open(os.path.join(pdir, rel), "w", encoding="utf-8") as f:
+        f.write(diff)
+    stat_rel = "evidence/phase6/full_diff.stat.txt"
+    with open(os.path.join(pdir, stat_rel), "w", encoding="utf-8") as f:
+        f.write("base=%s\n\n%s\n" % (base, stat or "(no changes)"))
+    return rel, stat_rel, (stat or "(no changes)")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--pipeline-dir")
@@ -59,13 +75,23 @@ def main():
     if not_done:
         sys.exit("PHASE 6 BLOCKED: phases not passed: %s" % not_done)
 
+    # Save the full diff of ALL modified code for human confirmation BEFORE upload.
+    diff_rel, stat_rel, stat = write_full_diff(state, gdir, pdir)
+
     head_sha = run("git -C %s rev-parse %s" % (gdir, args.branch)).stdout.strip()
 
     if not args.allow_push and not args.pr:
-        print("DRY RUN (no --allow-push). Would push branch '%s' to %s and open PR "
+        print("\n" + "=" * 64)
+        print("P6 上库前 —— 全部代码改动已保存,待人工确认")
+        print("=" * 64)
+        print("完整 diff : %s" % os.path.join(pdir, diff_rel))
+        print("改动统计 :\n%s" % stat)
+        print("\nDRY RUN (no --allow-push). Would push branch '%s' to %s and open PR "
               "(base=%s). head=%s" % (args.branch, args.repo_slug, args.base, head_sha[:12]))
-        print("To proceed: record consent (advance.py consent --phase 6 --token ...) "
-              "then re-run with --allow-push.")
+        print("人工核对以上改动可上库后:")
+        print("  advance.py --pipeline-dir %s consent --phase 6 --token <审核人>" % pdir)
+        print("  再带 --allow-push 重跑本门控。")
+        print("=" * 64)
         return  # no PASS emitted
 
     if not state.get("consent_tokens", {}).get("6"):
@@ -117,7 +143,7 @@ def main():
     except Exception:
         pass
 
-    arts = [pr_rel, ci_rel]
+    arts = [pr_rel, ci_rel, diff_rel, stat_rel]
     if os.path.exists(os.path.join(pdir, "evidence/phase6/pr_create.txt")):
         arts.append("evidence/phase6/pr_create.txt")
 
