@@ -52,7 +52,7 @@ python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 0
 | 能力 | 级别 | 校验内容 | 服务阶段 |
 |---|---|---|---|
 | build | HARD | `./build.sh` 存在(产品 rk3568) | P2 |
-| compile | HARD | **真实编译探针**:默认 `--build-target hiview_package` 跑通(出现成功横幅且无 error)。**自动执行,不需用户确认**;可用 `--probe-target <t>` 换目标或 `--skip-build-probe` 跳过 | P2 |
+| compile | HARD | **真实编译探针**:默认 `--build-target hiview_package` 跑通(成功横幅且无 error)。**仅每个仓首次 init 编译一次**,通过后写稳定标记 `specs/.build-probe-ok`,之后 init 自动跳过;`--force-build-probe` 强制重编,`--skip-build-probe` 跳过 | P2 |
 | git | HARD | `--git-dir` 指向的**组件子仓**是 git 仓(记录 HEAD) | P1/P6 |
 | testfwk | HARD | `test/testfwk/developer_test/start.sh` 存在 | P3/P5 |
 | hdc_bin | HARD | 能解析到 hdc 二进制 | P0/P4/P5 |
@@ -60,8 +60,25 @@ python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 0
 | oh_gc | SOFT | `oh-gc --version`(P6 才需,`npm i -g @oh-gc/cli@latest`) | P6 |
 
 > 💡 compile 探针默认编译 `hiview_package` 来验证整套构建工具链可用(GN+ninja+ccache)。
-> 它**直接运行、无需任何确认**;探针日志落 `evidence/phase0/build_probe.log` 并计入签名证据。
-> 仅想校验环境而不编译时加 `--skip-build-probe`。
+> **每个仓只在首次 init 编译一次**(通过后写 `specs/.build-probe-ok` 标记),之后 init 自动跳过,
+> 避免每次都重编。环境若有变动用 `--force-build-probe` 重验;明确不想编译用 `--skip-build-probe`。
+> 探针日志落 `evidence/phase0/build_probe.log` 并计入签名证据。
+
+## 仓根(OHOS_ROOT)解析与纠错
+
+`advance.py init --repo` 默认取 **`$OHOS_ROOT`,否则 Claude 打开的当前目录(cwd)**。P0 会先校验
+该目录是否像 OHOS 仓根(同时有 `build.sh` 与 `test/testfwk/developer_test/`)。**不像就立即失败**
+并给出可操作提示:
+
+```
+PHASE 0 FAIL — '<dir>' does not look like an OHOS source root ...
+  * reopen Claude Code in your OHOS repo root, or
+  * re-run `advance.py init` with --repo <ohos_root>, or
+  * export OHOS_ROOT=<ohos_root> before init.
+```
+
+即:**默认就在你打开的目录上探测;若目录不对,按提示把 Claude 重新在 OHOS 仓根目录打开**
+(或用 `--repo` / `OHOS_ROOT` 指定),再重跑 init。
 
 > ⚠️ OHOS 根目录不是 git 仓;`git` 校验针对你 `--git-dir` 指定的组件路径
 > (如 `base/hiviewdfx/hiview`),不是仓根。

@@ -11,8 +11,9 @@ from $DEVICE_SERIAL / --device-serial) and recorded into pipeline.json + evidenc
 Capabilities checked (HARD = blocks; SOFT = warns only):
   build       HARD  ./build.sh present                         -> P2
   compile     HARD  a real build of a probe target succeeds    -> P2
-              (default target: hiview_package; --probe-target to change,
-               --skip-build-probe to skip)
+              (default target: hiview_package; runs the FIRST init per repo,
+               then a stability marker specs/.build-probe-ok lets later inits
+               skip it. --force-build-probe recompiles; --skip-build-probe skips)
   git         HARD  git_dir is a git repo (records HEAD)        -> P1/P6
   testfwk     HARD  test/testfwk/developer_test/start.sh        -> P3/P5
   hdc_bin     HARD  an hdc binary is resolvable                 -> P0/P4/P5
@@ -56,6 +57,9 @@ def main():
                          "(default: %s). No user confirmation — runs automatically." % DEFAULT_PROBE_TARGET)
     ap.add_argument("--skip-build-probe", action="store_true",
                     help="skip the real compile probe (only check build.sh exists)")
+    ap.add_argument("--force-build-probe", action="store_true",
+                    help="re-run the compile probe even if this repo was already "
+                         "verified (ignores the stability marker)")
     args = ap.parse_args()
     pdir = gl.pipeline_dir(args.pipeline_dir)
     state = gl.load_state(pdir)
@@ -64,6 +68,30 @@ def main():
     if not os.path.isabs(gdir):
         gdir = os.path.join(repo, gdir)
     gl.evidence_dir(pdir, 0)
+
+    # --- OHOS root sanity: repo defaults to the directory Claude was opened in
+    # ($OHOS_ROOT or cwd, set at `advance.py init`). If it doesn't look like an
+    # OHOS source root, fail fast with an actionable message instead of a vague
+    # capability error further down.
+    looks_ohos = (os.path.exists(os.path.join(repo, "build.sh"))
+                  and os.path.isdir(os.path.join(repo, "test/testfwk/developer_test")))
+    if not looks_ohos:
+        msg = ("'%s' does not look like an OHOS source root (missing build.sh / "
+               "test/testfwk/developer_test).\n"
+               "Fix it one of these ways:\n"
+               "  * reopen Claude Code in your OHOS repo root, or\n"
+               "  * re-run `advance.py init` with --repo <ohos_root>, or\n"
+               "  * export OHOS_ROOT=<ohos_root> before init." % repo)
+        rel = "evidence/phase0/env.json"
+        with open(os.path.join(pdir, rel), "w", encoding="utf-8") as f:
+            json.dump({"repo": repo, "error": "not_an_ohos_root"}, f, indent=2)
+        gl.emit(pdir, 0, "gate_env_init.py", verdict="FAIL",
+                reason="repo is not an OHOS root: %s" % repo, artifacts_rel=[rel])
+        sys.exit("PHASE 0 FAIL — %s" % msg)
+
+    # repo-level stability marker: once a real compile probe has passed here, we
+    # don't recompile on every init (a full GN+ninja pass is heavy).
+    probe_marker = os.path.join(repo, "specs", ".build-probe-ok")
 
     # Pass an explicitly-pinned serial (if any) through to device.sh.
     env = dict(os.environ)
@@ -81,9 +109,12 @@ def main():
     add("build", "HARD", bs_ok, bs, "P2")
 
     # real compile probe: build a known target to prove the toolchain works.
-    # Runs automatically (no user confirmation); default target hiview_package.
+    # Runs automatically (no user confirmation), but only the FIRST time per repo:
+    # once it passes, a stability marker lets later inits skip the heavy rebuild.
     probe_rel = "evidence/phase0/build_probe.log"
-    if bs_ok and not args.skip_build_probe:
+    already_ok = os.path.exists(probe_marker)
+    do_probe = bs_ok and not args.skip_build_probe and (args.force_build_probe or not already_ok)
+    if do_probe:
         cmd = "./build.sh --product-name rk3568 --ccache --build-target %s" % args.probe_target
         print("compile probe: %s" % cmd)
         path = os.path.join(pdir, probe_rel)
@@ -100,8 +131,16 @@ def main():
         add("compile", "HARD", compile_ok,
             "target=%s rc=%d banner=%s" % (args.probe_target, rc, bool(SUCCESS_RE.search(out))),
             "P2")
+        if compile_ok:  # record stability so subsequent inits skip the rebuild
+            os.makedirs(os.path.dirname(probe_marker), exist_ok=True)
+            with open(probe_marker, "w", encoding="utf-8") as f:
+                f.write("verified target=%s\n" % args.probe_target)
     elif args.skip_build_probe:
         add("compile", "SOFT", True, "skipped (--skip-build-probe)", "P2")
+    else:  # already_ok and not forced
+        add("compile", "SOFT", True,
+            "skipped (already verified; marker %s — use --force-build-probe to recompile)"
+            % probe_marker, "P2")
 
     # git component repo
     g = run("git -C %s rev-parse HEAD" % gdir)
