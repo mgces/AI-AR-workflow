@@ -123,7 +123,7 @@ P0 会把探测到的序列号回填进 `pipeline.json` 与 `evidence/phase0/env
 ## 5. 快速开始(完整一轮命令)
 
 | 阶段 | 命令 | 功能 | 实例 | 
-|---|---|---|---|---|
+|---|---|---|---|
 | **1** | /ohos-ar-dev-init | 检测OHOS环境 | `/ohos-ar-dev-init` |
 | **2** | /ohos-ar-dev-workflow | 开始AR流程开发 | `/ohos-ar-dev-workflow 在base/hiviewdfx/hiview下面新增一个应用线程泄漏检测插件，阈值3000，超过3000阈值之后调用hidumper sa的能力获取进程线程维测并且保存在data/log/reliability/resource_leak/thread_leak/中` |
 
