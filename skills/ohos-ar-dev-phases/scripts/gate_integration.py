@@ -81,7 +81,10 @@ def main():
 
     before = set(glob.glob(os.path.join(reports, "20*")))
     ts_args = " ".join("-ts %s" % s for s in args.suites)
-    run_cmd = "./start.sh run -t %s -tp %s %s" % (args.testtype, part, ts_args)
+    # Pass the product form explicitly; developer_test otherwise defaults it to
+    # "phone" and fails to locate the rk3568 testcase output ("tests is not exist").
+    product = state.get("product") or "rk3568"
+    run_cmd = "./start.sh run -t %s -tp %s %s -p %s" % (args.testtype, part, ts_args, product)
     print("running: (cd %s && %s)" % (dt, run_cmd))
     proc = subprocess.run(run_cmd, shell=True, cwd=dt, text=True, capture_output=True)
     stdout_rel = "evidence/phase5/start_sh_stdout.txt"

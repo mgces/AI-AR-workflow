@@ -18,8 +18,10 @@ Capabilities checked (HARD = blocks; SOFT = warns only):
   testfwk     HARD  test/testfwk/developer_test/start.sh        -> P3/P5
   hdc_bin     HARD  an hdc binary is resolvable                 -> P0/P4/P5
   device      HARD  a unique device is online (records serial)  -> P4/P5
+  oh_gc       SOFT  oh-gc CLI installed                         -> P6
+  gitcode_auth SOFT gitcode token configured (oh-gc auth status)-> P6
 
-oh-gc (gitcode CLI, P6) is NOT checked here on purpose — install it before P6.
+oh-gc / gitcode auth are P6-only (upload); they warn but never block P0.
 """
 import argparse
 import json
@@ -165,8 +167,31 @@ def main():
     add("device", "HARD", don.returncode == 0 and bool(serial),
         "serial=%s" % (serial or (don.stderr.strip() or "no unique device")), "P4/P5")
 
-    # NOTE: oh-gc (gitcode CLI) is only needed at P6 (upload). It is intentionally
-    # NOT checked here — install/login it right before P6. See phase6-upload-review.md.
+    # oh-gc (gitcode CLI) + gitcode token — needed only at P6 (upload). SOFT:
+    # warn with actionable guidance, never block P0. Two levels: CLI present,
+    # and token configured (oh-gc auth status exit 0 == logged in).
+    ohv = run("oh-gc --version")
+    oh_gc_ok = ohv.returncode == 0
+    add("oh_gc", "SOFT", oh_gc_ok,
+        (ohv.stdout or ohv.stderr).strip()[:80] if oh_gc_ok
+        else "not installed — `npm i -g @oh-gc/cli@latest` (needed at P6)", "P6")
+
+    gitcode_user = ""
+    if oh_gc_ok:
+        aenv = dict(env)
+        aenv.setdefault("XDG_CACHE_HOME", "/tmp/oh-gc-cache")
+        auth = subprocess.run("oh-gc auth status", shell=True, text=True,
+                              capture_output=True, env=aenv)
+        auth_ok = auth.returncode == 0
+        first = (auth.stdout or auth.stderr).strip().splitlines()
+        gitcode_user = first[0][:80] if first else ""
+        add("gitcode_auth", "SOFT", auth_ok,
+            gitcode_user if auth_ok
+            else "gitcode token NOT configured — run `oh-gc auth login` "
+                 "(token stored at ~/.config/gitcode-cli/config.json)", "P6")
+    else:
+        add("gitcode_auth", "SOFT", False,
+            "skipped (oh-gc not installed); after install run `oh-gc auth login`", "P6")
 
     # persist detected serial into state if not already pinned (config, not status)
     if serial and not state.get("device_serial"):
@@ -190,7 +215,7 @@ def main():
         arts.append(probe_rel)
 
     for (n, k, ok, d, ph) in checks:
-        print("[%s] %-8s %-5s (%s)  %s" % ("OK " if ok else "BAD", n, k, ph, d))
+        print("[%s] %-12s %-5s (%s)  %s" % ("OK " if ok else "BAD", n, k, ph, d))
 
     hard_fail = [n for (n, k, ok, d, ph) in checks if k == "HARD" and not ok]
     if hard_fail:
@@ -200,6 +225,15 @@ def main():
         sys.exit("PHASE 0 FAIL — missing: %s" % ",".join(hard_fail))
 
     soft_warn = [n for (n, k, ok, d, ph) in checks if k == "SOFT" and not ok]
+    # surface actionable guidance for any failed SOFT check (P6 upload prereqs)
+    if any(n in soft_warn for n in ("oh_gc", "gitcode_auth")):
+        print("\n--- P6 上库前需手动配置(现在不阻塞) ---")
+        if "oh_gc" in soft_warn:
+            print("  * 安装 gitcode CLI: npm i -g @oh-gc/cli@latest")
+        if "gitcode_auth" in soft_warn:
+            print("  * 配置 gitcode token(手动登录): oh-gc auth login")
+            print("    token 存于 ~/.config/gitcode-cli/config.json;`oh-gc auth status` 验证")
+        print("-" * 42)
     reason = "all capabilities present; serial=%s%s" % (
         serial, (" (warn: %s)" % ",".join(soft_warn)) if soft_warn else "")
     gl.emit(pdir, 0, "gate_env_init.py", verdict="PASS", reason=reason, artifacts_rel=arts)

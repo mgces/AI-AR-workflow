@@ -33,9 +33,12 @@ DEVICE_SH = os.path.join(HERE, "lib", "device.sh")
 
 
 def sh(snippet, **kw):
-    """Run a snippet with device.sh sourced; return CompletedProcess."""
+    """Run a snippet with device.sh sourced; return CompletedProcess.
+    Device logs (hilog) can contain non-UTF-8 bytes, so decode tolerantly with
+    errors='replace' to avoid crashing the capture (verdict logic is unchanged)."""
     full = '. "%s"\n%s' % (DEVICE_SH, snippet)
-    return subprocess.run(["bash", "-c", full], text=True, capture_output=True, **kw)
+    return subprocess.run(["bash", "-c", full], text=True, errors="replace",
+                          capture_output=True, **kw)
 
 
 def main():
