@@ -1,0 +1,3 @@
+# openharmony-cpp
+
+Expert coding guide for OpenHarmony C++ development. Use this skill when writing, refactoring, or reviewing C++ code for OpenHarmony projects. It enforces strict project-specific conventions (naming, formatting, headers) and critical security requirements (input validation, memory safety).

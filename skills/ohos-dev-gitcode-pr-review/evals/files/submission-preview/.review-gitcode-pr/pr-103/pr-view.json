@@ -1,5 +1,0 @@
-{
-  "number": 103,
-  "repo": "openharmony/demo_service",
-  "title": "Avoid expiring sessions without explicit timeout"
-}

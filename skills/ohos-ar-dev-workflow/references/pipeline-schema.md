@@ -34,7 +34,7 @@ evidence/
     { "id": 2, "name": "build-verify",     "status": "pending", "...": null },
     { "id": 3, "name": "test-author",      "status": "pending", "...": null },
     { "id": 4, "name": "device-functional","status": "pending", "...": null },
-    { "id": 5, "name": "integration",      "status": "pending", "...": null },
+    { "id": 5, "name": "quality-verify",   "status": "pending", "...": null },
     { "id": 6, "name": "upload-review",    "status": "pending", "...": null }
   ]
 }
@@ -46,10 +46,11 @@ evidence/
 `device_serial` 初始为空,由 P0 `gate_env_init.py` 在真机上自动探测(`hdc list targets` 唯一设备)
 后回填,或由 `init --device-serial` / 环境变量 `$DEVICE_SERIAL` 显式指定。**不写死任何机器特定值。**
 
-`consent_tokens` 记录需人工签字的阶段令牌(`{"4": "...", "6": "..."}`):**P4 真机功能测试**
-与 **P6 上库** 在证据 PASS 后需人工核对真实结果/审批,`advance.py consent --phase N --token <人>`
-写入后该阶段才可 `advance`。没有对应令牌时 `advance --phase 4|6` 会 HOLD,不推进。
+`consent_tokens` 记录需人工签字的阶段令牌(`{"4": "...", "5": "...", "6": "..."}`):**P4 真机功能测试**、
+**P5 质量/review 报告** 与 **P6 上库** 在证据 PASS 后需人工核对真实结果/审批,
+`advance.py consent --phase N --token <人>`
+写入后该阶段才可 `advance`。没有对应令牌时 `advance --phase 4|5|6` 会 HOLD,不推进。
 
-`code_fingerprint`:P1(开发)通过时锁定的代码指纹(组件仓 `HEAD + git diff` 的 sha256)。
+`code_fingerprint`:P1(开发)通过时锁定的代码指纹(组件仓 `HEAD + tracked diff + untracked 文件内容` 的 sha256)。
 P2–P6 推进前会比对当前指纹,**一旦改过代码就拒绝推进**,要求 `advance.py reset` 回 P1 重走;
 `reset` 会把 P1–P6 打回 pending、清空 `consent_tokens` 与 `code_fingerprint`(P0 保留)。

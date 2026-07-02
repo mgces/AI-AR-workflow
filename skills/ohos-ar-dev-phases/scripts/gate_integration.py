@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) 2026. Licensed under the Apache License, Version 2.0.
 """
-gate_integration.py — Phase 5 (integration functional test).
+gate_integration.py — Phase 5 (functional + quality impact tests).
 
 Runs a cross-component / module-test suite set through the developer_test
 harness (default test type MST) and closes the phase only on a real, freshly
@@ -11,12 +11,14 @@ produced aggregate report. Same RTC-independent freshness proof as phase 3
 For integration scenarios that are device-behavioral rather than suite-based,
 use gate_device_func.py --phase 5 instead (it is the alternative phase-5 closer).
 
-P5 also runs a CODE REVIEW for upload-compliance: the OpenHarmony coding-style
-guard (ohos-dev-cpp-coding-style/oh_cpp_guard.py) is run on the changed C/C++
-files; P5 only passes when BOTH the integration test AND the review pass.
+P5 also signs the quality evidence produced by the AR verification work:
+coverage, performance, power, and stability impact reports. P5 passes only when
+the functional suite passes, all required quality reports are present, and the
+code-review report shows zero blocking issues.
 """
 import argparse
 import glob
+import json
 import os
 import shutil
 import subprocess
@@ -28,36 +30,123 @@ import gatelib as gl  # noqa: E402
 
 STYLE_GUARD = gl.resolve_dep("ohos-dev-cpp-coding-style/scripts/oh_cpp_guard.py",
                              env_var="OHOS_CPP_GUARD")
+QUALITY_REPORTS = (
+    ("coverage", "coverage_report"),
+    ("performance", "performance_report"),
+    ("power", "power_report"),
+    ("stability", "stability_report"),
+)
 
 
 def code_review(state, pdir, arts):
-    """Run the OHOS coding-style guard on the changed C/C++ files (upload
-    compliance). Returns (ok, detail). Writes evidence/phase5/review_report.txt."""
+    """Run the OHOS coding-style guard on the changed C/C++ files.
+    Returns (ok, detail). Writes evidence/phase5/code_review_report.txt."""
     gdir = gl.resolve_git_dir(state)
     base = state.get("base_commit") or "HEAD"
     names = subprocess.run(["git", "-C", gdir, "diff", "--name-only", base],
                            text=True, capture_output=True).stdout.split()
     cxx = [f for f in names if f.endswith((".c", ".cc", ".cpp", ".cxx", ".h", ".hpp"))]
-    rel = "evidence/phase5/review_report.txt"
+    rel = "evidence/phase5/code_review_report.txt"
     out_path = os.path.join(pdir, rel)
     if not cxx:
-        with open(out_path, "w") as f:
-            f.write("no C/C++ files changed vs %s — review skipped\n" % base[:12])
+        with open(out_path, "w", encoding="utf-8") as f:
+            f.write("review_issue_count=0\n")
+            f.write("no C/C++ files changed vs %s - code review has no changed C/C++ scope\n" %
+                    base[:12])
         arts.append(rel)
-        return True, "no C/C++ changes"
+        return True, "auto_review_issues=0 no C/C++ changes"
     if not os.path.exists(STYLE_GUARD):
-        with open(out_path, "w") as f:
-            f.write("style guard not found at %s — review treated as pass\n" % STYLE_GUARD)
+        with open(out_path, "w", encoding="utf-8") as f:
+            f.write("review_issue_count=1\n")
+            f.write("BLOCKER: style guard not found at %s\n" % STYLE_GUARD)
         arts.append(rel)
-        return True, "guard missing (pass)"
+        return False, "auto_review_issues=1 guard missing"
     abs_cxx = [os.path.join(gdir, f) for f in cxx if os.path.exists(os.path.join(gdir, f))]
     cp = subprocess.run([sys.executable, STYLE_GUARD, "--format-only", *abs_cxx],
                         text=True, capture_output=True)
+    issue_count = 0 if cp.returncode == 0 else 1
     with open(out_path, "w", encoding="utf-8") as f:
+        f.write("review_issue_count=%d\n" % issue_count)
         f.write("changed C/C++ (%d):\n%s\n\n--- oh_cpp_guard --format-only ---\nrc=%d\n%s\n%s"
                 % (len(cxx), "\n".join(cxx), cp.returncode, cp.stdout, cp.stderr))
     arts.append(rel)
-    return cp.returncode == 0, "guard rc=%d on %d file(s)" % (cp.returncode, len(cxx))
+    return cp.returncode == 0, "auto_review_issues=%d guard rc=%d on %d file(s)" % (
+        issue_count, cp.returncode, len(cxx))
+
+
+def copy_external_review_report(args, pdir, arts):
+    """Copy an optional manually produced code review report and require that
+    its machine-readable issue count is zero."""
+    if not args.code_review_report:
+        return True, "external_review=not-provided"
+    src = os.path.abspath(args.code_review_report)
+    if not os.path.isfile(src):
+        return False, "external_review missing: %s" % src
+    _, ext = os.path.splitext(src)
+    rel = "evidence/phase5/external_code_review_report%s" % (ext or ".txt")
+    shutil.copy(src, os.path.join(pdir, rel))
+    arts.append(rel)
+    ok, detail = parse_review_report_zero_issues(src)
+    return ok, "external_review %s %s" % (rel, detail)
+
+
+def parse_review_report_zero_issues(path):
+    """Accept either JSON with explicit zero issue count, or text containing a
+    review_issue_count=<n> marker. Reports without a machine-readable count fail."""
+    with open(path, "r", encoding="utf-8", errors="replace") as f:
+        text = f.read()
+    if path.endswith(".json"):
+        try:
+            data = json.loads(text)
+        except Exception as exc:
+            return False, "invalid json: %s" % exc
+        for key in ("issue_count", "finding_count", "problem_count", "blocker_count"):
+            if key in data:
+                try:
+                    count = int(data[key])
+                except Exception:
+                    return False, "%s is not an integer" % key
+                return count == 0, "%s=%d" % (key, count)
+        for key in ("issues", "findings", "problems", "blockers"):
+            if key in data and isinstance(data[key], list):
+                count = len(data[key])
+                return count == 0, "%s=%d" % (key, count)
+        return False, "json lacks issue_count/finding_count/problems/findings markers"
+    marker = "review_issue_count="
+    for line in text.splitlines():
+        if line.strip().startswith(marker):
+            try:
+                count = int(line.strip()[len(marker):].split()[0])
+            except Exception:
+                return False, "review_issue_count is not an integer"
+            return count == 0, "review_issue_count=%d" % count
+    return False, "missing review_issue_count=<n> marker"
+
+
+def copy_quality_reports(args, pdir, arts):
+    """Copy required P5 quality reports into evidence/phase5 and return
+    (ok, detail). Each report must already be produced by real test work."""
+    details = []
+    missing = []
+    for attr, label in QUALITY_REPORTS:
+        src = getattr(args, label)
+        if not src:
+            missing.append("--%s" % label.replace("_", "-"))
+            continue
+        src = os.path.abspath(src)
+        if not os.path.isfile(src):
+            missing.append("%s=%s" % (label, src))
+            continue
+        _, ext = os.path.splitext(src)
+        if not ext:
+            ext = ".txt"
+        rel = "evidence/phase5/%s%s" % (label, ext)
+        shutil.copy(src, os.path.join(pdir, rel))
+        arts.append(rel)
+        details.append("%s=%s" % (attr, rel))
+    if missing:
+        return False, "missing quality reports: %s" % ", ".join(missing)
+    return True, "; ".join(details)
 
 
 def main():
@@ -66,8 +155,14 @@ def main():
     ap.add_argument("--testtype", default="MST", help="developer_test -t value (MST/ST/...)")
     ap.add_argument("--part", help="testpart; default from pipeline.json test.part")
     ap.add_argument("--suites", nargs="+", required=True, help="one or more -ts suite names")
-    ap.add_argument("--skip-review", action="store_true",
-                    help="skip the upload-compliance code review (not recommended)")
+    ap.add_argument("--coverage-report", help="coverage report generated by P5 coverage tests")
+    ap.add_argument("--performance-report", help="performance impact report generated by P5 tests")
+    ap.add_argument("--power-report", help="power impact report generated by P5 tests")
+    ap.add_argument("--stability-report", help="stability impact report generated by P5 tests")
+    ap.add_argument("--allow-missing-quality-reports", action="store_true",
+                    help="compatibility mode: do not fail when P5 quality reports are absent")
+    ap.add_argument("--code-review-report",
+                    help="optional external code review report; must declare zero issues")
     args = ap.parse_args()
     pdir = gl.pipeline_dir(args.pipeline_dir)
     state = gl.load_state(pdir)
@@ -121,25 +216,30 @@ def main():
     errors = int(root.get("errors", "0"))
     test_ok = tests > 0 and failures == 0 and errors == 0
 
-    # code review for upload compliance (gates P5 together with the test)
-    if args.skip_review:
-        review_ok, review_detail = True, "skipped (--skip-review)"
-        with open(os.path.join(pdir, "evidence/phase5/review_report.txt"), "w") as f:
-            f.write("review skipped (--skip-review)\n")
-        arts.append("evidence/phase5/review_report.txt")
-    else:
-        review_ok, review_detail = code_review(state, pdir, arts)
+    quality_ok, quality_detail = copy_quality_reports(args, pdir, arts)
+    if not quality_ok and args.allow_missing_quality_reports:
+        quality_detail += " (allowed)"
+        quality_ok = True
 
-    reason = "type=%s tests=%d failures=%d errors=%d fresh=%s | review:%s" % (
-        args.testtype, tests, failures, errors, os.path.basename(fresh_dir), review_detail)
+    auto_review_ok, auto_review_detail = code_review(state, pdir, arts)
+    external_review_ok, external_review_detail = copy_external_review_report(args, pdir, arts)
+    review_ok = auto_review_ok and external_review_ok
+    review_detail = "%s | %s" % (auto_review_detail, external_review_detail)
+
+    reason = "type=%s tests=%d failures=%d errors=%d fresh=%s | quality:%s | review:%s" % (
+        args.testtype, tests, failures, errors, os.path.basename(fresh_dir),
+        quality_detail, review_detail)
     print(reason)
-    verdict = "PASS" if (test_ok and review_ok) else "FAIL"
+    verdict = "PASS" if (test_ok and quality_ok and review_ok) else "FAIL"
     gl.emit(pdir, 5, "gate_integration.py", verdict=verdict, reason=reason,
             cmd=run_cmd, exit_code=proc.returncode, artifacts_rel=arts)
     if verdict == "PASS":
-        print("PHASE 5 PASS — advance.py advance --phase 5")
+        print("PHASE 5 PASS — inspect quality/review artifacts, then record consent:")
+        print("  advance.py --pipeline-dir %s consent --phase 5 --token <审核人>" % pdir)
+        print("  advance.py --pipeline-dir %s advance --phase 5" % pdir)
     else:
-        sys.exit("PHASE 5 FAIL: %s (test_ok=%s review_ok=%s)" % (reason, test_ok, review_ok))
+        sys.exit("PHASE 5 FAIL: %s (test_ok=%s quality_ok=%s review_ok=%s)" %
+                 (reason, test_ok, quality_ok, review_ok))
 
 
 if __name__ == "__main__":

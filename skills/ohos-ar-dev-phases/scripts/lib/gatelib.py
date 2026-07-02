@@ -29,7 +29,7 @@ PHASES = [
     (2, "build-verify"),
     (3, "test-author"),
     (4, "device-functional"),
-    (5, "integration"),
+    (5, "quality-verify"),
     (6, "upload-review"),
 ]
 PHASE_NAME = {i: n for i, n in PHASES}
@@ -143,8 +143,9 @@ def verify_sig(entry, secret):
 
 # ----------------------------------------------------------------------------
 # code fingerprint — identifies the exact code state a phase was validated
-# against (component repo HEAD + full working-tree diff). If it changes, every
-# downstream phase's evidence is stale and the pipeline must rewalk from P1.
+# against (component repo HEAD + tracked working-tree diff + untracked file
+# content). If it changes, every downstream phase's evidence is stale and the
+# pipeline must rewalk from P1.
 # ----------------------------------------------------------------------------
 def resolve_git_dir(state):
     repo = state["repo"]
@@ -159,10 +160,23 @@ def code_fingerprint(state):
                           text=True, capture_output=True).stdout.strip()
     diff = subprocess.run(["git", "-C", gdir, "diff", "HEAD"],
                           text=True, capture_output=True).stdout
+    untracked = subprocess.run(["git", "-C", gdir, "ls-files", "--others", "--exclude-standard"],
+                               text=True, capture_output=True).stdout.splitlines()
     h = hashlib.sha256()
     h.update(head.encode("utf-8"))
     h.update(b"\0")
     h.update(diff.encode("utf-8", "replace"))
+    h.update(b"\0UNTRACKED\0")
+    for rel in sorted(path for path in untracked if path):
+        ap = os.path.join(gdir, rel)
+        if not os.path.isfile(ap):
+            continue
+        h.update(rel.encode("utf-8", "surrogateescape"))
+        h.update(b"\0")
+        with open(ap, "rb") as f:
+            for chunk in iter(lambda: f.read(65536), b""):
+                h.update(chunk)
+        h.update(b"\0")
     return h.hexdigest()
 
 

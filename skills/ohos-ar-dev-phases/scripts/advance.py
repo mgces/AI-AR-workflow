@@ -25,7 +25,11 @@ import gatelib as gl  # noqa: E402
 
 # Phases whose evidence gate must be followed by an explicit human sign-off
 # before advancing (the pipeline stops and shows real results/artifacts first).
-CONSENT_PHASES = {4: "device functional test", 6: "upload push"}
+CONSENT_PHASES = {
+    4: "device functional test",
+    5: "quality reports and code review",
+    6: "upload push",
+}
 
 
 def cmd_init(args):
@@ -72,6 +76,7 @@ def cmd_advance(args):
     # passes: the pipeline must stop, show the real results/artifacts, and only
     # advance once a person reviewed them and recorded consent.
     #   P4 = real-device functional test result review
+    #   P5 = quality reports + code-review report review
     #   P6 = irreversible upload push
     if phase in CONSENT_PHASES and not state.get("consent_tokens", {}).get(str(phase)):
         ev = os.path.join(pdir, "evidence", "phase%d" % phase)
@@ -123,7 +128,8 @@ def cmd_advance(args):
 
 def cmd_consent(args):
     """Record a one-time human consent token for a phase that requires sign-off
-    (P4 device-test review, P6 upload push). Only meaningful after the phase's
+    (P4 device-test review, P5 quality/review report approval, P6 upload push).
+    Only meaningful after the phase's
     evidence gate has produced its real results for a human to inspect."""
     pdir = gl.pipeline_dir(args.pipeline_dir)
     state = gl.load_state(pdir)
@@ -239,7 +245,7 @@ def main():
 
     p = sub.add_parser("consent")
     p.add_argument("--phase", type=int, required=True,
-                   help="phase to sign off (4 device test, 6 upload)")
+                   help="phase to sign off (4 device test, 5 quality/review, 6 upload)")
     p.add_argument("--token", required=True)
     p.set_defaults(func=cmd_consent)
 

@@ -29,8 +29,8 @@ P1 develop    │  每阶段:
 P2 build      │    1) 用命名的 ohos-* 技能做事
 P3 test       ├─▶ 2) 跑 gate_*.py(脚本基于真实证据判 PASS/FAIL,产 HMAC 签名记录)
 P4 device     │    3) PASS → advance.py advance --phase N(校验签名+产物哈希后才推进)
-P5 integration│    4) FAIL → 读 evidence/phaseN/ 真实日志,修复重跑(≤3 次)
-P6 upload ────┘    P6 push 前需 advance.py consent(唯一人工同意点)
+P5 quality    │    4) FAIL → 读 evidence/phaseN/ 真实日志,修复重跑(≤3 次)
+P6 upload ────┘    P4/P5/P6 需 advance.py consent 后才推进
 ```
 
 ## 为什么"文本不能当通过"

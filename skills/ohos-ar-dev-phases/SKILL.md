@@ -2,7 +2,7 @@
 name: ohos-ar-dev-phases
 description: >
   OHOS 生命周期流水线各阶段的"做事"说明与门控用法(被 ohos-ar-dev-workflow 调度)。
-  含 P1 开发 / P2 编译 / P3 测试 / P4 真机 / P5 集成 / P6 上库 的执行细节、调用的现有
+  含 P1 开发 / P2 编译 / P3 测试 / P4 真机 / P5 质量验证 / P6 上库 的执行细节、调用的现有
   ohos-* 能力技能、对应 gate_*.py 命令与通过条件。一般不单独触发,由编排器加载。
 ---
 
