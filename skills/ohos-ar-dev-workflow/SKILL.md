@@ -73,7 +73,7 @@ GN 构建目标(`build_target`)、测试 `testpart` 与套件名、目标二进�
 | P3 测试 | test-ut-generation / tdd-enforcer | `gate_test_ut.py` | developer_test summary_report.xml |
 | P4 真机 | build-flash / hdc-command-usage | `gate_device_func.py` | 含 nonce 的真机 hilog **+ 人工确认(consent --phase 4)** |
 | P5 质量验证 | build-flash / developer_test MST / coverage / performance / power / stability / cpp-coding-style / security-code-review | `gate_integration.py`(或 `gate_device_func.py --phase 5` + `gate_integration.py`) | 功能 summary + 覆盖率报告 + 性能报告 + 功耗报告 + 稳定性报告 + 代码 review 零问题报告 **+ 人工确认(consent --phase 5)** |
-| P6 上库 | gitcode-cli / gitcode-pr-review / security-code-review / openharmony-ci-analysis | `gate_upload_ci.py` | PR + CI 绿(SHA 绑定)**+ 人工确认(consent --phase 6)** |
+| P6 上库 | gitcode-cli / gitcode-pr-review / security-code-review / openharmony-ci-analysis | `gate_upload_ci.py` | A 本地自检零问题报告(commit 前)+ B PR review 零问题报告(建 PR 后、CI 前)+ PR + CI 绿(SHA 绑定)**+ 人工确认(consent --phase 6)** |
 
 每阶段成功后,同步更新 `TodoWrite` 与 `$PDIR/todo.md`(双轨,便于断点恢复)。
 

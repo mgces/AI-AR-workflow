@@ -25,6 +25,7 @@
 - 记录里每个 artifact 文件存在且当前 sha256 与记录一致(防事后替换);
 - (P4 真机 / P5 质量与 code review 报告 / P6 上库)`consent_tokens[str(phase)]` 非空——证据 PASS 后还需人工核对真实结果并签字,否则 `advance` HOLD。
 - (P2–P6)代码指纹未漂移:当前组件仓 `git diff base_commit`(base..HEAD + 工作树改动)`+ untracked 文件内容` 的 sha256 必须等于 P1 通过时锁定的 `code_fingerprint`。指纹相对 `base_commit` 计算,**与是否已 commit 无关**——所以 P6 上库时的 `git commit -s` 不算漂移;只有**内容**真的改了才拒绝,要求 `advance.py reset` 回 P1 重走。
+- (P5 / P6)code review 报告零问题:report 必须携带**机器可读的问题计数**(JSON `issue_count/finding_count/problem_count/blocker_count==0` 或 `issues/findings/problems/blockers` 空数组,或文本 `review_issue_count=0`)。报告可由模型/技能产出,但 gate 只在计数为 0 时放行;无计数/非零/缺失一律 FAIL(不认自由文本)。P6 需 **A 本地自检报告**(commit 前硬控)与 **B PR review 报告**(建 PR 后、CI 校验前硬控)两份;任一非零即 FAIL,修复须改代码后 `advance.py reset` 回 P1。
 
 任一不满足 → `advance.py` 非 0 退出、不改状态。
 

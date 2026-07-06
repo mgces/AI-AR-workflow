@@ -136,6 +136,32 @@ class GateDevelopStrongControlTest(unittest.TestCase):
         # real content change -> drift detected
         self.assertNotEqual(committed, drifted)
 
+    def test_parse_review_report_zero_issues(self) -> None:
+        """Shared review-report contract (P5 + P6): a report clears a gate only
+        with a machine-readable zero count. Text needs `review_issue_count=0`;
+        JSON needs a zero count field or an empty findings list. Non-zero,
+        missing-marker, and count-less reports all fail."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+
+            def check(name: str, content: str):
+                p = root / name
+                p.write_text(content, encoding="utf-8")
+                return gatelib.parse_review_report_zero_issues(str(p))
+
+            # text marker
+            self.assertTrue(check("ok.txt", "review_issue_count=0\n")[0])
+            self.assertFalse(check("bad.txt", "review_issue_count=2\n")[0])
+            self.assertFalse(check("none.txt", "looks fine to me\n")[0])
+            # json count field
+            self.assertTrue(check("c0.json", '{"issue_count": 0}')[0])
+            self.assertFalse(check("c3.json", '{"finding_count": 3}')[0])
+            # json list field
+            self.assertTrue(check("l0.json", '{"findings": []}')[0])
+            self.assertFalse(check("l1.json", '{"findings": [{"sev": "high"}]}')[0])
+            # json without any recognized marker -> fail closed
+            self.assertFalse(check("x.json", '{"note": "reviewed"}')[0])
+
 
 if __name__ == "__main__":
     unittest.main()

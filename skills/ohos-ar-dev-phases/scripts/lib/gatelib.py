@@ -213,6 +213,47 @@ def hash_artifacts(pdir, rel_paths):
 
 
 # ----------------------------------------------------------------------------
+# review-report verdict — a code-review report only clears a gate when it
+# carries a MACHINE-READABLE zero-issue count. This is how the pipeline accepts
+# a model-authored review without trusting free-text prose: the model writes the
+# report, but the gate PASSes only on an explicit count of 0. Shared by P5
+# (gate_integration) and P6 (gate_upload_ci).
+# ----------------------------------------------------------------------------
+def parse_review_report_zero_issues(path):
+    """Accept either JSON with an explicit zero issue count, or text containing a
+    review_issue_count=<n> marker. Reports without a machine-readable count fail.
+    Returns (ok, detail)."""
+    with open(path, "r", encoding="utf-8", errors="replace") as f:
+        text = f.read()
+    if path.endswith(".json"):
+        try:
+            data = json.loads(text)
+        except Exception as exc:
+            return False, "invalid json: %s" % exc
+        for key in ("issue_count", "finding_count", "problem_count", "blocker_count"):
+            if key in data:
+                try:
+                    count = int(data[key])
+                except Exception:
+                    return False, "%s is not an integer" % key
+                return count == 0, "%s=%d" % (key, count)
+        for key in ("issues", "findings", "problems", "blockers"):
+            if key in data and isinstance(data[key], list):
+                count = len(data[key])
+                return count == 0, "%s=%d" % (key, count)
+        return False, "json lacks issue_count/finding_count/problems/findings markers"
+    marker = "review_issue_count="
+    for line in text.splitlines():
+        if line.strip().startswith(marker):
+            try:
+                count = int(line.strip()[len(marker):].split()[0])
+            except Exception:
+                return False, "review_issue_count is not an integer"
+            return count == 0, "review_issue_count=%d" % count
+    return False, "missing review_issue_count=<n> marker"
+
+
+# ----------------------------------------------------------------------------
 # manifest emission (gates call this) + reading (advance.py calls this)
 # ----------------------------------------------------------------------------
 def emit(pdir, phase, gate, *, verdict, reason, cmd="", argv=None,

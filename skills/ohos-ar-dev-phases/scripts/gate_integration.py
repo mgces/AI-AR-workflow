@@ -86,41 +86,8 @@ def copy_external_review_report(args, pdir, arts):
     rel = "evidence/phase5/external_code_review_report%s" % (ext or ".txt")
     shutil.copy(src, os.path.join(pdir, rel))
     arts.append(rel)
-    ok, detail = parse_review_report_zero_issues(src)
+    ok, detail = gl.parse_review_report_zero_issues(src)
     return ok, "external_review %s %s" % (rel, detail)
-
-
-def parse_review_report_zero_issues(path):
-    """Accept either JSON with explicit zero issue count, or text containing a
-    review_issue_count=<n> marker. Reports without a machine-readable count fail."""
-    with open(path, "r", encoding="utf-8", errors="replace") as f:
-        text = f.read()
-    if path.endswith(".json"):
-        try:
-            data = json.loads(text)
-        except Exception as exc:
-            return False, "invalid json: %s" % exc
-        for key in ("issue_count", "finding_count", "problem_count", "blocker_count"):
-            if key in data:
-                try:
-                    count = int(data[key])
-                except Exception:
-                    return False, "%s is not an integer" % key
-                return count == 0, "%s=%d" % (key, count)
-        for key in ("issues", "findings", "problems", "blockers"):
-            if key in data and isinstance(data[key], list):
-                count = len(data[key])
-                return count == 0, "%s=%d" % (key, count)
-        return False, "json lacks issue_count/finding_count/problems/findings markers"
-    marker = "review_issue_count="
-    for line in text.splitlines():
-        if line.strip().startswith(marker):
-            try:
-                count = int(line.strip()[len(marker):].split()[0])
-            except Exception:
-                return False, "review_issue_count is not an integer"
-            return count == 0, "review_issue_count=%d" % count
-    return False, "missing review_issue_count=<n> marker"
 
 
 def copy_quality_reports(args, pdir, arts):

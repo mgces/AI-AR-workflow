@@ -11,7 +11,17 @@ Hard prerequisites (read from pipeline.json / manifest):
 The push itself only happens with --allow-push. Without it the gate runs in
 DRY mode: it prepares the branch/PR plan and exits WITHOUT emitting a PASS.
 
+Two code-review checkpoints bracket the upload, both fail-closed on a
+machine-readable non-zero issue count (same review-report contract as P5):
+  * A. local self-review BEFORE commit (--local-review-report): a review of the
+    working-tree diff. Non-zero / missing / no-count → FAIL, nothing is committed
+    or pushed. Fix the code and `advance.py reset` back to P1.
+  * B. PR review AFTER the PR is created, BEFORE CI is checked
+    (--pr-review-report): a review of the actual PR. Non-zero → FAIL (the PR
+    exists but the phase does not pass; fix the code and reset back to P1).
+
 Pass evidence (RTC-independent; keyed to an immutable commit SHA):
+  * both review reports carry a machine-readable zero-issue count;
   * a PR is created on gitcode (oh-gc), PR number + URL + head SHA recorded;
   * openharmony_ci.py reports overall==success for that PR AND the PR head SHA
     equals the SHA we pushed (defeats an old green from an earlier commit).
@@ -19,6 +29,7 @@ Pass evidence (RTC-independent; keyed to an immutable commit SHA):
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 
@@ -94,6 +105,30 @@ def build_pr_body(gdir, issue_ref):
     return "**IssueNo**: %s" % issue_ref
 
 
+def require_zero_issue_report(path, label, dst_rel, pdir, arts):
+    """Copy a code-review report into evidence/phase6 and require a
+    machine-readable zero-issue count. Fails closed: a missing report, a report
+    without a parseable count, or any non-zero count aborts the phase — the
+    report itself may be model-authored, but the gate only PASSes on count 0.
+    On failure this calls _fail() (which emits FAIL and exits)."""
+    if not path:
+        _fail(pdir, "%s missing: pass --%s <path> (machine-readable zero-issue "
+                    "report). Run the review, drive issues to zero, then re-run." % (label, label))
+    src = os.path.abspath(path)
+    if not os.path.isfile(src):
+        _fail(pdir, "%s not found: %s" % (label, src))
+    _, ext = os.path.splitext(src)
+    rel = "%s%s" % (dst_rel, ext or ".txt")
+    shutil.copy(src, os.path.join(pdir, rel))
+    arts.append(rel)
+    ok, detail = gl.parse_review_report_zero_issues(src)
+    if not ok:
+        _fail(pdir, "%s has issues (%s). Fix the code, then `advance.py reset "
+                    "--reason \"%s fix\"` to rewalk from P1." % (label, detail, label),
+              extra_arts=arts)
+    return rel, detail
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--pipeline-dir")
@@ -105,6 +140,13 @@ def main():
                     "REQUIRED to create a PR: OpenHarmony CI gates only trigger when the "
                     "PR is bound to an issue. Create it first with `oh-gc issue create`.")
     ap.add_argument("--pr", type=int, help="existing PR number (skip create; just verify CI)")
+    ap.add_argument("--local-review-report",
+                    help="A. local self-review report (checked BEFORE commit). Must be a "
+                         "machine-readable zero-issue report (JSON issue/finding count==0 or "
+                         "text `review_issue_count=0`). Non-zero/missing blocks the commit.")
+    ap.add_argument("--pr-review-report",
+                    help="B. PR review report (checked AFTER the PR is created, BEFORE CI). "
+                         "Same zero-issue contract. Non-zero blocks the CI check and the PASS.")
     ap.add_argument("--allow-push", action="store_true",
                     help="actually push + create PR (irreversible). Without it: DRY run.")
     args = ap.parse_args()
@@ -145,10 +187,15 @@ def main():
         print("=" * 64)
         print("完整 diff : %s" % os.path.join(pdir, diff_rel))
         print("改动统计 :\n%s" % stat)
-        print("\nDRY RUN (no --allow-push). Would commit pending changes with "
-              "`git commit -s` (DCO), push branch '%s' to %s and open PR "
-              "(base=%s, issue=%s). head=%s"
+        print("\nDRY RUN (no --allow-push). Would: A) verify --local-review-report "
+              "(zero issues) → commit pending changes with `git commit -s` (DCO) → "
+              "push branch '%s' to %s → open PR (base=%s, issue=%s) → "
+              "B) verify --pr-review-report (zero issues) → check CI. head=%s"
               % (args.branch, args.repo_slug, args.base, issue_ref or "(none)", head_sha[:12]))
+        print("上库需两份机器可读零问题 review 报告:")
+        print("  A 本地自检(commit 前):--local-review-report <path>")
+        print("  B PR review(建 PR 后、CI 前):--pr-review-report <path>")
+        print("  任一 review 有问题 → 改代码 → advance.py reset 回 P1 重走。")
         print("人工核对以上改动可上库后:")
         print("  advance.py --pipeline-dir %s consent --phase 6 --token <审核人>" % pdir)
         print("  再带 --allow-push 重跑本门控。")
@@ -159,8 +206,20 @@ def main():
         sys.exit("PHASE 6 BLOCKED: no consent for phase 6. Record it with "
                  "`advance.py consent --phase 6 --token <token>` after human approval.")
 
+    arts = [diff_rel, stat_rel]
+
+    # A gate runs only on the PR-creation path (before commit). On the --pr
+    # re-verify path no commit/push happens, so the local review is not re-run.
+    local_detail = "skipped (--pr re-verify)"
+
     pr_number = args.pr
     if pr_number is None:
+        # A. LOCAL SELF-REVIEW HARD GATE (before any irreversible action).
+        # Fails closed on a non-zero / missing / count-less report — nothing is
+        # committed or pushed until the local review is clean.
+        local_rel, local_detail = require_zero_issue_report(
+            args.local_review_report, "local-review-report",
+            "evidence/phase6/local_code_review_report", pdir, arts)
         # Commit any pending work-tree changes with DCO sign-off, then push.
         # Committing here is safe: the code fingerprint is base_commit-relative,
         # so it stays equal to the value P1 locked (no false "code drift").
@@ -195,6 +254,16 @@ def main():
         pr_head = (pv.get("head", {}) or {}).get("sha", "") or pv.get("head_sha", "")
     except Exception:
         pass
+    arts.append(pr_rel)
+    if os.path.exists(os.path.join(pdir, "evidence/phase6/pr_create.txt")):
+        arts.append("evidence/phase6/pr_create.txt")
+
+    # B. PR REVIEW HARD GATE — the PR now exists, so review it, and require a
+    # machine-readable zero-issue report BEFORE spending a CI check / PASS. A
+    # non-zero report fails closed: fix the code and `advance.py reset` to P1.
+    pr_review_rel, pr_review_detail = require_zero_issue_report(
+        args.pr_review_report, "pr-review-report",
+        "evidence/phase6/pr_review_report", pdir, arts)
 
     # CI status for this PR
     env = dict(os.environ)
@@ -211,14 +280,15 @@ def main():
     except Exception:
         pass
 
-    arts = [pr_rel, ci_rel, diff_rel, stat_rel]
-    if os.path.exists(os.path.join(pdir, "evidence/phase6/pr_create.txt")):
-        arts.append("evidence/phase6/pr_create.txt")
+    arts.append(ci_rel)
 
     sha_ok = (pr_head == "") or (pr_head == head_sha)  # if remote exposes head, it must match
     ci_ok = overall in OK_OVERALL
-    reason = "pr=%s overall=%s ci_ok=%s pushed=%s pr_head=%s sha_ok=%s" % (
-        pr_number, overall, ci_ok, head_sha[:12], pr_head[:12], sha_ok)
+    # Both review gates already passed here (otherwise _fail exited earlier).
+    reason = ("pr=%s overall=%s ci_ok=%s pushed=%s pr_head=%s sha_ok=%s "
+              "local_review=%s pr_review=%s") % (
+        pr_number, overall, ci_ok, head_sha[:12], pr_head[:12], sha_ok,
+        local_detail, pr_review_detail)
     print(reason)
     verdict = "PASS" if (ci_ok and sha_ok and pr_number) else "FAIL"
     gl.emit(pdir, 6, "gate_upload_ci.py", verdict=verdict, reason=reason,
@@ -229,8 +299,9 @@ def main():
         sys.exit("PHASE 6 FAIL: %s" % reason)
 
 
-def _fail(pdir, reason):
-    gl.emit(pdir, 6, "gate_upload_ci.py", verdict="FAIL", reason=reason, artifacts_rel=[])
+def _fail(pdir, reason, extra_arts=None):
+    gl.emit(pdir, 6, "gate_upload_ci.py", verdict="FAIL", reason=reason,
+            artifacts_rel=extra_arts or [])
     sys.exit("PHASE 6 FAIL: %s" % reason)
 
 
