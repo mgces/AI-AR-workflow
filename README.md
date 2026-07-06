@@ -24,7 +24,7 @@ OHOS(rk3568,C/C++ 系统组件)的完整研发生命周期,直到代码上库:
 | **密钥隔离** | per-run 密钥(32B,mode 600)存于 `~/.claude/.lifecycle-secret/<run>`,**不在**证据目录内,模型无法据此伪造签名。 |
 | **真机 RTC 无关** | 设备 RTC 错乱,新鲜度不靠时间戳,而靠 per-run **nonce** + `/proc/uptime` 单调锚 + 内容切窗 + sha256。 |
 | **抗事后篡改** | 任何阶段事后被改动证据文件 → `verify-all` 重校验时 sha256/HMAC 失配 → 该阶段降级回退,必须重跑。 |
-| **改码回 P1 重走** | P1 通过时锁定代码指纹(组件仓 `HEAD + tracked diff + untracked 文件内容` 的 sha256)。任何阶段发现 bug 改了码 → `advance P2..P6` 因指纹漂移被拒,必须 `advance.py reset` 回 P1 踏实重走;`verify-all` 也按漂移自动回退。 |
+| **改码回 P1 重走** | P1 通过时锁定代码指纹(组件仓相对 `base_commit` 的 `git diff` + untracked 文件内容的 sha256,**commit 无关**)。任何阶段发现 bug 改了**代码内容** → `advance P2..P6` 因指纹漂移被拒,必须 `advance.py reset` 回 P1 踏实重走;`verify-all` 也按漂移自动回退。指纹相对 base 计算,故 P6 上库时的 `git commit -s` 不算漂移。 |
 
 > 已用真证据验证:篡改任一 evidence 字节 → sha256 失配被拒;伪造 manifest verdict
 > 为 PASS → HMAC 失配被拒。详见文末「验证记录」。
@@ -71,15 +71,15 @@ AI-AR-workflow/
 本包是**便携副本**(便于版本管理与分享)。有两种使用方式:
 
 ### 方式 A:让 Claude Code 自动发现技能(推荐用于交互式编排)
-把本包的技能软链(或复制)到 Claude 的技能目录 `~/.claude/skills/`:
+把本包技能同步到 Claude 的技能目录 `~/.claude/skills/`。**原生二进制版 Claude Code 不扫描软链接目录**,
+所以用仓库自带的 `sync-skills.sh` 做真实拷贝(项目 `skills/` 为唯一真源,改完技能跑一次即可):
 
 ```bash
-for d in ~/code/AI-AR-workflow/skills/*/ ; do
-  ln -sfn "${d%/}" ~/.claude/skills/"$(basename "$d")"
-done
+bash sync-skills.sh          # 项目 skills/ → ~/.claude/skills/(真实拷贝,排除 __pycache__)
 ```
-之后在 Claude Code 里说「跑流水线 / 从这个 AR 自动开发到上库」即可触发
-`ohos-ar-dev-workflow`。
+
+之后**重启 Claude Code 窗口**,说「跑流水线 / 从这个 AR 自动开发到上库」即可触发
+`ohos-ar-dev-workflow`。(`sync-skills.sh` 是单向拷贝,不会删除 `~/.claude/skills/` 下的其他技能。)
 
 > 依赖技能的脚本路径会自动解析:门控脚本按 `环境变量 → 包内同级技能 → ~/.claude/skills`
 > 顺序查找 `oh_cpp_guard.py` / `openharmony_ci.py`,所以软链或就地用都能工作。
@@ -141,7 +141,7 @@ P0 会把探测到的序列号回填进 `pipeline.json` 与 `evidence/phase0/env
 | **P3 测试** | ohos-test-ut-generation / tdd-enforcer | `gate_test_ut.py` | 编出测试二进制 + developer_test 本次**新建**报告 + `tests>0 && failures==0 && errors==0` | `summary_report.xml`、`result_*.xml`、`start_sh_stdout.txt`、`report_dir.txt` |
 | **P4 真机** | ohos-build-flash / ohos-dev-hdc-command-usage | `gate_device_func.py` | 部署命令全 exit 0 + hilog 含**本次 nonce** + 含 marker + uptime 单调;**证据 PASS 后停下,人工核对真机真实结果并 `consent --phase 4` 才推进** | `hilog_capture.txt`、`device_cmds.txt`、`run_meta.txt` |
 | **P5 质量验证** | ohos-build-flash / developer_test(MST) / ohos-test-ut-generation / coverage / performance / power / stability / ohos-dev-cpp-coding-style / ohos-dev-security-code-review | `gate_integration.py`(或 `gate_device_func.py --phase 5` + `gate_integration.py`) | 功能 summary `failures==0 && errors==0 && tests>0` **且 覆盖率、性能、功耗、稳定性报告全部生成并签名,代码 review 问题数为 0;证据 PASS 后需人工确认并 `consent --phase 5` 才进入 P6** | `summary_report.xml`、`coverage_report.*`、`performance_report.*`、`power_report.*`、`stability_report.*`、`code_review_report.txt`、`report_dir.txt` |
-| **P6 上库** | ohos-ci-gitcode-cli-usage / -gitcode-pr-review / -security-code-review / -openharmony-ci-analysis | `gate_upload_ci.py` | P1–P5 全过 + **上库前落全部代码 diff 供人工确认** + consent --phase 6 + PR 已建 + CI `overall∈{success,passed}` + PR head SHA==push SHA | `full_diff.patch`、`full_diff.stat.txt`、`pr.json`、`ci_status.json` |
+| **P6 上库** | ohos-ci-gitcode-cli-usage / -gitcode-pr-review / -security-code-review / -openharmony-ci-analysis | `gate_upload_ci.py` | P1–P5 全过 + 上库前落全部代码 diff 供人工确认 + **A 本地自检零问题报告(commit 前硬控)** + `git commit -s`(DCO 签名)+ push + **`--issue` 绑定的 PR**(CI 门禁只对绑定 Issue 的 PR 触发)+ **B PR review 零问题报告(建 PR 后、CI 前硬控)** + consent --phase 6 + CI `overall∈{success,passed}` + PR head SHA==push SHA | `full_diff.patch`、`full_diff.stat.txt`、`local_code_review_report.*`、`pr.json`、`pr_create.txt`、`pr_review_report.*`、`ci_status.json` |
 
 每个阶段在 Claude Code 里的"做事"细节见 `skills/ohos-ar-dev-phases/phaseN-*.md`。
 
@@ -193,8 +193,15 @@ gate_device_func.py --pipeline-dir P [--deploy-script f] --scenario-script f --m
 gate_integration.py --pipeline-dir P [--testtype MST] --suites S1 [S2 …] [--part P]
                     --coverage-report F --performance-report F --power-report F --stability-report F
                     [--code-review-report F]
-gate_upload_ci.py   --pipeline-dir P --repo-slug owner/repo --branch B [--base master] [--title T] [--pr N] [--allow-push]
+gate_upload_ci.py   --pipeline-dir P --repo-slug owner/repo --branch B [--base master] [--title T]
+                    --issue N                         # 建 PR 必填(CI 门禁只对绑定 Issue 的 PR 触发)
+                    --local-review-report F           # A 本地自检零问题报告(commit 前硬控)
+                    --pr-review-report F              # B PR review 零问题报告(建 PR 后、CI 前硬控)
+                    [--pr N] [--allow-push]           # push+commit -s(DCO)只在 --allow-push 时发生
 ```
+> **两道 review 报告契约**:必须携带机器可读问题计数(JSON `issue_count/finding_count/...==0`
+> 或 `issues/findings/...` 空数组,或文本 `review_issue_count=0`)。报告可由模型/技能产出,gate
+> 只在计数为 0 时放行;任一非零/缺失 → FAIL,改代码后 `advance.py reset` 回 P1 重走。
 统一可用环境变量 `PIPELINE_DIR` 代替 `--pipeline-dir`。
 
 ---
