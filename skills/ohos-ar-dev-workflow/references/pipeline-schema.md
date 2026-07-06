@@ -51,6 +51,6 @@ evidence/
 `advance.py consent --phase N --token <人>`
 写入后该阶段才可 `advance`。没有对应令牌时 `advance --phase 4|5|6` 会 HOLD,不推进。
 
-`code_fingerprint`:P1(开发)通过时锁定的代码指纹(组件仓 `HEAD + tracked diff + untracked 文件内容` 的 sha256)。
-P2–P6 推进前会比对当前指纹,**一旦改过代码就拒绝推进**,要求 `advance.py reset` 回 P1 重走;
+`code_fingerprint`:P1(开发)通过时锁定的代码指纹(组件仓 `git diff base_commit` + `untracked 文件内容` 的 sha256,相对 `base_commit` 计算,**与是否已 commit 无关**)。
+P2–P6 推进前会比对当前指纹,**一旦改过代码内容就拒绝推进**,要求 `advance.py reset` 回 P1 重走;P6 上库的 `git commit -s` 因指纹 commit 无关而不触发拒绝;
 `reset` 会把 P1–P6 打回 pending、清空 `consent_tokens` 与 `code_fingerprint`(P0 保留)。

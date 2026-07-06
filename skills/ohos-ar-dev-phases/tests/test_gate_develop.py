@@ -98,6 +98,44 @@ class GateDevelopStrongControlTest(unittest.TestCase):
         self.assertNotEqual(before, after_create)
         self.assertNotEqual(after_create, after_edit)
 
+    def test_code_fingerprint_is_commit_independent(self) -> None:
+        """P6 commits the pending work to push it. Because the fingerprint is
+        base_commit-relative and hashes on-disk content (not diff text or HEAD),
+        committing the SAME content must NOT change it — otherwise advance
+        --phase 6 would falsely reject the upload as code drift. A real content
+        change still must flip it."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            self.init_repo(repo)
+            base = subprocess.run(
+                ["git", "-C", str(repo), "rev-parse", "HEAD"],
+                check=True, text=True, capture_output=True,
+            ).stdout.strip()
+            state = {"repo": str(repo), "git_dir": str(repo), "base_commit": base}
+
+            # modify a tracked file + add a new file, all uncommitted
+            (repo / "tracked.cpp").write_text("int NewValue() { return 2; }\n", encoding="utf-8")
+            (repo / "new.cpp").write_text("int Added() { return 3; }\n", encoding="utf-8")
+            uncommitted = gatelib.code_fingerprint(state)
+
+            # stage the same content
+            run_git(repo, "add", "-A")
+            staged = gatelib.code_fingerprint(state)
+
+            # commit the same content (what P6 `git commit -s` does)
+            run_git(repo, "commit", "-m", "work")
+            committed = gatelib.code_fingerprint(state)
+
+            # now actually change content
+            (repo / "tracked.cpp").write_text("int NewValue() { return 99; }\n", encoding="utf-8")
+            drifted = gatelib.code_fingerprint(state)
+
+        # same content, regardless of commit state -> identical fingerprint
+        self.assertEqual(uncommitted, staged)
+        self.assertEqual(staged, committed)
+        # real content change -> drift detected
+        self.assertNotEqual(committed, drifted)
+
 
 if __name__ == "__main__":
     unittest.main()

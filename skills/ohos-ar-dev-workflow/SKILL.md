@@ -37,8 +37,8 @@ GN 构建目标(`build_target`)、测试 `testpart` 与套件名、目标二进�
    P6 的 push 仍是唯一对外不可逆动作。
 6. **任何阶段发现要改代码 → 回 P1 重走**。不管走到 P2/P3/P4/P5,只要发现 bug 需要改代码,
    就**必须** `advance.py reset --reason "<改了什么>"` 回到 P1,从代码开发踏踏实实重走一遍
-   P1→P6。这是硬控制:P1 通过时锁定代码指纹(`HEAD + tracked diff + untracked 文件内容`),改了码后 `advance P2..P6` 会被以"代码指纹漂移"
-   拒绝;`verify-all` 也会因漂移自动回退到 P1。不允许"改完码只补跑当前阶段就继续"。
+   P1→P6。这是硬控制:P1 通过时锁定代码指纹(`git diff base_commit` + `untracked 文件内容`,相对 base 计算、与是否已 commit 无关),改了**代码内容**后 `advance P2..P6` 会被以"代码指纹漂移"
+   拒绝;`verify-all` 也会因漂移自动回退到 P1。不允许"改完码只补跑当前阶段就继续"。(P6 上库时的 `git commit -s` 因指纹 commit 无关,不算漂移。)
 
 ## 步骤 0:初始化检查
 

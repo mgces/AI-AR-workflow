@@ -16,7 +16,7 @@
 |---|---|---|
 | 3.1.1 行宽不超过 120 | `ColumnLimit: 120` | 直接覆盖。 |
 | 3.2.1 4 空格缩进、禁 Tab | `UseTab: Never`, `IndentWidth: 4` | 直接覆盖。 |
-| 3.3.1 K&R 大括号风格 | `BreakBeforeBraces: Custom` + `BraceWrapping` | 直接覆盖主要风格。 |
+| 3.3.1 大括号风格(函数 Allman、其余 K&R) | `BreakBeforeBraces: Custom` + `BraceWrapping`(`AfterFunction: true`,其余 `false`) | 直接覆盖主要风格。 |
 | 3.4.1 函数声明/定义换行对齐 | clang-format 自动处理 | 近似覆盖。 |
 | 3.5.1 函数调用参数换行对齐 | clang-format 自动处理 | 近似覆盖。 |
 | 3.6.2 禁止 if/else/else if 写在同一行 | `AllowShortIfStatementsOnASingleLine: Never` | 直接覆盖。 |

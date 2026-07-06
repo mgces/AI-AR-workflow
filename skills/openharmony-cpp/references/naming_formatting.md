@@ -16,6 +16,6 @@
 ## Formatting
 *   **Line Length:** Max 120 characters.
 *   **Indentation:** 4 spaces (no tabs).
-*   **Braces:** **K&R style** (opening brace on the same line).
-    *   *Critical:* This applies to function definitions as well.
+*   **Braces:** **Allman style for function definitions** (opening brace on its own next line); **K&R style for everything else** (control statements, `class`/`struct`, `namespace`, etc. keep the opening brace on the same line).
+    *   *Critical:* Function definitions put the opening brace on the **next** line; `if`/`else`/`for`/`while`/`switch`/`class`/`struct`/`namespace` keep it on the **same** line.
 *   **Switch:** Indent `case` and `default` by 4 spaces.

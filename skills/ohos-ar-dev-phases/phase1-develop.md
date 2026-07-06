@@ -20,7 +20,7 @@ python3 $S/gate_develop.py --pipeline-dir "$PDIR"
 
 ## 通过条件
 相对 `base_commit` 有 tracked 或 untracked 改动 **且** 格式 guard 与强规则检查都通过。P1 通过后锁定代码指纹
-(组件仓 `HEAD + tracked diff + untracked 文件内容`),后续任一代码漂移都会被拒绝。
+(组件仓 `git diff base_commit` + `untracked 文件内容`,相对 base 计算、与是否已 commit 无关),后续任一**代码内容**漂移都会被拒绝。
 
 ## 通过后
 ```bash

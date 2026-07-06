@@ -142,10 +142,18 @@ def verify_sig(entry, secret):
 
 
 # ----------------------------------------------------------------------------
-# code fingerprint — identifies the exact code state a phase was validated
-# against (component repo HEAD + tracked working-tree diff + untracked file
-# content). If it changes, every downstream phase's evidence is stale and the
-# pipeline must rewalk from P1.
+# code fingerprint — identifies the exact code CONTENT a phase was validated
+# against, measured relative to base_commit so it is COMMIT-INDEPENDENT.
+# We enumerate every path that differs from base (committed base..HEAD changes,
+# unstaged/ staged working-tree changes, and untracked files) and hash each
+# path's CURRENT on-disk bytes (or a DELETED marker). Those bytes are identical
+# whether a change is left in the working tree or committed — so `git commit -s`
+# at P6 (needed to push) does NOT look like code drift. Only a real content
+# change since P1 flips the fingerprint and forces a rewalk from P1.
+#
+# (Hashing on-disk content rather than `git diff` text is deliberate: the diff
+# for a NEW file renders differently when it is untracked vs committed, which
+# would make the fingerprint commit-dependent. Content bytes do not.)
 # ----------------------------------------------------------------------------
 def resolve_git_dir(state):
     repo = state["repo"]
@@ -156,23 +164,26 @@ def resolve_git_dir(state):
 def code_fingerprint(state):
     import subprocess
     gdir = resolve_git_dir(state)
-    head = subprocess.run(["git", "-C", gdir, "rev-parse", "HEAD"],
-                          text=True, capture_output=True).stdout.strip()
-    diff = subprocess.run(["git", "-C", gdir, "diff", "HEAD"],
-                          text=True, capture_output=True).stdout
+    base = state.get("base_commit") or "HEAD"
+    # Paths that differ from base: tracked changes (base..HEAD + working tree)
+    # plus untracked files. Union, deduped, so commit state does not change the
+    # membership of this set.
+    changed = subprocess.run(["git", "-C", gdir, "diff", "--name-only", base],
+                             text=True, capture_output=True).stdout.splitlines()
     untracked = subprocess.run(["git", "-C", gdir, "ls-files", "--others", "--exclude-standard"],
                                text=True, capture_output=True).stdout.splitlines()
+    paths = sorted({p for p in (changed + untracked) if p})
     h = hashlib.sha256()
-    h.update(head.encode("utf-8"))
-    h.update(b"\0")
-    h.update(diff.encode("utf-8", "replace"))
-    h.update(b"\0UNTRACKED\0")
-    for rel in sorted(path for path in untracked if path):
-        ap = os.path.join(gdir, rel)
-        if not os.path.isfile(ap):
-            continue
+    h.update(base.encode("utf-8"))
+    h.update(b"\0PATHS\0")
+    for rel in paths:
         h.update(rel.encode("utf-8", "surrogateescape"))
         h.update(b"\0")
+        ap = os.path.join(gdir, rel)
+        if not os.path.isfile(ap):
+            # deleted (or non-regular) since base — content-independent marker
+            h.update(b"\0DELETED\0")
+            continue
         with open(ap, "rb") as f:
             for chunk in iter(lambda: f.read(65536), b""):
                 h.update(chunk)

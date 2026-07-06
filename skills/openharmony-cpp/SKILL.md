@@ -13,7 +13,7 @@ These rules are strictly enforced in OpenHarmony and often differ from general C
 - **Extensions:** Always use `.cpp` and `.h`.
 - **Files:** Filenames **must** match class names (Unix-like, e.g., `my_class.cpp`).
 - **Variables:** Global vars must start with `g_` (e.g., `g_config`). Class members must end with `_` (e.g., `value_`).
-- **Braces:** **K&R Style** is mandatory (opening brace on the same line).
+- **Braces:** **Allman for function definitions** (opening brace on its own next line); **K&R for everything else** (control statements, class/struct, namespace keep the brace on the same line).
 - **Details:** See [naming_formatting.md](references/naming_formatting.md).
 
 ### 2. Header Management
@@ -35,7 +35,7 @@ These rules are strictly enforced in OpenHarmony and often differ from general C
 - **Review:** Checking code against OpenHarmony standards.
 
 ### Reference Map
-- **[naming_formatting.md](references/naming_formatting.md)**: Naming conventions (g_, _), braces (K&R), line length.
+- **[naming_formatting.md](references/naming_formatting.md)**: Naming conventions (g_, _), braces (Allman for functions, K&R otherwise), line length.
 - **[secure_coding.md](references/secure_coding.md)**: Input validation, integer safety, memory management, prohibited functions.
 - **[class_function_design.md](references/class_function_design.md)**: Constructors, inheritance, modern C++ (nullptr, const), function size.
 - **[headers_scopes.md](references/headers_scopes.md)**: Header guards, namespaces, include rules.
