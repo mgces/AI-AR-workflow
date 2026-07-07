@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from types import SimpleNamespace
 from pathlib import Path
 
 
@@ -21,6 +22,10 @@ GATE_SPEC.loader.exec_module(gate_develop)
 GATELIB_SPEC = importlib.util.spec_from_file_location("gatelib", LIB_DIR / "gatelib.py")
 gatelib = importlib.util.module_from_spec(GATELIB_SPEC)
 GATELIB_SPEC.loader.exec_module(gatelib)
+
+DEVICE_GATE_SPEC = importlib.util.spec_from_file_location("gate_device_func", SCRIPT_DIR / "gate_device_func.py")
+gate_device_func = importlib.util.module_from_spec(DEVICE_GATE_SPEC)
+DEVICE_GATE_SPEC.loader.exec_module(gate_device_func)
 
 
 def run_git(repo: Path, *args: str) -> None:
@@ -161,6 +166,87 @@ class GateDevelopStrongControlTest(unittest.TestCase):
             self.assertFalse(check("l1.json", '{"findings": [{"sev": "high"}]}')[0])
             # json without any recognized marker -> fail closed
             self.assertFalse(check("x.json", '{"note": "reviewed"}')[0])
+
+    def test_phase4_requires_runtime_and_e2e_proof_args(self) -> None:
+        args = SimpleNamespace(
+            phase=4,
+            host_artifact=None,
+            device_artifact=None,
+            runtime_marker=None,
+            e2e_marker=None,
+        )
+
+        missing = gate_device_func.missing_phase4_proof_args(args)
+
+        self.assertEqual(
+            ["--host-artifact", "--device-artifact", "--runtime-marker", "--e2e-marker"],
+            missing,
+        )
+
+    def test_parse_device_sha256sum_output(self) -> None:
+        output = "7f83b1657ff1fc53b92dc18148a1d65dfa1351c2d4b1fa3d677284addd200126  /system/lib/libdemo.z.so\n"
+
+        self.assertEqual(
+            "7f83b1657ff1fc53b92dc18148a1d65dfa1351c2d4b1fa3d677284addd200126",
+            gate_device_func.parse_device_sha256sum(output),
+        )
+        self.assertIsNone(gate_device_func.parse_device_sha256sum("sha256sum: missing\n"))
+
+    def test_phase4_verdict_requires_runtime_e2e_and_matching_binary_hash(self) -> None:
+        good_log = "NONCE=n1 FEATURE_OK RUNTIME_PROOF E2E_OK"
+
+        ok, detail = gate_device_func.evaluate_phase4_verdict(
+            cap_text=good_log,
+            nonce="n1",
+            marker="FEATURE_OK",
+            runtime_marker="RUNTIME_PROOF",
+            e2e_marker="E2E_OK",
+            uptime_before="1.0",
+            uptime_after="2.0",
+            host_sha="abc",
+            device_sha="abc",
+        )
+        self.assertTrue(ok, detail)
+
+        missing_e2e, detail = gate_device_func.evaluate_phase4_verdict(
+            cap_text="NONCE=n1 FEATURE_OK RUNTIME_PROOF",
+            nonce="n1",
+            marker="FEATURE_OK",
+            runtime_marker="RUNTIME_PROOF",
+            e2e_marker="E2E_OK",
+            uptime_before="1.0",
+            uptime_after="2.0",
+            host_sha="abc",
+            device_sha="abc",
+        )
+        self.assertFalse(missing_e2e, detail)
+        self.assertIn("e2e=False", detail)
+
+        hash_mismatch, detail = gate_device_func.evaluate_phase4_verdict(
+            cap_text=good_log,
+            nonce="n1",
+            marker="FEATURE_OK",
+            runtime_marker="RUNTIME_PROOF",
+            e2e_marker="E2E_OK",
+            uptime_before="1.0",
+            uptime_after="2.0",
+            host_sha="abc",
+            device_sha="def",
+        )
+        self.assertFalse(hash_mismatch, detail)
+        self.assertIn("artifact_hash=False", detail)
+
+    def test_phase4_rejects_proof_markers_literal_in_driver_scripts(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            script = Path(temp_dir) / "scenario.sh"
+            script.write_text("dev_shell 'log -t FAKE E2E_OK'\n", encoding="utf-8")
+
+            found = gate_device_func.find_marker_literals(
+                [str(script)],
+                ["RUNTIME_PROOF", "E2E_OK"],
+            )
+
+        self.assertEqual({"E2E_OK": str(script)}, found)
 
 
 if __name__ == "__main__":

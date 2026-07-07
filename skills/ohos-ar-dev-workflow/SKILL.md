@@ -71,7 +71,7 @@ GN 构建目标(`build_target`)、测试 `testpart` 与套件名、目标二进�
 | P1 开发 | sa-codegen / napi-module / cpp-coding-style / openharmony-cpp / tdd-enforcer | `gate_develop.py` | git/untracked diff + C++ 强门控报告 |
 | P2 编译 | build-execution-diagnosis / build-flash | `gate_build.py` | build.log 成功横幅 |
 | P3 测试 | test-ut-generation / tdd-enforcer | `gate_test_ut.py` | developer_test summary_report.xml |
-| P4 真机 | build-flash / hdc-command-usage | `gate_device_func.py` | 含 nonce 的真机 hilog **+ 人工确认(consent --phase 4)** |
+| P4 真机 | build-flash / hdc-command-usage | `gate_device_func.py` | 主机/设备产物 sha256 一致 + 含 nonce/功能 marker/运行时 marker/端到端 marker 的真机 hilog **+ 人工确认(consent --phase 4)** |
 | P5 质量验证 | build-flash / developer_test MST / coverage / performance / power / stability / cpp-coding-style / security-code-review | `gate_integration.py`(或 `gate_device_func.py --phase 5` + `gate_integration.py`) | 功能 summary + 覆盖率报告 + 性能报告 + 功耗报告 + 稳定性报告 + 代码 review 零问题报告 **+ 人工确认(consent --phase 5)** |
 | P6 上库 | gitcode-cli / gitcode-pr-review / security-code-review / openharmony-ci-analysis | `gate_upload_ci.py` | A 本地自检零问题报告(commit 前)+ B PR review 零问题报告(建 PR 后、CI 前)+ PR + CI 绿(SHA 绑定)**+ 人工确认(consent --phase 6)** |
 

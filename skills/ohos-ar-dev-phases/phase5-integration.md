@@ -44,10 +44,16 @@ python3 $S/gate_integration.py --pipeline-dir "$PDIR" \
 ```bash
 python3 $S/gate_device_func.py --pipeline-dir "$PDIR" \
     --deploy-script /path/deploy.sh --scenario-script /path/integ_scenario.sh \
-    --marker "<集成成功标记>" --phase 5
+    --marker "<集成成功标记>" \
+    --host-artifact "$OHOS_ROOT/out/rk3568/..." \
+    --device-artifact "/system/..." \
+    --runtime-marker "<改动代码运行标记>" \
+    --e2e-marker "<端到端集成成功标记>" \
+    --phase 5
 ```
-通过条件同 P4(nonce + marker + uptime 单调)。走此路时,仍必须另外产出覆盖率、性能、
-功耗、稳定性报告和代码 review 报告,并用 `gate_integration.py` 纳入 P5 证据;否则 P5 不完整。
+通过条件建议同 P4(主机/设备产物 sha256 一致 + nonce + marker + runtime_marker +
+e2e_marker + uptime 单调)。走此路时,仍必须另外产出覆盖率、性能、功耗、稳定性报告和
+代码 review 报告,并用 `gate_integration.py` 纳入 P5 证据;否则 P5 不完整。
 
 ## 通过后
 ```bash

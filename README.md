@@ -123,7 +123,7 @@ P0 会把探测到的序列号回填进 `pipeline.json` 与 `evidence/phase0/env
 
 ## 5. 快速开始(完整一轮命令)
 
-| 阶段 | 命令 | 功能 | 实例 | 
+| 阶段 | 命令 | 功能 | 示例 |
 |---|---|---|---|
 | **1** | /ohos-ar-dev-init | 检测OHOS环境 | `/ohos-ar-dev-init` |
 | **2** | /ohos-ar-dev-workflow | 开始AR流程开发 | `/ohos-ar-dev-workflow 在base/hiviewdfx/hiview下面新增一个线程泄漏检测插件，阈值3000，超过3000阈值之后只触发一次调用。调用hidumper sa的能力获取(类似hidumper -p <pid> --thread的维测)进程线程维测，然后通过LogCatcherUtils::DumpStacktrace抓取当前应用调用栈，并且保存一份线程泄漏文件在data/log/reliability/resource_leak/thread_leak/中` |
@@ -139,7 +139,7 @@ P0 会把探测到的序列号回填进 `pipeline.json` 与 `evidence/phase0/env
 | **P1 开发** | ohos-dev-sa-codegen / -napi-module / -cpp-coding-style / openharmony-cpp / tdd-enforcer | `gate_develop.py` | 相对 `base_commit` 有 tracked 或 untracked 改动 **且** C/C++ 格式 guard + 强规则检查通过;不可用 `--no-style` 绕过 | `diff.patch`、`changed_files.txt`、`style_report.txt`、`strict_cpp_report.txt` |
 | **P2 编译** | ohos-dev-build-execution-diagnosis / ohos-build-flash | `gate_build.py` | build.sh exit 0 **且** 输出含 `=====build…successful=====` 且无 error 横幅 | `build_stdout.log`、`build_banner.txt`(失败再加 `error_distill.txt`) |
 | **P3 测试** | ohos-test-ut-generation / tdd-enforcer | `gate_test_ut.py` | 编出测试二进制 + developer_test 本次**新建**报告 + `tests>0 && failures==0 && errors==0` | `summary_report.xml`、`result_*.xml`、`start_sh_stdout.txt`、`report_dir.txt` |
-| **P4 真机** | ohos-build-flash / ohos-dev-hdc-command-usage | `gate_device_func.py` | 部署命令全 exit 0 + hilog 含**本次 nonce** + 含 marker + uptime 单调;**证据 PASS 后停下,人工核对真机真实结果并 `consent --phase 4` 才推进** | `hilog_capture.txt`、`device_cmds.txt`、`run_meta.txt` |
+| **P4 真机** | ohos-build-flash / ohos-dev-hdc-command-usage | `gate_device_func.py` | 部署命令全 exit 0 + 主机/设备产物 sha256 一致 + hilog 含**本次 nonce**、功能 marker、运行时 marker、端到端 marker + uptime 单调;**证据 PASS 后停下,人工核对真机真实结果并 `consent --phase 4` 才推进** | `hilog_capture.txt`、`device_cmds.txt`、`run_meta.txt`、`artifact_runtime_proof.txt` |
 | **P5 质量验证** | ohos-build-flash / developer_test(MST) / ohos-test-ut-generation / coverage / performance / power / stability / ohos-dev-cpp-coding-style / ohos-dev-security-code-review | `gate_integration.py`(或 `gate_device_func.py --phase 5` + `gate_integration.py`) | 功能 summary `failures==0 && errors==0 && tests>0` **且 覆盖率、性能、功耗、稳定性报告全部生成并签名,代码 review 问题数为 0;证据 PASS 后需人工确认并 `consent --phase 5` 才进入 P6** | `summary_report.xml`、`coverage_report.*`、`performance_report.*`、`power_report.*`、`stability_report.*`、`code_review_report.txt`、`report_dir.txt` |
 | **P6 上库** | ohos-ci-gitcode-cli-usage / -gitcode-pr-review / -security-code-review / -openharmony-ci-analysis | `gate_upload_ci.py` | P1–P5 全过 + 上库前落全部代码 diff 供人工确认 + **A 本地自检零问题报告(commit 前硬控)** + `git commit -s`(DCO 签名)+ push + **`--issue` 绑定的 PR**(CI 门禁只对绑定 Issue 的 PR 触发)+ **B PR review 零问题报告(建 PR 后、CI 前硬控)** + consent --phase 6 + CI `overall∈{success,passed}` + PR head SHA==push SHA | `full_diff.patch`、`full_diff.stat.txt`、`local_code_review_report.*`、`pr.json`、`pr_create.txt`、`pr_review_report.*`、`ci_status.json` |
 
@@ -171,6 +171,7 @@ $REPO/specs/pipeline/{YYYYMMDD}-{slug}/
 | P0 `device_online` BAD | 检查 hdc daemon 与 `HDC_HOST_OVERRIDE`/`DEVICE_SERIAL`;`device.sh` 默认从 WSL 默认网关取 Windows IP。 |
 | P2 横幅没识别到 | build.sh 横幅打在 **stdout**,且 `out/rk3568/build.log` 可能轮转/为空;门控已改为捕获 build.sh stdout 并用正则判定。 |
 | P4 抓取里没有 nonce | scenario 脚本要让组件把 `$GATE_NONCE` 打进设备日志(`hilog`/`log -t … NONCE=$GATE_NONCE`),否则无法证明日志是本次的。 |
+| P4 缺少 runtime/e2e marker 或 hash 不一致 | scenario 必须从真实入口触发改动代码,并在成功路径输出 `--runtime-marker` 与 `--e2e-marker`;同时确认 `--host-artifact` 是本次构建产物、`--device-artifact` 是部署后设备实际文件。 |
 | `advance` 报 REFUSED | 该阶段门控不是 PASS,或证据被改动(sha256/HMAC 失配)。读 `evidence/phaseN/` 真实日志修复后重跑门控。 |
 | 阶段顺序报错 | 阶段不可跳;只能关闭 `current_phase` 指向的阶段。 |
 
@@ -189,7 +190,9 @@ gate_env_init.py    --pipeline-dir P
 gate_develop.py     --pipeline-dir P [--no-style]   # 仅无 C/C++ 改动时兼容;有 C/C++ 改动会拒绝
 gate_build.py       --pipeline-dir P [--target T]
 gate_test_ut.py     --pipeline-dir P --test-target T --suite S [--part P]
-gate_device_func.py --pipeline-dir P [--deploy-script f] --scenario-script f --marker M [--phase 4|5]
+gate_device_func.py --pipeline-dir P [--deploy-script f] --scenario-script f --marker M
+                    --host-artifact F --device-artifact P
+                    --runtime-marker M --e2e-marker M [--phase 4|5]
 gate_integration.py --pipeline-dir P [--testtype MST] --suites S1 [S2 …] [--part P]
                     --coverage-report F --performance-report F --power-report F --stability-report F
                     [--code-review-report F]
