@@ -45,13 +45,68 @@ def run(cmd, cwd=None):
     return subprocess.run(cmd, shell=True, text=True, capture_output=True, cwd=cwd)
 
 
+def remote_owner(gdir, remote="origin"):
+    """Return the owner/namespace of a git remote (e.g. 'mgce1' from
+    https://gitcode.com/mgce1/hiviewdfx_hiview.git), or '' if it can't be parsed."""
+    url = run("git -C %s remote get-url %s" % (gdir, remote)).stdout.strip()
+    if not url:
+        return ""
+    # strip protocol + host, drop a trailing .git, then take the owner segment.
+    path = url.split("://", 1)[-1]
+    if "@" in path and ":" in path.split("/", 1)[0]:  # scp-style git@host:owner/repo
+        path = path.split(":", 1)[1]
+    else:
+        path = path.split("/", 1)[1] if "/" in path else path
+    if path.endswith(".git"):
+        path = path[:-4]
+    parts = [p for p in path.split("/") if p]
+    return parts[0] if len(parts) >= 2 else ""
+
+
+def fork_qualified_head(gdir, repo_slug, branch, head_owner=""):
+    """Build the `--head` value for `oh-gc pr create`.
+
+    A bare branch name is resolved by oh-gc *inside* --repo (the PR base repo).
+    For the standard fork -> upstream flow the branch lives on the contributor's
+    fork, NOT on the base repo, so it must be qualified as `<fork-owner>:<branch>`
+    (a cross-fork head). Passing a bare name there makes oh-gc look for the branch
+    on the upstream repo and return 403 (the contributor cannot create refs there).
+
+    We qualify the head when the fork owner (explicit --head-owner, else the owner
+    of the `origin` remote we pushed to) differs from the base repo owner. Same-repo
+    pushes (owner matches) keep the bare branch name."""
+    base_owner = repo_slug.split("/", 1)[0] if "/" in repo_slug else ""
+    owner = head_owner or remote_owner(gdir)
+    if owner and owner != base_owner:
+        return "%s:%s" % (owner, branch)
+    return branch
+
+
 def write_full_diff(state, gdir, pdir):
     """Dump the full diff of ALL modified code (component repo vs base_commit)
     into evidence/phase6 so a human can review the exact changes before upload.
-    Returns (rel_path, stat_summary)."""
+
+    `git diff base` only covers tracked changes, so untracked NEW files (a brand
+    new plugin directory is entirely untracked) would be invisible in the review.
+    We append them explicitly via `git diff --no-index /dev/null <file>` so the
+    human confirms the exact set that `git add -A` will commit and push.
+    Returns (rel_path, stat_rel, stat_summary)."""
     base = state.get("base_commit") or "HEAD"
     diff = run("git -C %s diff %s" % (gdir, base)).stdout
     stat = run("git -C %s diff --stat %s" % (gdir, base)).stdout.strip()
+
+    untracked = [f for f in run(
+        "git -C %s ls-files --others --exclude-standard" % gdir).stdout.splitlines() if f.strip()]
+    if untracked:
+        diff += "\n" + "=" * 64 + "\nNEW (UNTRACKED) FILES — will be added by `git add -A`\n" + \
+            "=" * 64 + "\n"
+        for f in untracked:
+            # --no-index exits 1 when files differ (they always do vs /dev/null); that's expected.
+            diff += run("git -C %s diff --no-index -- /dev/null %s" % (gdir, json.dumps(f))).stdout
+        stat += ("\n" if stat else "") + \
+            "\n".join(" %s | new file" % f for f in untracked) + \
+            "\n %d new file(s)" % len(untracked)
+
     rel = "evidence/phase6/full_diff.patch"
     with open(os.path.join(pdir, rel), "w", encoding="utf-8") as f:
         f.write(diff)
@@ -132,8 +187,13 @@ def require_zero_issue_report(path, label, dst_rel, pdir, arts):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--pipeline-dir")
-    ap.add_argument("--repo-slug", required=True, help="gitcode owner/repo for the PR")
+    ap.add_argument("--repo-slug", required=True, help="gitcode owner/repo the PR is opened AGAINST "
+                    "(the base repo, e.g. openharmony/hiviewdfx_hiview)")
     ap.add_argument("--branch", required=True, help="local branch to push")
+    ap.add_argument("--head-owner", default="", help="owner/namespace of the fork the branch is "
+                    "pushed to (the PR head repo). Defaults to the owner of the `origin` remote. "
+                    "When it differs from --repo-slug's owner the PR head is qualified as "
+                    "`<owner>:<branch>` (cross-fork PR); omit for same-repo pushes.")
     ap.add_argument("--base", default="master", help="target base branch")
     ap.add_argument("--title", default="", help="PR title")
     ap.add_argument("--issue", help="associated issue number (e.g. 12345 or #12345). "
@@ -182,6 +242,7 @@ def main():
     head_sha = run("git -C %s rev-parse %s" % (gdir, args.branch)).stdout.strip()
 
     if not args.allow_push and not args.pr:
+        planned_head = fork_qualified_head(gdir, args.repo_slug, args.branch, args.head_owner)
         print("\n" + "=" * 64)
         print("P6 上库前 —— 全部代码改动已保存,待人工确认")
         print("=" * 64)
@@ -189,9 +250,10 @@ def main():
         print("改动统计 :\n%s" % stat)
         print("\nDRY RUN (no --allow-push). Would: A) verify --local-review-report "
               "(zero issues) → commit pending changes with `git commit -s` (DCO) → "
-              "push branch '%s' to %s → open PR (base=%s, issue=%s) → "
-              "B) verify --pr-review-report (zero issues) → check CI. head=%s"
-              % (args.branch, args.repo_slug, args.base, issue_ref or "(none)", head_sha[:12]))
+              "push branch '%s' to origin → open PR (repo=%s, base=%s, head=%s, issue=%s) → "
+              "B) verify --pr-review-report (zero issues) → check CI. head_sha=%s"
+              % (args.branch, args.repo_slug, args.base, planned_head,
+                 issue_ref or "(none)", head_sha[:12]))
         print("上库需两份机器可读零问题 review 报告:")
         print("  A 本地自检(commit 前):--local-review-report <path>")
         print("  B PR review(建 PR 后、CI 前):--pr-review-report <path>")
@@ -231,8 +293,11 @@ def main():
         if push.returncode != 0:
             _fail(pdir, "git push failed: %s" % (push.stderr.strip()[:500]))
         pr_body = build_pr_body(gdir, issue_ref)
+        # Qualify the head as <fork-owner>:<branch> for the fork -> upstream flow;
+        # a bare name would be resolved on the base repo and 403 on an upstream PR.
+        head_ref = fork_qualified_head(gdir, args.repo_slug, args.branch, args.head_owner)
         create = run('oh-gc pr create --repo %s --head %s --base %s --title %s --body %s --json'
-                     % (args.repo_slug, args.branch, args.base,
+                     % (args.repo_slug, head_ref, args.base,
                         json.dumps(args.title or args.branch), json.dumps(pr_body)))
         with open(os.path.join(pdir, "evidence/phase6/pr_create.txt"), "w") as f:
             f.write(create.stdout + "\n----\n" + create.stderr)

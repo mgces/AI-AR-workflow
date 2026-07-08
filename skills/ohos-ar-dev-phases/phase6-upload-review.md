@@ -29,11 +29,13 @@ oh-gc issue create --repo <owner/repo> --title "<标题>" --body "<描述>"   # 
 1. 先 DRY(不推送、不产 PASS),确认分支/PR 计划:
    ```bash
    python3 $S/gate_upload_ci.py --pipeline-dir "$PDIR" \
-       --repo-slug <owner/repo> --branch <local_branch> --base master \
+       --repo-slug <base-owner/repo> --branch <local_branch> --base master \
        --title "<title>" --issue <issue编号>
    ```
    DRY 会**把全部代码改动的 diff 落到 `evidence/phase6/`**(`full_diff.patch` +
-   `full_diff.stat.txt`,相对 `base_commit`)并打印改动统计与"需两份零问题 review 报告"提示,
+   `full_diff.stat.txt`,相对 `base_commit`,**含 untracked 新文件**——新插件目录整目录是 untracked,
+   脚本用 `git diff --no-index /dev/null <file>` 显式并入,确保人工看到的就是 `git add -A` 会提交的全集)
+   并打印改动统计、**将建 PR 的 head(可能是 `<fork-owner>:<branch>`)**与"需两份零问题 review 报告"提示,
    **作为上库前给人工确认的内容**。编排器到这里必须停下,把这份 diff/统计呈现给用户核对。
 2. **先跑 A 本地自检**,产出零问题报告;若有问题,改代码后 `advance.py reset --reason "<改了什么>"` 回 P1 重走。
 3. **人工同意**后记录一次性令牌:
@@ -43,18 +45,26 @@ oh-gc issue create --repo <owner/repo> --title "<标题>" --body "<描述>"   # 
 4. 正式上库(带 A 报告;push+建 PR 后编排器跑 B review 产出 `pr_review` 报告,再带 B 报告重跑本门控):
    ```bash
    python3 $S/gate_upload_ci.py --pipeline-dir "$PDIR" \
-       --repo-slug <owner/repo> --branch <local_branch> --base master \
+       --repo-slug <base-owner/repo> --branch <local_branch> --base master \
        --title "<title>" --issue <issue编号> --allow-push \
        --local-review-report <A报告路径> --pr-review-report <B报告路径>
    ```
 脚本逻辑(硬控顺序):
 **A 硬控**(解析 `--local-review-report`,非零/缺失/无计数 → FAIL,不 commit 不 push)→
 `git add -A && git commit -s`(有未提交改动才提交,`-s` 自动补 DCO `Signed-off-by`)→
-`git push` → `oh-gc pr create`(PR body 用仓库模板并把 `**IssueNo**` 填成 `#编号`)→
+`git push -u origin <branch>`(推到 **fork**,即 `origin` 指向的仓)→
+`oh-gc pr create --repo <base> --head <head> ...`(PR body 用仓库模板并把 `**IssueNo**` 填成 `#编号`)→
 `oh-gc pr view --json`(取 PR head SHA)→
 **B 硬控**(解析 `--pr-review-report`,非零 → FAIL,不进 CI 校验、不 PASS)→
 `openharmony_ci.py --pr N --repo ... --json`(取 `overall_result`)。
 证据:`local_code_review_report.*`、`pr.json`、`pr_create.txt`、`pr_review_report.*`、`ci_status.json`。
+
+> **跨 fork PR 的 `--head`(踩坑记录)**:标准贡献流是 **push 到自己的 fork(`origin`)→ 向上游
+> `--repo-slug` 提 PR**。此时 head 分支在 fork 上、**不在** base 仓,`oh-gc pr create --head` 必须写成
+> **`<fork-owner>:<branch>`**(跨 fork head)。若只传裸分支名,oh-gc 会在 `--repo`(上游)里找该分支、
+> 找不到且贡献者无权在上游建 ref → **403 Forbidden**(会被误判成"没权限")。脚本已自动处理:
+> 取 `origin` remote 的 owner,若与 `--repo-slug` 的 owner 不同,则把 head 限定成 `owner:branch`;
+> 同仓推送(owner 相同)保持裸分支名。可用 `--head-owner <owner>` 显式覆盖 fork owner。
 
 > **两报告必填**:A/B 任一缺失或非零问题,gate 都 fail-closed。B 失败时 PR 已建(不可逆),
 > 修复途径是**改代码 → `advance.py reset` 回 P1 重走**(下次上库会 push 新提交、更新同一 PR)。
