@@ -1,0 +1,63 @@
+### online  (cmd=)  rc=0
+7001005458323933328a01fce1fe3800
+
+### uptime_before  (cmd=)  rc=0
+27271.11
+
+### deploy  (cmd=specs/pipeline/20260707-thread-leak-detector/p4/deploy.sh)  rc=0
+FileTransfer finish, Size:167824, File count = 1, time:25ms rate:6712.96kB/s
+FileTransfer finish, Size:444, File count = 1, time:21ms rate:21.14kB/s
+invalid args!
+10967
+deploy done
+
+### device_artifact_sha256  (cmd=sha256sum /system/lib/libbdfr.z.so)  rc=0
+074b8cd662b06311c1be4e8bf0d4eda481882be7fb9232cdf588bd8909d6f414  /system/lib/libbdfr.z.so
+
+### mark_start  (cmd=)  rc=0
+/bin/sh: log: inaccessible or not found
+
+### scenario  (cmd=specs/pipeline/20260707-thread-leak-detector/p4/scenario.sh)  rc=0
+Set parameter persist.hiviewdfx.threadleak.warn 50 success
+Set parameter persist.hiviewdfx.threadleak.fault 100 success
+Set parameter persist.hiviewdfx.threadleak.focuspid 0 success
+victim pid=11003
+Set parameter persist.hiviewdfx.threadleak.focuspid 11003 success
+/bin/sh: log: inaccessible or not found
+conclusion file on device: /data/log/reliability/resource_leak/thread_leak/thread_leak_thread_victim_11003_3.txt
+merge check: WARNING sections=1 FAULT sections=1
+/bin/sh: log: inaccessible or not found
+scenario done
+
+### mark_end  (cmd=)  rc=0
+/bin/sh: log: inaccessible or not found
+
+### hilog  (cmd=)  rc=0
+09-10 16:56:54.346     0     0 I A00000/HiLog: ========Zeroth log of type: app
+09-10 16:56:54.346     0     0 I I00000/HiLog: ========Zeroth log of type: init
+09-10 16:57:11.662   205   205 I A03d00/ArkTSApp: arkts.console: [loadLibraries] Registered ArkoalaNative_ark.z as InteropNativeModule
+09-10 16:57:11.663   205   205 I A03d00/ArkTSApp: arkts.console: [loadLibraries] Registered ArkoalaNative_ark.z as ArkUINativeModule
+09-10 16:57:11.663   205   205 I A03d00/ArkTSApp: arkts.console: [loadLibraries] Registered ArkoalaNative_ark.z as ArkUIGeneratedNativeModule
+09-10 16:57:11.663   205   205 I A03d00/ArkTSApp: arkts.console: [loadLibraries] Registered ArkoalaNative_ark.z as TestNativeModule
+09-10 16:57:11.663   205   205 I A03d00/ArkTSApp: arkts.console: [loadLibraries] Registered arkoala_native_ani as ArkNativeAni
+09-10 16:57:11.664   205   205 I A03d00/ArkTSApp: arkts.console: [loadLibraries] Loading InteropNativeModule [ArkoalaNative_ark.z]
+09-10 16:57:11.665   205   205 E A0ff00/Koala: Use ANI
+09-10 16:57:11.693   205   205 I A03d00/ArkTSApp: arkts.console: [loadLibraries] Loading InteropNativeModule [ArkoalaNative_ark.z]
+09-10 16:57:11.694   205   205 I A03d00/ArkTSApp: arkts.console: [loadLibraries] Loading ArkNativeAni [arkoala_native_ani]
+09-10 16:57:14.168  1386  1386 I A00500/SettingsData: DataAbilityStage onCreate
+09-10 16:57:14.186  1361  1361 I A0001a/SystemUI_Default: NavigationBar_AbilityStage --> onCreate
+09-10 16:57:14.211  1380  1380 I A03d00/JSAPP: [Ringtone] MyAbilityStage onCreate
+09-10 16:57:14.221  1361  1361 I A0001a/SystemUI_Default: SingleInstanceHelper --> Create key of EventManager
+09-10 16:57:14.224  1361  1361 I A0001a/SystemUI_Default: SingleInstanceHelper --> Create key of WindowManager
+09-10 16:57:14.258  1391  1391 I A03d00/JSAPP: [TelephonyData:]TelephonyDataAbilityStage:onCreate
+09-10 16:57:14.270  1361  1361 I A0001a/SystemUI_Default: NavigationBar_ServiceExtAbility --> onCreate, want: {"deviceId":"","bundleName":"com.ohos.systemui","abilityName":"com.ohos.systemui.navigationbar.ServiceExtAbility","moduleName":"default_navigationBar","uri":"","type":"","flags":0,"action":"","parameters":{"component.startup.newRules":true,"moduleName":"default_navigationBar","ohos.aafwk.param.callerAbilityName":"","ohos.aafwk.param.callerBundleName":"","ohos.aafwk.param.callerNativeName":"_foundation","ohos.aafwk.param.callerPid":488,"ohos.aafwk.param.callerToken":671300667,"ohos.aafwk.param.callerUid":5523,"ohos.param.callerAppCloneIndex":0},"fds":{},"entities":[]}
+09-10 16:57:14.287  1361  1361 I A0001a/SystemUI_Default: NavBarConfiguration --> initNavBarConfiguration dis {"id":0,"name":"MIPI","alive":true,"state":2,"refreshRate":69,"rotation":0,"width":720,"height":1280,"densityDPI":240,"orientation":0,"densityPixels":1.5,"scaledDensity":1.5,"xDPI":268.941162109375,"yDPI":268.6942138671875,"colorSpaces":[],"hdrFormats":[],"availableWidth":0,"availableHeight":0,"screenShape":0,"x":0,"y":0,"sourceMode":1,"supportedRefreshRates":[]}
+09-10 16:57:14.287  1361  1361 I A0001a/SystemUI_Default: NavBarConfiguration --> initNavBarConfiguration maxWidth 720 maxHeight 1280 minHeight 0
+09-10 16:57:14.288  1361  1361 I A0001a/SystemUI_Default: NavBarConfiguration --> direction is 2
+09-10 16:57:14.342  1361  1361 I A0001a/SystemUI_Default: volume_AbilityStage --> onCreate
+09-10 16:57:14.351  1391  1391 I A03d00/JSAPP: [TelephonyData:]TelephonyDataAbilityStage:onDestroy
+09-10 16:57:14.360  1386  1386 I A00500/SettingsData: context start{"__context_impl__":{"__base_context_ptr__":{},"applicationInfo":{"name":"com.ohos.settingsdata","bundleType":0,"debug":false,"description":"","descriptionId":0,"enabled":true,"label":"$string:app_name","labelId":16777216,"icon":"$media:app_icon","iconId":16777217,"process":"com.ohos.settingsdata","permissions":[],"entryDir":"","codePath":"/data/app/el1/bundle/public/com.ohos.settingsdata","metadata":{},"metadataArray":[],"removable":false,"accessTokenId":537539946,"uid":10006,"iconResour
+
+### uptime_after  (cmd=)  rc=0
+27364.80
+

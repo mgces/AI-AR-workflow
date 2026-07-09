@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>thread_leak_detector 覆盖率报告 (P5)</title>
+<style>
+body{font-family:sans-serif;margin:24px;color:#222}
+h1{font-size:20px} h2{font-size:16px;margin-top:20px}
+table{border-collapse:collapse;width:100%;margin-top:8px}
+th,td{border:1px solid #ccc;padding:6px 8px;font-size:13px;text-align:left}
+th{background:#f0f0f0}
+.ok{color:#0a0;font-weight:bold}
+.note{color:#666;font-size:12px}
+</style>
+</head>
+<body>
+<h1>thread_leak_detector 覆盖率报告 (P5)</h1>
+<p class="note">方法:单元测试(ThreadLeakDetectorUnitTest,真机 9/9 通过)覆盖纯逻辑分支;
+模块测试(ThreadLeakDetectorModuleTest,真实阈值 2000/3000 外部 victim,真机产出 1.1MB 合并结论)
+与 P4 端到端场景覆盖编排、采集与上报路径。下表为测试→代码路径的覆盖矩阵。</p>
+
+<h2>核心逻辑(单元测试确定性覆盖)</h2>
+<table>
+<tr><th>代码单元</th><th>分支/场景</th><th>覆盖测试</th><th>状态</th></tr>
+<tr><td>ThreadLeakConfig::Classify</td><td>NORMAL / WARNING / FAULT / 负值边界</td><td>ThreadLeakConfigClassify001</td><td class="ok">覆盖</td></tr>
+<tr><td>ThreadLeakConfig::Get*Threshold(参数覆写)</td><td>默认值 + persist 参数覆写</td><td>ThreadLeakConfigClassify001/002</td><td class="ok">覆盖</td></tr>
+<tr><td>ThreadLeakDetector::Decide</td><td>NORMAL(dropTracking) / WARNING(collect+refresh) / 直达 FAULT / WARNING→FAULT / 故障去重(once)</td><td>ThreadLeakDecideNormal/Warning/Fault001/002/FaultOnce001</td><td class="ok">覆盖</td></tr>
+<tr><td>ThreadLeakUtil::GetThreadCount / GetThreadRunStates</td><td>有效 pid / 无效 pid(-1)</td><td>ThreadLeakUtilProc001</td><td class="ok">覆盖</td></tr>
+<tr><td>ThreadLeakUtil::SanitizeName / BuildTmpLogPath / BuildConclusionLogPath</td><td>非法字符净化 / 空串 / 路径组装</td><td>ThreadLeakUtilNaming001</td><td class="ok">覆盖</td></tr>
+</table>
+
+<h2>编排与采集(模块测试 + P4 真机端到端覆盖)</h2>
+<table>
+<tr><th>代码单元</th><th>场景</th><th>覆盖测试</th><th>状态</th></tr>
+<tr><td>ThreadLeakDetector::MainProcess / HandleProcess</td><td>轮询 + focuspid 定向 + 状态机推进</td><td>ModuleTest001 + P4</td><td class="ok">覆盖</td></tr>
+<tr><td>HandleWarning(警告 tmp 日志 + 丢弃旧警告)</td><td>2101 线程越警告阈值</td><td>ModuleTest001 + P4</td><td class="ok">覆盖</td></tr>
+<tr><td>HandleFault(故障 tmp + 合并结论 + 上报 + 后台查杀判定)</td><td>3101 线程越故障阈值,合并 WARNING+FAULT</td><td>ModuleTest001 + P4</td><td class="ok">覆盖</td></tr>
+<tr><td>ThreadLeakCollector 四项维测(基本信息/hidumper SA/逐线程状态+CPU/文本栈)</td><td>真机真实采集,四段齐全</td><td>ModuleTest001 + P4(样例日志)</td><td class="ok">覆盖</td></tr>
+<tr><td>ReportThreadLeakEvent(hisysevent RELIABILITY/THREAD_LEAK)</td><td>真机上报 ret=0,DailyController 入库</td><td>P4 hilog 证据</td><td class="ok">覆盖</td></tr>
+<tr><td>CleanupDeadProcesses / 一次性去重</td><td>4+ 周期仅 1 份结论,死 pid 清理</td><td>稳定性 soak</td><td class="ok">覆盖</td></tr>
+<tr><td>KillBackgroundAppIfNeeded</td><td>非应用(bundleName 空)跳过分支已覆盖;实杀分支受权限守卫,仅对后台应用触发</td><td>P4(跳过分支)</td><td>部分</td></tr>
+<tr><td>Plugin OnLoad/OnUnload/ffrt 30s 轮询</td><td>插件加载、轮询循环启动</td><td>P4 hilog(loadtime + poll loop start)</td><td class="ok">覆盖</td></tr>
+</table>
+
+<h2>结论</h2>
+<p>纯逻辑分支由单元测试确定性全覆盖;编排、四项维测采集、上报与去重由真实阈值模块测试及
+P4 真机端到端覆盖。唯一"部分覆盖"项为后台应用实杀分支(受 SELinux/权限守卫,测试环境无合适后台应用
+可安全查杀,已覆盖其判定与跳过分支)。整体功能路径覆盖充分。</p>
+</body>
+</html>

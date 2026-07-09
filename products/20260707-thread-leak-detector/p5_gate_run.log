@@ -1,0 +1,5 @@
+running: (cd /home/mgces/openharmony/code/test/testfwk/developer_test && ./start.sh run -t UT -tp hiview -ts ThreadLeakDetectorUnitTest -p rk3568)
+type=UT tests=9 failures=0 errors=0 fresh=2026-07-08-14-16-05 | quality:coverage=evidence/phase5/coverage_report.html; performance=evidence/phase5/performance_report.md; power=evidence/phase5/power_report.md; stability=evidence/phase5/stability_report.md | review:auto_review_issues=0 no C/C++ changes | external_review evidence/phase5/external_code_review_report.json issue_count=0
+PHASE 5 PASS — inspect quality/review artifacts, then record consent:
+  advance.py --pipeline-dir /home/mgces/openharmony/code/specs/pipeline/20260707-thread-leak-detector consent --phase 5 --token <审核人>
+  advance.py --pipeline-dir /home/mgces/openharmony/code/specs/pipeline/20260707-thread-leak-detector advance --phase 5

@@ -1,0 +1,27 @@
+rule_sources:
+  - ohos-dev-cpp-coding-style/references/rules.md
+  - openharmony-cpp/references/*.md
+
+checked_files:
+plugins/reliability/thread_leak_detector/test/moduletest/thread_leak_detector_module_test.cpp
+plugins/reliability/thread_leak_detector/test/moduletest/thread_leak_detector_module_test.h
+plugins/reliability/thread_leak_detector/test/unittest/thread_leak_detector_unit_test.cpp
+plugins/reliability/thread_leak_detector/test/unittest/thread_leak_detector_unit_test.h
+plugins/reliability/thread_leak_detector/thread_leak_collector.cpp
+plugins/reliability/thread_leak_detector/thread_leak_collector.h
+plugins/reliability/thread_leak_detector/thread_leak_common.h
+plugins/reliability/thread_leak_detector/thread_leak_config.cpp
+plugins/reliability/thread_leak_detector/thread_leak_config.h
+plugins/reliability/thread_leak_detector/thread_leak_detector.cpp
+plugins/reliability/thread_leak_detector/thread_leak_detector.h
+plugins/reliability/thread_leak_detector/thread_leak_plugin.cpp
+plugins/reliability/thread_leak_detector/thread_leak_plugin.h
+plugins/reliability/thread_leak_detector/thread_leak_util.cpp
+plugins/reliability/thread_leak_detector/thread_leak_util.h
+
+blocking_issues:
+(none)
+
+manual_judgment_not_auto_enforced:
+  - API comment quality, class copy/move intent, inheritance intent, input validation completeness
+  - pointer lifetime, integer overflow proof, function size and parameter-count judgment

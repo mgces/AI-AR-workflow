@@ -1,0 +1,5 @@
+CI event 6a4e1eab (193b3505) — arm64_virt/part_compile/dayu200 compile failed (E04); ohos-host_mini_tdd + dayu200_tdd + codecheck passed.
+Root cause (from dayu200 build.log): hisysevent.yaml parse failed —
+  "duplicate key definition | Duplicate key <<THREAD_LEAK>> exists in file 4, line 169, column 1"
+THREAD_LEAK already existed at base_commit c28ac3e (line 159). My added definition at line 16 is a duplicate.
+Fix: remove my duplicate; adapt HiSysEventWrite to the pre-existing THREAD_LEAK schema.

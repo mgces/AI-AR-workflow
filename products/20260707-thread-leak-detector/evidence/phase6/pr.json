@@ -1,0 +1,189 @@
+{
+  "id": 8848796,
+  "html_url": "https://gitcode.com/openharmony/hiviewdfx_hiview/merge_requests/4328",
+  "number": 4328,
+  "state": "open",
+  "title": "Add thread leak detector plugin under plugins/reliability",
+  "url": "https://api.gitcode.com/api/v5/repos/openharmony/hiviewdfx_hiview/pulls/4328",
+  "issue_url": "https://api.gitcode.com/api/v5/repos/openharmony/hiviewdfx_hiview/pulls/4328/issues",
+  "body": "**IssueNo**: #3494\n\n## 功能描述\n\n在 `base/hiviewdfx/hiview/plugins/reliability/` 下新增**线程泄漏检测插件** `thread_leak_detector`,以静态插件形式编入 `bdfr` 可靠性库,由 hiview 加载。\n\n- **周期轮询**:插件 `OnLoad` 时启动 ffrt 循环,每 **30s** 遍历 `/proc` 统计各进程线程数(`/proc/<pid>/status` 的 `Threads:`)。\n- **双阈值**:警告 `warning=2000` / 故障 `fault=3000`(默认值,可经 `persist.hiviewdfx.threadleak.*` 系统参数覆写);超过阈值触发一次维测收集。\n- **四项维测收集**:\n  1. 进程基本信息 —— 进程名、包名、pid、uid、应用前后台状态(经 `AppMgrClient::GetRunningProcessInfoByPid`);\n  2. 调用 **hidumper SA**(`IDumpBroker::Request`,等价 `hidumper -p <pid> --thread`)获取进程线程维测汇总;\n  3. 各线程运行状态 + 每线程 CPU 运行时间(`/proc/<pid>/task/*/stat` + `ThreadCpuCollector`);\n  4. `LogCatcherUtils::DumpStacktrace` 抓取应用**文本**调用栈。\n- **日志与上报**:\n  - 临时日志按阈值分别落 `data/log/reliability/resource_leak/thread_leak/tmp/`;\n  - 警告 + 故障两份合并生成**结论文件**落 `data/log/reliability/resource_leak/thread_leak/`,并经 **hisysevent** 上报 `RELIABILITY / THREAD_LEAK` 故障事件。\n- **后台查杀**:进程在故障阈值之上且应用处于后台时,`KillApplication` 查杀该应用。\n- **阈值跳变语义**:仅达警告阈值 → 不生成结论、不上报;多次跳变 → 以**最后一次**警告日志合成、丢弃之前;直达故障阈值 → 直接用故障日志生成并上报;故障态一次性去重(`触发一次`)。\n\n主要文件:`thread_leak_plugin.*`(插件与 30s 轮询)、`thread_leak_detector.*`(状态机:警告/故障/合并/去重/查杀)、`thread_leak_collector.*`(四项维测)、`thread_leak_config.*`(阈值)、`thread_leak_util.*`(/proc 解析、日志路径);并在 `hisysevent.yaml` 声明 `THREAD_LEAK` 事件、`bdfr_plugin_config` 注册插件、`plugin_build/BUILD.gn` 接入 `bdfr` 库。\n\n## 测试用例\n\n**单元测试** `ThreadLeakDetectorUnitTest`(真机 9/9 通过):\n- `ThreadLeakConfigClassify001/002` —— 真实阈值 2000/3000 分级 + 参数覆写;\n- `ThreadLeakDecideNormal/Warning/Fault001/Fault002/FaultOnce001` —— 状态机决策全分支:回落忘记、警告收集不结论、直达故障、警告→故障合并、故障一次性去重;\n- `ThreadLeakUtilProc001` —— `/proc` 线程数与运行态解析(含无效 pid);\n- `ThreadLeakUtilNaming001` —— 进程名净化与日志路径组装。\n\n**模块测试** `ThreadLeakDetectorModuleTest`(Level2,真机):以**真实阈值 2000/3000**,fork 外部子进程作为 victim,分阶段生长(2100 → 3100 线程),驱动检测器走完 warning→fault 合并路径,断言:警告态不生成结论、故障态生成含 WARNING+FAULT 两段且四项维测齐全的合并结论。仓内附真实阈值样例日志 `test/moduletest/sample_thread_leak_conclusion.txt`。\n\n## 端到端测试结果(真机 rk3568)\n\n真机部署 `libbdfr.z.so` 后,插件在 hiview 进程内加载并 30s 轮询,对 victim 进程实测走通全链路:\n\n```\nThreadLeakDetectorPlugin OnLoad → poll loop start, interval=30s\nHandleWarning: pid=<victim> threads=2101 level=WARNING           # 落警告 tmp 日志,不结论\nHandleFault:   pid=<victim> threads=3101 level=FAULT             # 越故障阈值\nHandleFault:   THREAD_LEAK_CONCLUSION_GENERATED path=.../thread_leak_<name>_<pid>_3.txt\nReportThreadLeakEvent: report THREAD_LEAK event pid=<victim> ret=0\nDailyController: event ... domain=RELIABILITY, name=THREAD_LEAK  # hisysevent 入库\n```\n\n真实阈值下生成的结论文件(~1.1MB,4413 条线程栈)四项维测均真实采集:\n- **[1] 进程基本信息**:processName / pid / uid / 前后台;\n- **[2] hidumper 线程维测**:`Thread num: 2101`(警告段)/ `Thread num: 3101`(故障段) + Top thread names;\n- **[3] 逐线程运行态 + CPU 时间**:`tid / state / cpuUsage / cpuLoad / name` 全量;\n- **[4] 应用调用栈**:`Tid: / #00 pc ... /system/lib/...` 文本栈,逐线程。\n\n合并验证:结论文件含 `WARNING SNAPSHOT`(2101)在前、`FAULT SNAPSHOT`(3101)在后,证明 warning→fault 合并生效。\n\n**质量测试(真机)**:\n- 性能:hiview 常态(无泄漏)CPU 增量 **0.138%** 单核,RSS 持平;\n- 功耗:CPU 代理 0.138%,ffrt 复用既有工作线程,无新增 wakelock,30s 间隔低唤醒;\n- 稳定性:软老化 4+ 轮询周期,hiview 无崩溃/重启,一次性去重仅生成 1 份结论,RSS 稳定;\n- 代码 review:格式 guard + 硬规则 + IPC/权限/并发/隐私安全审查,问题清零。",
+  "assignees_number": 3,
+  "assignees": [
+    {
+      "id": "672ced01fbbddc0c20089662",
+      "login": "peterhuangyu",
+      "name": "peterhuangyu",
+      "avatar_url": "https://cdn-img.gitcode.com/ba/db/8b0635927a8dbcce3ab73d55d5aeec4264a909cdab3db717775add921c7d5a7c.jpg",
+      "html_url": "https://gitcode.com/peterhuangyu",
+      "assignee": true,
+      "code_owner": false,
+      "accept": false
+    },
+    {
+      "id": "673aed58644b5516b237cd3e",
+      "login": "BruceZong",
+      "name": "BruceZong",
+      "html_url": "https://gitcode.com/BruceZong",
+      "assignee": true,
+      "code_owner": false,
+      "accept": false
+    },
+    {
+      "id": "673b099ca36af776059ca451",
+      "login": "Maplestory91",
+      "name": "zengzhi",
+      "html_url": "https://gitcode.com/Maplestory91",
+      "assignee": true,
+      "code_owner": false,
+      "accept": false
+    }
+  ],
+  "testers": [
+    {
+      "id": "6541ccea82d8f837210e92c3",
+      "login": "openharmony_ci",
+      "name": "openharmony_ci",
+      "avatar_url": "https://cdn-img.gitcode.com/cb/be/5cb10620b4e9195576142df69cd44bb84df15d769c2a04eff5bf7324b903022c.png?time=1723462328974",
+      "html_url": "https://gitcode.com/openharmony_ci",
+      "assignee": false,
+      "code_owner": false,
+      "accept": true
+    }
+  ],
+  "approval_reviewers": [],
+  "labels": [
+    {
+      "id": 87,
+      "color": "#20c22e",
+      "name": "dco检查成功",
+      "repository_id": 4423252,
+      "created_at": "2025-04-22T20:33:58+08:00",
+      "updated_at": "2026-07-08T15:01:39+08:00"
+    },
+    {
+      "id": 91,
+      "color": "#20c22e",
+      "name": "编译成功",
+      "repository_id": 4423252,
+      "created_at": "2025-04-22T20:33:58+08:00",
+      "updated_at": "2026-07-08T19:25:42+08:00"
+    },
+    {
+      "id": 59,
+      "color": "#20c22e",
+      "name": "静态检查成功",
+      "repository_id": 4423252,
+      "created_at": "2025-04-22T20:33:33+08:00",
+      "updated_at": "2026-07-08T19:31:50+08:00"
+    },
+    {
+      "id": 100,
+      "color": "#20c22e",
+      "name": "冒烟测试成功",
+      "repository_id": 4423252,
+      "created_at": "2025-04-22T20:33:58+08:00",
+      "updated_at": "2026-07-08T19:31:51+08:00"
+    },
+    {
+      "id": 131,
+      "color": "#1083d6",
+      "name": "waiting_for_review",
+      "repository_id": 4423252,
+      "created_at": "2025-04-22T20:34:00+08:00",
+      "updated_at": "2026-07-08T19:31:59+08:00"
+    }
+  ],
+  "created_at": "2026-07-08T15:01:00+08:00",
+  "updated_at": "2026-07-08T19:31:59+08:00",
+  "closed_at": "",
+  "merged_at": "",
+  "draft": false,
+  "can_merge_check": false,
+  "prune_branch": true,
+  "mergeable": true,
+  "user": {
+    "id": "672cc4e342621b0ea59b7eab",
+    "login": "mgce1",
+    "name": "mgce",
+    "avatar_url": "https://cdn-img.gitcode.com/de/fd/570d5e3f737419094d1d5585a4dd1e9fe5543fcd44b954bf093c9ab48a00418f.jpg",
+    "html_url": "https://gitcode.com/mgce1"
+  },
+  "head": {
+    "ref": "thread-leak-detector-plugin",
+    "sha": "a6624f1d25522aac18c59c22746cbbc16335026e",
+    "label": "thread-leak-detector-plugin",
+    "repo": {
+      "path": "hiviewdfx_hiview",
+      "name": "hiviewdfx_hiview",
+      "namespace": {
+        "path": "mgce1"
+      },
+      "full_name": "mgce1/hiviewdfx_hiview",
+      "html_url": "https://gitcode.com/mgce1/hiviewdfx_hiview.git"
+    },
+    "user": {
+      "id": "672cc4e342621b0ea59b7eab",
+      "login": "mgce1",
+      "name": "mgce",
+      "avatar_url": "https://cdn-img.gitcode.com/de/fd/570d5e3f737419094d1d5585a4dd1e9fe5543fcd44b954bf093c9ab48a00418f.jpg",
+      "html_url": "https://gitcode.com/mgce1"
+    }
+  },
+  "base": {
+    "ref": "master",
+    "sha": "3d8dbf029c2062217839a0de6d31165e0bd9bdd8",
+    "label": "master",
+    "repo": {
+      "path": "hiviewdfx_hiview",
+      "name": "hiviewdfx_hiview",
+      "namespace": {
+        "path": "openharmony"
+      },
+      "full_name": "openharmony/hiviewdfx_hiview",
+      "html_url": "https://gitcode.com/openharmony/hiviewdfx_hiview.git"
+    }
+  },
+  "mergeable_state": {
+    "merge_request_id": 8848796,
+    "state": false,
+    "status_without_user_auth": false,
+    "conflict_passed": true,
+    "branch_missing_passed": true,
+    "non_ff_passed": true,
+    "mr_state_passed": true,
+    "merged_by_user_passed": false,
+    "work_in_progress_passed": true,
+    "resolve_discussion_passed": true,
+    "ci_state_passed": true,
+    "merge_by_self_passed": false,
+    "can_force_merge": false,
+    "approval_reviewers_required_passed": true,
+    "approval_approvers_required_passed": false,
+    "approval_testers_required_passed": true,
+    "merge_request_switch": {
+      "review_mode": "approval",
+      "merge_method": "merge",
+      "only_allow_merge_if_all_discussions_are_resolved": false,
+      "disable_merge_by_self": true,
+      "only_allow_merge_if_pipeline_succeeds": false,
+      "disable_squash_merge": false,
+      "squash_merge_with_no_merge_commit": false,
+      "approval_required_reviewers_count": 0,
+      "approval_required_reviewers_branch": "*",
+      "add_notes_after_merged": true,
+      "mark_auto_merged_mr_as_closed": true,
+      "can_force_merge": true,
+      "can_reopen": true
+    },
+    "reason": {
+      "merged_by_user_passed": "You are in project members list, but do not have PUSH permission, please check it."
+    },
+    "check_tasks_num": 2,
+    "all_depend_merge_request_merged_passed": true,
+    "approval_approvers_result": 1,
+    "approval_testers_result": 2
+  },
+  "visibility_reason": "public",
+  "close_related_issue": true,
+  "squash_merge": false
+}
