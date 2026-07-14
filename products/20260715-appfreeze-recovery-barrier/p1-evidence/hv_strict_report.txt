@@ -1,0 +1,21 @@
+rule_sources:
+  - ohos-dev-cpp-coding-style/references/rules.md
+  - openharmony-cpp/references/*.md
+
+checked_files:
+plugins/eventlogger/event_logger.cpp
+plugins/eventlogger/include/event_logger.h
+plugins/eventlogger/log_catcher/event_log_task.cpp
+plugins/eventlogger/log_catcher/include/event_log_task.h
+plugins/eventlogger/log_catcher/test/unittest/common/event_logger_catcher_test.cpp
+plugins/faultlogger/service/bdfr_base/base/faultlog_event_pipeline.cpp
+plugins/faultlogger/service/bdfr_base/fault_file/faultlog_database.cpp
+plugins/faultlogger/service/bdfr_base/test/unittest/faultlog_database_test.cpp
+plugins/faultlogger/service/bdfr_base/test/unittest/freeze_json_generator_unittest.cpp
+
+blocking_issues:
+(none)
+
+manual_judgment_not_auto_enforced:
+  - API comment quality, class copy/move intent, inheritance intent, input validation completeness
+  - pointer lifetime, integer overflow proof, function size and parameter-count judgment

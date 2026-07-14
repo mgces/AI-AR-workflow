@@ -1,0 +1,69 @@
+{
+  "run_id": "hiview",
+  "ar": "hiview",
+  "repo": "/home/maplestory/OpenHarmony",
+  "git_dir": "/home/maplestory/OpenHarmony/base/hiviewdfx/hiview",
+  "product": "rk3568",
+  "device_serial": "150100414a54443452063de292c47a00",
+  "build_target": "hiview_package",
+  "test": {
+    "part": "hiview",
+    "ut_suites": [],
+    "mst_suites": []
+  },
+  "base_commit": "993642a38ac8076d7d4b89fbfa7d21a5f03c6263",
+  "current_phase": 3,
+  "consent_tokens": {},
+  "code_fingerprint": "c76c0878925912b9a5c7f3e879bf4ea27e53185442c6dbc9ceb7d7e627e35524",
+  "phases": [
+    {
+      "id": 0,
+      "name": "bootstrap",
+      "status": "passed",
+      "manifest_ref": "15330b5700396563b6f8856900ed06b228bc57430855357fb2d2aec6e26b9b98",
+      "closed_at_utc": "2026-07-14T15:00:16Z"
+    },
+    {
+      "id": 1,
+      "name": "develop",
+      "status": "passed",
+      "manifest_ref": "8256d5bdff67743b9e99089e5216958f12a57d13f78163f432d812d177907f89",
+      "closed_at_utc": "2026-07-14T15:17:05Z"
+    },
+    {
+      "id": 2,
+      "name": "build-verify",
+      "status": "passed",
+      "manifest_ref": "e5fc1d7261716a63be43aa939043d06737cbf1a21e9f07c1d541f8d1a8483e3a",
+      "closed_at_utc": "2026-07-14T16:45:26Z"
+    },
+    {
+      "id": 3,
+      "name": "test-author",
+      "status": "pending",
+      "manifest_ref": null,
+      "closed_at_utc": null
+    },
+    {
+      "id": 4,
+      "name": "device-functional",
+      "status": "pending",
+      "manifest_ref": null,
+      "closed_at_utc": null
+    },
+    {
+      "id": 5,
+      "name": "quality-verify",
+      "status": "pending",
+      "manifest_ref": null,
+      "closed_at_utc": null
+    },
+    {
+      "id": 6,
+      "name": "upload-review",
+      "status": "pending",
+      "manifest_ref": null,
+      "closed_at_utc": null
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+-rw-r--r-- 1 maplestory maplestory 2886936 Jul 15 00:22 /home/maplestory/OpenHarmony/out/rk3568/obj/foundation/ability/ability_runtime/services/appdfr/src/app_manager/appfreeze_manager.o
+dc9a464a70656b310ec24153d12897ca2de51b14732135b1926fea0a95973d48  /home/maplestory/OpenHarmony/out/rk3568/obj/foundation/ability/ability_runtime/services/appdfr/src/app_manager/appfreeze_manager.o
