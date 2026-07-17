@@ -10,7 +10,7 @@
 
 **⚠️ 历史命名格式标注**：
 - 测试类名：`BBoxDetectorUnitTest`（符合推荐规则）
-- 用例命名：`BBoxDetectorUnitTest001`（**历史格式**，不推荐新生成模仿）
+- 用例命名：`BBoxDetectorUnitTest001`（**历史格式**，仅作存量参考，新生成请勿沿用）
 - 推荐：应使用 `BBoxDetectorPlugin_001` 或 `CanProcessEvent_001`
 
 ### 测试源码
@@ -100,7 +100,7 @@ ohos_unittest("BBoxDetectorUnitTest") {
 **来源路径**：`base/hiviewdfx/hiview/framework/native/unified_collection/collector/impl/trace/test/`
 
 **⚠️ 历史命名格式标注**：
-- 用例命名：`TraceStrategyTest001`（**历史格式**，不推荐新生成模仿）
+- 用例命名：`TraceStrategyTest001`（**历史格式**，仅作存量参考，新生成请勿沿用）
 - 推荐：应使用 `TraceFlowControlStrategy_001` 或 `HandleTrace_001`
 
 ### 测试源码
@@ -173,7 +173,7 @@ ohos_unittest("TraceStrategyTest") {
 **来源路径**：`base/hiviewdfx/hiview/framework/native/unified_collection/database/test/`
 
 **⚠️ 历史命名格式标注**：
-- 用例命名：`TestSysEventDaoInsert_001`（**历史格式**，不推荐新生成模仿）
+- 用例命名：`TestSysEventDaoInsert_001`（**历史格式**，仅作存量参考，新生成请勿沿用）
 - 推荐：应使用 `Insert_001` 或 `SaveEvent_001`
 
 ### 测试源码

@@ -119,7 +119,7 @@ HWTEST_F(CalculatorTest, Add_002, TestSize.Level2)  // 边界情况
 HWTEST_F(CalculatorTest, Add_003, TestSize.Level2)  // 异常情况
 ```
 
-### 兼容历史存量风格（不推荐新生成）
+### 兼容历史存量风格（新生成请勿沿用）
 
 历史存量代码可能使用以下命名格式，**生成新测试时不要模仿**：
 

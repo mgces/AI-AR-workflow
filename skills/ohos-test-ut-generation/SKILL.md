@@ -303,7 +303,7 @@ python scripts/analyze-existing-tests.py <test_directory> --output style_report.
 **命名要点**（详见 naming-convention.md）：
 
 - 推荐：`[FunctionName]_[001]`（如 `GetSectionInfo_001`）
-- 历史：`TestSuiteFunction_001`（如 `BBoxDetectorUnitTest001`，不推荐新生成模仿）
+- 历史：`TestSuiteFunction_001`（如 `BBoxDetectorUnitTest001`，仅作存量参考，新生成请勿沿用）
 
 ### 断言使用规则
 
