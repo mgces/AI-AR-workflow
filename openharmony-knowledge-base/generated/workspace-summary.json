@@ -1,0 +1,1523 @@
+{
+  "generatedAt": "2026-07-13T08:49:04.867Z",
+  "workspaceRoot": "/home/mgces/openharmony/code",
+  "projects": {
+    "total": 512,
+    "dirty": 12,
+    "detached": 511,
+    "nonDetachedBranches": [
+      {
+        "path": "base/hiviewdfx/hiview",
+        "branch": "thread-leak-detector-plugin",
+        "head": "a6624f1d25522aac18c59c22746cbbc16335026e"
+      }
+    ],
+    "byTopLevel": [
+      {
+        "name": "third_party",
+        "count": 183
+      },
+      {
+        "name": "foundation",
+        "count": 117
+      },
+      {
+        "name": "base",
+        "count": 109
+      },
+      {
+        "name": "applications",
+        "count": 30
+      },
+      {
+        "name": "developtools",
+        "count": 11
+      },
+      {
+        "name": "test",
+        "count": 11
+      },
+      {
+        "name": "kernel",
+        "count": 9
+      },
+      {
+        "name": "arkcompiler",
+        "count": 7
+      },
+      {
+        "name": "commonlibrary",
+        "count": 7
+      },
+      {
+        "name": "device",
+        "count": 7
+      },
+      {
+        "name": "drivers",
+        "count": 5
+      },
+      {
+        "name": "vendor",
+        "count": 4
+      },
+      {
+        "name": "domains",
+        "count": 3
+      },
+      {
+        "name": "interface",
+        "count": 3
+      },
+      {
+        "name": "build",
+        "count": 1
+      },
+      {
+        "name": "docs",
+        "count": 1
+      },
+      {
+        "name": "docs_cangjie",
+        "count": 1
+      },
+      {
+        "name": "ide",
+        "count": 1
+      },
+      {
+        "name": "napi_generator",
+        "count": 1
+      },
+      {
+        "name": "productdefine",
+        "count": 1
+      }
+    ]
+  },
+  "source": {
+    "visibleFiles": 1208065,
+    "byTopLevel": [
+      {
+        "name": "third_party",
+        "count": 337307
+      },
+      {
+        "name": "test",
+        "count": 252311
+      },
+      {
+        "name": "kernel",
+        "count": 162112
+      },
+      {
+        "name": "foundation",
+        "count": 142215
+      },
+      {
+        "name": "arkcompiler",
+        "count": 91868
+      },
+      {
+        "name": "applications",
+        "count": 80030
+      },
+      {
+        "name": "base",
+        "count": 49479
+      },
+      {
+        "name": "docs",
+        "count": 31604
+      },
+      {
+        "name": "device",
+        "count": 22423
+      },
+      {
+        "name": "developtools",
+        "count": 12488
+      },
+      {
+        "name": "drivers",
+        "count": 8379
+      },
+      {
+        "name": "interface",
+        "count": 6468
+      },
+      {
+        "name": "vendor",
+        "count": 2791
+      },
+      {
+        "name": "docs_cangjie",
+        "count": 2752
+      },
+      {
+        "name": "napi_generator",
+        "count": 2243
+      },
+      {
+        "name": "commonlibrary",
+        "count": 1257
+      },
+      {
+        "name": "build",
+        "count": 914
+      },
+      {
+        "name": "specs",
+        "count": 767
+      },
+      {
+        "name": "domains",
+        "count": 334
+      },
+      {
+        "name": "ide",
+        "count": 293
+      },
+      {
+        "name": "productdefine",
+        "count": 18
+      },
+      {
+        "name": "skills",
+        "count": 12
+      }
+    ],
+    "topExtensions": [
+      {
+        "name": ".h",
+        "count": 165677
+      },
+      {
+        "name": ".ets",
+        "count": 157923
+      },
+      {
+        "name": ".cpp",
+        "count": 125750
+      },
+      {
+        "name": ".c",
+        "count": 102855
+      },
+      {
+        "name": ".json",
+        "count": 73014
+      },
+      {
+        "name": ".ts",
+        "count": 54073
+      },
+      {
+        "name": ".png",
+        "count": 44500
+      },
+      {
+        "name": ".json5",
+        "count": 43713
+      },
+      {
+        "name": ".txt",
+        "count": 39913
+      },
+      {
+        "name": "[no_ext]",
+        "count": 37449
+      },
+      {
+        "name": ".rs",
+        "count": 32097
+      },
+      {
+        "name": ".md",
+        "count": 28985
+      },
+      {
+        "name": ".js",
+        "count": 26930
+      },
+      {
+        "name": ".gn",
+        "count": 25895
+      },
+      {
+        "name": ".yaml",
+        "count": 14404
+      },
+      {
+        "name": ".cc",
+        "count": 13761
+      },
+      {
+        "name": ".py",
+        "count": 12091
+      },
+      {
+        "name": ".types",
+        "count": 11726
+      },
+      {
+        "name": ".symbols",
+        "count": 11725
+      },
+      {
+        "name": ".stderr",
+        "count": 10981
+      },
+      {
+        "name": ".xml",
+        "count": 10652
+      },
+      {
+        "name": ".ttf",
+        "count": 8194
+      },
+      {
+        "name": ".rst",
+        "count": 7847
+      },
+      {
+        "name": ".cj",
+        "count": 7361
+      },
+      {
+        "name": ".svg",
+        "count": 6390
+      },
+      {
+        "name": ".html",
+        "count": 6353
+      },
+      {
+        "name": ".gif",
+        "count": 5086
+      },
+      {
+        "name": ".dts",
+        "count": 4812
+      },
+      {
+        "name": ".sh",
+        "count": 4560
+      },
+      {
+        "name": ".otf",
+        "count": 4381
+      },
+      {
+        "name": ".s",
+        "count": 3952
+      },
+      {
+        "name": ".res",
+        "count": 3899
+      },
+      {
+        "name": ".p7b",
+        "count": 3779
+      },
+      {
+        "name": ".java",
+        "count": 3686
+      },
+      {
+        "name": ".dtsi",
+        "count": 3619
+      },
+      {
+        "name": ".hpp",
+        "count": 3527
+      },
+      {
+        "name": ".frag",
+        "count": 3318
+      },
+      {
+        "name": ".jpg",
+        "count": 3096
+      },
+      {
+        "name": ".out",
+        "count": 2692
+      },
+      {
+        "name": ".css",
+        "count": 1864
+      },
+      {
+        "name": ".test",
+        "count": 1844
+      },
+      {
+        "name": ".hml",
+        "count": 1740
+      },
+      {
+        "name": ".pem",
+        "count": 1645
+      },
+      {
+        "name": ".te",
+        "count": 1586
+      },
+      {
+        "name": ".amber",
+        "count": 1535
+      },
+      {
+        "name": ".idl",
+        "count": 1491
+      },
+      {
+        "name": ".toml",
+        "count": 1409
+      },
+      {
+        "name": ".base",
+        "count": 1400
+      },
+      {
+        "name": ".comp",
+        "count": 1328
+      },
+      {
+        "name": ".in",
+        "count": 1305
+      },
+      {
+        "name": ".hcs",
+        "count": 1245
+      },
+      {
+        "name": ".vert",
+        "count": 1220
+      },
+      {
+        "name": ".map",
+        "count": 1176
+      },
+      {
+        "name": ".der",
+        "count": 1116
+      },
+      {
+        "name": ".gni",
+        "count": 1103
+      },
+      {
+        "name": ".mp4",
+        "count": 1090
+      },
+      {
+        "name": ".pa",
+        "count": 1072
+      },
+      {
+        "name": ".cfg",
+        "count": 1030
+      },
+      {
+        "name": ".expected",
+        "count": 955
+      },
+      {
+        "name": ".adoc",
+        "count": 949
+      },
+      {
+        "name": ".glsl",
+        "count": 884
+      },
+      {
+        "name": ".proto",
+        "count": 867
+      },
+      {
+        "name": ".jpeg",
+        "count": 840
+      },
+      {
+        "name": ".pod",
+        "count": 783
+      },
+      {
+        "name": ".cmake",
+        "count": 778
+      },
+      {
+        "name": ".fixed",
+        "count": 767
+      },
+      {
+        "name": ".bin",
+        "count": 738
+      },
+      {
+        "name": ".so",
+        "count": 706
+      },
+      {
+        "name": ".sksl",
+        "count": 687
+      },
+      {
+        "name": ".webp",
+        "count": 678
+      },
+      {
+        "name": ".data",
+        "count": 663
+      },
+      {
+        "name": ".asm",
+        "count": 645
+      },
+      {
+        "name": ".crt",
+        "count": 639
+      },
+      {
+        "name": ".dat",
+        "count": 618
+      },
+      {
+        "name": ".bazel",
+        "count": 584
+      },
+      {
+        "name": ".tmpl",
+        "count": 551
+      },
+      {
+        "name": ".3",
+        "count": 543
+      },
+      {
+        "name": ".build",
+        "count": 516
+      },
+      {
+        "name": ".pl",
+        "count": 491
+      },
+      {
+        "name": ".diff",
+        "count": 478
+      },
+      {
+        "name": ".rb",
+        "count": 473
+      },
+      {
+        "name": ".cs",
+        "count": 471
+      },
+      {
+        "name": ".php",
+        "count": 435
+      },
+      {
+        "name": ".csv",
+        "count": 433
+      },
+      {
+        "name": ".rast",
+        "count": 428
+      },
+      {
+        "name": ".t",
+        "count": 421
+      },
+      {
+        "name": ".cu",
+        "count": 417
+      },
+      {
+        "name": ".wgsl",
+        "count": 408
+      },
+      {
+        "name": ".bat",
+        "count": 405
+      },
+      {
+        "name": ".cuh",
+        "count": 404
+      },
+      {
+        "name": ".patch",
+        "count": 404
+      },
+      {
+        "name": ".bz2",
+        "count": 392
+      },
+      {
+        "name": ".conf",
+        "count": 384
+      },
+      {
+        "name": ".tflite",
+        "count": 380
+      },
+      {
+        "name": ".tex",
+        "count": 376
+      },
+      {
+        "name": ".taihe",
+        "count": 369
+      },
+      {
+        "name": ".a",
+        "count": 362
+      },
+      {
+        "name": ".skrp",
+        "count": 357
+      },
+      {
+        "name": ".jsonc",
+        "count": 350
+      },
+      {
+        "name": ".metal",
+        "count": 345
+      }
+    ]
+  },
+  "components": {
+    "bundleFiles": 552,
+    "total": 552,
+    "subsystemCount": 65,
+    "dependencyEdges": 6131,
+    "innerKitEntries": 1982,
+    "subComponentTargets": 1118,
+    "testEntries": 980,
+    "bySubsystem": [
+      {
+        "name": "thirdparty",
+        "count": 179
+      },
+      {
+        "name": "hdf",
+        "count": 81
+      },
+      {
+        "name": "communication",
+        "count": 18
+      },
+      {
+        "name": "multimedia",
+        "count": 18
+      },
+      {
+        "name": "security",
+        "count": 17
+      },
+      {
+        "name": "hiviewdfx",
+        "count": 16
+      },
+      {
+        "name": "applications",
+        "count": 14
+      },
+      {
+        "name": "developtools",
+        "count": 10
+      },
+      {
+        "name": "resourceschedule",
+        "count": 10
+      },
+      {
+        "name": "distributeddatamgr",
+        "count": 9
+      },
+      {
+        "name": "telephony",
+        "count": 9
+      },
+      {
+        "name": "ability",
+        "count": 8
+      },
+      {
+        "name": "global",
+        "count": 8
+      },
+      {
+        "name": "powermgr",
+        "count": 8
+      },
+      {
+        "name": "arkcompiler",
+        "count": 7
+      },
+      {
+        "name": "arkui",
+        "count": 7
+      },
+      {
+        "name": "bundlemanager",
+        "count": 7
+      },
+      {
+        "name": "commonlibrary",
+        "count": 7
+      },
+      {
+        "name": "distributedhardware",
+        "count": 7
+      },
+      {
+        "name": "filemanagement",
+        "count": 7
+      },
+      {
+        "name": "graphic",
+        "count": 7
+      },
+      {
+        "name": "sensors",
+        "count": 6
+      },
+      {
+        "name": "xts",
+        "count": 6
+      },
+      {
+        "name": "startup",
+        "count": 5
+      },
+      {
+        "name": "systemabilitymgr",
+        "count": 5
+      },
+      {
+        "name": "updater",
+        "count": 5
+      },
+      {
+        "name": "useriam",
+        "count": 5
+      },
+      {
+        "name": "kernel",
+        "count": 4
+      },
+      {
+        "name": "notification",
+        "count": 4
+      },
+      {
+        "name": "tee",
+        "count": 4
+      },
+      {
+        "name": "testfwk",
+        "count": 4
+      },
+      {
+        "name": "ai",
+        "count": 3
+      },
+      {
+        "name": "vendor",
+        "count": 3
+      },
+      {
+        "name": "window",
+        "count": 3
+      },
+      {
+        "name": "accesscontrol",
+        "count": 2
+      },
+      {
+        "name": "advertising",
+        "count": 2
+      },
+      {
+        "name": "castplus",
+        "count": 2
+      },
+      {
+        "name": "customization",
+        "count": 2
+      },
+      {
+        "name": "location",
+        "count": 2
+      },
+      {
+        "name": "request",
+        "count": 2
+      },
+      {
+        "name": "sdk",
+        "count": 2
+      },
+      {
+        "name": "theme",
+        "count": 2
+      },
+      {
+        "name": "time",
+        "count": 2
+      },
+      {
+        "name": "web",
+        "count": 2
+      },
+      {
+        "name": "account",
+        "count": 1
+      },
+      {
+        "name": "barrierfree",
+        "count": 1
+      },
+      {
+        "name": "build",
+        "count": 1
+      },
+      {
+        "name": "device_arm64_virt",
+        "count": 1
+      },
+      {
+        "name": "device_wukong100",
+        "count": 1
+      },
+      {
+        "name": "device_x86_64_virt",
+        "count": 1
+      },
+      {
+        "name": "deviceprofile",
+        "count": 1
+      },
+      {
+        "name": "game",
+        "count": 1
+      },
+      {
+        "name": "ide",
+        "count": 1
+      },
+      {
+        "name": "inputmethod",
+        "count": 1
+      },
+      {
+        "name": "iothardware",
+        "count": 1
+      },
+      {
+        "name": "msdp",
+        "count": 1
+      },
+      {
+        "name": "multimodalinput",
+        "count": 1
+      },
+      {
+        "name": "officeservice",
+        "count": 1
+      },
+      {
+        "name": "ostest",
+        "count": 1
+      },
+      {
+        "name": "print",
+        "count": 1
+      },
+      {
+        "name": "product_arm64_virt",
+        "count": 1
+      },
+      {
+        "name": "product_wukong100",
+        "count": 1
+      },
+      {
+        "name": "product_x86_64_virt",
+        "count": 1
+      },
+      {
+        "name": "soc_p7885",
+        "count": 1
+      },
+      {
+        "name": "usb",
+        "count": 1
+      }
+    ],
+    "mostReferencedDependencies": [
+      {
+        "name": "hilog",
+        "count": 285
+      },
+      {
+        "name": "c_utils",
+        "count": 279
+      },
+      {
+        "name": "ipc",
+        "count": 258
+      },
+      {
+        "name": "init",
+        "count": 178
+      },
+      {
+        "name": "samgr",
+        "count": 166
+      },
+      {
+        "name": "hisysevent",
+        "count": 146
+      },
+      {
+        "name": "access_token",
+        "count": 143
+      },
+      {
+        "name": "hitrace",
+        "count": 138
+      },
+      {
+        "name": "bounds_checking_function",
+        "count": 137
+      },
+      {
+        "name": "napi",
+        "count": 133
+      },
+      {
+        "name": "safwk",
+        "count": 131
+      },
+      {
+        "name": "ability_base",
+        "count": 129
+      },
+      {
+        "name": "ability_runtime",
+        "count": 126
+      },
+      {
+        "name": "hdf_core",
+        "count": 122
+      },
+      {
+        "name": "cJSON",
+        "count": 116
+      },
+      {
+        "name": "eventhandler",
+        "count": 112
+      },
+      {
+        "name": "runtime_core",
+        "count": 109
+      },
+      {
+        "name": "bundle_framework",
+        "count": 107
+      },
+      {
+        "name": "common_event_service",
+        "count": 104
+      },
+      {
+        "name": "os_account",
+        "count": 92
+      },
+      {
+        "name": "openssl",
+        "count": 85
+      },
+      {
+        "name": "ffrt",
+        "count": 81
+      },
+      {
+        "name": "hicollie",
+        "count": 76
+      },
+      {
+        "name": "window_manager",
+        "count": 65
+      },
+      {
+        "name": "data_share",
+        "count": 63
+      },
+      {
+        "name": "zlib",
+        "count": 63
+      },
+      {
+        "name": "json",
+        "count": 62
+      },
+      {
+        "name": "config_policy",
+        "count": 56
+      },
+      {
+        "name": "libuv",
+        "count": 56
+      },
+      {
+        "name": "selinux_adapter",
+        "count": 55
+      },
+      {
+        "name": "image_framework",
+        "count": 54
+      },
+      {
+        "name": "relational_store",
+        "count": 50
+      },
+      {
+        "name": "ets_frontend",
+        "count": 49
+      },
+      {
+        "name": "graphic_2d",
+        "count": 48
+      },
+      {
+        "name": "graphic_surface",
+        "count": 45
+      },
+      {
+        "name": "libxml2",
+        "count": 43
+      },
+      {
+        "name": "ace_engine",
+        "count": 41
+      },
+      {
+        "name": "icu",
+        "count": 41
+      },
+      {
+        "name": "node",
+        "count": 41
+      },
+      {
+        "name": "power_manager",
+        "count": 41
+      },
+      {
+        "name": "resource_management",
+        "count": 39
+      },
+      {
+        "name": "device_manager",
+        "count": 36
+      },
+      {
+        "name": "netmanager_base",
+        "count": 36
+      },
+      {
+        "name": "resource_schedule_service",
+        "count": 36
+      },
+      {
+        "name": "api_metrics",
+        "count": 34
+      },
+      {
+        "name": "input",
+        "count": 34
+      },
+      {
+        "name": "kv_store",
+        "count": 33
+      },
+      {
+        "name": "memmgr",
+        "count": 32
+      },
+      {
+        "name": "i18n",
+        "count": 31
+      },
+      {
+        "name": "jsoncpp",
+        "count": 31
+      },
+      {
+        "name": "huks",
+        "count": 29
+      },
+      {
+        "name": "time_service",
+        "count": 29
+      },
+      {
+        "name": "dsoftbus",
+        "count": 28
+      },
+      {
+        "name": "cangjie_ark_interop",
+        "count": 27
+      },
+      {
+        "name": "hiappevent",
+        "count": 26
+      },
+      {
+        "name": "hilog_lite",
+        "count": 26
+      },
+      {
+        "name": "faultloggerd",
+        "count": 25
+      },
+      {
+        "name": "hiview",
+        "count": 25
+      },
+      {
+        "name": "preferences",
+        "count": 25
+      },
+      {
+        "name": "qos_manager",
+        "count": 25
+      },
+      {
+        "name": "hiviewdfx_cangjie_wrapper",
+        "count": 24
+      },
+      {
+        "name": "distributed_notification_service",
+        "count": 23
+      },
+      {
+        "name": "audio_framework",
+        "count": 22
+      },
+      {
+        "name": "core_service",
+        "count": 22
+      },
+      {
+        "name": "drivers_interface_display",
+        "count": 21
+      },
+      {
+        "name": "screenlock_mgr",
+        "count": 21
+      },
+      {
+        "name": "bluetooth",
+        "count": 19
+      },
+      {
+        "name": "media_foundation",
+        "count": 19
+      },
+      {
+        "name": "app_file_service",
+        "count": 18
+      },
+      {
+        "name": "storage_service",
+        "count": 18
+      },
+      {
+        "name": "libpng",
+        "count": 17
+      },
+      {
+        "name": "rust_cxx",
+        "count": 17
+      },
+      {
+        "name": "samgr_lite",
+        "count": 17
+      },
+      {
+        "name": "wifi",
+        "count": 17
+      },
+      {
+        "name": "ets_runtime",
+        "count": 16
+      },
+      {
+        "name": "player_framework",
+        "count": 16
+      },
+      {
+        "name": "taihe_ffi_gen",
+        "count": 16
+      },
+      {
+        "name": "utils_lite",
+        "count": 16
+      },
+      {
+        "name": "file_api",
+        "count": 15
+      },
+      {
+        "name": "sensor",
+        "count": 15
+      },
+      {
+        "name": "background_task_mgr",
+        "count": 14
+      },
+      {
+        "name": "battery_manager",
+        "count": 14
+      },
+      {
+        "name": "call_manager",
+        "count": 14
+      },
+      {
+        "name": "drivers_interface_camera",
+        "count": 14
+      },
+      {
+        "name": "selinux",
+        "count": 14
+      },
+      {
+        "name": "cellular_data",
+        "count": 13
+      },
+      {
+        "name": "curl",
+        "count": 13
+      },
+      {
+        "name": "protobuf",
+        "count": 13
+      },
+      {
+        "name": "security_guard",
+        "count": 13
+      },
+      {
+        "name": "udmf",
+        "count": 13
+      },
+      {
+        "name": "accessibility",
+        "count": 12
+      },
+      {
+        "name": "egl",
+        "count": 12
+      },
+      {
+        "name": "opengles",
+        "count": 12
+      },
+      {
+        "name": "skia",
+        "count": 12
+      },
+      {
+        "name": "camera_framework",
+        "count": 11
+      },
+      {
+        "name": "libjpeg-turbo",
+        "count": 11
+      },
+      {
+        "name": "user_auth_framework",
+        "count": 11
+      },
+      {
+        "name": "av_codec",
+        "count": 10
+      },
+      {
+        "name": "dfs_service",
+        "count": 10
+      },
+      {
+        "name": "ffmpeg",
+        "count": 10
+      }
+    ]
+  },
+  "rk3568": {
+    "buildConfig": {
+      "is_host_product": false,
+      "product_path": "//vendor/hihope/rk3568",
+      "product_config_path": "/home/mgces/openharmony/code/vendor/hihope/rk3568",
+      "os_level": "standard",
+      "device_name": "rk3568",
+      "product_company": "hihope",
+      "compile_mode": "cross",
+      "product_name": "rk3568",
+      "enable_ramdisk": true,
+      "enable_absystem": false,
+      "build_selinux": true,
+      "build_seccomp": true,
+      "device_company": "rockchip",
+      "target_os": "ohos",
+      "target_cpu": "arm",
+      "device_build_path": "device/board/hihope/rk3568",
+      "product_toolchain_label": "//build/toolchain/ohos:ohos_clang_arm"
+    },
+    "effectiveParts": 387,
+    "effectiveSubsystems": 58,
+    "partsBySubsystem": [
+      {
+        "name": "thirdparty",
+        "count": 102
+      },
+      {
+        "name": "hdf",
+        "count": 71
+      },
+      {
+        "name": "security",
+        "count": 15
+      },
+      {
+        "name": "communication",
+        "count": 13
+      },
+      {
+        "name": "multimedia",
+        "count": 13
+      },
+      {
+        "name": "hiviewdfx",
+        "count": 10
+      },
+      {
+        "name": "resourceschedule",
+        "count": 10
+      },
+      {
+        "name": "distributeddatamgr",
+        "count": 8
+      },
+      {
+        "name": "telephony",
+        "count": 8
+      },
+      {
+        "name": "applications",
+        "count": 7
+      },
+      {
+        "name": "developtools",
+        "count": 7
+      },
+      {
+        "name": "distributedhardware",
+        "count": 7
+      },
+      {
+        "name": "graphic",
+        "count": 7
+      },
+      {
+        "name": "location",
+        "count": 7
+      },
+      {
+        "name": "arkcompiler",
+        "count": 6
+      },
+      {
+        "name": "commonlibrary",
+        "count": 6
+      },
+      {
+        "name": "filemanagement",
+        "count": 6
+      },
+      {
+        "name": "ability",
+        "count": 5
+      },
+      {
+        "name": "arkui",
+        "count": 5
+      },
+      {
+        "name": "bundlemanager",
+        "count": 5
+      },
+      {
+        "name": "global",
+        "count": 5
+      },
+      {
+        "name": "powermgr",
+        "count": 5
+      },
+      {
+        "name": "useriam",
+        "count": 5
+      },
+      {
+        "name": "xts",
+        "count": 4
+      },
+      {
+        "name": "ai",
+        "count": 3
+      },
+      {
+        "name": "notification",
+        "count": 3
+      },
+      {
+        "name": "sensors",
+        "count": 3
+      },
+      {
+        "name": "startup",
+        "count": 3
+      },
+      {
+        "name": "systemabilitymgr",
+        "count": 3
+      },
+      {
+        "name": "updater",
+        "count": 3
+      },
+      {
+        "name": "advertising",
+        "count": 2
+      },
+      {
+        "name": "castplus",
+        "count": 2
+      },
+      {
+        "name": "customization",
+        "count": 2
+      },
+      {
+        "name": "theme",
+        "count": 2
+      },
+      {
+        "name": "accesscontrol",
+        "count": 1
+      },
+      {
+        "name": "account",
+        "count": 1
+      },
+      {
+        "name": "barrierfree",
+        "count": 1
+      },
+      {
+        "name": "build",
+        "count": 1
+      },
+      {
+        "name": "contacts_data",
+        "count": 1
+      },
+      {
+        "name": "device_rk3568",
+        "count": 1
+      },
+      {
+        "name": "deviceprofile",
+        "count": 1
+      },
+      {
+        "name": "game",
+        "count": 1
+      },
+      {
+        "name": "inputmethod",
+        "count": 1
+      },
+      {
+        "name": "msdp",
+        "count": 1
+      },
+      {
+        "name": "multimodalinput",
+        "count": 1
+      },
+      {
+        "name": "officeservice",
+        "count": 1
+      },
+      {
+        "name": "ostest",
+        "count": 1
+      },
+      {
+        "name": "print",
+        "count": 1
+      },
+      {
+        "name": "product_rk3568",
+        "count": 1
+      },
+      {
+        "name": "request",
+        "count": 1
+      },
+      {
+        "name": "rockchip_products",
+        "count": 1
+      },
+      {
+        "name": "sdk",
+        "count": 1
+      },
+      {
+        "name": "tee",
+        "count": 1
+      },
+      {
+        "name": "testfwk",
+        "count": 1
+      },
+      {
+        "name": "time",
+        "count": 1
+      },
+      {
+        "name": "usb",
+        "count": 1
+      },
+      {
+        "name": "web",
+        "count": 1
+      },
+      {
+        "name": "window",
+        "count": 1
+      }
+    ]
+  }
+}

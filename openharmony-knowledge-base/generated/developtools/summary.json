@@ -1,0 +1,25 @@
+{
+  "generatedAt": "2026-07-13T09:59:19.999744+00:00",
+  "workspaceRoot": "/home/mgces/openharmony/code",
+  "sourcePath": "developtools",
+  "sourceDomain": "developtools",
+  "repositories": 11,
+  "components": 10,
+  "subsystems": 1,
+  "buildFiles": 374,
+  "staticTargets": 1205,
+  "mappedTargets": 1205,
+  "unmappedTargets": 0,
+  "processes": 6,
+  "initServiceEntries": 7,
+  "systemAbilityEntries": 1,
+  "runtimeEntities": 8,
+  "productSelectedComponents": 7,
+  "sourceFingerprint": "7e6f6826c009f9b8207cfbbfc189bd92b25e292b7eef1d337057f80895a95027",
+  "limitations": [
+    "Only literal target declarations on a single BUILD.gn line are indexed.",
+    "Invalid or generated runtime JSON is skipped.",
+    "Processes without init/SA evidence require manual runtime verification."
+  ],
+  "functionalDocuments": 30
+}

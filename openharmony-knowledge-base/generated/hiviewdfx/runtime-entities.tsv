@@ -1,0 +1,13 @@
+subsystem	component	process_or_app	entity_type	executable_or_package	sa_id	init_or_profile	uid	gid	selinux_domain	source_evidence	mapping_confidence
+hiviewdfx	faultloggerd	faultloggerd	daemon	faultloggerd		base/hiviewdfx/faultloggerd/services/config/faultloggerd.cfg	faultloggerd	system,log,faultloggerd,readproc	u:r:faultloggerd:s0	init cfg	confirmed
+hiviewdfx	faultloggerd	processdump	helper-executable	processdump		base/hiviewdfx/faultloggerd/tools/process_dump/BUILD.gn				production executable used by crash/dump flow	confirmed
+hiviewdfx	hilog	hilogd	daemon	hilogd		base/hiviewdfx/hilog/services/hilogd/etc/hilogd.cfg	logd	log,system,readproc	u:r:hilogd:s0	init cfg	confirmed
+hiviewdfx	hilog	hilog	command	hilog		base/hiviewdfx/hilog/services/hilogtool/BUILD.gn	shell			production executable	confirmed
+hiviewdfx	hisysevent	hisysevent	command	hisysevent		base/hiviewdfx/hisysevent/frameworks/native/BUILD.gn	shell			production executable	confirmed
+hiviewdfx	hitrace	hitrace	command	hitrace		base/hiviewdfx/hitrace/cmd/BUILD.gn	shell			production executable and boot-trace config	confirmed
+hiviewdfx	hidumper	hidumper	command	hidumper		base/hiviewdfx/hidumper/frameworks/native/BUILD.gn	shell			production executable	confirmed
+hiviewdfx	hidumper	hidumper_service	system-ability	sa_main + hidumper_service profile	1212	base/hiviewdfx/hidumper/sa_profile/1212.json; base/hiviewdfx/hidumper/services/native/etc/hidumper_service.cfg	1212	shell,readproc,1212,access_token,system	u:r:hidumper_service:s0	SA profile and init cfg	confirmed
+hiviewdfx	hiview	hiview	daemon	hiview		base/hiviewdfx/hiview/service/config/hiview.cfg	hiview	system,log,hiview,readproc,file_manager,radio,hmi_host,shader_cache,shell	u:r:hiview:s0	init cfg	confirmed
+hiviewdfx	hiview	xperf_service	system-ability	sa_main + xperf_service profile	8600	base/hiviewdfx/hiview/plugins/performance/xperf_service/sa_profile/8600.json; base/hiviewdfx/hiview/plugins/performance/xperf_service/sa_profile/xperf_service.cfg	hiview	hiview,shell		SA profile and init cfg	confirmed
+hiviewdfx	hiview	usage_report	helper-executable	usage_report		base/hiviewdfx/hiview/plugins/usage_event_report/service/BUILD.gn				production executable; start relationship requires product integration review	inferred
+hiviewdfx	hiview	analysis_faultlog	command	analysis_faultlog		base/hiviewdfx/hiview/utility/analysis_faultlog/BUILD.gn	shell			production diagnostic executable	confirmed

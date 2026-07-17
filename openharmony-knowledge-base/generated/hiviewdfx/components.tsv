@@ -1,0 +1,17 @@
+subsystem	component	repository_path	metadata_path	product_selected	adapted_system_types	description	syscap_count	feature_count	component_dependency_count	third_party_dependency_count	inner_kit_count	runtime_entity_count	static_target_count	production_target_count	test_target_count
+hiviewdfx	api_metrics	base/hiviewdfx/hiviewdfx_api_metrics	base/hiviewdfx/hiviewdfx_api_metrics/bundle.json	yes	standard	Open-source histogram api metrics module.	0	0	5	0	1	0	2	1	0
+hiviewdfx	blackbox_lite	base/hiviewdfx/blackbox_lite	base/hiviewdfx/blackbox_lite/bundle.json	no	mini	blackbox_lite provides the software blackbox capability.	0	0	2	0	0	0	1	1	0
+hiviewdfx	faultloggerd	base/hiviewdfx/faultloggerd	base/hiviewdfx/faultloggerd/bundle.json	yes	small,standard	Collecting c/c++ runtime crash log	0	2	17	0	15	2	267	79	132
+hiviewdfx	hiappevent	base/hiviewdfx/hiappevent	base/hiviewdfx/hiappevent/bundle.json	yes	standard	Event logging provided for application	1	0	22	0	3	0	42	14	16
+hiviewdfx	hichecker	base/hiviewdfx/hichecker	base/hiviewdfx/hichecker/bundle.json	yes	standard	HiChecker mode for application	1	1	15	0	2	0	25	10	6
+hiviewdfx	hicollie	base/hiviewdfx/hicollie	base/hiviewdfx/hicollie/bundle.json	yes	standard	HiCollie provides the software watchdog capability.	1	5	15	0	3	0	37	8	20
+hiviewdfx	hidumper	base/hiviewdfx/hidumper	base/hiviewdfx/hidumper/bundle.json	yes	standard	Dump system information for development and test	0	1	24	0	4	2	87	24	48
+hiviewdfx	hidumper_lite	base/hiviewdfx/hidumper_lite	base/hiviewdfx/hidumper_lite/bundle.json	no	mini	System information dump service for liteos-a kernel and liteos-m kernel.	0	0	2	1	0	0	3	2	0
+hiviewdfx	hievent_lite	base/hiviewdfx/hievent_lite	base/hiviewdfx/hievent_lite/bundle.json	no	mini	event log for liteos-m kernel	0	7	2	0	0	0	3	2	0
+hiviewdfx	hilog	base/hiviewdfx/hilog	base/hiviewdfx/hilog/bundle.json	yes	standard	Native log interface provided for system	1	2	8	0	8	2	53	17	13
+hiviewdfx	hilog_lite	base/hiviewdfx/hilog_lite	base/hiviewdfx/hilog_lite/bundle.json	no	mini,small	Log services for liteos-m and liteos-a kernel.	0	20	5	1	2	0	24	13	2
+hiviewdfx	hisysevent	base/hiviewdfx/hisysevent	base/hiviewdfx/hisysevent/bundle.json	yes	standard	System event logging	1	1	15	0	4	1	47	14	22
+hiviewdfx	hitrace	base/hiviewdfx/hitrace	base/hiviewdfx/hitrace/bundle.json	yes	small,standard	cross-thread, cross-process, and cross-device service call chain	1	7	13	0	8	1	81	30	33
+hiviewdfx	hiview	base/hiviewdfx/hiview	base/hiviewdfx/hiview/bundle.json	yes	standard	Hiview is the module of OpenHarmony that provides toolkits for device maintenance across different platforms.	3	40	49	0	11	4	509	141	214
+hiviewdfx	hiview_lite	base/hiviewdfx/hiview_lite	base/hiviewdfx/hiview_lite/bundle.json	no	mini	DFX services for liteos-m kernel.	0	13	1	1	0	0	3	1	0
+hiviewdfx	hiviewdfx_cangjie_wrapper	base/hiviewdfx/hiviewdfx_cangjie_wrapper	base/hiviewdfx/hiviewdfx_cangjie_wrapper/bundle.json	no	standard	Provide application event, log, and tracking analysis tools to help improve application quality.	0	0	4	0	4	0	6	5	0

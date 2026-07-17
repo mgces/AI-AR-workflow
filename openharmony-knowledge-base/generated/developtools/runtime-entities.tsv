@@ -1,0 +1,9 @@
+host_subsystem	process	entity_type	owner_subsystem	owner_component	executable	sa_id	library	start_mode	ondemand	run_on_create	uid	gid	selinux_domain	evidence_file	mapping_method
+developtools	hdc_credential	init-service	developtools	hdc	/system/bin/hdc_credential			condition			hdc	hdc,file_manager,file_guard	u:r:hdc_credential:s0	developtools/hdc/src/daemon/etc/hdc_credential.cfg	component-prefix
+developtools	hdcd	init-service	developtools	hdc	/system/bin/hdcd			condition			shell	shell,log,readproc,file_manager,netsys_socket	u:r:hdcd:s0	developtools/hdc/src/daemon/etc/hdcd.cfg	component-prefix
+developtools	hdcd	init-service	developtools	hdc	/system/bin/hdcd			condition			root	root,shell,log,readproc,file_manager	u:r:su:s0	developtools/hdc/src/daemon/etc/hdcd.root.cfg	component-prefix
+developtools	hiprofiler_daemon	init-service	developtools	hiprofiler	/system/bin/native_daemon			condition			hiprofiler	shell,readproc,system	u:r:native_daemon:s0	developtools/profiler/device/etc/hiprofiler_daemon.cfg	component-prefix
+developtools	hiprofiler_plugins	init-service	developtools	hiprofiler	/system/bin/hiprofiler_plugins			condition			hiprofiler	shell,readproc,log	u:r:hiprofiler_plugins:s0	developtools/profiler/device/etc/hiprofiler_plugins.cfg	component-prefix
+developtools	hiprofilerd	init-service	developtools	hiprofiler	/system/bin/hiprofilerd			condition			hiprofiler	shell,readproc,netsys_socket,file_manager	u:r:hiprofilerd:s0	developtools/profiler/device/etc/hiprofilerd.cfg	component-prefix
+developtools	memory_collector	init-service	developtools	hiprofiler	/system/bin/sa_main,/system/profile/memory_collector.json			condition			hiprofiler	shell,readproc,system	u:r:native_daemon:s0	developtools/profiler/device/etc/hiprofiler_daemon.cfg	component-prefix
+developtools	memory_collector	system-ability	developtools	hiprofiler		1205	libmemory_profiler.z.so			false				developtools/profiler/device/sa_profile/1205.json	component-prefix

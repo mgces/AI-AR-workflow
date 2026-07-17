@@ -1,0 +1,14 @@
+{
+  "domain": "developtools",
+  "errors": [],
+  "checks": {
+    "repositories": 11,
+    "components": 10,
+    "modules": 1205,
+    "processes": 6,
+    "runtimeEntities": 8,
+    "documents": 30,
+    "links": 1365,
+    "trailingWhitespace": 0
+  }
+}

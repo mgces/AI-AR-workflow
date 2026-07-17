@@ -1,0 +1,28 @@
+{
+  "generatedAt": "2026-07-13T03:32:58.117Z",
+  "sourcePath": "/home/mgces/openharmony/code/base/hiviewdfx",
+  "sourceDomain": "hiviewdfx",
+  "repositories": 16,
+  "components": 16,
+  "subsystems": 1,
+  "buildFiles": 393,
+  "staticTargets": 1190,
+  "mappedTargets": 1190,
+  "unmappedTargets": 0,
+  "runtimeEntities": 12,
+  "functionalDocuments": 17,
+  "productSelectedComponents": 10,
+  "verificationReport": "specs/knowledge-base/generated/hiviewdfx/verification.md",
+  "categories": {
+    "build-support": 256,
+    "production": 362,
+    "aggregate-codegen": 66,
+    "test": 506
+  },
+  "limitations": [
+    "Only literal GN target declarations whose opening brace is on the declaration line are counted.",
+    "Product selection depends on the freshness of generated/rk3568-parts.tsv.",
+    "usage_report has an executable target but no init/SA start configuration inside the source boundary.",
+    "No build, device, performance, power, stability, or runtime security test was executed."
+  ]
+}

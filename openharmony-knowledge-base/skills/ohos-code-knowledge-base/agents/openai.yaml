@@ -1,0 +1,4 @@
+interface:
+  display_name: "OpenHarmony Code Knowledge Base"
+  short_description: "Generate and update full OpenHarmony code knowledge bases"
+  default_prompt: "Use $ohos-code-knowledge-base to generate or update a complete code knowledge base for the provided OpenHarmony source path."

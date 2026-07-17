@@ -1,0 +1,12 @@
+subsystem	path	repository	head	branch	changed_entries	staged	unstaged	untracked	component_count	static_target_count	coverage_status
+developtools	developtools/ace_ets2bundle	ace_ets2bundle	3e0d4ba8788838e63c8e5a90fc0be190f69ebc56	DETACHED	0	0	0	0	1	67	component-and-targets
+developtools	developtools/ace_js2bundle	ace_js2bundle	2a15fa8c340f5632427cb4314519739ac05e8653	DETACHED	1	1	0	0	1	6	component-and-targets
+developtools	developtools/global_resource_tool	global_resource_tool	26b974f4f5c22d43fef076cc13eedc66604e302a	DETACHED	0	0	0	0	1	6	component-and-targets
+developtools	developtools/hapsigner	hapsigner	6e46665d418d0dfedd6ba460172271565020f212	DETACHED	0	0	0	0	1	69	component-and-targets
+developtools	developtools/hdc	hdc	6877810931eebb6a9973be1c09def80b40b3f054	DETACHED	0	0	0	0	1	68	component-and-targets
+developtools	developtools/hiperf	hiperf	dc5993c73f533aecad22cc1d8bcdd072409e3346	DETACHED	0	0	0	0	1	49	component-and-targets
+unknown	developtools/integration_verification	integration_verification	1350118cecc0169be3adde1f4f1ed862522668a2	DETACHED	0	0	0	0	0	0	repository-only
+developtools	developtools/packing_tool	packing_tool	ff8e57041bfe55bc1b9b58e0046f58b81dd3886b	DETACHED	0	0	0	0	1	188	component-and-targets
+developtools	developtools/profiler	profiler	08250f8b4968f7dc8399ec6ea87911a889e70171	DETACHED	0	0	0	0	1	456	component-and-targets
+developtools	developtools/smartperf_host	smartperf_host	260b028b289befa8dc2f85b98687d323c7d20fa0	DETACHED	0	0	0	0	1	272	component-and-targets
+developtools	developtools/syscap_codec	syscap_codec	06963106afa50ef3f0e32123905f03d83e7ea796	DETACHED	0	0	0	0	1	24	component-and-targets

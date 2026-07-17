@@ -1,0 +1,29 @@
+{
+  "generatedAt": "2026-07-13T02:36:35.350Z",
+  "sourceDomain": "foundation",
+  "repositories": 117,
+  "components": 115,
+  "subsystems": 18,
+  "rk3568SelectedComponents": 87,
+  "buildGnFiles": 10970,
+  "buildGnFilesWithLiteralTargets": 10942,
+  "literalGnTargets": 27239,
+  "mappedTargets": 27227,
+  "unmappedTargets": 12,
+  "repositoryCoverage": {
+    "componentAndTargets": 115,
+    "repositoryTargetsOnly": 1,
+    "repositoryOnly": 1,
+    "componentOnly": 0
+  },
+  "categories": {
+    "production": 4454,
+    "test": 18811,
+    "build-support": 2492,
+    "aggregate-codegen": 1482
+  },
+  "processes": 68,
+  "initServiceEntries": 79,
+  "systemAbilityEntries": 108,
+  "processSubsystems": 17
+}
