@@ -74,12 +74,14 @@ OHOS(rk3568,C/C++ 系统组件)的完整研发生命周期,直到代码上库:
 | 机制 | 作用 |
 |---|---|
 | **单一写入器** | 只有 `advance.py` 能写 `pipeline.json` 的阶段状态。模型没有任何工具能直接改它。 |
-| **签名证据账本** | 每个门控脚本把真实证据落盘,并向 `evidence/manifest.jsonl` 追加一条 **HMAC 签名**记录(含每个产物的 sha256)。 |
-| **推进充要条件** | `advance.py` 推进 N→N+1 时校验:该阶段最后一条记录 `verdict=PASS` + HMAC 有效 + 每个产物当前 sha256 仍匹配 + 阶段顺序不可跳。任一不符即拒绝。 |
+| **签名证据账本(哈希链)** | 每个门控脚本把真实证据落盘,并向 `evidence/manifest.jsonl` 追加一条 **HMAC 签名**记录(含每个产物的 sha256)。记录带 `seq`+`prev`(上一条 hmac)形成**哈希链**。 |
+| **推进充要条件** | `advance.py` 推进 N→N+1 时校验:**哈希链完整** + 该阶段最后一条记录 `verdict=PASS` + HMAC 有效 + 每个产物当前 sha256 仍匹配 + 阶段顺序不可跳。任一不符即拒绝。 |
 | **密钥隔离** | per-run 密钥(32B,mode 600)存于 `~/.claude/.lifecycle-secret/<run>`,**不在**证据目录内,模型无法据此伪造签名。 |
 | **真机 RTC 无关** | 设备 RTC 错乱,新鲜度不靠时间戳,而靠 per-run **nonce** + `/proc/uptime` 单调锚 + 内容切窗 + sha256。 |
-| **抗事后篡改** | 任何阶段事后被改动证据文件 → `verify-all` 重校验时 sha256/HMAC 失配 → 该阶段降级回退,必须重跑。 |
-| **改码回 P1 重走** | P1 通过时锁定代码指纹(组件仓相对 `base_commit` 的 `git diff` + untracked 文件内容的 sha256,**commit 无关**)。任何阶段发现 bug 改了**代码内容** → `advance P2..P6` 因指纹漂移被拒,必须 `advance.py reset` 回 P1 踏实重走;`verify-all` 也按漂移自动回退。指纹相对 base 计算,故 P6 上库时的 `git commit -s` 不算漂移。 |
+| **抗事后篡改 / 抗重放** | 改动证据文件 → `verify-all` sha256/HMAC 失配 → 降级回退;**重放一条历史合法 PASS 记录** → `seq`/`prev` 对不上链尾被拒(无密钥无法重签)。 |
+| **设计先行门控** | P1 拆两子门控:`gate_design.py` 先确定性校验 `AR_design.md` 6 必含章节并签名,`gate_develop.py` **强制依赖**该签名设计才允许写码通过。 |
+| **签名且绑定证据的 consent** | P4/P5/P6 人工确认令牌**签名**并绑定当前 PASS 证据的 entry_id;凭空盖章、重跑门控后旧 consent 复用都会失效。 |
+| **改码回 P1 重走(功能指纹分层)** | P1 锁定**功能指纹**(仅**非测试路径**内容,相对 `base_commit`、commit 无关)。改**功能代码/配置内容** → `advance P2..P6` 因功能指纹漂移被拒;**P3/P4/P5 只允许新增独立测试文件**(test 路径),新增非测试路径被拒——必须 `advance.py reset` 回 P1。P6 的 `git commit -s` 不算漂移。 |
 
 > 已用真证据验证:篡改任一 evidence 字节 → sha256 失配被拒;伪造 manifest verdict
 > 为 PASS → HMAC 失配被拒。详见文末「验证记录」。
@@ -196,7 +198,7 @@ P0 会把探测到的序列号回填进 `pipeline.json` 与 `evidence/phase0/env
 | 阶段 | 做事(调用的技能) | 门控脚本 | 通过条件 | 落盘证据(`evidence/phaseN/`) |
 |---|---|---|---|---|
 | **P0** | ohos-ar-dev-init | `gate_env_init.py` | build/compile/git/testfwk/hdc 二进制/真机(自动探测并记录序列号)全部就绪;oh-gc + gitcode token 为 SOFT 告警 | `env.json` |
-| **P1 开发** | ohos-dev-sa-codegen / -napi-module / code-ruleset-style-check / tdd-enforcer | `gate_develop.py` | 相对 `base_commit` 有 tracked 或 untracked 改动 **且** C/C++ 格式 guard + 强规则检查通过;不可用 `--no-style` 绕过 | `diff.patch`、`changed_files.txt`、`style_report.txt`、`strict_cpp_report.txt` |
+| **P1 设计+开发** | (P1a)写 AR_design.md → (P1b)ohos-dev-sa-codegen / -napi-module / code-ruleset-style-check / tdd-enforcer | `gate_design.py`(P1a)+ `gate_develop.py`(P1b) | P1a:AR_design.md 6 必含章节齐全并签名;P1b:已有签名 AR_design **且** 相对 `base_commit` 有 tracked/untracked 改动 **且** C/C++ 格式 guard + 强规则检查通过 | `AR_design.md`、`design_check.txt`(P1a);`diff.patch`、`changed_files.txt`、`style_report.txt`、`strict_cpp_report.txt`(P1b) |
 | **P2 编译** | ohos-dev-build-execution-diagnosis / ohos-build-flash | `gate_build.py` | build.sh exit 0 **且** 输出含 `=====build…successful=====` 且无 error 横幅 | `build_stdout.log`、`build_banner.txt`(失败再加 `error_distill.txt`) |
 | **P3 测试** | ohos-test-ut-generation / tdd-enforcer | `gate_test_ut.py` | 编出测试二进制 + developer_test 本次**新建**报告 + `tests>0 && failures==0 && errors==0` | `summary_report.xml`、`result_*.xml`、`start_sh_stdout.txt`、`report_dir.txt` |
 | **P4 真机** | ohos-build-flash / ohos-dev-hdc-command-usage | `gate_device_func.py` | 部署命令全 exit 0 + 主机/设备产物 sha256 一致 + hilog 含**本次 nonce**、功能 marker、运行时 marker、端到端 marker + uptime 单调;**证据 PASS 后停下,人工核对真机真实结果并 `consent --phase 4` 才推进** | `hilog_capture.txt`、`device_cmds.txt`、`run_meta.txt`、`artifact_runtime_proof.txt` |
@@ -260,7 +262,9 @@ advance.py  init        --git-dir <组件> --build-target <t> --part <p> [--base
             verify-all                          # 重校验已通过阶段(篡改/代码漂移则回退)
             status
 gate_env_init.py    --pipeline-dir P
-gate_develop.py     --pipeline-dir P [--no-style]   # 仅无 C/C++ 改动时兼容;有 C/C++ 改动会拒绝
+gate_design.py      --pipeline-dir P [--design F]   # P1a:校验 AR_design.md 6 章节并签名(默认 <PDIR>/AR_design.md)
+gate_develop.py     --pipeline-dir P [--no-style] [--allow-missing-design]
+                    # 强制依赖签名 AR_design;--no-style 仅无 C/C++ 改动时兼容;--allow-missing-design 仅 legacy run 留痕放行
 gate_build.py       --pipeline-dir P [--target T]
 gate_test_ut.py     --pipeline-dir P --test-target T --suite S [--part P]
 gate_device_func.py --pipeline-dir P [--deploy-script f] --scenario-script f --marker M
@@ -300,5 +304,5 @@ gate_upload_ci.py   --pipeline-dir P --repo-slug owner/repo --branch B [--base m
 ## 11. 设计范式
 
 「thin 入口 + thick 阶段 skill + 确定性门控脚本」三层,借鉴 AID/MigBot 工作流,但
-**阶段边界是脚本门控,不是用户点头**(证据自动放行;仅 **P4 真机结果** 与 **P6 上库** 在证据 PASS 后停下等人工确认)。
+**阶段边界是脚本门控,不是用户点头**(证据自动放行;仅 **P4 真机结果**、**P5 质量/review** 与 **P6 上库** 在证据 PASS 后停下等人工签名 consent 确认)。
 架构图见 `skills/ohos-ar-dev-workflow/README.md`。
