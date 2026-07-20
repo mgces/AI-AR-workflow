@@ -49,7 +49,8 @@ rk3568 启用状态取自 `kernel/linux/config/linux-6.6/rk3568/arch/arm64_defco
 
 ## Roadmap（通往完整内核网络，后续节点）
 
-- **HDF 驱动框架**：[drivers/hdf_core](../../../../drivers/hdf_core) 的驱动模型、devhost、HCS 解析。
+- ✅ **HDF 驱动框架**：[hdf-framework.md](hdf-framework.md) — 三层设备模型（devmgr→devhost→
+  HdfDriverEntry）、model 分类、HDI、[drivers/hdf_core](../../../../drivers/hdf_core)。
 - **外设**：[drivers/peripheral](../../../../drivers/peripheral)（display/audio/camera/usb/sensor…）。
 - **rk3568 内核配置画像**：defconfig/arch 全量 feature 开关沉淀。
 - **HCS 设备拓扑**：`vendor/hihope/rk3568/hdf_config/*.hcs` → rk3568 挂载了哪些 HDF 驱动。
