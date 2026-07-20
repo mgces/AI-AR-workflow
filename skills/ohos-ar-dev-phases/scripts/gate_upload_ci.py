@@ -347,7 +347,11 @@ def main():
 
     arts.append(ci_rel)
 
-    sha_ok = (pr_head == "") or (pr_head == head_sha)  # if remote exposes head, it must match
+    # SHA binding is fail-CLOSED: if we cannot read the PR head SHA from the
+    # remote, we cannot prove the green CI belongs to the commit we just pushed
+    # (an old green from an earlier commit could masquerade). Treat an
+    # unreadable/empty head as FAIL rather than silently passing.
+    sha_ok = bool(pr_head) and (pr_head == head_sha)
     ci_ok = overall in OK_OVERALL
     # Both review gates already passed here (otherwise _fail exited earlier).
     reason = ("pr=%s overall=%s ci_ok=%s pushed=%s pr_head=%s sha_ok=%s "

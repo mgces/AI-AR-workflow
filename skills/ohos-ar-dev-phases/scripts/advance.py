@@ -78,15 +78,23 @@ def cmd_advance(args):
     #   P4 = real-device functional test result review
     #   P5 = quality reports + code-review report review
     #   P6 = irreversible upload push
-    if phase in CONSENT_PHASES and not state.get("consent_tokens", {}).get(str(phase)):
-        ev = os.path.join(pdir, "evidence", "phase%d" % phase)
-        sys.exit(
-            "HOLD: phase %d (%s) passed its evidence gate but needs human review.\n"
-            "  1) inspect the real results + artifacts in: %s\n"
-            "  2) if the device/test result is acceptable, record consent:\n"
-            "     advance.py --pipeline-dir <PDIR> consent --phase %d --token <reviewer>\n"
-            "  3) then re-run: advance.py --pipeline-dir <PDIR> advance --phase %d"
-            % (phase, CONSENT_PHASES[phase], ev, phase, phase))
+    if phase in CONSENT_PHASES:
+        # Consent must be bound to the phase's CURRENT closing PASS evidence.
+        # Re-derive that entry_id and require a signed, matching consent record.
+        ok_ev, ev_reason, ev_entry = gl.validate_closing_entry(pdir, phase)
+        if not ok_ev:
+            sys.exit("REFUSED: cannot close phase %d — %s" % (phase, ev_reason))
+        ok_c, c_reason = gl.verify_consent(state, phase, gl.entry_id(ev_entry))
+        if not ok_c:
+            ev = os.path.join(pdir, "evidence", "phase%d" % phase)
+            sys.exit(
+                "HOLD: phase %d (%s) passed its evidence gate but needs human review.\n"
+                "  reason: %s\n"
+                "  1) inspect the real results + artifacts in: %s\n"
+                "  2) if the device/test result is acceptable, record consent:\n"
+                "     advance.py --pipeline-dir <PDIR> consent --phase %d --token <reviewer>\n"
+                "  3) then re-run: advance.py --pipeline-dir <PDIR> advance --phase %d"
+                % (phase, CONSENT_PHASES[phase], c_reason, ev, phase, phase))
 
     # CODE-DRIFT CONTROL: once P1 locks the code fingerprint, every later phase is
     # validated against THAT code. If the code changed since (a fix was needed),
@@ -127,10 +135,13 @@ def cmd_advance(args):
 
 
 def cmd_consent(args):
-    """Record a one-time human consent token for a phase that requires sign-off
+    """Record a one-time human consent for a phase that requires sign-off
     (P4 device-test review, P5 quality/review report approval, P6 upload push).
-    Only meaningful after the phase's
-    evidence gate has produced its real results for a human to inspect."""
+
+    Consent is only meaningful AFTER the phase's evidence gate has produced its
+    real PASS results for a human to inspect: we bind the consent to that exact
+    signed PASS entry (evidence_ref = its entry_id) and HMAC-sign the record.
+    Re-running the gate produces new evidence and invalidates this consent."""
     pdir = gl.pipeline_dir(args.pipeline_dir)
     state = gl.load_state(pdir)
     if not args.token:
@@ -138,10 +149,18 @@ def cmd_consent(args):
     if args.phase not in CONSENT_PHASES:
         sys.exit("ERROR: phase %d does not take consent (consent phases: %s)"
                  % (args.phase, ", ".join(str(p) for p in CONSENT_PHASES)))
-    state.setdefault("consent_tokens", {})[str(args.phase)] = args.token
+    # There must be a valid, current PASS evidence to consent to.
+    ok_ev, ev_reason, ev_entry = gl.validate_closing_entry(pdir, args.phase)
+    if not ok_ev:
+        sys.exit("ERROR: cannot record consent for phase %d — no valid PASS "
+                 "evidence yet (%s). Run the gate first." % (args.phase, ev_reason))
+    rec = gl.make_consent_record(state["run_id"], args.phase, args.token,
+                                 gl.entry_id(ev_entry))
+    state.setdefault("consent_tokens", {})[str(args.phase)] = rec
     gl.save_state(pdir, state)
-    print("recorded consent for phase %d (%s): %s"
-          % (args.phase, CONSENT_PHASES[args.phase], args.token))
+    print("recorded signed consent for phase %d (%s): token=%s bound to evidence %s.."
+          % (args.phase, CONSENT_PHASES[args.phase], args.token,
+             rec["evidence_ref"][:8]))
 
 
 def cmd_reset(args):

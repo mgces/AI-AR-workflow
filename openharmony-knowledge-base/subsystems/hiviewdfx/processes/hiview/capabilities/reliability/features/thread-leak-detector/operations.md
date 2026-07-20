@@ -6,7 +6,7 @@
 
 | 属性 | 当前验证环境 |
 | --- | --- |
-| 源码根目录 | `/home/mgces/openharmony/code` |
+| 源码根目录 | `$OHOS_ROOT` |
 | 产品 | `rk3568` |
 | 组件 | `hiview` / `hiviewdfx` |
 | 生产目标 | `hiview_package` |
@@ -17,7 +17,7 @@
 执行以下命令前应位于源码根目录：
 
 ```bash
-cd /home/mgces/openharmony/code
+cd $OHOS_ROOT
 ```
 
 ## 构建

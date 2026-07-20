@@ -41,5 +41,11 @@
 **P6 上库** 三个阶段,门控产出真实证据后**停下并把真实结果/产物路径呈现给人**
 (P4 还打印 hilog 末尾片段),等人工核对真机结果、P5 覆盖率/性能/功耗/稳定性/code review 报告、
 或上库结果。人工认可后 `advance.py consent --phase 4|5|6 --token <人>` 写入 `consent_tokens`,
-`advance` 才放行;缺令牌时 `advance --phase 4|5|6` 直接 HOLD 不推进。consent 也是
-`pipeline.json` 状态、只由 `advance.py` 写。
+`advance` 才放行;缺令牌时 `advance --phase 4|5|6` 直接 HOLD 不推进。
+
+consent 是**签名且绑定证据**的记录(非明文令牌):`consent --phase N` 会先校验该阶段当前的
+签名 PASS 证据,再把 consent 绑定到该证据的 `entry_id` 并 HMAC 签名。因此:
+(a) 没出 PASS 证据的阶段无法盖章;(b) 重跑门控产生新证据后旧 consent 自动失效、必须重新确认;
+(c) 手改 `pipeline.json` 里的 consent 记录会破坏其 HMAC。consent 只由 `advance.py` 写。
+(注:per-run 密钥人机共用,签名不从密码学上区分"人"与"模型";它消除的是"凭空盖章"与"陈旧
+consent 复用"两个实际漏洞。真正的带外人机确认列为后续增强。)
