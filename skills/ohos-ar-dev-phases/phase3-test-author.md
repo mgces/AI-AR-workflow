@@ -1,5 +1,12 @@
 # P3 测试用例编写与验证(test-author)
 
+## ⚠️ 只增独立测试的硬约束
+P3 依据 `AR_design.md` 的"完整测试框架/需测试的功能点"补测试,**只能新增独立测试文件**
+(路径规则:`test/`、`unittest/`、`moduletest/`、`fuzztest/` 目录,或 `*Test.cpp`/`test_*.cpp`
+等命名;test 目录下的 BUILD.gn 也算测试)。**不得改动被测组件的功能代码/配置/功能目录的 BUILD.gn**。
+违反时 `advance --phase 3` 会以"功能指纹漂移"或"新增了非测试路径"拒绝,必须 `advance.py reset`
+回 P1 重走。真机功能测试必须用**真实态的功能代码 + 配置文件**运行(见 phase4)。
+
 ## 做事(调用现有技能)
 - 生成 OpenHarmony C/C++ 单测(HWTEST/HWTEST_F + `ohos_unittest` + BUILD.gn):
   `ohos-test-ut-generation`。

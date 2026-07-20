@@ -37,8 +37,11 @@ GN 构建目标(`build_target`)、测试 `testpart` 与套件名、目标二进�
    P6 的 push 仍是唯一对外不可逆动作。
 6. **任何阶段发现要改代码 → 回 P1 重走**。不管走到 P2/P3/P4/P5,只要发现 bug 需要改代码,
    就**必须** `advance.py reset --reason "<改了什么>"` 回到 P1,从代码开发踏踏实实重走一遍
-   P1→P6。这是硬控制:P1 通过时锁定代码指纹(`git diff base_commit` + `untracked 文件内容`,相对 base 计算、与是否已 commit 无关),改了**代码内容**后 `advance P2..P6` 会被以"代码指纹漂移"
-   拒绝;`verify-all` 也会因漂移自动回退到 P1。不允许"改完码只补跑当前阶段就继续"。(P6 上库时的 `git commit -s` 因指纹 commit 无关,不算漂移。)
+   P1→P6。这是硬控制:P1 通过时锁定**功能指纹**(只对**非测试路径**内容计算,`git diff base_commit`
+   + `untracked`,相对 base、与是否已 commit 无关)。改了**功能代码/配置内容**后 `advance P2..P6`
+   会被以"功能指纹漂移"拒绝;`verify-all` 也会因漂移自动回退到 P1。**P3/P4/P5 只允许新增独立测试文件**
+   (test 路径),出现非测试新增路径会被拒绝。测试文件的增改不触发功能指纹漂移。
+   (P6 上库时的 `git commit -s` 因指纹 commit 无关,不算漂移。旧 run 无功能指纹时回退到全量指纹旧行为。)
 
 ## 步骤 0:初始化检查
 
@@ -63,19 +66,23 @@ GN 构建目标(`build_target`)、测试 `testpart` 与套件名、目标二进�
 ## 步骤 1:调度循环
 
 读 `advance.py --pipeline-dir "$PDIR" status` 得到 `current_phase`,从那一阶段开始,
-对每个阶段执行【做事 → 跑门控 → advance】。各阶段的"做事"技能、门控命令、通过条件见
-`../ohos-ar-dev-phases/SKILL.md` 与 `phaseN-*.md`。阶段顺序固定、不可跳过:
+对每个阶段执行【做事 → 跑门控 → advance】。**每轮循环开头先刷新 todo**(依 AR_design 派生细项):
+```bash
+python3 ~/.claude/skills/ohos-ar-dev-workflow/scripts/refresh_todo.py --pipeline-dir "$PDIR"
+```
+再把同批细项灌进 `TodoWrite`(会话内可视,`todo.md` 为磁盘权威镜像)。各阶段的"做事"技能、门控命令、
+通过条件见 `../ohos-ar-dev-phases/SKILL.md` 与 `phaseN-*.md`。阶段顺序固定、不可跳过:
 
 | 阶段 | 做事(调用技能) | 门控脚本 | 结束证据 |
 |---|---|---|---|
-| P1 开发 | sa-codegen / napi-module / code-ruleset-style-check / tdd-enforcer | `gate_develop.py` | git/untracked diff + C++ 强门控报告 |
+| P1 开发 | **P1a** 写 AR_design.md → sa-codegen / napi-module / code-ruleset-style-check / tdd-enforcer | `gate_design.py`(P1a)+ `gate_develop.py`(P1b) | 签名 AR_design(6 必含章节)+ git/untracked diff + C++ 强门控报告 |
 | P2 编译 | build-execution-diagnosis / build-flash | `gate_build.py` | build.log 成功横幅 |
-| P3 测试 | test-ut-generation / tdd-enforcer | `gate_test_ut.py` | developer_test summary_report.xml |
-| P4 真机 | build-flash / hdc-command-usage | `gate_device_func.py` | 主机/设备产物 sha256 一致 + 含 nonce/功能 marker/运行时 marker/端到端 marker 的真机 hilog **+ 人工确认(consent --phase 4)** |
-| P5 质量验证 | build-flash / developer_test MST / coverage / performance / power / stability / code-ruleset-style-check / security-code-review | `gate_integration.py`(或 `gate_device_func.py --phase 5` + `gate_integration.py`) | 功能 summary + 覆盖率报告 + 性能报告 + 功耗报告 + 稳定性报告 + 代码 review 零问题报告 **+ 人工确认(consent --phase 5)** |
-| P6 上库 | gitcode-cli / gitcode-pr-review / security-code-review / openharmony-ci-analysis | `gate_upload_ci.py` | A 本地自检零问题报告(commit 前)+ B PR review 零问题报告(建 PR 后、CI 前)+ PR + CI 绿(SHA 绑定)**+ 人工确认(consent --phase 6)** |
+| P3 测试 | test-ut-generation / tdd-enforcer(**只增独立测试**) | `gate_test_ut.py` | developer_test summary_report.xml |
+| P4 真机 | build-flash / hdc-command-usage | `gate_device_func.py` | 主机/设备产物 sha256 一致 + 含 nonce/功能 marker/运行时 marker/端到端 marker 的真机 hilog **+ 人工确认(consent --phase 4)**;渲染 `reports/` device HTML |
+| P5 质量验证 | build-flash / developer_test MST / coverage / performance / power / stability / code-ruleset-style-check / security-code-review | `gate_integration.py`(或 `gate_device_func.py --phase 5` + `gate_integration.py`) | 功能 summary + 覆盖率 + 性能 + 功耗 + 稳定性 + 代码 review 零问题 **+ 人工确认(consent --phase 5)**;渲染 `reports/` quality HTML |
+| P6 上库 | gitcode-cli / gitcode-pr-review / security-code-review / openharmony-ci-analysis | `gate_upload_ci.py` | A 本地自检零问题 + B PR review 零问题 + PR + CI 绿(SHA 绑定)**+ 人工确认(consent --phase 6)**;渲染 summary HTML + PR 描述注入 |
 
-每阶段成功后,同步更新 `TodoWrite` 与 `$PDIR/todo.md`(双轨,便于断点恢复)。
+每阶段成功后,同步更新 `TodoWrite` 与 `$PDIR/todo.md`(由 refresh_todo 重写,便于断点恢复)。
 
 ## 步骤 2:断点恢复("继续流水线")
 
@@ -93,11 +100,11 @@ P6 通过(`advance --phase 6` 成功)即流水线完成。给用户一份汇总:
 序列号与个人 `$HOME` 路径,**禁止**手动 `cp evidence/` 进仓。必须用脱敏归档器:
 ```bash
 python3 ~/.claude/skills/ohos-ar-dev-workflow/scripts/archive_product.py \
-    --pipeline-dir "$PDIR" --product-dir products/<run>
+    --pipeline-dir "$PDIR" --product-dir products/<run> --include-reports
 ```
-它只产出脱敏摘要(`ar.md` + `manifest_summary.md` + `README.md`),原始可验签证据留在本地
-run-state 目录(已 gitignore)。`.gitignore` 已封禁 `products/**/evidence/`、`pipeline.json`、
-`*_manifest.jsonl`、`*.log` 等原始产物。
+它只产出脱敏摘要(`ar.md` + `manifest_summary.md` + `README.md`),`--include-reports` 额外把
+`reports/*.html` 脱敏后一并归档。原始可验签证据留在本地 run-state 目录(已 gitignore)。`.gitignore`
+已封禁 `products/**/evidence/`、`pipeline.json`、`*_manifest.jsonl`、`*.log` 等原始产物。
 
 参考:`references/gate-contract.md`(门控契约)、`references/evidence-protocol.md`(防伪协议)、
 `references/pipeline-schema.md`(状态结构)。

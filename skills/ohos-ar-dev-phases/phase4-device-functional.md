@@ -53,3 +53,12 @@ python3 $S/advance.py --pipeline-dir "$PDIR" advance  --phase 4
 ```
 `advance --phase 4` 在没有 phase-4 consent 时会 **HOLD**(打印复核指引,不推进);
 有 consent 且证据 PASS 才推进到 P5。consent 也是 `pipeline.json` 状态、由 `advance.py` 写。
+
+## 生成人读报告(证据/报告分离)
+门控证据(签名,机器验)落在 `evidence/`;**人读 HTML 报告**渲染到并列的 `reports/`:
+```bash
+python3 ~/.claude/skills/ohos-ar-dev-workflow/scripts/render_report.py \
+    --pipeline-dir "$PDIR" --kind device
+```
+产出 `reports/phase4_device_functional.html`(真机完整报告:nonce/marker/e2e、hilog 片段、
+产物 sha256 一致)。渲染文本经脱敏;渲染失败不影响门控 verdict。

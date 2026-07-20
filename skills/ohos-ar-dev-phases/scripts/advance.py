@@ -31,6 +31,56 @@ CONSENT_PHASES = {
     6: "upload push",
 }
 
+# Phases where only NEW test files may appear beyond the P1-locked path set
+# (development is done; from here on the tree may add independent tests only).
+TEST_ONLY_PHASES = (3, 4, 5)
+
+
+def check_code_drift(state, phase):
+    """Return (ok, message). Enforces, for phase>=2:
+
+    New (layered) runs — a functional fingerprint was locked at P1:
+      * the functional fingerprint (non-test paths' content) must still match →
+        any edit/add/delete of functional code or config is drift;
+      * in TEST_ONLY_PHASES, every path that appeared since P1 must be a test
+        path → only independent test files may be added.
+
+    Legacy runs — only the old full-tree `code_fingerprint` was locked:
+      * fall back to the original whole-tree drift check (behavior unchanged).
+    """
+    if phase < 2:
+        return True, "ok"
+    flocked = state.get("functional_fingerprint")
+    if flocked is not None:
+        now_func = gl.functional_fingerprint(state)
+        if now_func != flocked:
+            return False, (
+                "REFUSED: functional code/config changed since P1 "
+                "(functional fingerprint %s.. != locked %s..).\n"
+                "Build/test/device evidence no longer matches the current code.\n"
+                "Rewalk from development:\n"
+                "  advance.py --pipeline-dir <PDIR> reset --reason \"<what you fixed>\"\n"
+                "then redo P1→ in order." % (now_func[:8], flocked[:8]))
+        if phase in TEST_ONLY_PHASES:
+            base_paths = set(state.get("locked_all_paths") or [])
+            new_paths = [p for p in gl._changed_paths(state) if p not in base_paths]
+            non_test = [p for p in new_paths if gl.classify_path(p) != "test"]
+            if non_test:
+                return False, (
+                    "REFUSED: phase %d may add INDEPENDENT TEST files only, but new "
+                    "non-test path(s) appeared since P1:\n  %s\n"
+                    "Functional code must be written in P1. Rewalk:\n"
+                    "  advance.py --pipeline-dir <PDIR> reset --reason \"<why>\""
+                    % (phase, "\n  ".join(non_test)))
+        return True, "ok"
+    # legacy run: whole-tree fingerprint
+    locked = state.get("code_fingerprint")
+    if locked and gl.code_fingerprint(state) != locked:
+        return False, (
+            "REFUSED: code changed since P1 (fingerprint drift, legacy run).\n"
+            "  advance.py --pipeline-dir <PDIR> reset --reason \"<what you fixed>\"")
+    return True, "ok"
+
 
 def cmd_init(args):
     pdir = gl.pipeline_dir(args.pipeline_dir)
@@ -52,6 +102,8 @@ def cmd_init(args):
         "current_phase": 0,
         "consent_tokens": {},
         "code_fingerprint": None,
+        "functional_fingerprint": None,
+        "locked_all_paths": None,
         "phases": [
             {"id": i, "name": n, "status": "pending",
              "manifest_ref": None, "closed_at_utc": None}
@@ -96,20 +148,13 @@ def cmd_advance(args):
                 "  3) then re-run: advance.py --pipeline-dir <PDIR> advance --phase %d"
                 % (phase, CONSENT_PHASES[phase], c_reason, ev, phase, phase))
 
-    # CODE-DRIFT CONTROL: once P1 locks the code fingerprint, every later phase is
-    # validated against THAT code. If the code changed since (a fix was needed),
-    # all downstream evidence is stale — refuse and force a rewalk from P1.
-    locked = state.get("code_fingerprint")
-    if phase >= 2 and locked:
-        now_fp = gl.code_fingerprint(state)
-        if now_fp != locked:
-            sys.exit(
-                "REFUSED: code changed since P1 (fingerprint %s.. != locked %s..).\n"
-                "Any fix that touches code means the build/test/device evidence no "
-                "longer matches the current code.\n"
-                "Rewalk from development:\n"
-                "  advance.py --pipeline-dir <PDIR> reset --reason \"<what you fixed>\"\n"
-                "then redo P1→ in order." % (now_fp[:8], locked[:8]))
+    # CODE-DRIFT CONTROL: once P1 locks the functional fingerprint, every later
+    # phase is validated against THAT functional code. Test files added in P3+ do
+    # not trip it, but functional edits do (and non-test additions are refused in
+    # test-only phases). Legacy runs fall back to the whole-tree check.
+    ok_drift, drift_msg = check_code_drift(state, phase)
+    if not ok_drift:
+        sys.exit(drift_msg)
 
     ok, reason, entry = gl.validate_closing_entry(pdir, phase)
     if not ok:
@@ -119,8 +164,13 @@ def cmd_advance(args):
     pe["status"] = "passed"
     pe["manifest_ref"] = gl.entry_id(entry)
     pe["closed_at_utc"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    # P1 locks the code fingerprint that P2..P6 must keep matching.
+    # P1 locks the fingerprints that later phases must keep matching:
+    #   * functional_fingerprint — non-test code/config content (drift => rewalk)
+    #   * locked_all_paths       — the path set at P1 (new paths after must be tests)
+    #   * code_fingerprint       — legacy whole-tree value, kept for compatibility
     if phase == 1:
+        state["functional_fingerprint"] = gl.functional_fingerprint(state)
+        state["locked_all_paths"] = gl._changed_paths(state)
         state["code_fingerprint"] = gl.code_fingerprint(state)
     if phase < gl.MAX_PHASE:
         state["current_phase"] = phase + 1
@@ -177,6 +227,8 @@ def cmd_reset(args):
     state["current_phase"] = 1
     state["consent_tokens"] = {}
     state["code_fingerprint"] = None
+    state["functional_fingerprint"] = None
+    state["locked_all_paths"] = None
     gl.save_state(pdir, state)
     # leave an audit trail (unsigned info entry is fine; it grants no progress)
     try:
@@ -193,9 +245,11 @@ def cmd_verify_all(args):
     pdir = gl.pipeline_dir(args.pipeline_dir)
     state = gl.load_state(pdir)
     bad = 0
-    # code-drift check: if code changed since P1 locked, rewind to P1.
-    locked = state.get("code_fingerprint")
-    if locked and gl.code_fingerprint(state) != locked:
+    # code-drift check: if functional code changed since P1 locked (or, for legacy
+    # runs, the whole tree), rewind to P1. Uses the same layered logic as advance.
+    cur = state.get("current_phase", 0)
+    drift_ok, _ = check_code_drift(state, max(cur, 2))
+    if not drift_ok:
         for pe in state["phases"]:
             if pe["id"] >= 1:
                 pe["status"] = "pending"
@@ -204,9 +258,11 @@ def cmd_verify_all(args):
         state["current_phase"] = 1
         state["consent_tokens"] = {}
         state["code_fingerprint"] = None
+        state["functional_fingerprint"] = None
+        state["locked_all_paths"] = None
         gl.save_state(pdir, state)
-        sys.exit("verify-all: code changed since P1 — pipeline rewound to P1, "
-                 "rewalk from development.")
+        sys.exit("verify-all: functional code changed since P1 — pipeline rewound "
+                 "to P1, rewalk from development.")
     for pe in state["phases"]:
         if pe["status"] != "passed":
             continue

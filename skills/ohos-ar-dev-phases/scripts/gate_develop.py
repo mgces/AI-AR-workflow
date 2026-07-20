@@ -121,6 +121,10 @@ def main():
     ap.add_argument("--pipeline-dir")
     ap.add_argument("--no-style", action="store_true",
                     help="deprecated: only accepted when no C/C++ files changed")
+    ap.add_argument("--allow-missing-design", action="store_true",
+                    help="legacy escape: allow develop without a signed AR_design "
+                         "(only when this run never produced a gate_design record; "
+                         "recorded as DESIGN-GATE-LEGACY-BYPASS in the signed reason)")
     args = ap.parse_args()
     pdir = gl.pipeline_dir(args.pipeline_dir)
     state = gl.load_state(pdir)
@@ -129,6 +133,30 @@ def main():
     if not os.path.isabs(gdir):
         gdir = os.path.join(repo, gdir)
     gl.evidence_dir(pdir, 1)
+
+    # DESIGN DEPENDENCY (P1a): develop refuses unless AR_design was fixed and
+    # signed by gate_design.py first, and that signed evidence is still intact.
+    design_bypass = ""
+    design_entry = gl.latest_design_entry(pdir)
+    if design_entry is None:
+        if not args.allow_missing_design:
+            gl.emit(pdir, 1, "gate_develop.py", verdict="FAIL",
+                    reason="no signed AR_design — run gate_design.py first "
+                           "(or --allow-missing-design for a legacy run)",
+                    artifacts_rel=[])
+            sys.exit("PHASE 1 FAIL: AR_design not fixed. Run gate_design.py first.")
+        design_bypass = " DESIGN-GATE-LEGACY-BYPASS"
+    else:
+        secret = gl.load_secret(state["run_id"])
+        intact = gl.verify_sig(design_entry, secret) and all(
+            os.path.exists(os.path.join(pdir, a["path"]))
+            and gl.sha256_file(os.path.join(pdir, a["path"])) == a["sha256"]
+            for a in design_entry.get("artifacts", []))
+        if not intact:
+            gl.emit(pdir, 1, "gate_develop.py", verdict="FAIL",
+                    reason="AR_design evidence tampered/removed — re-run gate_design.py",
+                    artifacts_rel=[])
+            sys.exit("PHASE 1 FAIL: AR_design evidence tampered. Re-run gate_design.py.")
 
     head = git(gdir, "rev-parse", "HEAD").stdout.strip()
     base = state.get("base_commit")
@@ -203,8 +231,8 @@ def main():
         f.write("  - pointer lifetime, integer overflow proof, function size and parameter-count judgment\n")
     arts.append(strict_rel)
 
-    reason = "base/head %s->%s, %d file(s) changed (%d untracked), style_ok=%s strict_ok=%s" % (
-        base[:12], head[:12], len(changed), len(untracked), style_ok, strict_ok)
+    reason = "base/head %s->%s, %d file(s) changed (%d untracked), style_ok=%s strict_ok=%s%s" % (
+        base[:12], head[:12], len(changed), len(untracked), style_ok, strict_ok, design_bypass)
     print(reason)
     verdict = "PASS" if (style_ok and strict_ok) else "FAIL"
     gl.emit(pdir, 1, "gate_develop.py", verdict=verdict, reason=reason,

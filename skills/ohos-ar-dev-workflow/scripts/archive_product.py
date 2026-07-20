@@ -128,6 +128,9 @@ def main():
     ap.add_argument("--product-dir", required=True,
                     help="output dir, e.g. products/<run> (created if absent)")
     ap.add_argument("--ar", help="path to the AR source md (default: <pipeline-dir>/ar.md)")
+    ap.add_argument("--include-reports", action="store_true",
+                    help="also copy <pipeline-dir>/reports/*.html into the product, "
+                         "redacted (human-readable audit reports)")
     args = ap.parse_args()
 
     pdir = os.path.abspath(args.pipeline_dir)
@@ -161,6 +164,24 @@ def main():
     with open(os.path.join(outdir, "README.md"), "w", encoding="utf-8") as f:
         f.write(README_TEXT)
     print("wrote %s/README.md" % outdir)
+
+    # 4. optional: redacted human-readable HTML reports
+    if args.include_reports:
+        src_reports = os.path.join(pdir, "reports")
+        n = 0
+        if os.path.isdir(src_reports):
+            dst_reports = os.path.join(outdir, "reports")
+            os.makedirs(dst_reports, exist_ok=True)
+            for fn in sorted(os.listdir(src_reports)):
+                if not fn.endswith((".html", ".md")):
+                    continue
+                with open(os.path.join(src_reports, fn), "r", encoding="utf-8",
+                          errors="replace") as f:
+                    body = f.read()
+                with open(os.path.join(dst_reports, fn), "w", encoding="utf-8") as f:
+                    f.write(redact(body))
+                n += 1
+        print("wrote %d redacted report file(s) to %s/reports" % (n, outdir))
 
     print("\nDONE. Product is redacted; commit only %s." % outdir)
     print("Raw signed evidence stays in the local run-state dir (gitignored).")

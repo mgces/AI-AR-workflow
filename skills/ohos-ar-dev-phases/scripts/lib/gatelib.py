@@ -20,6 +20,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import sys
 import time
 
@@ -161,18 +162,24 @@ def resolve_git_dir(state):
     return g if os.path.isabs(g) else os.path.join(repo, g)
 
 
-def code_fingerprint(state):
+def _changed_paths(state):
+    """Sorted, deduped set of paths that differ from base_commit: tracked changes
+    (base..HEAD + working tree) plus untracked files. Membership is commit-state
+    independent (union of diff + ls-files --others)."""
     import subprocess
     gdir = resolve_git_dir(state)
     base = state.get("base_commit") or "HEAD"
-    # Paths that differ from base: tracked changes (base..HEAD + working tree)
-    # plus untracked files. Union, deduped, so commit state does not change the
-    # membership of this set.
     changed = subprocess.run(["git", "-C", gdir, "diff", "--name-only", base],
                              text=True, capture_output=True).stdout.splitlines()
     untracked = subprocess.run(["git", "-C", gdir, "ls-files", "--others", "--exclude-standard"],
                                text=True, capture_output=True).stdout.splitlines()
-    paths = sorted({p for p in (changed + untracked) if p})
+    return sorted({p for p in (changed + untracked) if p})
+
+
+def _hash_paths(gdir, base, paths):
+    """Content fingerprint of the given path set: base tag + each path's name and
+    CURRENT on-disk bytes (or a DELETED marker). Order-independent because paths
+    are pre-sorted by callers."""
     h = hashlib.sha256()
     h.update(base.encode("utf-8"))
     h.update(b"\0PATHS\0")
@@ -181,7 +188,6 @@ def code_fingerprint(state):
         h.update(b"\0")
         ap = os.path.join(gdir, rel)
         if not os.path.isfile(ap):
-            # deleted (or non-regular) since base — content-independent marker
             h.update(b"\0DELETED\0")
             continue
         with open(ap, "rb") as f:
@@ -189,6 +195,67 @@ def code_fingerprint(state):
                 h.update(chunk)
         h.update(b"\0")
     return h.hexdigest()
+
+
+def code_fingerprint(state):
+    """Full-tree fingerprint (all changed+untracked paths). Kept for backward
+    compatibility with runs locked before fingerprint layering existed."""
+    gdir = resolve_git_dir(state)
+    base = state.get("base_commit") or "HEAD"
+    return _hash_paths(gdir, base, _changed_paths(state))
+
+
+# ----------------------------------------------------------------------------
+# fingerprint LAYERING — separate functional code from test additions.
+#
+# P1 locks the FUNCTIONAL fingerprint (non-test paths only). Later phases must
+# keep it equal (any edit to functional code/config is drift -> rewalk). Test
+# files are added in P3 and must NOT trip that check — but the only NEW paths
+# allowed after P1 are test files. Together these express: "only independent
+# test files may be added; functional code/config must not change."
+#
+# Path classification is by PATH (OHOS unit-test BUILD.gn lives under the
+# component's test/ dir, so a test/ BUILD.gn is a test file, not functional).
+# ----------------------------------------------------------------------------
+_TEST_DIR_MARKERS = ("/test/", "/tests/", "/unittest/", "/moduletest/",
+                     "/fuzztest/", "/systemtest/")
+_TEST_NAME_RE = re.compile(
+    r"(?:^|/)(?:test_[^/]+|[^/]*_?test|[^/]*fuzz[^/]*)\.(?:c|cc|cpp|cxx|h|hpp)$",
+    re.IGNORECASE)
+
+
+def classify_path(rel):
+    """Return "test" for independent test files/dirs, else "code". By path so a
+    test/ BUILD.gn counts as test but a functional-dir BUILD.gn counts as code."""
+    p = rel.replace("\\", "/")
+    low = p.lower()
+    if low.startswith("test/") or any(m in ("/" + low) for m in _TEST_DIR_MARKERS):
+        return "test"
+    if _TEST_NAME_RE.search(p):
+        return "test"
+    return "code"
+
+
+def split_paths(paths):
+    """Partition paths into (code_paths, test_paths), both sorted."""
+    code, test = [], []
+    for p in paths:
+        (test if classify_path(p) == "test" else code).append(p)
+    return sorted(code), sorted(test)
+
+
+def functional_fingerprint(state):
+    """Content fingerprint of ONLY the non-test (functional) changed paths."""
+    gdir = resolve_git_dir(state)
+    base = state.get("base_commit") or "HEAD"
+    code_paths, _ = split_paths(_changed_paths(state))
+    return _hash_paths(gdir, base, code_paths)
+
+
+def test_path_set(state):
+    """Sorted list of changed test paths (membership only, not content)."""
+    _, test_paths = split_paths(_changed_paths(state))
+    return test_paths
 
 
 # ----------------------------------------------------------------------------
@@ -261,6 +328,87 @@ def parse_review_report_zero_issues(path):
                 return False, "review_issue_count is not an integer"
             return count == 0, "review_issue_count=%d" % count
     return False, "missing review_issue_count=<n> marker"
+
+
+# ----------------------------------------------------------------------------
+# AR_design.md section check — P1a design gate. The design doc must fix, BEFORE
+# any code is written, the full plan a deterministic gate can verify by section
+# presence (headings) + non-empty body. The "complete code framework" section
+# must additionally cover file-list / per-file-role / per-file-skeleton anchors.
+# ----------------------------------------------------------------------------
+# Each required section: (name, [heading keyword regexes], [nested anchor regexes]).
+REQUIRED_DESIGN_SECTIONS = (
+    ("目标组件", [r"目标组件", r"target\s+component"], []),
+    ("详细功能需求", [r"功能需求", r"functional\s+requirement"], []),
+    ("完整代码框架",
+     [r"代码框架", r"code\s+framework"],
+     [r"文件清单|文件列表|file\s+list", r"每(个)?文件.*功能|文件.*功能|per-file",
+      r"代码框架|骨架|skeleton"]),
+    ("完整测试框架", [r"测试框架", r"test\s+framework"], []),
+    ("需测试的功能点", [r"测试.*功能点|需测试|功能点|test\s+points?"], []),
+    ("真机测试用例构造", [r"真机.*用例|用例.*构造|真机测试|device.*test\s*case"], []),
+)
+
+
+def _split_md_sections(text):
+    """Return list of (heading_line, body_text) for every markdown heading. A
+    section's body spans until the next heading of EQUAL-OR-HIGHER level, so a
+    parent section (e.g. `## X`) includes its nested `### Y` subsections in its
+    body — anchor checks can then see sub-headings written under a parent."""
+    lines = text.splitlines()
+    heads = []  # (index, level, line)
+    for i, ln in enumerate(lines):
+        m = re.match(r"^\s*(#{1,6})\s+\S", ln)
+        if m:
+            heads.append((i, len(m.group(1)), ln))
+    sections = []
+    for hi, (idx, level, line) in enumerate(heads):
+        end = len(lines)
+        for j in range(hi + 1, len(heads)):
+            if heads[j][1] <= level:
+                end = heads[j][0]
+                break
+        body = "\n".join(lines[idx + 1:end])
+        sections.append((line, body))
+    return sections
+
+
+def check_design_sections(text):
+    """Return (ok, per_section, missing). per_section: list of (name, present,
+    detail). A section is present iff a heading matches one of its keywords AND
+    its body has >=1 non-empty line AND all nested anchors (if any) appear in the
+    body. missing: names that failed."""
+    sections = _split_md_sections(text)
+    per_section = []
+    missing = []
+    for name, kw_res, anchor_res in REQUIRED_DESIGN_SECTIONS:
+        hit_body = None
+        for head, body in sections:
+            if any(re.search(k, head, re.IGNORECASE) for k in kw_res):
+                hit_body = body
+                break
+        if hit_body is None:
+            per_section.append((name, False, "heading not found"))
+            missing.append(name)
+            continue
+        if not any(l.strip() for l in hit_body.splitlines()):
+            per_section.append((name, False, "empty body"))
+            missing.append(name)
+            continue
+        anchor_miss = [a for a in anchor_res if not re.search(a, hit_body, re.IGNORECASE)]
+        if anchor_miss:
+            per_section.append((name, False, "missing sub-anchors: %d" % len(anchor_miss)))
+            missing.append(name)
+            continue
+        per_section.append((name, True, "ok"))
+    return (not missing), per_section, missing
+
+
+def latest_design_entry(pdir):
+    """Return the last PASS manifest entry from gate_design.py, or None."""
+    hits = [e for e in read_manifest(pdir)
+            if e.get("gate") == "gate_design.py" and e.get("verdict") == "PASS"]
+    return hits[-1] if hits else None
 
 
 # ----------------------------------------------------------------------------

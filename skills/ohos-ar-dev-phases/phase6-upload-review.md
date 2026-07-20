@@ -83,3 +83,14 @@ CI `overall_result ∈ {success,passed}` **且** PR head SHA == 本次 push 的 
 python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 6   # 同时再校验 consent 令牌
 ```
 完成后给用户:PR 链接 + CI 状态 + 各阶段证据路径。
+
+## 汇总报告 + PR 描述注入(证据/报告分离)
+建 PR 前先渲染汇总报告,它同时写出 `reports/pr_description.md`;`gate_upload_ci.py` 建 PR 时
+**自动读取该文件并注入 PR 描述**(文件契约,门控无硬依赖):
+```bash
+python3 ~/.claude/skills/ohos-ar-dev-workflow/scripts/render_report.py \
+    --pipeline-dir "$PDIR" --kind summary
+```
+`reports/phase6_summary.html` 与 PR 描述均含五块:**背景介绍 / 设计思路 / 修改概要 /
+用例概要 / 用例结果总结**(背景取 ar.md,设计/用例取 AR_design.md,修改取 full_diff.stat,
+结果取 P3/P4/P5 verdict);全部经脱敏。

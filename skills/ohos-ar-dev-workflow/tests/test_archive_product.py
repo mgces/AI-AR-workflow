@@ -50,5 +50,30 @@ class TestRedact(unittest.TestCase):
         self.assertIn("<REDACTED-SERIAL>", out)
 
 
+class TestIncludeReports(unittest.TestCase):
+    def test_include_reports_redacts_html(self):
+        import json
+        import tempfile
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        pdir = os.path.join(tmp.name, "run")
+        os.makedirs(os.path.join(pdir, "reports"))
+        os.makedirs(os.path.join(pdir, "evidence"))
+        with open(os.path.join(pdir, "pipeline.json"), "w") as f:
+            json.dump({"run_id": "r", "build_target": "t", "phases": []}, f)
+        with open(os.path.join(pdir, "ar.md"), "w") as f:
+            f.write("ar")
+        with open(os.path.join(pdir, "reports", "phase6_summary.html"), "w") as f:
+            f.write("<p>serial deadbeefcafef00d0123456789abcdef at /home/mgces/x</p>")
+        outdir = os.path.join(tmp.name, "product")
+        sys.argv = ["archive_product.py", "--pipeline-dir", pdir,
+                    "--product-dir", outdir, "--include-reports"]
+        ap.main()
+        with open(os.path.join(outdir, "reports", "phase6_summary.html")) as f:
+            html = f.read()
+        self.assertNotIn("deadbeefcafef00d0123456789abcdef", html)
+        self.assertNotIn("/home/mgces", html)
+
+
 if __name__ == "__main__":
     unittest.main()

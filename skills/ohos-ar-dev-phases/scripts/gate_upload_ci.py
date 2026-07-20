@@ -142,11 +142,22 @@ def normalize_issue(raw):
     return "#%s" % s if s else ""
 
 
-def build_pr_body(gdir, issue_ref):
+def build_pr_body(gdir, issue_ref, pdir=None):
     """Build the PR body from the repo's PR template with the issue number
     filled into the IssueNo field. Falls back to a minimal body when no
     template exists. Binding the PR to an issue is what lets OpenHarmony CI
-    fire on the PR."""
+    fire on the PR.
+
+    If render_report.py produced `reports/pr_description.md` for this run (the
+    background / design / change / cases / results rollup), it is appended to the
+    body via a plain FILE contract — this gate has no hard dependency on the
+    workflow-skill renderer; missing file just means the classic body."""
+    rollup = ""
+    if pdir:
+        desc = os.path.join(pdir, "reports", "pr_description.md")
+        if os.path.isfile(desc):
+            with open(desc, "r", encoding="utf-8", errors="replace") as f:
+                rollup = "\n\n" + f.read().strip() + "\n"
     for candidate in (".gitcode/PULL_REQUEST_TEMPLATE.md",
                       ".github/PULL_REQUEST_TEMPLATE.md",
                       "docs/PULL_REQUEST_TEMPLATE.md"):
@@ -155,9 +166,9 @@ def build_pr_body(gdir, issue_ref):
             with open(path, "r", encoding="utf-8", errors="replace") as f:
                 tmpl = f.read()
             if "**IssueNo**:" in tmpl:
-                return tmpl.replace("**IssueNo**:", "**IssueNo**: %s" % issue_ref, 1)
-            return "**IssueNo**: %s\n\n%s" % (issue_ref, tmpl)
-    return "**IssueNo**: %s" % issue_ref
+                return tmpl.replace("**IssueNo**:", "**IssueNo**: %s" % issue_ref, 1) + rollup
+            return "**IssueNo**: %s\n\n%s%s" % (issue_ref, tmpl, rollup)
+    return "**IssueNo**: %s%s" % (issue_ref, rollup)
 
 
 def require_zero_issue_report(path, label, dst_rel, pdir, arts):
@@ -292,7 +303,7 @@ def main():
         push = run("git -C %s push -u origin %s" % (gdir, args.branch))
         if push.returncode != 0:
             _fail(pdir, "git push failed: %s" % (push.stderr.strip()[:500]))
-        pr_body = build_pr_body(gdir, issue_ref)
+        pr_body = build_pr_body(gdir, issue_ref, pdir)
         # Qualify the head as <fork-owner>:<branch> for the fork -> upstream flow;
         # a bare name would be resolved on the base repo and 403 on an upstream PR.
         head_ref = fork_qualified_head(gdir, args.repo_slug, args.branch, args.head_owner)

@@ -64,5 +64,13 @@ python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 5
 `advance --phase 5` 在没有 phase-5 consent 时会 **HOLD**。人工必须先检查
 `evidence/phase5/` 下的覆盖率、性能、功耗、稳定性和代码 review 报告,确认无问题后再签字。
 
+## 生成人读报告(证据/报告分离)
+```bash
+python3 ~/.claude/skills/ohos-ar-dev-workflow/scripts/render_report.py \
+    --pipeline-dir "$PDIR" --kind quality
+```
+产出 `reports/phase5_quality.html`(覆盖率/性能/功耗/稳定性 + 功能 summary 聚合)。
+`--allow-missing-quality-reports` 降级时,签名 reason 会带 `QUALITY-GATE-DOWNGRADED` 留痕。
+
 > ⚠️ 若本阶段(或任何阶段)发现需要**改代码**,先 `advance.py reset` 回 P1 重走,见
 > phase1 / 编排器护栏。改了码再继续 P5 会被 `advance` 以"代码指纹漂移"拒绝。
