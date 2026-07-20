@@ -210,9 +210,9 @@ def render_summary(pdir, state, entries):
 
 def render_index(state):
     links = "".join("<li><a href='%s'>%s</a></li>" % (f, t) for f, t in (
-        ("phase4_device_functional.html", "真机功能测试报告"),
-        ("phase5_quality.html", "质量验证报告"),
-        ("phase6_summary.html", "上库汇总报告")))
+        ("device_functional.html", "真机功能测试报告"),
+        ("quality.html", "质量验证报告"),
+        ("summary.html", "上库汇总报告")))
     body = "<h1>报告目录</h1><p class='sub'>run=%s</p><ul>%s</ul>" % (
         clean(state.get("run_id")), links)
     return _page("报告目录 — %s" % state.get("run_id"), body)
@@ -235,11 +235,11 @@ def main():
         print("wrote %s" % os.path.join(outdir, name))
 
     if args.kind in ("device", "all"):
-        write("phase4_device_functional.html", render_device(pdir, state, entries))
+        write("device_functional.html", render_device(pdir, state, entries))
     if args.kind in ("quality", "all"):
-        write("phase5_quality.html", render_quality(pdir, state, entries))
+        write("quality.html", render_quality(pdir, state, entries))
     if args.kind in ("summary", "all"):
-        write("phase6_summary.html", render_summary(pdir, state, entries))
+        write("summary.html", render_summary(pdir, state, entries))
         write("pr_description.md", build_pr_description(pdir))
     if args.kind == "all":
         write("index.html", render_index(state))

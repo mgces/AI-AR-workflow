@@ -12,7 +12,7 @@ evidence/              # 机器证据(签名,gitignore)——真相所在
   phase0/ … phase6/    # 各阶段真实产物:AR_design.md / summary_report.xml /
                        # hilog_capture.txt / diff.patch / pr.json / ci_status.json ...
 reports/               # 人读 HTML 审计报告(脱敏,可归档)——与 evidence/ 并列分离
-  phase4_device_functional.html / phase5_quality.html / phase6_summary.html
+  device_functional.html / quality.html / summary.html
   pr_description.md    # P6 汇总,gate_upload_ci 注入 PR 描述
 ```
 

@@ -221,9 +221,9 @@ $REPO/specs/pipeline/{YYYYMMDD}-{slug}/
 │   ├── manifest.jsonl   #   追加式 HMAC 链式签名证据账本
 │   └── phase0/ … phase6/  # 各阶段真实产物(含 phase1/AR_design.md 签名副本)
 └── reports/             # ← 人读 HTML 审计报告(脱敏,可归档),与 evidence/ 分离
-    ├── phase4_device_functional.html   # 真机功能完整报告
-    ├── phase5_quality.html             # 覆盖率/性能/功耗/稳定性
-    ├── phase6_summary.html             # 上库汇总(背景/设计/修改/用例/结果)
+    ├── device_functional.html          # 真机功能完整报告
+    ├── quality.html                    # 覆盖率/性能/功耗/稳定性
+    ├── summary.html                    # 上库汇总(背景/设计/修改/用例/结果)
     ├── pr_description.md               # P6 汇总,gate_upload_ci 注入 PR 描述
     └── index.html
 ```

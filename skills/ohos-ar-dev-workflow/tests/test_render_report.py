@@ -60,8 +60,8 @@ class TestRenderReport(unittest.TestCase):
     def test_main_all_writes_files(self):
         sys.argv = ["render_report.py", "--pipeline-dir", self.pdir, "--kind", "all"]
         rr.main()
-        for fn in ("phase4_device_functional.html", "phase5_quality.html",
-                   "phase6_summary.html", "pr_description.md", "index.html"):
+        for fn in ("device_functional.html", "quality.html",
+                   "summary.html", "pr_description.md", "index.html"):
             self.assertTrue(os.path.isfile(os.path.join(self.pdir, "reports", fn)), fn)
 
 

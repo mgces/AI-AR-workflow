@@ -22,3 +22,14 @@ description: >
 - 任何阶段都不得用文字"宣布通过";`advance.py` 不认文字,只认签名证据。
 
 各阶段详情见 `phase1-develop.md` … `phase6-upload-review.md`。
+
+## 关键约定(四轮增强)
+
+- **P1 双子门控(阶段号仍 1)**:先 `gate_design.py` 校验 `AR_design.md` 6 必含章节并签名,再
+  `gate_develop.py`(强制依赖签名 AR_design)。后续阶段依据 AR_design 的数据构建开发/测试/真机用例。
+- **指纹分层**:P1 锁**功能指纹**(仅非测试路径内容)。P2–P6 功能内容漂移即拒绝;**P3/P4/P5 只允许
+  新增独立测试文件**(test 路径),改功能代码/配置或新增功能文件会被 `advance` 拒绝,须 `reset` 回 P1。
+- **证据/报告分离**:`evidence/`(机器,HMAC 链签名,gitignore)‖ `reports/`(人读 HTML,脱敏可归档)。
+  P4/P5/P6 PASS 后编排器跑 `render_report.py --kind device|quality|summary` 渲染;P6 的 `pr_description.md`
+  由 `gate_upload_ci` 注入 PR。渲染是编排器动作,不影响门控 verdict。
+- **todo 刷新**:每轮循环开头 `refresh_todo.py` 依 AR_design 重写 `todo.md`,再与 `TodoWrite` 对齐。

@@ -60,5 +60,5 @@ python3 $S/advance.py --pipeline-dir "$PDIR" advance  --phase 4
 python3 ~/.claude/skills/ohos-ar-dev-workflow/scripts/render_report.py \
     --pipeline-dir "$PDIR" --kind device
 ```
-产出 `reports/phase4_device_functional.html`(真机完整报告:nonce/marker/e2e、hilog 片段、
+产出 `reports/device_functional.html`(真机完整报告:nonce/marker/e2e、hilog 片段、
 产物 sha256 一致)。渲染文本经脱敏;渲染失败不影响门控 verdict。

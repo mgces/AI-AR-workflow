@@ -63,13 +63,13 @@ class TestIncludeReports(unittest.TestCase):
             json.dump({"run_id": "r", "build_target": "t", "phases": []}, f)
         with open(os.path.join(pdir, "ar.md"), "w") as f:
             f.write("ar")
-        with open(os.path.join(pdir, "reports", "phase6_summary.html"), "w") as f:
+        with open(os.path.join(pdir, "reports", "summary.html"), "w") as f:
             f.write("<p>serial deadbeefcafef00d0123456789abcdef at /home/mgces/x</p>")
         outdir = os.path.join(tmp.name, "product")
         sys.argv = ["archive_product.py", "--pipeline-dir", pdir,
                     "--product-dir", outdir, "--include-reports"]
         ap.main()
-        with open(os.path.join(outdir, "reports", "phase6_summary.html")) as f:
+        with open(os.path.join(outdir, "reports", "summary.html")) as f:
             html = f.read()
         self.assertNotIn("deadbeefcafef00d0123456789abcdef", html)
         self.assertNotIn("/home/mgces", html)

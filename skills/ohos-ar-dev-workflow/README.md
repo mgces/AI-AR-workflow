@@ -25,13 +25,18 @@
 
 ```
 P0 bootstrap ─┐
-P1 develop    │  每阶段:
-P2 build      │    1) 用命名的 ohos-* 技能做事
-P3 test       ├─▶ 2) 跑 gate_*.py(脚本基于真实证据判 PASS/FAIL,产 HMAC 签名记录)
-P4 device     │    3) PASS → advance.py advance --phase N(校验签名+产物哈希后才推进)
-P5 quality    │    4) FAIL → 读 evidence/phaseN/ 真实日志,修复重跑(≤3 次)
-P6 upload ────┘    P4/P5/P6 需 advance.py consent 后才推进
+P1 design+dev │  每阶段:
+P2 build      │    0) 每轮循环开头 refresh_todo.py 依 AR_design 刷新 todo.md
+P3 test       │    1) 用命名的 ohos-* 技能做事
+P4 device     ├─▶ 2) 跑 gate_*.py(脚本基于真实证据判 PASS/FAIL,产 HMAC 链签名记录)
+P5 quality    │    3) PASS → advance.py advance --phase N(校验签名+链+产物哈希后才推进)
+P6 upload ────┘    4) FAIL → 读 evidence/phaseN/ 真实日志,修复重跑(≤3 次)
+                   P1 拆两子门控:gate_design(AR_design 6 章节签名)→ gate_develop(依赖签名设计)
+                   P3/P4/P5 只允许新增独立测试文件(功能指纹漂移会被拒)
+                   P4/P5/P6 需 advance.py consent(签名绑定证据)后才推进;并渲染 reports/ 人读 HTML
 ```
+
+证据两轨:`evidence/`(机器,HMAC 链签名,gitignore) ‖ `reports/`(人读 HTML,脱敏可归档)。
 
 ## 为什么"文本不能当通过"
 
