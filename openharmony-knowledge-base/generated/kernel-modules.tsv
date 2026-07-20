@@ -1,0 +1,12 @@
+module	kconfig_names	rk3568_enabled	source_file_count	path
+code_sign	SECURITY_CODE_SIGN	yes	10	kernel/linux/common_modules/code_sign
+container_escape_detection	SECURITY_CONTAINER_ESCAPE_DETECTION	yes	7	kernel/linux/common_modules/container_escape_detection
+dec	SECURITY_DEC,SECURITY_DEC_DEVELOP	no	19	kernel/linux/common_modules/dec
+memory_security	MEMORY_SECURITY,HIDE_MEM_ADDRESS,JIT_MEM_CONTROL	yes	12	kernel/linux/common_modules/memory_security
+module_sample		no	2	kernel/linux/common_modules/module_sample
+newip		no	68	kernel/linux/common_modules/newip
+pac		no	6	kernel/linux/common_modules/pac
+qos_auth		no	9	kernel/linux/common_modules/qos_auth
+tzdriver	TZDRIVER,SECBOOT_IMG,SECBOOT_IMG_V2,ASAN_DEBUG	yes	82	kernel/linux/common_modules/tzdriver
+ucollection	UNIFIED_COLLECTION	no	4	kernel/linux/common_modules/ucollection
+xpm	SECURITY_XPM,DSMM_DEVELOPER_ENABLE,SECURITY_XPM_DEBUG	yes	21	kernel/linux/common_modules/xpm

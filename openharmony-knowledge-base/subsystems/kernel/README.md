@@ -56,4 +56,5 @@ rk3568 启用状态取自 `kernel/linux/config/linux-6.6/rk3568/arch/arm64_defco
   三层 defconfig 合并、关键 OHOS 特性开关(安全/QoS/内存/文件系统)。
 - ✅ **HCS 设备拓扑**：[rk3568-hdf-topology.md](rk3568-hdf-topology.md) — 28 个 host、
   平台/外设/传感器/振动设备类别,`vendor/hihope/rk3568/hdf_config/*.hcs`。
-- **内核索引生成器**：扫 `common_modules/*/Kconfig` + defconfig 自动产出 `kernel-modules.tsv`。
+- ✅ **内核索引生成器**：[tools/generate-kernel-index.sh](../../tools/generate-kernel-index.sh) →
+  [generated/kernel-modules.tsv](../../generated/kernel-modules.tsv)（module/kconfig/rk3568启用/文件数/路径)。
