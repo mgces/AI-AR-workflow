@@ -4,8 +4,37 @@ OHOS 的内核层不是 preloader parts 里的普通子系统（它没有 `bundl
 `out/preloader/rk3568/parts.json`），因此单列。事实源是内核源码树 + rk3568 defconfig，
 不是组件索引。
 
-> 本页是「完整内核网络」知识框架的**入口（第一步）**：先覆盖 OHOS 注入通用 Linux 内核的
-> `common_modules` 功能模块。HDF 驱动框架、外设、板级配置、HCS 设备拓扑见文末 roadmap。
+> 本页是内核层知识框架总入口。「完整内核网络」的各节点(版本/配置 → 公共模块 → HDF 框架 →
+> 设备拓扑)均已建立,见下方总览图与各专题。
+
+## 完整内核网络总览
+
+```
+                          ┌─────────────────────────────────────────────┐
+   内核版本 linux-6.6 ────▶│  rk3568 内核配置画像 (三层 defconfig 合并)   │
+   (arm64)                │  rk3568-kernel-config.md                     │
+                          │  安全/QoS/内存/文件系统 特性开关(=y)         │
+                          └───────────────┬─────────────────────────────┘
+                                          │ 开关决定启用哪些能力
+        ┌─────────────────────────────────┼─────────────────────────────────┐
+        ▼                                 ▼                                 ▼
+  common_modules (11 个)          HDF 驱动框架                    HDF 设备拓扑 (rk3568)
+  OHOS 注入内核的功能模块          hdf-framework.md               rk3568-hdf-topology.md
+  安全:code_sign/xpm/dec/          devmgr → devhost →             28 个 host → device →
+   tzdriver/ced/pac/memory_sec     HdfDriverEntry(Bind/Init)      moduleName(.so)
+  协议:newip  维测:ucollection      model: display/audio/camera/    平台:i2c/spi/uart/pwm
+  调度:qos_auth  示例:module_sample  input/sensor/usb/…             外设:camera/audio/wlan
+        │                          HDI: drivers/interface          传感器:bmi160/bh1745/…
+        │                                 │                                 │
+        └─────────────────────────────────┴─────────────────────────────────┘
+                                          ▼
+                        机器索引 generated/kernel-modules.tsv
+                        (module/kconfig/rk3568启用/文件数/路径)
+                        由 tools/generate-kernel-index.sh 生成
+```
+
+事实层次(与知识库「事实优先级」一致):内核源码 > defconfig/HCS 配置 > 本知识分析 > 真机验证。
+
 
 ## 内核版本与构建
 
@@ -47,14 +76,20 @@ rk3568 启用状态取自 `kernel/linux/config/linux-6.6/rk3568/arch/arm64_defco
 > `tzdriver`（TEE）、`container_escape_detection`、`pac`、`memory_security` —— 做 P6 安全 review /
 > 影响面分析时应重点关注。
 
-## Roadmap（通往完整内核网络，后续节点）
+## 内核网络节点（全部已建立）
 
+- ✅ **公共模块**：本页 [common_modules 总表](#ohos-注入内核的公共模块common_modules)（11 专题）。
 - ✅ **HDF 驱动框架**：[hdf-framework.md](hdf-framework.md) — 三层设备模型（devmgr→devhost→
   HdfDriverEntry）、model 分类、HDI、[drivers/hdf_core](../../../../drivers/hdf_core)。
-- **外设**：[drivers/peripheral](../../../../drivers/peripheral)（display/audio/camera/usb/sensor…）。
 - ✅ **rk3568 内核配置画像**：[rk3568-kernel-config.md](rk3568-kernel-config.md) — 版本、
   三层 defconfig 合并、关键 OHOS 特性开关(安全/QoS/内存/文件系统)。
 - ✅ **HCS 设备拓扑**：[rk3568-hdf-topology.md](rk3568-hdf-topology.md) — 28 个 host、
   平台/外设/传感器/振动设备类别,`vendor/hihope/rk3568/hdf_config/*.hcs`。
 - ✅ **内核索引生成器**：[tools/generate-kernel-index.sh](../../tools/generate-kernel-index.sh) →
   [generated/kernel-modules.tsv](../../generated/kernel-modules.tsv)（module/kconfig/rk3568启用/文件数/路径)。
+
+## 后续可扩展（非本轮）
+
+- **外设实现**：[drivers/peripheral](../../../../drivers/peripheral) 各外设的驱动实现细节专题。
+- **liteos/uniproton** 小型/实时内核（rk3568 用 linux,优先级低）。
+- **HDF 驱动代码骨架**：并入 `ohos-code-skeletons` 第二批。
