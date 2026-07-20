@@ -95,20 +95,25 @@ AI-AR-workflow/
     ├── ohos-ar-dev-workflow/           ← thin 入口(编排器):路由/init/调度/断点恢复
     │   ├── SKILL.md
     │   ├── README.md                      ← 架构图
-    │   └── references/                     ← 门控契约 / 防伪协议 / 状态结构
+    │   ├── references/                     ← 门控契约 / 防伪协议 / 状态结构
+    │   └── scripts/                        ← 归档与人读产物(纯 Python 无依赖)
+    │       ├── archive_product.py          ← 脱敏归档到 products/(--include-reports)
+    │       ├── render_report.py            ← 渲染 reports/ 人读 HTML + PR 描述
+    │       └── refresh_todo.py             ← 依 AR_design 刷新 todo.md
     ├── ohos-ar-dev-phases/             ← thick 阶段说明 + 承重脚本
     │   ├── SKILL.md
     │   ├── phase1-develop.md … phase6-upload-review.md
     │   └── scripts/                        ★ 系统承重核心
-    │       ├── advance.py                  ← 唯一状态写入器(init/advance/consent/verify-all/status)
+    │       ├── advance.py                  ← 唯一状态写入器(init/advance/consent/reset/verify-all/status)
     │       ├── gate_env_init.py            ← P0 环境+真机预检
-    │       ├── gate_develop.py             ← P1 git/untracked diff + C++ 强门控
+    │       ├── gate_design.py              ← P1a 设计固化(校验 AR_design.md 6 章节并签名)
+    │       ├── gate_develop.py             ← P1b git/untracked diff + C++ 强门控(依赖签名 AR_design)
     │       ├── gate_build.py               ← P2 编译(捕获 build.sh stdout 判横幅)
     │       ├── gate_test_ut.py             ← P3 ohos_unittest(developer_test)
     │       ├── gate_device_func.py         ← P4 真机功能(nonce+uptime+hilog)
     │       ├── gate_integration.py         ← P5 功能与质量验证(MST + 覆盖率/性能/功耗/稳定性报告)
     │       ├── gate_upload_ci.py           ← P6 上库(oh-gc PR + CI 绿,SHA 绑定)
-    │       └── lib/{gatelib.py, device.sh} ← 签名账本 + hdc-over-WSL helper
+    │       └── lib/{gatelib.py, device.sh} ← 签名账本(HMAC 链+指纹分层) + hdc-over-WSL helper
     ├── ohos-ar-dev-init/               ← 一次性环境配置
     │
     └── (被各阶段调用的现有能力技能,随包携带)
@@ -204,16 +209,29 @@ P0 会把探测到的序列号回填进 `pipeline.json` 与 `evidence/phase0/env
 
 ## 7. 运行态目录(每个 AR 一个)
 
+证据两轨分离:`evidence/`(机器,HMAC 签名,gitignore)与 `reports/`(人读 HTML,可脱敏归档)并列。
+
 ```
 $REPO/specs/pipeline/{YYYYMMDD}-{slug}/
-├── pipeline.json        # 规范状态(只有 advance.py 写)
-├── ar.md                # 输入的已澄清 AR
-├── todo.md              # 人读镜像(与 TodoWrite 双轨,可选)
-└── evidence/
-    ├── manifest.jsonl   # 追加式 HMAC 签名证据账本(真相所在)
-    └── phase0/ … phase6/  # 各阶段真实产物
+├── pipeline.json        # 规范状态(只有 advance.py 写;含 functional_fingerprint/locked_all_paths)
+├── ar.md                # 输入的已澄清 AR 原文
+├── AR_design.md         # P1a 固化的设计文档(6 必含章节;签名副本在 evidence/phase1/)
+├── todo.md              # 人读镜像(由 refresh_todo.py 依 AR_design 重写,与 TodoWrite 双轨)
+├── evidence/            # ← 机器证据(签名,gitignore),真相所在
+│   ├── manifest.jsonl   #   追加式 HMAC 链式签名证据账本
+│   └── phase0/ … phase6/  # 各阶段真实产物(含 phase1/AR_design.md 签名副本)
+└── reports/             # ← 人读 HTML 审计报告(脱敏,可归档),与 evidence/ 分离
+    ├── phase4_device_functional.html   # 真机功能完整报告
+    ├── phase5_quality.html             # 覆盖率/性能/功耗/稳定性
+    ├── phase6_summary.html             # 上库汇总(背景/设计/修改/用例/结果)
+    ├── pr_description.md               # P6 汇总,gate_upload_ci 注入 PR 描述
+    └── index.html
 ```
-`pipeline.json` 字段说明见 `skills/ohos-ar-dev-workflow/references/pipeline-schema.md`。
+`pipeline.json` 字段(含 `functional_fingerprint` / `locked_all_paths`)说明见
+`skills/ohos-ar-dev-workflow/references/pipeline-schema.md`。
+
+> 归档到 `products/` 时用 `archive_product.py --include-reports`:只落脱敏摘要
+> (`ar.md` + `manifest_summary.md`)与脱敏 HTML;原始 `evidence/` 留本地(gitignore)。
 
 ---
 
