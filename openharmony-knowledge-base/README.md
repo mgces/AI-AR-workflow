@@ -2,11 +2,17 @@
 
 更新时间：2026-07-13
 
+> **本目录是知识库的版本管理副本。** 真源部署在 OpenHarmony 源码仓的
+> `$OHOS_ROOT/specs/knowledge-base/`(生成器需在源码仓根运行,读取 `repo list` /
+> `bundle.json` / `out/preloader`)。**下文所有 `specs/knowledge-base/...` 命令路径均相对
+> `$OHOS_ROOT`**;在本副本里直接照抄会找不到文件——请在源码仓 `$OHOS_ROOT` 下执行,
+> 或把 `specs/knowledge-base` 替换为本副本目录 `openharmony-knowledge-base`。
+
 ## 使用入口
 
 - [详细使用指南](USAGE.md)
 - [知识库信息架构](INFORMATION_ARCHITECTURE.md)
-- [OpenHarmony 代码知识库 Skill](../../skills/ohos-code-knowledge-base/SKILL.md)
+- [OpenHarmony 代码知识库 Skill](skills/ohos-code-knowledge-base/SKILL.md)(本副本自带)
 
 后续分析任意目录或子系统时，可以直接调用 `$ohos-code-knowledge-base`，完成全局索引、进程树、功能说明、变化摘要和覆盖验证。
 

@@ -1,5 +1,9 @@
 # OpenHarmony 代码知识库使用指南
 
+> **路径约定**:本文所有 `specs/knowledge-base/...` 命令路径相对 OpenHarmony 源码仓根
+> `$OHOS_ROOT`(知识库真源部署在那里)。在本仓的副本目录下照抄会失败——请在 `$OHOS_ROOT`
+> 下执行,或把前缀 `specs/knowledge-base` 换成本副本目录 `openharmony-knowledge-base`。
+
 ## 1. 这套知识库解决什么问题
 
 知识库用于回答五类问题：
@@ -36,7 +40,7 @@
 
 分析新的代码路径时，直接使用 [给定代码路径的全局索引、进程与功能说明模板](templates/code-path-global-summary.md)。模板包含输入参数、扫描步骤、进程宿主建模、输出目录、机器索引字段、功能说明格式和验收清单。
 
-也可以直接调用 [OpenHarmony 代码知识库 Skill](../../skills/ohos-code-knowledge-base/SKILL.md)：
+也可以直接调用 [OpenHarmony 代码知识库 Skill](skills/ohos-code-knowledge-base/SKILL.md)(本副本自带)：
 
 ```text
 使用 $ohos-code-knowledge-base 分析 <代码路径>，
