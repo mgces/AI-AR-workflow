@@ -53,5 +53,6 @@ rk3568 启用状态取自 `kernel/linux/config/linux-6.6/rk3568/arch/arm64_defco
   HdfDriverEntry）、model 分类、HDI、[drivers/hdf_core](../../../../drivers/hdf_core)。
 - **外设**：[drivers/peripheral](../../../../drivers/peripheral)（display/audio/camera/usb/sensor…）。
 - **rk3568 内核配置画像**：defconfig/arch 全量 feature 开关沉淀。
-- **HCS 设备拓扑**：`vendor/hihope/rk3568/hdf_config/*.hcs` → rk3568 挂载了哪些 HDF 驱动。
+- ✅ **HCS 设备拓扑**：[rk3568-hdf-topology.md](rk3568-hdf-topology.md) — 28 个 host、
+  平台/外设/传感器/振动设备类别,`vendor/hihope/rk3568/hdf_config/*.hcs`。
 - **内核索引生成器**：扫 `common_modules/*/Kconfig` + defconfig 自动产出 `kernel-modules.tsv`。
