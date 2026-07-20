@@ -12,9 +12,9 @@ import archive_product as ap  # noqa: E402
 
 class TestRedact(unittest.TestCase):
     def test_serial_redacted(self):
-        s = "Device online: serial 7001005458323933328a01fce1fe3800 via bridge"
+        s = "Device online: serial deadbeefcafef00d0123456789abcdef via bridge"
         out = ap.redact(s)
-        self.assertNotIn("7001005458323933328a01fce1fe3800", out)
+        self.assertNotIn("deadbeefcafef00d0123456789abcdef", out)
         self.assertIn("<REDACTED-SERIAL>", out)
 
     def test_sha256_not_eaten(self):
@@ -35,7 +35,7 @@ class TestRedact(unittest.TestCase):
         self.assertIn("<REDACTED-HOST:PORT>", out)
 
     def test_idempotent(self):
-        s = "serial 7001005458323933328a01fce1fe3800 at /home/mgces/x"
+        s = "serial deadbeefcafef00d0123456789abcdef at /home/mgces/x"
         once = ap.redact(s)
         self.assertEqual(once, ap.redact(once))
 
@@ -43,10 +43,10 @@ class TestRedact(unittest.TestCase):
         state = {"run_id": "20260707-x", "build_target": "t",
                  "base_commit": "abc", "phases": [{"id": 4, "name": "device-functional"}]}
         entries = [{"phase": 4, "gate": "gate_device_func.py", "verdict": "PASS",
-                    "reason": "serial=7001005458323933328a01fce1fe3800 nonce=deadbeef",
+                    "reason": "serial=deadbeefcafef00d0123456789abcdef nonce=deadbeef",
                     "artifacts": [{"path": "evidence/phase4/hilog.txt", "sha256": "ab"}]}]
         out = ap.build_manifest_summary(state, entries)
-        self.assertNotIn("7001005458323933328a01fce1fe3800", out)
+        self.assertNotIn("deadbeefcafef00d0123456789abcdef", out)
         self.assertIn("<REDACTED-SERIAL>", out)
 
 

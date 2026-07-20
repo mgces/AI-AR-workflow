@@ -34,7 +34,7 @@ import sys
 # Patterns are ordered; each maps a secret shape to a stable placeholder.
 # ----------------------------------------------------------------------------
 _REDACTIONS = (
-    # 32-hex device serial (e.g. 7001005458323933328a01fce1fe3800). Anchored on
+    # 32-hex device serial (e.g. deadbeefcafef00d0123456789abcdef). Anchored on
     # word boundaries so it does not eat sha256 (64 hex) — those are 64 chars and
     # will not match this 32-char rule.
     (re.compile(r"\b[0-9a-fA-F]{32}\b"), "<REDACTED-SERIAL>"),

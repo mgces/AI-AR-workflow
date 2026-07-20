@@ -184,18 +184,24 @@ def main():
     test_ok = tests > 0 and failures == 0 and errors == 0
 
     quality_ok, quality_detail = copy_quality_reports(args, pdir, arts)
+    downgraded = False
     if not quality_ok and args.allow_missing_quality_reports:
-        quality_detail += " (allowed)"
+        # The quality gate (coverage/perf/power/stability) was bypassed. Record
+        # that prominently in the SIGNED reason so the downgrade is auditable and
+        # a human reviewer (P5 consent) sees it — never a silent pass.
+        quality_detail += " (QUALITY-GATE-DOWNGRADED: reports missing, bypass allowed)"
         quality_ok = True
+        downgraded = True
 
     auto_review_ok, auto_review_detail = code_review(state, pdir, arts)
     external_review_ok, external_review_detail = copy_external_review_report(args, pdir, arts)
     review_ok = auto_review_ok and external_review_ok
     review_detail = "%s | %s" % (auto_review_detail, external_review_detail)
 
-    reason = "type=%s tests=%d failures=%d errors=%d fresh=%s | quality:%s | review:%s" % (
+    reason = "type=%s tests=%d failures=%d errors=%d fresh=%s | quality:%s | review:%s%s" % (
         args.testtype, tests, failures, errors, os.path.basename(fresh_dir),
-        quality_detail, review_detail)
+        quality_detail, review_detail,
+        " | ⚠ QUALITY-GATE-DOWNGRADED" if downgraded else "")
     print(reason)
     verdict = "PASS" if (test_ok and quality_ok and review_ok) else "FAIL"
     gl.emit(pdir, 5, "gate_integration.py", verdict=verdict, reason=reason,

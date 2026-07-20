@@ -130,12 +130,12 @@ def main():
     if phase == 4:
         found = find_marker_literals(
             [args.deploy_script, args.scenario_script],
-            [args.runtime_marker, args.e2e_marker],
+            [args.marker, args.runtime_marker, args.e2e_marker],
         )
         if found:
             detail = ", ".join("%s in %s" % (marker, path)
                                for marker, path in sorted(found.items()))
-            ap.error("phase 4 proof markers must be emitted by the runtime/e2e result, "
+            ap.error("phase 4 success markers must be emitted by the runtime/e2e result, "
                      "not embedded in driver scripts: %s" % detail)
 
     host_sha = None

@@ -268,12 +268,23 @@ def parse_review_report_zero_issues(path):
 # ----------------------------------------------------------------------------
 def emit(pdir, phase, gate, *, verdict, reason, cmd="", argv=None,
          exit_code=None, nonce=None, artifacts_rel=None):
-    """Append one signed evidence record. Returns the entry. verdict in PASS|FAIL."""
+    """Append one signed evidence record. Returns the entry. verdict in PASS|FAIL.
+
+    Records form a HASH CHAIN: each entry carries `seq` (its position) and `prev`
+    (the immediately-preceding entry's hmac), both inside the signed bytes. This
+    defeats REPLAY — appending a historically-valid PASS record no longer closes
+    a phase, because its `prev`/`seq` will not match the real tail of the chain,
+    and re-signing it is impossible without the per-run secret."""
     state = load_state(pdir)
     run_id = state["run_id"]
     secret = load_secret(run_id)
+    existing = read_manifest(pdir)
+    seq = len(existing)
+    prev = existing[-1].get("hmac", "") if existing else ""
     entry = {
         "ts_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "seq": seq,
+        "prev": prev,
         "phase": phase,
         "gate": gate,
         "cmd": cmd,
@@ -317,11 +328,51 @@ def entry_id(entry):
 # ----------------------------------------------------------------------------
 # validation used by advance.py (the anti-fabrication checks)
 # ----------------------------------------------------------------------------
+def verify_chain(pdir):
+    """Walk the whole manifest and verify the hash chain.
+
+    Returns (ok, reason, entries). Each entry must (a) HMAC-verify, (b) carry the
+    correct `seq` (its 0-based index), and (c) carry `prev` == the previous
+    entry's hmac ("" for the first). A REPLAYED historical record breaks this:
+    its `prev`/`seq` point at an earlier position, so re-appending it at the tail
+    fails the chain — and it cannot be re-signed without the per-run secret.
+
+    Backward compatibility: a manifest whose entries predate the chain (no `seq`
+    field at all) is treated as legacy and only per-entry HMAC is checked. As
+    soon as ANY entry has `seq`, every entry from the first chained one onward
+    must chain correctly.
+    """
+    secret = load_secret(load_state(pdir)["run_id"])
+    entries = read_manifest(pdir)
+    chained = any("seq" in e for e in entries)
+    prev_hmac = ""
+    for i, e in enumerate(entries):
+        if not verify_sig(e, secret):
+            return False, "HMAC mismatch at manifest line %d (tampered/forged/replayed)" % i, entries
+        if chained and "seq" in e:
+            if e.get("seq") != i:
+                return False, ("manifest chain break at line %d: seq=%s expected %d "
+                               "(record reordered or replayed)" % (i, e.get("seq"), i)), entries
+            if e.get("prev", "") != prev_hmac:
+                return False, ("manifest chain break at line %d: prev hmac mismatch "
+                               "(record replayed or a record was removed)" % i), entries
+        prev_hmac = e.get("hmac", "")
+    return True, "chain ok (%d entries%s)" % (len(entries), "" if chained else ", legacy-unchained"), entries
+
+
 def validate_closing_entry(pdir, phase):
-    """Return (ok, reason, entry). A phase may close iff its last manifest entry
-    is PASS, the HMAC verifies, and every recorded artifact still hashes equal."""
+    """Return (ok, reason, entry). A phase may close iff the manifest hash chain
+    is intact, its last entry for this phase is PASS, that entry's HMAC verifies,
+    and every recorded artifact still hashes equal.
+
+    The chain check is what defeats replay: re-appending a historically-valid
+    PASS record (even with its artifact restored) breaks `seq`/`prev` continuity
+    and is rejected here before the per-phase PASS is ever trusted."""
     state = load_state(pdir)
     secret = load_secret(state["run_id"])
+    chain_ok, chain_reason, _ = verify_chain(pdir)
+    if not chain_ok:
+        return False, chain_reason, None
     entry = last_entry_for_phase(pdir, phase)
     if entry is None:
         return False, "no manifest entry for phase %d" % phase, None

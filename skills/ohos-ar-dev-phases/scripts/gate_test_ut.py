@@ -83,14 +83,14 @@ def main():
     # 2. snapshot report dirs before the run
     before = set(glob.glob(os.path.join(reports, "20*")))
 
-    # 3. run the suite on device via the official harness.
-    # Pass the product form explicitly: developer_test defaults productform to
-    # "phone", which collapses the testcase path to a non-existent ./tests on any
-    # non-phone product (e.g. rk3568), so the harness finds 0 cases. The product
-    # is already pinned in pipeline.json; forward it as -p so out/<product>/tests
+    # Pin the product form explicitly and consistently with gate_integration
+    # (rk3568, NOT the harness default "phone"). developer_test defaults
+    # productform to "phone", which collapses the testcase path to a
+    # non-existent ./tests on rk3568 (harness then finds 0 cases). The product is
+    # already pinned in pipeline.json; forward it as -p so out/<product>/tests
     # resolves. This only selects where the harness looks — verdict still comes
     # solely from the freshly-produced summary_report.xml below.
-    product = state.get("product") or "phone"
+    product = state.get("product") or "rk3568"
     run_cmd = "./start.sh run -t UT -tp %s -ts %s -p %s" % (part, args.suite, product)
     print("running: (cd %s && %s)" % (dt, run_cmd))
     proc = subprocess.run(run_cmd, shell=True, cwd=dt, text=True, capture_output=True)
