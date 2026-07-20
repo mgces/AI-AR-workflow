@@ -24,7 +24,8 @@ kernel -> common_modules -> qos_auth
 
 ## 配置与开关
 
-- 由模块 Kconfig 控制(无 grep 命中标准名)。**rk3568:未确认启用(需构建确认)。**
+- `CONFIG_QOS_CTRL`、`CONFIG_QOS_AUTHORITY`、`CONFIG_QOS_POLICY_MAX_NR`。
+- **rk3568:`QOS_CTRL=y` + `QOS_AUTHORITY=y`（启用,见 [rk3568 内核配置画像](../../rk3568-kernel-config.md)）。**
 
 ## 运行链
 

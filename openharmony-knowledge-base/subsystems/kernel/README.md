@@ -35,7 +35,7 @@ rk3568 启用状态取自 `kernel/linux/config/linux-6.6/rk3568/arch/arm64_defco
 | dec | 数据增强访问控制（Data Enhance Control） | `SECURITY_DEC` | — | [→](common-modules/dec/README.md) |
 | memory_security | 渲染进程内存保护（JIT 内存管控 / 地址隐藏） | `MEMORY_SECURITY` | ✅ =y | [→](common-modules/memory_security/README.md) |
 | code_sign | 基于 FS-Verity 的代码签名 | `SECURITY_CODE_SIGN` | ✅ =y | [→](common-modules/code_sign/README.md) |
-| qos_auth | FFRT 并发框架的 QoS 调度鉴权 | *（无标准名）* | — | [→](common-modules/qos_auth/README.md) |
+| qos_auth | FFRT 并发框架的 QoS 调度鉴权 | `QOS_CTRL`/`QOS_AUTHORITY` | ✅ =y | [→](common-modules/qos_auth/README.md) |
 | container_escape_detection | 容器逃逸检测 | `SECURITY_CONTAINER_ESCAPE_DETECTION` | ✅ =y | [→](common-modules/container_escape_detection/README.md) |
 | pac | 指针认证（ARM Pointer Authentication） | *（无标准名）* | — | [→](common-modules/pac/README.md) |
 | ucollection | 统一采集（进程 CPU 维测数据） | `UNIFIED_COLLECTION` | — | [→](common-modules/ucollection/README.md) |
@@ -52,7 +52,8 @@ rk3568 启用状态取自 `kernel/linux/config/linux-6.6/rk3568/arch/arm64_defco
 - ✅ **HDF 驱动框架**：[hdf-framework.md](hdf-framework.md) — 三层设备模型（devmgr→devhost→
   HdfDriverEntry）、model 分类、HDI、[drivers/hdf_core](../../../../drivers/hdf_core)。
 - **外设**：[drivers/peripheral](../../../../drivers/peripheral)（display/audio/camera/usb/sensor…）。
-- **rk3568 内核配置画像**：defconfig/arch 全量 feature 开关沉淀。
+- ✅ **rk3568 内核配置画像**：[rk3568-kernel-config.md](rk3568-kernel-config.md) — 版本、
+  三层 defconfig 合并、关键 OHOS 特性开关(安全/QoS/内存/文件系统)。
 - ✅ **HCS 设备拓扑**：[rk3568-hdf-topology.md](rk3568-hdf-topology.md) — 28 个 host、
   平台/外设/传感器/振动设备类别,`vendor/hihope/rk3568/hdf_config/*.hcs`。
 - **内核索引生成器**：扫 `common_modules/*/Kconfig` + defconfig 自动产出 `kernel-modules.tsv`。
