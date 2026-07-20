@@ -28,8 +28,8 @@ import xml.etree.ElementTree as ET
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 import gatelib as gl  # noqa: E402
 
-STYLE_GUARD = gl.resolve_dep("ohos-dev-cpp-coding-style/scripts/oh_cpp_guard.py",
-                             env_var="OHOS_CPP_GUARD")
+STYLE_GUARD = gl.resolve_dep("code-ruleset-style-check/scripts/code_ruleset_guard.py",
+                             env_var="CODE_RULESET_GUARD")
 QUALITY_REPORTS = (
     ("coverage", "coverage_report"),
     ("performance", "performance_report"),
@@ -39,7 +39,7 @@ QUALITY_REPORTS = (
 
 
 def code_review(state, pdir, arts):
-    """Run the OHOS coding-style guard on the changed C/C++ files.
+    """Run the code_ruleset style guard on the changed C/C++ files.
     Returns (ok, detail). Writes evidence/phase5/code_review_report.txt."""
     gdir = gl.resolve_git_dir(state)
     base = state.get("base_commit") or "HEAD"

@@ -23,10 +23,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib
 import gatelib as gl  # noqa: E402
 
 # OpenHarmony C++ style guard shipped with the cpp-coding-style skill.
-STYLE_GUARD = gl.resolve_dep("ohos-dev-cpp-coding-style/scripts/oh_cpp_guard.py",
-                             env_var="OHOS_CPP_GUARD")
-OPENHARMONY_CPP_SKILL = gl.resolve_dep("openharmony-cpp/SKILL.md",
-                                       env_var="OPENHARMONY_CPP_SKILL")
+STYLE_GUARD = gl.resolve_dep("code-ruleset-style-check/scripts/code_ruleset_guard.py",
+                             env_var="CODE_RULESET_GUARD")
+CODE_RULESET_SKILL = gl.resolve_dep("code-ruleset-style-check/SKILL.md",
+                                    env_var="CODE_RULESET_STYLE_SKILL")
 
 FORMAT_EXTENSIONS = (".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx")
 HEADER_EXTENSIONS = (".h", ".hh", ".hpp", ".hxx")
@@ -71,9 +71,7 @@ def source_files(gdir, changed):
 
 
 def static_rule_checks(gdir, source_relpaths):
-    """Machine-checkable P1 blockers from ohos-dev-cpp-coding-style and
-    openharmony-cpp. Human-judgment rules stay documented in the report rather
-    than being guessed here."""
+    """Machine-checkable P1 blockers derived from code_ruleset."""
     issues = []
     checked = []
     for rel in source_relpaths:
@@ -81,7 +79,7 @@ def static_rule_checks(gdir, source_relpaths):
         ext = os.path.splitext(rel)[1].lower()
         checked.append(rel)
         if ext in DISALLOWED_CPP_EXTENSIONS:
-            issues.append("%s: openharmony-cpp naming_formatting: use .cpp/.h, not %s" % (rel, ext))
+            issues.append("%s: code_ruleset file naming: use .cpp/.h, not %s" % (rel, ext))
         try:
             with open(path, "r", encoding="utf-8", errors="replace") as f:
                 text = f.read()
@@ -90,17 +88,17 @@ def static_rule_checks(gdir, source_relpaths):
             continue
 
         if ext in HEADER_EXTENSIONS and re.search(r"^\s*#\s*pragma\s+once\b", text, re.MULTILINE):
-            issues.append("%s: openharmony-cpp headers_scopes: #pragma once is forbidden" % rel)
+            issues.append("%s: G.INC.06: #pragma once is forbidden" % rel)
         if ext in HEADER_EXTENSIONS and re.search(r"^\s*using\s+namespace\s+", text, re.MULTILINE):
             issues.append("%s: ohos/openharmony header rule: using namespace is forbidden in headers" % rel)
         if re.search(r"^\s*#\s*include\b", text, re.MULTILINE) and include_inside_extern_c(text):
-            issues.append("%s: ohos-dev-cpp-coding-style: do not place #include inside extern \"C\"" % rel)
+            issues.append("%s: G.INC.05-CPP: do not place #include inside extern \"C\"" % rel)
         if re.search(r"\bNULL\b", text):
-            issues.append("%s: openharmony-cpp class_function_design: use nullptr instead of NULL" % rel)
+            issues.append("%s: G.EXP.35-CPP: use nullptr instead of NULL" % rel)
         if re.search(r"\b(system|popen)\s*\(", text):
-            issues.append("%s: openharmony-cpp secure_coding: system()/popen() are forbidden in changed code" % rel)
+            issues.append("%s: code_ruleset secure coding: system()/popen() are forbidden in changed code" % rel)
         if re.search(r"\[(=|&)(\]|\s*,)", text):
-            issues.append("%s: ohos-dev-cpp-coding-style: avoid default lambda captures" % rel)
+            issues.append("%s: G.RES.05-CPP: avoid default lambda captures" % rel)
     return checked, issues
 
 
@@ -164,8 +162,7 @@ def main():
 
     # Strong C/C++ gate on changed files:
     #   * C/C++ changes cannot opt out with --no-style.
-    #   * the packaged ohos-dev-cpp-coding-style guard must exist and pass.
-    #   * machine-checkable hard rules from openharmony-cpp also pass.
+    #   * the packaged code_ruleset guard must exist and pass.
     #   * missing dependent skill sources fail closed instead of "treated as pass".
     style_ok, style_detail = True, "no C/C++ files changed"
     cxx = source_files(gdir, changed)
@@ -174,9 +171,9 @@ def main():
     strict_checked, strict_issues = static_rule_checks(gdir, cxx)
     dependency_issues = []
     if cxx and not os.path.exists(STYLE_GUARD):
-        dependency_issues.append("ohos-dev-cpp-coding-style guard missing: %s" % STYLE_GUARD)
-    if cxx and not os.path.exists(OPENHARMONY_CPP_SKILL):
-        dependency_issues.append("openharmony-cpp skill missing: %s" % OPENHARMONY_CPP_SKILL)
+        dependency_issues.append("code-ruleset-style-check guard missing: %s" % STYLE_GUARD)
+    if cxx and not os.path.exists(CODE_RULESET_SKILL):
+        dependency_issues.append("code-ruleset-style-check skill missing: %s" % CODE_RULESET_SKILL)
     if cxx and args.no_style:
         dependency_issues.append("--no-style is not allowed when C/C++ files changed")
 
@@ -197,8 +194,8 @@ def main():
     arts.append(style_rel)
     with open(os.path.join(pdir, strict_rel), "w", encoding="utf-8") as f:
         f.write("rule_sources:\n")
-        f.write("  - ohos-dev-cpp-coding-style/references/rules.md\n")
-        f.write("  - openharmony-cpp/references/*.md\n\n")
+        f.write("  - code-ruleset-style-check/SKILL.md\n")
+        f.write("  - code_ruleset/黄区C语言门禁规则集_OAT_敏感词 - 20260126.xlsx\n\n")
         f.write("checked_files:\n%s\n\n" % ("\n".join(strict_checked) or "(none)"))
         f.write("blocking_issues:\n%s\n\n" % ("\n".join(strict_issues + dependency_issues) or "(none)"))
         f.write("manual_judgment_not_auto_enforced:\n")

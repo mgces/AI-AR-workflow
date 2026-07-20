@@ -1,0 +1,4 @@
+interface:
+  display_name: "code_ruleset C++ Style Check"
+  short_description: "检查 C/C++ 代码规则与门禁"
+  default_prompt: "Use the code_ruleset C++ rules to check the changed files and report blocking findings."

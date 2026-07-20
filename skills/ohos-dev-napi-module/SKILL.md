@@ -157,4 +157,4 @@ When reviewing a NAPI module patch, check in this order:
 ## Related Skills
 
 - Use `openharmony-build` for broader OpenHarmony build system issues.
-- Use `openharmony-cpp` for general OpenHarmony C++ style beyond NAPI-specific rules.
+- Use `code-ruleset-style-check` for general OpenHarmony C++ style beyond NAPI-specific rules.

@@ -13,7 +13,7 @@ code review 报告落到 `evidence/phase5/`,最终只看该阶段 manifest 最�
 - 执行覆盖率采集并输出覆盖率报告。
 - 增加性能和功耗测试,输出性能报告与功耗报告。
 - 执行稳定性影响测试,输出稳定性报告。
-- 使用 `ohos-dev-cpp-coding-style` 的规则和 review checklist 做代码 review;涉及 IPC/权限/并发/
+- 使用 `code-ruleset-style-check` 的规则做代码 review;涉及 IPC/权限/并发/
   隐私风险时同步用 `ohos-dev-security-code-review` 复核。review 问题必须清零。
 
 门控:
@@ -30,7 +30,7 @@ python3 $S/gate_integration.py --pipeline-dir "$PDIR" \
 1. 跑 `./start.sh run -t MST -tp <part> -ts ...`,集合差找本次新报告目录,解析
    `summary_report.xml`(`tests>0 && failures==0 && errors==0`)。
 2. 将覆盖率、性能、功耗、稳定性四类报告复制到 `evidence/phase5/` 并纳入 HMAC 签名证据。
-3. 自动对改动 C/C++ 文件运行 `oh_cpp_guard.py --format-only`,生成
+3. 自动对改动 C/C++ 文件运行 `code_ruleset_guard.py`,生成
    `code_review_report.txt`;工具缺失或返回非 0 都判 FAIL。
 4. 如提供 `--code-review-report`,报告必须是机器可校验的零问题报告:
    JSON 中 `issue_count/finding_count/problem_count/blocker_count` 为 0,或

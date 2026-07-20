@@ -57,8 +57,8 @@ AI-AR-workflow/
     ├── ohos-ar-dev-init/               ← 一次性环境配置
     │
     └── (被各阶段调用的现有能力技能,随包携带)
-        ohos-dev-sa-codegen/  ohos-dev-napi-module/  ohos-dev-cpp-coding-style/
-        openharmony-cpp/  tdd-enforcer/  ohos-dev-build-execution-diagnosis/  ohos-build-flash/
+        ohos-dev-sa-codegen/  ohos-dev-napi-module/  code-ruleset-style-check/
+        tdd-enforcer/  ohos-dev-build-execution-diagnosis/  ohos-build-flash/
         ohos-test-ut-generation/  ohos-dev-hdc-command-usage/
         ohos-ci-gitcode-cli-usage/  ohos-ci-openharmony-ci-analysis/
         ohos-dev-gitcode-pr-review/  ohos-dev-security-code-review/
@@ -136,11 +136,11 @@ P0 会把探测到的序列号回填进 `pipeline.json` 与 `evidence/phase0/env
 | 阶段 | 做事(调用的技能) | 门控脚本 | 通过条件 | 落盘证据(`evidence/phaseN/`) |
 |---|---|---|---|---|
 | **P0** | ohos-ar-dev-init | `gate_env_init.py` | build/compile/git/testfwk/hdc 二进制/真机(自动探测并记录序列号)全部就绪;oh-gc + gitcode token 为 SOFT 告警 | `env.json` |
-| **P1 开发** | ohos-dev-sa-codegen / -napi-module / -cpp-coding-style / openharmony-cpp / tdd-enforcer | `gate_develop.py` | 相对 `base_commit` 有 tracked 或 untracked 改动 **且** C/C++ 格式 guard + 强规则检查通过;不可用 `--no-style` 绕过 | `diff.patch`、`changed_files.txt`、`style_report.txt`、`strict_cpp_report.txt` |
+| **P1 开发** | ohos-dev-sa-codegen / -napi-module / code-ruleset-style-check / tdd-enforcer | `gate_develop.py` | 相对 `base_commit` 有 tracked 或 untracked 改动 **且** C/C++ 格式 guard + 强规则检查通过;不可用 `--no-style` 绕过 | `diff.patch`、`changed_files.txt`、`style_report.txt`、`strict_cpp_report.txt` |
 | **P2 编译** | ohos-dev-build-execution-diagnosis / ohos-build-flash | `gate_build.py` | build.sh exit 0 **且** 输出含 `=====build…successful=====` 且无 error 横幅 | `build_stdout.log`、`build_banner.txt`(失败再加 `error_distill.txt`) |
 | **P3 测试** | ohos-test-ut-generation / tdd-enforcer | `gate_test_ut.py` | 编出测试二进制 + developer_test 本次**新建**报告 + `tests>0 && failures==0 && errors==0` | `summary_report.xml`、`result_*.xml`、`start_sh_stdout.txt`、`report_dir.txt` |
 | **P4 真机** | ohos-build-flash / ohos-dev-hdc-command-usage | `gate_device_func.py` | 部署命令全 exit 0 + 主机/设备产物 sha256 一致 + hilog 含**本次 nonce**、功能 marker、运行时 marker、端到端 marker + uptime 单调;**证据 PASS 后停下,人工核对真机真实结果并 `consent --phase 4` 才推进** | `hilog_capture.txt`、`device_cmds.txt`、`run_meta.txt`、`artifact_runtime_proof.txt` |
-| **P5 质量验证** | ohos-build-flash / developer_test(MST) / ohos-test-ut-generation / coverage / performance / power / stability / ohos-dev-cpp-coding-style / ohos-dev-security-code-review | `gate_integration.py`(或 `gate_device_func.py --phase 5` + `gate_integration.py`) | 功能 summary `failures==0 && errors==0 && tests>0` **且 覆盖率、性能、功耗、稳定性报告全部生成并签名,代码 review 问题数为 0;证据 PASS 后需人工确认并 `consent --phase 5` 才进入 P6** | `summary_report.xml`、`coverage_report.*`、`performance_report.*`、`power_report.*`、`stability_report.*`、`code_review_report.txt`、`report_dir.txt` |
+| **P5 质量验证** | ohos-build-flash / developer_test(MST) / ohos-test-ut-generation / coverage / performance / power / stability / code-ruleset-style-check / ohos-dev-security-code-review | `gate_integration.py`(或 `gate_device_func.py --phase 5` + `gate_integration.py`) | 功能 summary `failures==0 && errors==0 && tests>0` **且 覆盖率、性能、功耗、稳定性报告全部生成并签名,代码 review 问题数为 0;证据 PASS 后需人工确认并 `consent --phase 5` 才进入 P6** | `summary_report.xml`、`coverage_report.*`、`performance_report.*`、`power_report.*`、`stability_report.*`、`code_review_report.txt`、`report_dir.txt` |
 | **P6 上库** | ohos-ci-gitcode-cli-usage / -gitcode-pr-review / -security-code-review / -openharmony-ci-analysis | `gate_upload_ci.py` | P1–P5 全过 + 上库前落全部代码 diff 供人工确认 + **A 本地自检零问题报告(commit 前硬控)** + `git commit -s`(DCO 签名)+ push + **`--issue` 绑定的 PR**(CI 门禁只对绑定 Issue 的 PR 触发)+ **B PR review 零问题报告(建 PR 后、CI 前硬控)** + consent --phase 6 + CI `overall∈{success,passed}` + PR head SHA==push SHA | `full_diff.patch`、`full_diff.stat.txt`、`local_code_review_report.*`、`pr.json`、`pr_create.txt`、`pr_review_report.*`、`ci_status.json` |
 
 每个阶段在 Claude Code 里的"做事"细节见 `skills/ohos-ar-dev-phases/phaseN-*.md`。
@@ -212,7 +212,7 @@ gate_upload_ci.py   --pipeline-dir P --repo-slug owner/repo --branch B [--base m
 ## 10. 验证记录(已用真证据跑过)
 
 - **P0**:真机 `hdc` 取回 `uptime`,真实组件 HEAD → PASS → advance。
-- **P1**:真实 `git diff` + untracked 文件清单 + `oh_cpp_guard` + `openharmony-cpp` 硬规则检查 → PASS → advance。
+- **P1**:真实 `git diff` + untracked 文件清单 + `code_ruleset_guard` + `code-ruleset-style-check` 硬规则检查 → PASS → advance。
 - **P2**:真跑 `build.sh`,对非法目标捕获到真实 `=====build error=====` + 45 条
   `[OHOS ERROR]`(含 "unknown target")→ FAIL → advance 拒绝。
 - **防伪**:篡改 evidence 字节 → `verify-all` 因 sha256 失配降级回退;伪造 manifest

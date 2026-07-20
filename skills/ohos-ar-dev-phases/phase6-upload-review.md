@@ -7,7 +7,7 @@
 JSON `issue_count/finding_count/...==0` 或 `issues/findings/...` 空数组,或文本 `review_issue_count=0`):
 
 - **A. 本地自检(commit 之前)**:对 `git diff base_commit` 的改动做 review。
-  `ohos-dev-cpp-coding-style`(review 模式)+ `ohos-dev-security-code-review`(IPC/权限/并发/隐私)。
+  `code-ruleset-style-check`(review 模式)+ `ohos-dev-security-code-review`(IPC/权限/并发/隐私)。
   产出机器可读零问题报告(如 `local_review.txt` 含 `review_issue_count=0` 或 `local_review.json`)。
   **有问题 → 改代码 → `advance.py reset` 回 P1 重走**。
 - **B. PR review(建 PR 之后、CI 校验之前)**:PR 已存在,用 `ohos-dev-gitcode-pr-review` 拉 PR
