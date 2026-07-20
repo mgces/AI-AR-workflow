@@ -1,0 +1,49 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# SKELETON: ohos_unittest BUILD.gn. Replace <...> placeholders (README.md).
+# MANDATORY: import("//build/test.gni") — provides the ohos_unittest template.
+import("//build/test.gni")
+
+module_output_path = "<PART_NAME>/<MODULE_OUT_SUBDIR>"
+
+config("<test_target>_config") {
+  visibility = [ ":*" ]
+  include_dirs = [
+    ".",
+    "<INCLUDE_DIR_UNDER_TEST>",
+  ]
+}
+
+ohos_unittest("<TEST_TARGET>") {
+  testonly = true
+  module_out_path = module_output_path
+  configs = [ ":<test_target>_config" ]
+
+  sources = [ "<target>_test.cpp" ]
+
+  deps = [
+    # the production target under test (or a *_for_test static lib variant)
+    "<DEP_UNDER_TEST>",
+  ]
+  external_deps = [
+    "googletest:gtest_main",
+    "hilog:libhilog",
+  ]
+}
+
+# developer_test entry: `./start.sh run -t UT -tp <PART_NAME> -ts <TEST_TARGET>`
+group("unittest") {
+  testonly = true
+  deps = [ ":<TEST_TARGET>" ]
+}

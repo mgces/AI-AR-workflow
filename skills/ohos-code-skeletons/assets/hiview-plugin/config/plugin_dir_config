@@ -1,0 +1,7 @@
+# SKELETON: reference config installed to /system/etc/hiview/<plugin_dir>_config.
+# The runtime code does NOT necessarily parse this file — hiview plugins usually
+# read tunables via system parameters (param). Keep this only if your plugin
+# ships a static config; otherwise delete config/ and its ohos_prebuilt_etc.
+#
+# Replace <...> placeholders. Example key/value lines:
+<PLUGIN_PARAM_KEY>=<PLUGIN_PARAM_DEFAULT>

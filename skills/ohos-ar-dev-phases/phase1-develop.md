@@ -21,6 +21,9 @@ python3 $S/gate_design.py --pipeline-dir "$PDIR"   # 默认读 $PDIR/AR_design.m
 - 编码规范:`code-ruleset-style-check`（规则来源为 `code_ruleset` C++ 门禁表）。P1 门控会强制执行可机器判断的硬规则。
 - 若该 AR 有可测行为,优先 `tdd-enforcer`:先写失败测试,再写实现(P3 会真机验证)。
 - 依据 `$PDIR/AR_design.md` 的"完整代码框架"落实代码改动到 `$OHOS_ROOT` 下相应组件。
+- **写码脚手架**:hiview 插件 / 单测 / 模块测试 / 模糊测试可用 `ohos-code-skeletons` 取占位符骨架
+  (替换后进 P2 编译);SA/NAPI 用 `ohos-dev-sa-codegen` / `ohos-dev-napi-module`。写 AR_design
+  「完整代码框架/完整测试框架」时也可直接用这些骨架的文件清单与片段填充。
 
 ## 门控
 ```bash

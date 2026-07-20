@@ -1,0 +1,67 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# SKELETON: hiview plugin BUILD.gn. Replace <...> placeholders (README.md).
+# Two shapes are common:
+#   (a) ohos_shared_library — a standalone plugin .so (this file's default), or
+#   (b) source_set          — linked into an aggregate plugin package (e.g. bdfr).
+# Keep ONE; delete the other.
+
+import("//base/hiviewdfx/hiview/hiview.gni")
+import("//build/ohos.gni")
+
+config("<plugin_dir>_config") {
+  visibility = [ "*:*" ]
+  include_dirs = [
+    ".",
+    "include",
+    "$hiview_base/include",
+    "$hiview_core/include",
+  ]
+}
+
+# Reference config installed to /system/etc/hiview (delete if no config file).
+ohos_prebuilt_etc("<plugin_dir>_plugin_config") {
+  source = "config/<plugin_dir>_config"
+  part_name = "hiview"
+  subsystem_name = "hiviewdfx"
+  relative_install_dir = "hiview"
+}
+
+# (a) Standalone shared library plugin.
+ohos_shared_library("lib<plugin_dir>") {
+  part_name = "hiview"
+  subsystem_name = "hiviewdfx"
+  public_configs = [ ":<plugin_dir>_config" ]
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+  sources = [ "<plugin_file>.cpp" ]
+  deps = [ "//base/hiviewdfx/hiview/base:hiviewbase" ]
+  external_deps = [
+    "hilog:libhilog",
+    "hisysevent:libhisysevent",
+  ]
+}
+
+# (b) ALTERNATIVE: link into an aggregate plugin package instead of (a).
+# source_set("<plugin_dir>") {
+#   part_name = "hiview"
+#   subsystem_name = "hiviewdfx"
+#   configs = [ ":<plugin_dir>_config" ]
+#   sources = [ "<plugin_file>.cpp" ]
+#   deps = [ "//base/hiviewdfx/hiview/base:hiviewbase" ]
+# }
+# ...then add ":<plugin_dir>" to the package group's deps (e.g. plugin_build).

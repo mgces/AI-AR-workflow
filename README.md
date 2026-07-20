@@ -120,6 +120,7 @@ AI-AR-workflow/
     │
     └── (被各阶段调用的现有能力技能,随包携带)
         ohos-dev-sa-codegen/  ohos-dev-napi-module/  code-ruleset-style-check/
+        ohos-code-skeletons/  ← 写码脚手架:hiview 插件/单测/模块测试/模糊测试 占位符骨架
         tdd-enforcer/  ohos-dev-build-execution-diagnosis/  ohos-build-flash/
         ohos-test-ut-generation/  ohos-dev-hdc-command-usage/
         ohos-ci-gitcode-cli-usage/  ohos-ci-openharmony-ci-analysis/
