@@ -1,6 +1,6 @@
 {
   "generatedAt": "2026-07-13T09:59:19.999744+00:00",
-  "workspaceRoot": "/home/mgces/openharmony/code",
+  "workspaceRoot": "$OHOS_ROOT",
   "sourcePath": "developtools",
   "sourceDomain": "developtools",
   "repositories": 11,

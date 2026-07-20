@@ -89,5 +89,15 @@ python3 $S/advance.py --pipeline-dir "$PDIR" status       # 从 current_phase �
 P6 通过(`advance --phase 6` 成功)即流水线完成。给用户一份汇总:PR 链接 + CI 状态 +
 各阶段证据路径(`$PDIR/evidence/phaseN/`)。汇总只是"播报",真相在 `evidence/manifest.jsonl`。
 
+**归档产物到 `products/`**:原始 run-state 证据(`env.json`/`hilog`/`pipeline.json`)含真实设备
+序列号与个人 `$HOME` 路径,**禁止**手动 `cp evidence/` 进仓。必须用脱敏归档器:
+```bash
+python3 ~/.claude/skills/ohos-ar-dev-workflow/scripts/archive_product.py \
+    --pipeline-dir "$PDIR" --product-dir products/<run>
+```
+它只产出脱敏摘要(`ar.md` + `manifest_summary.md` + `README.md`),原始可验签证据留在本地
+run-state 目录(已 gitignore)。`.gitignore` 已封禁 `products/**/evidence/`、`pipeline.json`、
+`*_manifest.jsonl`、`*.log` 等原始产物。
+
 参考:`references/gate-contract.md`(门控契约)、`references/evidence-protocol.md`(防伪协议)、
 `references/pipeline-schema.md`(状态结构)。

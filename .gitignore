@@ -6,3 +6,12 @@ specs/
 examples/specs/
 *.build-probe-ok
 .lifecycle-secret/
+
+# archived product RAW run-state — may carry device serials / personal paths.
+# Only redacted summaries (ar.md, manifest_summary.md, README.md) may be committed;
+# generate them with skills/ohos-ar-dev-workflow/scripts/archive_product.py.
+products/**/evidence/
+products/**/pipeline.json
+products/**/pipeline-state/
+products/**/*_manifest.jsonl
+products/**/*.log

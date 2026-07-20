@@ -1,4 +1,0 @@
-host_artifact=/home/mgces/openharmony/code/out/rk3568/hiviewdfx/hiview/libbdfr.z.so
-host_sha256=074b8cd662b06311c1be4e8bf0d4eda481882be7fb9232cdf588bd8909d6f414
-device_artifact=/system/lib/libbdfr.z.so
-device_sha256=074b8cd662b06311c1be4e8bf0d4eda481882be7fb9232cdf588bd8909d6f414

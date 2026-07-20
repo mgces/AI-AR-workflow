@@ -1,6 +1,6 @@
 {
   "generatedAt": "2026-07-13T08:49:04.867Z",
-  "workspaceRoot": "/home/mgces/openharmony/code",
+  "workspaceRoot": "$OHOS_ROOT",
   "projects": {
     "total": 512,
     "dirty": 12,
@@ -1267,7 +1267,7 @@
     "buildConfig": {
       "is_host_product": false,
       "product_path": "//vendor/hihope/rk3568",
-      "product_config_path": "/home/mgces/openharmony/code/vendor/hihope/rk3568",
+      "product_config_path": "$OHOS_ROOT/vendor/hihope/rk3568",
       "os_level": "standard",
       "device_name": "rk3568",
       "product_company": "hihope",

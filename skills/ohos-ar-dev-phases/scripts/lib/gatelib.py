@@ -230,18 +230,28 @@ def parse_review_report_zero_issues(path):
             data = json.loads(text)
         except Exception as exc:
             return False, "invalid json: %s" % exc
+        # Check EVERY known count/list marker present, not just the first: a
+        # report with issue_count=0 but blockers=[...] must still FAIL. Any
+        # non-zero marker fails closed.
+        counts = []
+        found_any = False
         for key in ("issue_count", "finding_count", "problem_count", "blocker_count"):
             if key in data:
+                found_any = True
                 try:
                     count = int(data[key])
                 except Exception:
                     return False, "%s is not an integer" % key
-                return count == 0, "%s=%d" % (key, count)
+                counts.append((key, count))
         for key in ("issues", "findings", "problems", "blockers"):
             if key in data and isinstance(data[key], list):
-                count = len(data[key])
-                return count == 0, "%s=%d" % (key, count)
-        return False, "json lacks issue_count/finding_count/problems/findings markers"
+                found_any = True
+                counts.append((key, len(data[key])))
+        if not found_any:
+            return False, "json lacks issue_count/finding_count/problems/findings markers"
+        total = sum(c for _, c in counts)
+        detail = " ".join("%s=%d" % (k, c) for k, c in counts)
+        return total == 0, detail
     marker = "review_issue_count="
     for line in text.splitlines():
         if line.strip().startswith(marker):
@@ -326,6 +336,61 @@ def validate_closing_entry(pdir, phase):
         if sha256_file(ap) != art["sha256"]:
             return False, "artifact altered (sha256 mismatch): %s" % art["path"], entry
     return True, "ok", entry
+
+
+# ----------------------------------------------------------------------------
+# consent — human sign-off for P4/P5/P6. A consent is only meaningful if it is
+# bound to the EXACT signed PASS evidence a reviewer looked at. We therefore
+# store consent as an HMAC-signed record whose evidence_ref is the entry_id of
+# the phase's current closing PASS entry. advance.py re-derives that entry_id at
+# advance time and rejects unless it matches — so:
+#   * a phase with no PASS evidence yet cannot be consented (nothing to sign);
+#   * re-running a gate (new evidence => new entry_id) invalidates old consent;
+#   * hand-editing the consent record in pipeline.json breaks its HMAC.
+# The per-run secret is shared, so this does not cryptographically prove a human
+# (vs the model) produced it — but it removes "rubber-stamp from thin air" and
+# "stale consent reuse", which were the real holes.
+# ----------------------------------------------------------------------------
+def _consent_canonical(rec):
+    """Stable bytes for a consent record, excluding its own hmac."""
+    r = {k: v for k, v in rec.items() if k != "hmac"}
+    return json.dumps(r, sort_keys=True, separators=(",", ":"),
+                      ensure_ascii=False).encode("utf-8")
+
+
+def make_consent_record(run_id, phase, token, evidence_ref):
+    """Build an HMAC-signed consent record bound to a specific PASS entry_id."""
+    secret = load_secret(run_id)
+    rec = {
+        "phase": phase,
+        "token": token,
+        "evidence_ref": evidence_ref,
+        "ts_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
+    rec["hmac"] = hmac.new(secret, _consent_canonical(rec), hashlib.sha256).hexdigest()
+    return rec
+
+
+def verify_consent(state, phase, expected_evidence_ref):
+    """Return (ok, reason). Consent for `phase` is valid iff a signed consent
+    record exists, its HMAC verifies, and its evidence_ref equals the phase's
+    CURRENT closing PASS entry_id (passed in by the caller)."""
+    rec = (state.get("consent_tokens", {}) or {}).get(str(phase))
+    if not rec:
+        return False, "no consent recorded for phase %d" % phase
+    if not isinstance(rec, dict):
+        return False, ("legacy/unsigned consent for phase %d — re-record it with "
+                       "advance.py consent (signed, evidence-bound)" % phase)
+    secret = load_secret(state["run_id"])
+    expected_sig = hmac.new(secret, _consent_canonical(rec), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected_sig, rec.get("hmac", "")):
+        return False, "consent HMAC mismatch for phase %d (tampered/forged)" % phase
+    if rec.get("evidence_ref") != expected_evidence_ref:
+        return False, ("consent for phase %d is stale: bound to evidence %s.. but "
+                       "current PASS evidence is %s.. (re-review and re-consent)"
+                       % (phase, str(rec.get("evidence_ref"))[:8],
+                          str(expected_evidence_ref)[:8]))
+    return True, "consent ok (token=%s)" % rec.get("token")
 
 
 if __name__ == "__main__":

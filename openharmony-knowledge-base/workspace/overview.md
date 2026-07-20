@@ -2,7 +2,7 @@
 
 ## 多仓结构
 
-`/home/mgces/openharmony/code` 由 `repo` 管理。根目录 `.repo/manifest.xml` 只包含 `default.xml`，后者使用 GitCode `master` 作为默认远端/分支，并继续包含：
+`$OHOS_ROOT` 由 `repo` 管理。根目录 `.repo/manifest.xml` 只包含 `default.xml`，后者使用 GitCode `master` 作为默认远端/分支，并继续包含：
 
 ```text
 .repo/manifests/ohos/ohos.xml
