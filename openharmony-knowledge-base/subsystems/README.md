@@ -5,6 +5,7 @@
 已建立深度所有权树的子系统：
 
 - [HiviewDFX](hiviewdfx/README.md)
+- [Kernel（内核层）](kernel/README.md) — OHOS 注入 Linux 内核的 common_modules 功能模块（不在 preloader parts 的 58 子系统内,单列）
 
 ## 核心框架
 

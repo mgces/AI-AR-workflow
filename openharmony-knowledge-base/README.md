@@ -57,6 +57,8 @@
   - [HiviewDFX 子系统](subsystems/hiviewdfx/README.md)
     - [Hiview 进程](subsystems/hiviewdfx/processes/hiview/README.md)
       - [Reliability 能力域](subsystems/hiviewdfx/processes/hiview/capabilities/reliability/README.md)
+  - [Kernel 内核层](subsystems/kernel/README.md)
+    - [common_modules 公共模块](subsystems/kernel/README.md#ohos-注入内核的公共模块common_modules)(tzdriver/code_sign/xpm/dec/… 共 11 个专题)
 
 首页导航只展示到稳定能力域。具体功能必须继续放入所属子系统、组件/进程和能力域内部，不在根 README 展开。
 
