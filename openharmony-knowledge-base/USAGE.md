@@ -1,8 +1,10 @@
 # OpenHarmony 代码知识库使用指南
 
-> **路径约定**:本文所有 `specs/knowledge-base/...` 命令路径相对 OpenHarmony 源码仓根
-> `$OHOS_ROOT`(知识库真源部署在那里)。在本仓的副本目录下照抄会失败——请在 `$OHOS_ROOT`
-> 下执行,或把前缀 `specs/knowledge-base` 换成本副本目录 `openharmony-knowledge-base`。
+> **路径约定**:本目录是知识库的**唯一真源**(源码仓 `$OHOS_ROOT/specs/knowledge-base/`
+> 只是临时生成位置,后续会删)。查询数据用**本目录路径**——下文命令里的
+> `specs/knowledge-base/...` 是历史生成路径,查询时替换为 `openharmony-knowledge-base/...`。
+> 仅**刷新/重新生成**时才需回源码仓 `$OHOS_ROOT` 跑生成器(读 `repo list` / `out/preloader`),
+> 再把产物同步回本目录。
 
 ## 1. 这套知识库解决什么问题
 
@@ -40,7 +42,7 @@
 
 分析新的代码路径时，直接使用 [给定代码路径的全局索引、进程与功能说明模板](templates/code-path-global-summary.md)。模板包含输入参数、扫描步骤、进程宿主建模、输出目录、机器索引字段、功能说明格式和验收清单。
 
-也可以直接调用 [OpenHarmony 代码知识库 Skill](skills/ohos-code-knowledge-base/SKILL.md)(本副本自带)：
+也可以直接调用 [OpenHarmony 代码知识库 Skill](skills/ohos-code-knowledge-base/SKILL.md)(本目录自带)：
 
 ```text
 使用 $ohos-code-knowledge-base 分析 <代码路径>，
@@ -510,6 +512,11 @@ console.table(s.rk3568.partsBySubsystem)
 ```
 
 ## 14. 刷新知识库
+
+> 刷新在**源码仓 `$OHOS_ROOT`** 里进行(生成器要读 `repo list` / `out/preloader`),下列
+> `specs/knowledge-base/...` 是生成器在源码仓的输出路径。刷新完成后,把 `generated/`、
+> `subsystems/*` 等产物**同步回本目录 `openharmony-knowledge-base/`**(唯一真源),源码仓那份
+> 用完即可删。
 
 执行：
 
