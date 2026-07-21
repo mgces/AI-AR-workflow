@@ -75,5 +75,74 @@ class TestIncludeReports(unittest.TestCase):
         self.assertNotIn("/home/mgces", html)
 
 
+class TestSinkFeature(unittest.TestCase):
+    def _run(self, with_design=True, pre_existing=False):
+        import json
+        import tempfile
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        pdir = os.path.join(tmp.name, "run")
+        os.makedirs(os.path.join(pdir, "evidence", "phase1"))
+        os.makedirs(os.path.join(pdir, "evidence", "phase4"))
+        with open(os.path.join(pdir, "pipeline.json"), "w") as f:
+            json.dump({"run_id": "r", "build_target": "hiview_package",
+                       "test": {"part": "hiview"}, "phases": []}, f)
+        with open(os.path.join(pdir, "ar.md"), "w") as f:
+            f.write("ar")
+        if with_design:
+            with open(os.path.join(pdir, "evidence/phase1/AR_design.md"), "w") as f:
+                f.write("# d\n## 目标组件\nhiview 新增 demo\n## 完整代码框架\n"
+                        "### 文件清单\n- demo.cpp\n## 需测试的功能点\n- 边界\n")
+        with open(os.path.join(pdir, "evidence/phase1/changed_files.txt"), "w") as f:
+            f.write("demo.cpp\n")
+        with open(os.path.join(pdir, "evidence/phase4/run_meta.txt"), "w") as f:
+            f.write("nonce=x\nserial=deadbeefcafef00d0123456789abcdef\n")
+        with open(os.path.join(pdir, "evidence", "manifest.jsonl"), "w") as f:
+            f.write(json.dumps({"phase": 3, "verdict": "PASS", "reason": "tests=5"}) + "\n")
+        kb = os.path.join(tmp.name, "kb")
+        feat_dir = os.path.join(kb, "subsystems", "hiviewdfx", "features", "demo")
+        if pre_existing:
+            os.makedirs(feat_dir)
+            with open(os.path.join(feat_dir, "README.md"), "w") as f:
+                f.write("HUMAN AUTHORED — do not clobber")
+        outdir = os.path.join(tmp.name, "product")
+        sys.argv = ["archive_product.py", "--pipeline-dir", pdir,
+                    "--product-dir", outdir, "--kb-root", kb,
+                    "--sink-feature", "hiviewdfx/hiview/demo"]
+        ap.main()
+        return feat_dir
+
+    def test_fact_skeleton_and_todo(self):
+        feat_dir = self._run()
+        with open(os.path.join(feat_dir, "README.md")) as f:
+            spec = f.read()
+        for sec in ("## 目标与当前实现", "## 文件职责", "## 构建与测试", "## 装载 / 运行链"):
+            self.assertIn(sec, spec)
+        self.assertIn("P3 单元测试:PASS", spec)
+        self.assertIn("TODO(人工补充)", spec)  # deep analysis placeholder
+        self.assertIn("build_target: `hiview_package`", spec)
+
+    def test_redacts_serial(self):
+        feat_dir = self._run()
+        with open(os.path.join(feat_dir, "README.md")) as f:
+            spec = f.read()
+        self.assertNotIn("deadbeefcafef00d0123456789abcdef", spec)
+        self.assertIn("<REDACTED-SERIAL>", spec)
+
+    def test_no_clobber_existing(self):
+        feat_dir = self._run(pre_existing=True)
+        with open(os.path.join(feat_dir, "README.md")) as f:
+            self.assertIn("HUMAN AUTHORED", f.read())  # untouched
+        self.assertTrue(os.path.isfile(os.path.join(feat_dir, "README.generated.md")))
+
+    def test_legacy_no_design_degrades(self):
+        feat_dir = self._run(with_design=False)
+        with open(os.path.join(feat_dir, "README.md")) as f:
+            spec = f.read()
+        # still produces evidence-based sections + falls back to changed_files
+        self.assertIn("demo.cpp", spec)
+        self.assertIn("P3 单元测试:PASS", spec)
+
+
 if __name__ == "__main__":
     unittest.main()

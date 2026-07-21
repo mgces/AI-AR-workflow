@@ -94,3 +94,7 @@ python3 ~/.claude/skills/ohos-ar-dev-workflow/scripts/render_report.py \
 `reports/summary.html` 与 PR 描述均含五块:**背景介绍 / 设计思路 / 修改概要 /
 用例概要 / 用例结果总结**(背景取 ar.md,设计/用例取 AR_design.md,修改取 full_diff.stat,
 结果取 P3/P4/P5 verdict);全部经脱敏。
+
+## 沉淀 feature 专题回填知识库(可选)
+归档时加 `--sink-feature <subsystem>/<component>/<feature>`,把本次 run 的事实骨架自动沉淀成
+知识库 feature 专题(见编排器 `SKILL.md` 完成节)。让每次流水线为知识库多长一个专题。

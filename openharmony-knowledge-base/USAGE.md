@@ -668,6 +668,11 @@ hiview_package
   -> Hiview 插件 OnLoad
 ```
 
+> **feature 专题可自动沉淀**:thread-leak 专题最初是手工写的,现在流水线跑完一个 AR 后可用
+> `archive_product.py --sink-feature <subsystem>/<component>/<feature>` 自动沉淀**事实骨架**
+> (目标组件/文件职责/构建测试目标/各阶段 verdict/真机标记,已脱敏),深度分析留
+> `TODO(人工补充)` 占位;再人工补深度后 merge。让知识库随流水线持续生长。
+
 5. 查看仓状态：
 
 ```bash

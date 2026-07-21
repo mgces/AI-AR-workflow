@@ -106,5 +106,17 @@ python3 ~/.claude/skills/ohos-ar-dev-workflow/scripts/archive_product.py \
 `reports/*.html` 脱敏后一并归档。原始可验签证据留在本地 run-state 目录(已 gitignore)。`.gitignore`
 已封禁 `products/**/evidence/`、`pipeline.json`、`*_manifest.jsonl`、`*.log` 等原始产物。
 
+**沉淀 feature 专题回填知识库(可选)**:加 `--sink-feature <subsystem>/<component>/<feature>`
+(路径由你显式给出,你知道 git_dir/build_target),归档器会把本次 run 的**事实骨架**
+(目标组件/文件职责/构建测试目标/各阶段 verdict/真机标记)脱敏后写到
+`openharmony-knowledge-base/subsystems/<subsystem>/features/<feature>/README.md`;深度分析
+(数据模型/状态机)留 `TODO(人工补充)` 占位。目标已存在则写 `README.generated.md` 不覆盖,人工
+核对/补深度后 merge。这样"跑一次流水线"就为知识库多沉淀一个 feature 专题。
+```bash
+python3 ~/.claude/skills/ohos-ar-dev-workflow/scripts/archive_product.py \
+    --pipeline-dir "$PDIR" --product-dir products/<run> --include-reports \
+    --sink-feature hiviewdfx/hiview/<feature>
+```
+
 参考:`references/gate-contract.md`(门控契约)、`references/evidence-protocol.md`(防伪协议)、
 `references/pipeline-schema.md`(状态结构)。

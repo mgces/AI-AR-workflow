@@ -101,6 +101,138 @@ def build_manifest_summary(state, entries):
     return "\n".join(lines).rstrip() + "\n"
 
 
+# ----------------------------------------------------------------------------
+# feature spec sink — turn a finished pipeline run into a knowledge-base feature
+# doc (fact skeleton). We produce ONLY facts the evidence reliably yields (target
+# component, changed files, build/test targets, per-phase verdicts, device
+# markers); deep analysis (data model / state machine) is left as an explicit
+# TODO placeholder — never fabricated. All text passes through redact().
+# ----------------------------------------------------------------------------
+def _split_md_sections(text):
+    """(heading_line, body_text) per markdown heading; body spans until the next
+    heading of equal-or-higher level (so a parent includes its subsections)."""
+    lines = text.splitlines()
+    heads = [(i, len(m.group(1)), ln) for i, ln in enumerate(lines)
+             for m in [re.match(r"^\s*(#{1,6})\s+\S", ln)] if m]
+    out = []
+    for hi, (idx, level, line) in enumerate(heads):
+        end = len(lines)
+        for j in range(hi + 1, len(heads)):
+            if heads[j][1] <= level:
+                end = heads[j][0]
+                break
+        out.append((line, "\n".join(lines[idx + 1:end])))
+    return out
+
+
+def _section_body(text, keywords):
+    for head, body in _split_md_sections(text or ""):
+        if any(k in head for k in keywords):
+            return body.strip()
+    return ""
+
+
+def read_ev(pdir, rel, limit=4000):
+    p = os.path.join(pdir, rel)
+    if not os.path.isfile(p):
+        return ""
+    with open(p, "r", encoding="utf-8", errors="replace") as f:
+        return f.read()[:limit]
+
+
+def phase_verdict(entries, phase):
+    hits = [e for e in entries if e.get("phase") == phase
+            and e.get("verdict") in ("PASS", "FAIL")]
+    return hits[-1] if hits else None
+
+
+def build_feature_spec(pdir, state, entries, subsys, comp, feat):
+    """Return a redacted feature-spec markdown (fact skeleton + TODO placeholders)."""
+    design = read_ev(pdir, "evidence/phase1/AR_design.md", 100000) \
+        or read_ev(pdir, "AR_design.md", 100000)
+    changed = read_ev(pdir, "evidence/phase1/changed_files.txt", 8000)
+    run_meta = read_ev(pdir, "evidence/phase4/run_meta.txt", 2000)
+
+    def sec(kw, fallback="> TODO(人工补充):证据不足,读源码补充。"):
+        b = _section_body(design, kw)
+        return redact(b) if b else fallback
+
+    def verdict_line(ph, name):
+        e = phase_verdict(entries, ph)
+        return "- %s:%s — %s" % (name, e.get("verdict") if e else "N/A",
+                                 redact(e.get("reason", "")) if e else "—")
+
+    L = []
+    L.append("# %s" % redact(feat))
+    L.append("")
+    L.append("> **本文件由流水线 `archive_product.py --sink-feature` 自动沉淀的事实骨架。**")
+    L.append("> 深度分析(数据模型/状态机等)标 `TODO(人工补充)`,需读源码补全后再并入知识库。")
+    L.append("")
+    L.append("## 归属")
+    L.append("")
+    L.append("```text")
+    L.append("subsystem -> component -> feature")
+    L.append("%s -> %s -> %s" % (redact(subsys), redact(comp), redact(feat)))
+    L.append("```")
+    L.append("")
+    L.append("## 目标与当前实现")
+    L.append("")
+    L.append(sec(["目标组件", "详细功能需求", "功能需求"]))
+    L.append("")
+    L.append("## 文件职责")
+    L.append("")
+    file_list = _section_body(design, ["文件清单", "文件列表", "file list"])
+    if file_list:
+        L.append(redact(file_list))
+    elif changed:
+        L.append("变更文件(来自 P1 changed_files.txt):")
+        L.append("")
+        L.append("```")
+        L.append(redact(changed.strip()))
+        L.append("```")
+    else:
+        L.append("> TODO(人工补充):文件清单缺失。")
+    L.append("")
+    L.append("## 构建与测试")
+    L.append("")
+    L.append("- build_target: `%s`" % redact(str(state.get("build_target", ""))))
+    L.append("- testpart: `%s`" % redact(str((state.get("test") or {}).get("part", ""))))
+    L.append("")
+    L.append("测试结果(来自签名证据):")
+    L.append(verdict_line(3, "P3 单元测试"))
+    L.append(verdict_line(4, "P4 真机功能"))
+    L.append(verdict_line(5, "P5 质量验证"))
+    L.append("")
+    L.append("## 装载 / 运行链")
+    L.append("")
+    L.append(sec(["代码框架", "code framework", "装载", "运行链"]))
+    if run_meta:
+        L.append("")
+        L.append("真机运行标记(P4 run_meta,已脱敏):")
+        L.append("")
+        L.append("```")
+        L.append(redact(run_meta.strip()))
+        L.append("```")
+    L.append("")
+    L.append("## 数据模型")
+    L.append("")
+    L.append("> TODO(人工补充):证据不含数据结构定义,读源码补充关键类型。")
+    L.append("")
+    L.append("## 状态机 / 核心流程")
+    L.append("")
+    L.append("> TODO(人工补充):读源码补充状态转移与主流程。")
+    L.append("")
+    L.append("## 需测试的功能点")
+    L.append("")
+    L.append(sec(["需测试", "功能点", "test point"]))
+    L.append("")
+    L.append("## 风险 / 安全")
+    L.append("")
+    L.append(sec(["风险", "安全"], "> TODO(人工补充):结合 P5 review 结果补风险清单。"))
+    L.append("")
+    return "\n".join(L).rstrip() + "\n"
+
+
 README_TEXT = """# 本产物如何复核
 
 本目录是一次流水线运行的**脱敏交付物**,只保留:
@@ -131,6 +263,14 @@ def main():
     ap.add_argument("--include-reports", action="store_true",
                     help="also copy <pipeline-dir>/reports/*.html into the product, "
                          "redacted (human-readable audit reports)")
+    ap.add_argument("--sink-feature", metavar="SUBSYS/COMPONENT/FEATURE",
+                    help="also sink a knowledge-base feature spec (fact skeleton) for "
+                         "this run into <kb-root>/subsystems/.../features/<feature>/. "
+                         "Give the path explicitly (orchestrator knows git_dir/target); "
+                         "not guessed from AR_design.")
+    ap.add_argument("--kb-root", default="openharmony-knowledge-base",
+                    help="knowledge-base root for --sink-feature (default: "
+                         "openharmony-knowledge-base)")
     args = ap.parse_args()
 
     pdir = os.path.abspath(args.pipeline_dir)
@@ -182,6 +322,29 @@ def main():
                     f.write(redact(body))
                 n += 1
         print("wrote %d redacted report file(s) to %s/reports" % (n, outdir))
+
+    # 5. optional: sink a knowledge-base feature spec (fact skeleton)
+    if args.sink_feature:
+        parts = [p for p in args.sink_feature.split("/") if p]
+        if len(parts) != 3:
+            sys.exit("ERROR: --sink-feature expects SUBSYS/COMPONENT/FEATURE, got %r"
+                     % args.sink_feature)
+        subsys, comp, feat = parts
+        entries = read_manifest(pdir)
+        spec = build_feature_spec(pdir, state, entries, subsys, comp, feat)
+        feat_dir = os.path.join(os.path.abspath(args.kb_root),
+                                "subsystems", subsys, "features", feat)
+        os.makedirs(feat_dir, exist_ok=True)
+        target = os.path.join(feat_dir, "README.md")
+        # never clobber a human-authored/deepened spec
+        if os.path.exists(target):
+            target = os.path.join(feat_dir, "README.generated.md")
+            note = " (README.md exists — wrote README.generated.md for manual merge)"
+        else:
+            note = ""
+        with open(target, "w", encoding="utf-8") as f:
+            f.write(spec)
+        print("sank feature spec -> %s%s" % (target, note))
 
     print("\nDONE. Product is redacted; commit only %s." % outdir)
     print("Raw signed evidence stays in the local run-state dir (gitignored).")
