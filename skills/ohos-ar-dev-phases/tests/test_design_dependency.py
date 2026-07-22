@@ -30,6 +30,14 @@ ohos_unittest
 点一
 ## 真机测试用例构造
 真机 hdc 触发
+
+```ar-contract
+{
+  "build_artifacts": ["out/rk3568/liba.z.so"],
+  "test_cases": [{"point": "点一", "gtest": "ATest.Case001"}],
+  "device_cases": [{"desc": "触发", "marker": "AR_DEV_A_OK"}]
+}
+```
 """
 
 
@@ -81,17 +89,44 @@ class TestDesignDependency(unittest.TestCase):
         with open(os.path.join(self.pdir, "AR_design.md"), "w") as f:
             f.write(text)
 
+    def _consent(self, phase=1, token="reviewer"):
+        return subprocess.run(
+            [sys.executable, os.path.join(SCRIPTS, "advance.py"),
+             "--pipeline-dir", self.pdir, "consent",
+             "--phase", str(phase), "--token", token],
+            text=True, capture_output=True)
+
     def test_develop_refused_without_design(self):
         cp = self._run("gate_develop.py")
         self.assertNotEqual(cp.returncode, 0)
         self.assertIn("AR_design", cp.stdout + cp.stderr)
 
+    def test_develop_refused_without_consent(self):
+        self._write_design(GOOD_DESIGN)
+        self.assertEqual(self._run("gate_design.py").returncode, 0)
+        # design signed but no phase-1 consent yet -> develop refuses
+        cp = self._run("gate_develop.py")
+        self.assertNotEqual(cp.returncode, 0)
+        self.assertIn("consent", (cp.stdout + cp.stderr).lower())
+
     def test_develop_allowed_after_signed_design(self):
         self._write_design(GOOD_DESIGN)
         d = self._run("gate_design.py")
         self.assertEqual(d.returncode, 0, d.stdout + d.stderr)
+        c = self._consent()
+        self.assertEqual(c.returncode, 0, c.stdout + c.stderr)
         cp = self._run("gate_develop.py")
         self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+
+    def test_consent_stale_after_design_rerun(self):
+        self._write_design(GOOD_DESIGN)
+        self.assertEqual(self._run("gate_design.py").returncode, 0)
+        self.assertEqual(self._consent().returncode, 0)
+        # re-run gate_design -> new signed design entry -> old consent goes stale
+        self.assertEqual(self._run("gate_design.py").returncode, 0)
+        cp = self._run("gate_develop.py")
+        self.assertNotEqual(cp.returncode, 0)
+        self.assertIn("stale", (cp.stdout + cp.stderr).lower())
 
     def test_develop_refused_when_design_tampered(self):
         self._write_design(GOOD_DESIGN)

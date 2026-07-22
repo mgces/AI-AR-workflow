@@ -11,6 +11,10 @@ Runs the real build and closes the phase ONLY when both agree:
 
 Recording build.log's size before launch defeats a stale/old success banner:
 we only scan the new tail. On failure we distill error.log + known markers.
+
+CONTRACT COVERAGE: it additionally requires every build_artifact declared in the
+signed ar-contract to have been produced by this build — proving the files the
+design promised were actually compiled in. Missing any one is a FAIL.
 """
 import argparse
 import os
@@ -26,6 +30,20 @@ import gatelib as gl  # noqa: E402
 SUCCESS_RE = re.compile(r"=====build.*successful=====")
 ERROR_RE = re.compile(r"=====build.*error=====")
 FAIL_MARKERS = ["ninja: build stopped", "FAILED:", "ERROR at ", "[OHOS ERROR]"]
+
+
+def resolve_artifacts(repo, artifacts):
+    """For each contract build_artifact, report whether the build produced it.
+    A path is looked up relative to the repo root, then relative to
+    out/rk3568/ (so a contract may write either 'out/rk3568/foo.so' or 'foo.so').
+    Returns (present, missing, resolved) where resolved maps path -> abspath|None."""
+    present, missing, resolved = [], [], {}
+    for rel in artifacts:
+        cands = [os.path.join(repo, rel), os.path.join(repo, "out/rk3568", rel)]
+        hit = next((c for c in cands if os.path.isfile(c)), None)
+        resolved[rel] = hit
+        (present if hit else missing).append(rel)
+    return present, missing, resolved
 
 
 def main():
@@ -72,9 +90,41 @@ def main():
 
     arts = [stdout_rel, banner_rel]
 
-    if rc == 0 and banner_ok and not banner_err:
+    # CONTRACT COVERAGE (P2 hard gate): every build_artifact declared in the
+    # signed ar-contract must have been produced by this build. This is what
+    # verifies "all designed files were compiled in". Recovered from the
+    # HMAC-signed AR_design evidence, never the unsigned working-tree file.
+    c_ok, contract, c_detail = gl.load_signed_contract(pdir)
+    artifacts_missing = []
+    contract_note = ""
+    if c_ok:
+        present, artifacts_missing, resolved = resolve_artifacts(
+            repo, contract["build_artifacts"])
+        chk_rel = "evidence/phase2/artifact_check.txt"
+        with open(os.path.join(pdir, chk_rel), "w", encoding="utf-8") as f:
+            f.write("contract build_artifacts: %d present, %d missing\n\n"
+                    % (len(present), len(artifacts_missing)))
+            for rel in contract["build_artifacts"]:
+                hit = resolved.get(rel)
+                f.write("[%s] %s%s\n" % ("OK " if hit else "MISS", rel,
+                                         "  -> %s" % hit if hit else ""))
+        arts.append(chk_rel)
+        contract_note = " artifacts %d/%d present" % (
+            len(present), len(contract["build_artifacts"]))
+    elif "absent" in c_detail:
+        # legacy / --allow-missing-contract run: nothing to enforce.
+        contract_note = " (AR-CONTRACT-BYPASS: %s)" % c_detail
+    else:
+        # a design entry exists but its contract/evidence is broken -> FAIL.
+        gl.emit(pdir, 2, "gate_build.py", verdict="FAIL",
+                reason="ar-contract unrecoverable: %s" % c_detail,
+                cmd=cmd, exit_code=rc, artifacts_rel=arts)
+        sys.exit("PHASE 2 FAIL: ar-contract unrecoverable: %s" % c_detail)
+
+    if rc == 0 and banner_ok and not banner_err and not artifacts_missing:
         gl.emit(pdir, 2, "gate_build.py", verdict="PASS",
-                reason="exit=0 and success banner in build output (target=%s)" % target,
+                reason="exit=0 and success banner in build output (target=%s)%s"
+                       % (target, contract_note),
                 cmd=cmd, exit_code=rc, artifacts_rel=arts)
         print("PHASE 2 PASS — advance.py advance --phase 2")
         return
@@ -85,8 +135,10 @@ def main():
     with open(os.path.join(pdir, distill_rel), "w", encoding="utf-8") as f:
         f.write("\n".join(hits[:200]) or "(no known marker matched)")
     arts.append(distill_rel)
-    reason = "rc=%d banner_ok=%s banner_err=%s; %d marker line(s)" % (
-        rc, banner_ok, banner_err, len(hits))
+    reason = "rc=%d banner_ok=%s banner_err=%s; %d marker line(s)%s" % (
+        rc, banner_ok, banner_err, len(hits), contract_note)
+    if artifacts_missing:
+        reason += "; MISSING build_artifacts: %s" % ", ".join(artifacts_missing)
     gl.emit(pdir, 2, "gate_build.py", verdict="FAIL", reason=reason,
             cmd=cmd, exit_code=rc, artifacts_rel=arts)
     sys.exit("PHASE 2 FAIL: %s" % reason)

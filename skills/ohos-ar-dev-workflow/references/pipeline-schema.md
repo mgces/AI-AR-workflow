@@ -6,7 +6,7 @@
 pipeline.json          # 规范状态;只有 advance.py 写
 todo.md                # 人读镜像(由 refresh_todo.py 依 AR_design 重写,与 TodoWrite 双轨)
 ar.md                  # 输入的已澄清 AR 原文
-AR_design.md           # P1a 固化的设计文档(6 必含章节;签名副本在 evidence/phase1/)
+AR_design.md           # P1a 固化的设计文档(6 必含章节 + 内嵌 ```ar-contract``` 契约块;签名副本在 evidence/phase1/)
 evidence/              # 机器证据(签名,gitignore)——真相所在
   manifest.jsonl       # 追加式、HMAC 链式签名证据账本
   phase0/ … phase6/    # 各阶段真实产物:AR_design.md / summary_report.xml /
@@ -50,10 +50,15 @@ reports/               # 人读 HTML 审计报告(脱敏,可归档)——与 evi
 `device_serial` 初始为空,由 P0 `gate_env_init.py` 在真机上自动探测(`hdc list targets` 唯一设备)
 后回填,或由 `init --device-serial` / 环境变量 `$DEVICE_SERIAL` 显式指定。**不写死任何机器特定值。**
 
-`consent_tokens` 记录需人工签字的阶段令牌(`{"4": "...", "5": "...", "6": "..."}`):**P4 真机功能测试**、
-**P5 质量/review 报告** 与 **P6 上库** 在证据 PASS 后需人工核对真实结果/审批,
-`advance.py consent --phase N --token <人>`
-写入后该阶段才可 `advance`。没有对应令牌时 `advance --phase 4|5|6` 会 HOLD,不推进。
+`consent_tokens` 记录需人工签字的阶段令牌:除 **P4 真机功能测试**、**P5 质量/review 报告**、
+**P6 上库** 外,还含 **P1 设计固化**(`consent_tokens["1"]`)。
+- **`consent_tokens["1"]`(P1 设计 consent)**:`gate_design.py` PASS 后,人工复核签名 AR_design 与其
+  编译路径,`advance.py consent --phase 1 --token <人>` 写入。它**绑定到 gate_design 的签名记录 entry_id**,
+  重跑 gate_design(设计变化)即作废;`gate_develop.py` 内部强制校验(无/stale 都 FAIL)。注意 phase 1
+  **不在** `CONSENT_PHASES`,故 `advance --phase 1` 不查该令牌,只有 `gate_develop` 查。
+- **`consent_tokens["4"|"5"|"6"]`**:P4/P5/P6 在证据 PASS 后需人工核对真实结果/审批,
+  `advance.py consent --phase N --token <人>` 写入后该阶段才可 `advance`;没有对应令牌时
+  `advance --phase 4|5|6` 会 HOLD,不推进。
 
 `code_fingerprint`:**旧全量指纹**(组件仓 `git diff base_commit` + `untracked 文件内容` sha256),
 保留供 legacy run 兼容。
@@ -64,4 +69,5 @@ reports/               # 人读 HTML 审计报告(脱敏,可归档)——与 evi
 
 `locked_all_paths`:P1 锁定时的全量变更路径基线。P3/P4/P5 推进时,**新出现的路径必须都是测试路径**
 (`test/`/`unittest/`/`*Test.cpp` 等,含 test 目录下 BUILD.gn),否则拒绝——保证"只增独立测试、
-不改功能代码"。`reset` 会清空 `functional_fingerprint`/`locked_all_paths`/`code_fingerprint`/`consent_tokens`(P0 保留)。
+不改功能代码"。`reset` 会清空 `functional_fingerprint`/`locked_all_paths`/`code_fingerprint`/`consent_tokens`(P0 保留)——
+含 P1 设计 consent(`consent_tokens["1"]`),即**重置后须重新固化设计并重新签 P1 consent**(符合预期,设计可能已变)。

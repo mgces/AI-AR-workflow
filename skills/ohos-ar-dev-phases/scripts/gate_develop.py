@@ -12,6 +12,10 @@ which the host controls and which is RTC-independent (SHAs, not timestamps):
 
 If pipeline.json has no base_commit yet, the first run records the current HEAD
 as the base (so the diff is measured from where development started).
+
+Development also refuses unless a human recorded phase-1 consent bound to the
+signed AR_design (advance.py consent --phase 1): AR_design must be human-reviewed
+between design fix (P1a) and code development (P1b).
 """
 import argparse
 import os
@@ -157,6 +161,25 @@ def main():
                     reason="AR_design evidence tampered/removed — re-run gate_design.py",
                     artifacts_rel=[])
             sys.exit("PHASE 1 FAIL: AR_design evidence tampered. Re-run gate_design.py.")
+
+        # P1 DESIGN CONSENT (human sign-off between design and development):
+        # code development refuses unless a human recorded consent bound to THIS
+        # signed AR_design (advance.py consent --phase 1). Re-running gate_design
+        # produces new design bytes -> new entry_id -> old consent goes stale, so
+        # the design must be re-reviewed. Checked here (develop time), before
+        # base_commit is anchored, so a missing consent leaves state untouched.
+        ok_c, c_reason = gl.verify_consent(state, 1, gl.entry_id(design_entry))
+        if not ok_c:
+            gl.emit(pdir, 1, "gate_develop.py", verdict="FAIL",
+                    reason="AR_design not human-consented: %s — run "
+                           "advance.py consent --phase 1 --token <reviewer>" % c_reason,
+                    artifacts_rel=[])
+            sys.exit("PHASE 1 FAIL (design consent required): %s\n"
+                     "  1) review the signed AR_design + compile path (build_artifacts) in:\n"
+                     "     %s\n"
+                     "  2) advance.py --pipeline-dir <PDIR> consent --phase 1 --token <reviewer>\n"
+                     "  3) then re-run gate_develop.py"
+                     % (c_reason, os.path.join(pdir, "evidence/phase1/AR_design.md")))
 
     head = git(gdir, "rev-parse", "HEAD").stdout.strip()
     base = state.get("base_commit")

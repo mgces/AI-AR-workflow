@@ -25,8 +25,12 @@ description: >
 
 ## 关键约定(四轮增强)
 
-- **P1 双子门控(阶段号仍 1)**:先 `gate_design.py` 校验 `AR_design.md` 6 必含章节并签名,再
-  `gate_develop.py`(强制依赖签名 AR_design)。后续阶段依据 AR_design 的数据构建开发/测试/真机用例。
+- **P1 双子门控(阶段号仍 1)**:先 `gate_design.py` 校验 `AR_design.md` 6 必含章节 **+ 内嵌
+  ```ar-contract``` JSON 契约块**(`build_artifacts`/`test_cases`/`device_cases` 三非空数组)并签名,
+  再由**人工 consent**(`advance.py consent --phase 1`,绑定签名设计、重跑即作废)放行,
+  然后 `gate_develop.py`(强制依赖签名 AR_design + P1 consent)。后续阶段依据签名 AR_design 与其契约
+  构建开发/测试/真机用例:**P2 校验 `build_artifacts` 全部编译进产物、P3 校验每个 `test_cases[].gtest`
+  通过、P4 校验每个 `device_cases[].marker` 命中**,缺任一即 FAIL(全量覆盖硬门控)。
   写码可用 `ohos-code-skeletons` 取插件/测试骨架填充 AR_design「完整代码框架」并加速 P1b。
 - **指纹分层**:P1 锁**功能指纹**(仅非测试路径内容)。P2–P6 功能内容漂移即拒绝;**P3/P4/P5 只允许
   新增独立测试文件**(test 路径),改功能代码/配置或新增功能文件会被 `advance` 拒绝,须 `reset` 回 P1。

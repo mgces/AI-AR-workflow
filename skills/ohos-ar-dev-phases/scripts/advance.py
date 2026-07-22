@@ -186,18 +186,49 @@ def cmd_advance(args):
 
 def cmd_consent(args):
     """Record a one-time human consent for a phase that requires sign-off
-    (P4 device-test review, P5 quality/review report approval, P6 upload push).
+    (P1 AR_design review, P4 device-test review, P5 quality/review report
+    approval, P6 upload push).
 
-    Consent is only meaningful AFTER the phase's evidence gate has produced its
-    real PASS results for a human to inspect: we bind the consent to that exact
+    Consent is only meaningful AFTER the relevant gate has produced its real
+    signed results for a human to inspect: we bind the consent to that exact
     signed PASS entry (evidence_ref = its entry_id) and HMAC-sign the record.
-    Re-running the gate produces new evidence and invalidates this consent."""
+    Re-running the gate produces new evidence and invalidates this consent.
+      * P1  -> bound to the gate_design PASS entry (enforced by gate_develop);
+      * P4/5/6 -> bound to the phase's closing PASS entry (enforced by advance)."""
     pdir = gl.pipeline_dir(args.pipeline_dir)
     state = gl.load_state(pdir)
     if not args.token:
         sys.exit("ERROR: --token required")
+
+    # P1 design consent is special: it is recorded AFTER gate_design.py signs the
+    # AR_design (P1a) but BEFORE gate_develop.py writes code (P1b). It therefore
+    # binds to the gate_design PASS entry, not the phase's closing (develop) entry
+    # — which is why phase 1 is NOT in CONSENT_PHASES (that path binds to the last
+    # phase entry, the develop record). gate_develop.py enforces this consent at
+    # develop time; advance --phase 1 still validates the develop PASS as usual.
+    if args.phase == 1:
+        design_entry = gl.latest_design_entry(pdir)
+        if design_entry is None:
+            sys.exit("ERROR: cannot record phase-1 design consent — no signed "
+                     "AR_design yet. Run gate_design.py first.")
+        secret = gl.load_secret(state["run_id"])
+        intact = gl.verify_sig(design_entry, secret) and all(
+            os.path.exists(os.path.join(pdir, a["path"]))
+            and gl.sha256_file(os.path.join(pdir, a["path"])) == a["sha256"]
+            for a in design_entry.get("artifacts", []))
+        if not intact:
+            sys.exit("ERROR: AR_design evidence tampered/removed — re-run "
+                     "gate_design.py before consenting.")
+        rec = gl.make_consent_record(state["run_id"], 1, args.token,
+                                     gl.entry_id(design_entry))
+        state.setdefault("consent_tokens", {})["1"] = rec
+        gl.save_state(pdir, state)
+        print("recorded signed phase-1 design consent: token=%s bound to signed "
+              "AR_design %s.." % (args.token, rec["evidence_ref"][:8]))
+        return
+
     if args.phase not in CONSENT_PHASES:
-        sys.exit("ERROR: phase %d does not take consent (consent phases: %s)"
+        sys.exit("ERROR: phase %d does not take consent (consent phases: 1 design, %s)"
                  % (args.phase, ", ".join(str(p) for p in CONSENT_PHASES)))
     # There must be a valid, current PASS evidence to consent to.
     ok_ev, ev_reason, ev_entry = gl.validate_closing_entry(pdir, args.phase)
@@ -320,7 +351,8 @@ def main():
 
     p = sub.add_parser("consent")
     p.add_argument("--phase", type=int, required=True,
-                   help="phase to sign off (4 device test, 5 quality/review, 6 upload)")
+                   help="phase to sign off (1 design, 4 device test, "
+                        "5 quality/review, 6 upload)")
     p.add_argument("--token", required=True)
     p.set_defaults(func=cmd_consent)
 

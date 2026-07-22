@@ -11,7 +11,8 @@ evidence is bound to THIS run cryptographically and monotonically:
   * /proc/uptime is sampled before deploy and after capture and must increase
     (proves same boot session, after deploy) — no wall clock involved;
   * the captured hilog window must contain BOTH the nonce AND the caller-supplied
-    functional success marker;
+    functional success marker, AND every device_cases[].marker declared in the
+    signed ar-contract (full coverage of the AR_design device cases);
   * every hdc command + exit code is recorded; raw capture is sha256'd in the
     signed manifest so the orchestrator cannot swap in a hand-written log.
 
@@ -66,11 +67,17 @@ def find_marker_literals(script_paths, markers):
 
 
 def evaluate_phase4_verdict(*, cap_text, nonce, marker, runtime_marker, e2e_marker,
-                            uptime_before, uptime_after, host_sha=None, device_sha=None):
+                            uptime_before, uptime_after, host_sha=None, device_sha=None,
+                            device_markers=None):
     nonce_ok = nonce in cap_text
     marker_ok = marker in cap_text
     runtime_ok = True if not runtime_marker else runtime_marker in cap_text
     e2e_ok = True if not e2e_marker else e2e_marker in cap_text
+    # CONTRACT COVERAGE: every device_cases[].marker from the signed ar-contract
+    # must appear in the captured hilog window (full coverage of AR_design device
+    # cases). None/empty => nothing extra to enforce (legacy / phase-5 reuse).
+    missing_dm = [m for m in (device_markers or []) if m not in cap_text]
+    device_ok = not missing_dm
     artifact_ok = True
     if host_sha is not None or device_sha is not None:
         artifact_ok = bool(host_sha) and bool(device_sha) and host_sha == device_sha
@@ -79,11 +86,17 @@ def evaluate_phase4_verdict(*, cap_text, nonce, marker, runtime_marker, e2e_mark
     except ValueError:
         mono_ok = False
     reason = (
-        "nonce=%s marker=%s runtime=%s e2e=%s artifact_hash=%s uptime %s->%s mono=%s"
-        % (nonce_ok, marker_ok, runtime_ok, e2e_ok, artifact_ok,
-           uptime_before, uptime_after, mono_ok)
+        "nonce=%s marker=%s runtime=%s e2e=%s device_cases=%d/%d artifact_hash=%s "
+        "uptime %s->%s mono=%s"
+        % (nonce_ok, marker_ok, runtime_ok, e2e_ok,
+           len(device_markers or []) - len(missing_dm), len(device_markers or []),
+           artifact_ok, uptime_before, uptime_after, mono_ok)
     )
-    return nonce_ok and marker_ok and runtime_ok and e2e_ok and artifact_ok and mono_ok, reason
+    if missing_dm:
+        reason += " MISSING_device_markers=%s" % ",".join(missing_dm)
+    ok = (nonce_ok and marker_ok and runtime_ok and e2e_ok and device_ok
+          and artifact_ok and mono_ok)
+    return ok, reason
 
 
 def sh(snippet, **kw):
@@ -147,6 +160,28 @@ def main():
 
     pdir = gl.pipeline_dir(args.pipeline_dir)
     gl.evidence_dir(pdir, phase)
+
+    # CONTRACT COVERAGE (P4 hard gate): the signed ar-contract's device_cases[]
+    # markers must ALL appear in the captured hilog window. Recovered from the
+    # HMAC-signed AR_design. Only enforced for phase 4 (phase-5 reuse of this gate
+    # does not verify P4 device cases). absent/bypass -> no extra markers;
+    # tampered -> FAIL.
+    device_markers = []
+    if phase == 4:
+        c_ok, contract, c_detail = gl.load_signed_contract(pdir)
+        if c_ok:
+            device_markers = [c["marker"] for c in contract["device_cases"]]
+        elif "absent" not in c_detail:
+            sys.exit("ERROR: ar-contract unrecoverable for phase 4: %s" % c_detail)
+        # Contract device markers must also come from the real runtime/e2e result,
+        # not be hard-coded into the driver scripts (else coverage is fakeable).
+        found = find_marker_literals([args.deploy_script, args.scenario_script],
+                                     device_markers)
+        if found:
+            detail = ", ".join("%s in %s" % (m, p) for m, p in sorted(found.items()))
+            sys.exit("ERROR: phase 4 contract device markers must be emitted by the "
+                     "runtime/e2e result, not embedded in driver scripts: %s" % detail)
+
     nonce = secrets.token_hex(16)
 
     cmds_log = []   # (label, cmd, rc, out)
@@ -224,8 +259,17 @@ def main():
     if proof_rel:
         arts.append(proof_rel)
 
+    if device_markers:
+        dm_rel = "evidence/phase%d/device_marker_coverage.txt" % phase
+        with open(os.path.join(pdir, dm_rel), "w", encoding="utf-8") as f:
+            f.write("contract device_cases markers: %d\n\n" % len(device_markers))
+            for m in device_markers:
+                f.write("[%s] %s\n" % ("OK " if m in cap_text else "MISS", m))
+        arts.append(dm_rel)
+
     # 5. verdict: nonce + functional marker + runtime proof + e2e proof +
-    # deployed artifact hash + monotonic uptime.
+    # deployed artifact hash + monotonic uptime + full ar-contract device-case
+    # marker coverage.
     ok, reason = evaluate_phase4_verdict(
         cap_text=cap_text,
         nonce=nonce,
@@ -236,6 +280,7 @@ def main():
         uptime_after=up_after,
         host_sha=host_sha,
         device_sha=device_sha,
+        device_markers=device_markers,
     )
     print(reason)
 

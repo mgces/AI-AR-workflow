@@ -412,6 +412,125 @@ def latest_design_entry(pdir):
 
 
 # ----------------------------------------------------------------------------
+# AR machine-readable contract — the ```ar-contract``` fenced JSON block inside
+# AR_design.md. It is the SINGLE source of truth downstream gates verify against:
+#   * build_artifacts — files P2 must confirm the build actually produced;
+#   * test_cases[].gtest — GTest "Suite.Case" ids P3 must confirm PASSED;
+#   * device_cases[].marker — hilog markers P4 must confirm appeared on device.
+# gate_design.py validates+signs it (its bytes ride inside the HMAC-signed
+# AR_design.md evidence), so every downstream check is bound to the reviewed
+# design. This is how "all designed files compiled / all test points covered /
+# all device cases ran" becomes a deterministic, tamper-evident gate.
+# ----------------------------------------------------------------------------
+# Exactly one fenced block, opened by ```ar-contract (case-insensitive), whose
+# body is a JSON object. More than one block is rejected (decoy-block defence).
+_AR_CONTRACT_FENCE_RE = re.compile(
+    r"```[ \t]*ar-contract[ \t]*\r?\n(.*?)\r?\n[ \t]*```",
+    re.DOTALL | re.IGNORECASE)
+# Suite.Case, allowing '/' in either half for GTest typed/value-parameterized
+# names (e.g. FooTest/0.Bar, Foo.Bar/2).
+_GTEST_ID_RE = re.compile(r"^[A-Za-z_][\w/]*\.[A-Za-z_][\w/]*$")
+
+
+def _nonempty_str(v):
+    return isinstance(v, str) and bool(v.strip())
+
+
+def parse_ar_contract(text):
+    """Parse+validate the ```ar-contract``` JSON block. Fail-closed like
+    parse_review_report_zero_issues. Returns (ok, contract, detail).
+
+    Schema (all three arrays non-empty):
+      build_artifacts : [non-empty str]
+      test_cases      : [{point: non-empty str, gtest: "Suite.Case"}]
+      device_cases    : [{desc: non-empty str, marker: non-empty str}]
+    """
+    blocks = _AR_CONTRACT_FENCE_RE.findall(text or "")
+    if not blocks:
+        return False, None, "missing ```ar-contract``` block"
+    if len(blocks) > 1:
+        return False, None, "multiple ```ar-contract``` blocks (exactly one required)"
+    try:
+        data = json.loads(blocks[0])
+    except Exception as exc:
+        return False, None, "invalid json in ar-contract: %s" % exc
+    if not isinstance(data, dict):
+        return False, None, "ar-contract must be a json object"
+
+    ba = data.get("build_artifacts")
+    if not isinstance(ba, list) or not ba:
+        return False, None, "build_artifacts must be a non-empty array"
+    for i, p in enumerate(ba):
+        if not _nonempty_str(p):
+            return False, None, "build_artifacts[%d] must be a non-empty string" % i
+
+    tc = data.get("test_cases")
+    if not isinstance(tc, list) or not tc:
+        return False, None, "test_cases must be a non-empty array"
+    for i, c in enumerate(tc):
+        if not isinstance(c, dict):
+            return False, None, "test_cases[%d] must be an object" % i
+        if not _nonempty_str(c.get("point")):
+            return False, None, "test_cases[%d].point must be a non-empty string" % i
+        g = c.get("gtest")
+        if not _nonempty_str(g) or not _GTEST_ID_RE.match(g.strip()):
+            return False, None, "test_cases[%d].gtest must be a 'Suite.Case' id" % i
+
+    dc = data.get("device_cases")
+    if not isinstance(dc, list) or not dc:
+        return False, None, "device_cases must be a non-empty array"
+    for i, c in enumerate(dc):
+        if not isinstance(c, dict):
+            return False, None, "device_cases[%d] must be an object" % i
+        if not _nonempty_str(c.get("desc")):
+            return False, None, "device_cases[%d].desc must be a non-empty string" % i
+        if not _nonempty_str(c.get("marker")):
+            return False, None, "device_cases[%d].marker must be a non-empty string" % i
+
+    detail = "build_artifacts=%d test_cases=%d device_cases=%d" % (
+        len(ba), len(tc), len(dc))
+    return True, {"build_artifacts": ba, "test_cases": tc, "device_cases": dc}, detail
+
+
+def load_signed_contract(pdir):
+    """Recover the ar-contract from the HMAC-SIGNED AR_design evidence — the only
+    tamper-proof source. Returns (ok, contract, detail).
+
+    States a caller must distinguish:
+      * ok=True                     -> enforce full coverage against `contract`;
+      * ok=False, "no signed ..."   -> ABSENT (legacy/bypass run) -> skip coverage;
+      * ok=False, "tampered"/other  -> a design entry exists but its evidence or
+                                       contract is broken -> the caller must FAIL.
+    """
+    entry = latest_design_entry(pdir)
+    if entry is None:
+        return False, None, "no signed AR_design (contract absent)"
+    secret = load_secret(load_state(pdir)["run_id"])
+    if not verify_sig(entry, secret):
+        return False, None, "AR_design evidence HMAC mismatch (tampered)"
+    design_text = None
+    for art in entry.get("artifacts", []):
+        ap = os.path.join(pdir, art["path"])
+        if not os.path.exists(ap):
+            return False, None, "AR_design evidence artifact vanished: %s (tampered)" % art["path"]
+        if sha256_file(ap) != art["sha256"]:
+            return False, None, "AR_design evidence altered: %s (tampered)" % art["path"]
+        if art["path"].replace("\\", "/").endswith("evidence/phase1/AR_design.md"):
+            with open(ap, "r", encoding="utf-8", errors="replace") as f:
+                design_text = f.read()
+    if design_text is None:
+        return False, None, "signed AR_design.md artifact not found in design entry (tampered)"
+    ok, contract, detail = parse_ar_contract(design_text)
+    if not ok:
+        # A signed design that legitimately carried no contract (legacy bypass at
+        # gate_design) is ABSENT, not tampered — surface it as such.
+        if detail.startswith("missing"):
+            return False, None, "no ar-contract in signed AR_design (contract absent)"
+        return False, None, "signed AR_design contract invalid: %s (tampered)" % detail
+    return True, contract, detail
+
+
+# ----------------------------------------------------------------------------
 # manifest emission (gates call this) + reading (advance.py calls this)
 # ----------------------------------------------------------------------------
 def emit(pdir, phase, gate, *, verdict, reason, cmd="", argv=None,

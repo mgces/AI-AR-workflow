@@ -87,7 +87,7 @@ def build_todo(state, design_text, entries):
         lines += ["", "> 无 AR_design.md(legacy run)——仅显示阶段进度。"]
 
     nxt = {0: "跑 gate_env_init 后 advance --phase 0",
-           1: "先 gate_design.py(AR_design)→ 写代码 → gate_develop.py → advance --phase 1",
+           1: "gate_design.py(AR_design+ar-contract)→ consent --phase 1 → 写代码 → gate_develop.py → advance --phase 1",
            2: "gate_build.py → advance --phase 2",
            3: "gate_test_ut.py(只增独立测试)→ advance --phase 3",
            4: "gate_device_func.py → 人工 consent → advance --phase 4",

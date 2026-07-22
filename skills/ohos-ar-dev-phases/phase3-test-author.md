@@ -25,9 +25,15 @@ python3 $S/gate_test_ut.py --pipeline-dir "$PDIR" \
 5. 解析其中 `summary_report.xml` 根 `<testsuites name="summary_report">` 的 tests/failures/errors,
    并拷 per-suite `result/*.xml`。证据:`summary_report.xml`、`result_*.xml`、`start_sh_stdout.txt`、
    `report_dir.txt`、`test_build_tail.log`。
+6. 从签名 AR_design 取契约 `test_cases[].gtest`,把 per-suite `result_*.xml` 汇成**通过用例集**
+   (某 `<testcase classname.name>` 无 `<failure>`/`<error>` 子节点即通过),要求**每个契约 gtest 都在
+   通过集里**(全量覆盖硬门控),缺任一即 FAIL,写 `evidence/phase3/gtest_coverage.txt` 列出命中/缺失。
+   契约 `gtest` 需精确等于 XML 的 `classname.name`(参数化名如 `Suite/0.Case`)。契约缺失(legacy/
+   `--allow-missing-contract`)→ 跳过覆盖并留 bypass 标;契约被篡改 → FAIL。
 
 ## 通过条件
-本次确有新报告目录 **且** `tests>0 && failures==0 && errors==0`。
+本次确有新报告目录 **且** `tests>0 && failures==0 && errors==0`
+**且** 契约声明的每个 `test_cases[].gtest` 都在本次通过用例集中(全量覆盖)。
 
 ## 通过后
 ```bash

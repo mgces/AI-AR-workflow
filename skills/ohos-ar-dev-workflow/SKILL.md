@@ -31,10 +31,13 @@ GN 构建目标(`build_target`)、测试 `testpart` 与套件名、目标二进�
    最多自动重试 3 次,仍失败则停下并把真实失败日志呈现给用户。
 4. **真机/真实日志是阶段产出**。P3/P4/P5 的结束证据必须是设备上真实跑出来的报告/hilog,
    不是你写的文字。设备 RTC 错乱,新鲜度靠 nonce + `/proc/uptime` + 新建报告目录,不靠时间戳。
-5. **P4 真机结果、P5 质量/review 报告 与 P6 上库 需人工确认**。这些阶段证据 PASS 后
-   **不自动放行**:必须停下,把真实结果与所有产物路径呈现给用户,等用户确认;用户同意后
-   `advance.py consent --phase 4|5|6 --token <人>` 再 `advance`。没令牌时 `advance` 会 HOLD。
-   P6 的 push 仍是唯一对外不可逆动作。
+5. **P1 设计固化、P4 真机结果、P5 质量/review 报告 与 P6 上库 需人工确认**。
+   - **P1**:`gate_design.py` PASS(签名 AR_design + ```ar-contract``` 契约)后**不自动写码**——
+     必须停下,把签名 AR_design 与其编译路径(`build_artifacts`)呈现给用户,等用户复核同意后
+     `advance.py consent --phase 1 --token <人>`,`gate_develop.py` 才放行。重跑 gate_design 会作废旧 consent。
+   - **P4/P5/P6**:这些阶段证据 PASS 后**不自动放行**:必须停下,把真实结果与所有产物路径呈现给用户,
+     等用户确认;用户同意后 `advance.py consent --phase 4|5|6 --token <人>` 再 `advance`。没令牌时
+     `advance` 会 HOLD。P6 的 push 仍是唯一对外不可逆动作。
 6. **任何阶段发现要改代码 → 回 P1 重走**。不管走到 P2/P3/P4/P5,只要发现 bug 需要改代码,
    就**必须** `advance.py reset --reason "<改了什么>"` 回到 P1,从代码开发踏踏实实重走一遍
    P1→P6。这是硬控制:P1 通过时锁定**功能指纹**(只对**非测试路径**内容计算,`git diff base_commit`
@@ -75,7 +78,7 @@ python3 ~/.claude/skills/ohos-ar-dev-workflow/scripts/refresh_todo.py --pipeline
 
 | 阶段 | 做事(调用技能) | 门控脚本 | 结束证据 |
 |---|---|---|---|
-| P1 开发 | **P1a** 写 AR_design.md → sa-codegen / napi-module / code-ruleset-style-check / tdd-enforcer | `gate_design.py`(P1a)+ `gate_develop.py`(P1b) | 签名 AR_design(6 必含章节)+ git/untracked diff + C++ 强门控报告 |
+| P1 开发 | **P1a** 写 AR_design.md(6 章节 + ```ar-contract``` 契约块)→ **人工 consent** → sa-codegen / napi-module / code-ruleset-style-check / tdd-enforcer | `gate_design.py`(P1a)+ `gate_develop.py`(P1b) | 签名 AR_design(6 章节 + 契约)+ **P1 设计 consent** + git/untracked diff + C++ 强门控报告 |
 | P2 编译 | build-execution-diagnosis / build-flash | `gate_build.py` | build.log 成功横幅 |
 | P3 测试 | test-ut-generation / tdd-enforcer(**只增独立测试**) | `gate_test_ut.py` | developer_test summary_report.xml |
 | P4 真机 | build-flash / hdc-command-usage | `gate_device_func.py` | 主机/设备产物 sha256 一致 + 含 nonce/功能 marker/运行时 marker/端到端 marker 的真机 hilog **+ 人工确认(consent --phase 4)**;渲染 `reports/` device HTML |

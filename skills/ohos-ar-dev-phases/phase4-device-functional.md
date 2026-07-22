@@ -32,14 +32,18 @@ python3 $S/gate_device_func.py --pipeline-dir "$PDIR" \
 脚本逻辑(RTC 无关三锚):生成 nonce → `dev_assert_online` → 采 `uptime_before` →
 执行 deploy(任一命令非 0 即 FAIL)→ 对设备产物执行 `sha256sum` 并比对主机产物 sha256 →
 `log -t LIFECYCLE_GATE NONCE=<n> START` → 跑 scenario → `... END` → `hilog -x` 抓取 +
-采 `uptime_after`。证据:`hilog_capture.txt`、`device_cmds.txt`、`run_meta.txt`
-(nonce/uptime/marker/runtime_marker/e2e_marker)、`artifact_runtime_proof.txt`。
+采 `uptime_after`。另从签名 AR_design 取契约 `device_cases[].marker`,要求抓取文本**含每一个契约
+marker**(全量覆盖硬门控),并对 deploy/scenario 脚本跑 `find_marker_literals` 防止把契约 marker
+硬写进脚本混过覆盖。证据:`hilog_capture.txt`、`device_cmds.txt`、`run_meta.txt`
+(nonce/uptime/marker/runtime_marker/e2e_marker)、`artifact_runtime_proof.txt`、
+`device_marker_coverage.txt`(契约 marker 命中/缺失)。契约缺失(legacy)→ 跳过覆盖;契约被篡改 → FAIL。
 
 ## 通过条件
 部署命令全 exit 0 **且** 主机产物 sha256 == 设备产物 sha256 **且** 抓取文本含**本次 nonce**
 **且** 含 `--marker` **且** 含 `--runtime-marker` **且** 含 `--e2e-marker`
-**且** `uptime_after > uptime_before > 0`。同时 `--runtime-marker`/`--e2e-marker` 不得写死在
-deploy/scenario 脚本中。缺少任一项即 FAIL。
+**且** 含契约声明的**每一个 `device_cases[].marker`**(全量覆盖)
+**且** `uptime_after > uptime_before > 0`。同时 `--runtime-marker`/`--e2e-marker` 及契约 device
+marker 都不得写死在 deploy/scenario 脚本中。缺少任一项即 FAIL。
 
 ## ⚠️ 真机结果需人工确认(本阶段特殊)
 P4 与其它阶段不同:门控产出证据为 PASS 后**不自动放行**。脚本会停下并把真机真实结果与

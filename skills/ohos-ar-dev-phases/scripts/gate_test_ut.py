@@ -15,7 +15,9 @@ test report:
   5. parse reports/latest/summary_report.xml <testsuites name="summary_report">
      for tests/failures/errors.
 
-Pass iff: a fresh report dir was created AND tests>0 AND failures==0 AND errors==0.
+Pass iff: a fresh report dir was created AND tests>0 AND failures==0 AND errors==0
+AND every test_cases[].gtest declared in the signed ar-contract appears as a
+PASSED case in the fresh result xmls (full coverage of the AR_design test points).
 """
 import argparse
 import glob
@@ -30,6 +32,34 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib
 import gatelib as gl  # noqa: E402
 
 SUCCESS_RE = re.compile(r"=====build.*successful=====")
+
+
+def passed_gtests(result_xml_paths):
+    """Return the set of PASSED gtest ids ("classname.name") across the given
+    JUnit-style result xmls. A <testcase> is passed iff it has no <failure> and
+    no <error> child. classname carries the GTest suite; name carries the case."""
+    passed = set()
+    for path in result_xml_paths:
+        try:
+            root = ET.parse(path).getroot()
+        except Exception:
+            continue
+        for tc in root.iter("testcase"):
+            name = tc.get("name")
+            if not name:
+                continue
+            suite = tc.get("classname") or ""
+            failed = any(child.tag in ("failure", "error") for child in tc)
+            if not failed:
+                passed.add("%s.%s" % (suite, name) if suite else name)
+    return passed
+
+
+def check_gtest_coverage(required, passed):
+    """Return (ok, missing). Every required "Suite.Case" must be in the passed
+    set. Exact classname.name match; parameterized names emit as Suite/0.Case."""
+    missing = [g for g in required if g not in passed]
+    return (not missing), missing
 
 
 def build_target(repo, target, pdir):
@@ -125,20 +155,54 @@ def main():
     shutil.copy(summary, os.path.join(pdir, sum_rel))
     arts.append(sum_rel)
     # also snapshot per-suite result xmls
+    result_rels = []
     for rx in glob.glob(os.path.join(fresh_dir, "result", "*.xml")):
         rrel = "evidence/phase3/result_%s" % os.path.basename(rx)
         shutil.copy(rx, os.path.join(pdir, rrel))
         arts.append(rrel)
+        result_rels.append(rrel)
 
     root = ET.parse(summary).getroot()
     tests = int(root.get("tests", "0"))
     failures = int(root.get("failures", "0"))
     errors = int(root.get("errors", "0"))
+    numeric_ok = tests > 0 and failures == 0 and errors == 0
     reason = "tests=%d failures=%d errors=%d fresh=%s" % (
         tests, failures, errors, os.path.basename(fresh_dir))
-    print(reason)
 
-    if tests > 0 and failures == 0 and errors == 0:
+    # CONTRACT COVERAGE (P3 hard gate): every test_cases[].gtest declared in the
+    # signed ar-contract must appear as a PASSED case in the freshly-produced
+    # result xmls. This verifies the tests were written and verified exactly per
+    # the AR_design test points. Recovered from the HMAC-signed AR_design.
+    c_ok, contract, c_detail = gl.load_signed_contract(pdir)
+    coverage_ok = True
+    if c_ok:
+        required = [c["gtest"] for c in contract["test_cases"]]
+        result_paths = [os.path.join(pdir, r) for r in result_rels]
+        passed = passed_gtests(result_paths)
+        coverage_ok, missing = check_gtest_coverage(required, passed)
+        cov_rel = "evidence/phase3/gtest_coverage.txt"
+        with open(os.path.join(pdir, cov_rel), "w", encoding="utf-8") as f:
+            f.write("required (from ar-contract): %d\npassed in report: %d\n\n"
+                    % (len(required), len(passed)))
+            for g in required:
+                f.write("[%s] %s\n" % ("OK " if g in passed else "MISS", g))
+            if missing:
+                f.write("\nMISSING passed cases: %s\n" % ", ".join(missing))
+        arts.append(cov_rel)
+        reason += " gtest_cov=%d/%d" % (len(required) - len(missing), len(required))
+        if missing:
+            reason += " MISSING: %s" % ", ".join(missing)
+    elif "absent" in c_detail:
+        reason += " (AR-CONTRACT-BYPASS: %s)" % c_detail
+    else:
+        gl.emit(pdir, 3, "gate_test_ut.py", verdict="FAIL",
+                reason="ar-contract unrecoverable: %s" % c_detail,
+                cmd=run_cmd, exit_code=proc.returncode, artifacts_rel=arts)
+        sys.exit("PHASE 3 FAIL: ar-contract unrecoverable: %s" % c_detail)
+
+    print(reason)
+    if numeric_ok and coverage_ok:
         gl.emit(pdir, 3, "gate_test_ut.py", verdict="PASS", reason=reason,
                 cmd=run_cmd, exit_code=proc.returncode, artifacts_rel=arts)
         print("PHASE 3 PASS — advance.py advance --phase 3")

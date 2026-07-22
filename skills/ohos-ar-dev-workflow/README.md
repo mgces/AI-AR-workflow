@@ -31,9 +31,10 @@ P3 test       │    1) 用命名的 ohos-* 技能做事
 P4 device     ├─▶ 2) 跑 gate_*.py(脚本基于真实证据判 PASS/FAIL,产 HMAC 链签名记录)
 P5 quality    │    3) PASS → advance.py advance --phase N(校验签名+链+产物哈希后才推进)
 P6 upload ────┘    4) FAIL → 读 evidence/phaseN/ 真实日志,修复重跑(≤3 次)
-                   P1 拆两子门控:gate_design(AR_design 6 章节签名)→ gate_develop(依赖签名设计)
+                   P1 拆两子门控:gate_design(AR_design 6 章节 + ar-contract 契约块,签名)→ 人工 consent --phase 1 → gate_develop(依赖签名设计 + P1 consent)
+                   P2/P3/P4 按签名契约做全量覆盖硬门控(build_artifacts / test_cases gtest / device_cases marker,缺一即 FAIL)
                    P3/P4/P5 只允许新增独立测试文件(功能指纹漂移会被拒)
-                   P4/P5/P6 需 advance.py consent(签名绑定证据)后才推进;并渲染 reports/ 人读 HTML
+                   P1/P4/P5/P6 需 advance.py consent(签名绑定证据)后才推进;并渲染 reports/ 人读 HTML
 ```
 
 证据两轨:`evidence/`(机器,HMAC 链签名,gitignore) ‖ `reports/`(人读 HTML,脱敏可归档)。
