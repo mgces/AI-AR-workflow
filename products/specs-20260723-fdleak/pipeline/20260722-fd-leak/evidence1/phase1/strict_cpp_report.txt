@@ -1,0 +1,15 @@
+rule_sources:
+  - ohos-dev-cpp-coding-style/references/rules.md
+  - openharmony-cpp/references/*.md
+
+checked_files:
+plugins/reliability/fd_leak/fd_leak_detector.cpp
+plugins/reliability/fd_leak/fd_leak_detector.h
+plugins/reliability/fd_leak/test/unittest/fd_leak_detector_unit_test.cpp
+
+blocking_issues:
+(none)
+
+manual_judgment_not_auto_enforced:
+  - API comment quality, class copy/move intent, inheritance intent, input validation completeness
+  - pointer lifetime, integer overflow proof, function size and parameter-count judgment

@@ -1,0 +1,68 @@
+### online  (cmd=)  rc=0
+7001005458323933328a013ce39c3800
+
+### uptime_before  (cmd=)  rc=0
+2380.61
+
+### deploy  (cmd=/home/jerry/opencode2/specs/pipeline/20260722-fd-leak/scripts/deploy.sh)  rc=0
+FileTransfer finish, Size:289780, File count = 1, time:39ms rate:7430.26kB/s
+deployed FdLeakDetectorUnitTest to /data/local/tmp/
+
+### device_artifact_sha256  (cmd=sha256sum /data/local/tmp/FdLeakDetectorUnitTest)  rc=0
+fc12afde3b8f115a46558738a7f580abbff63aee64d9649867035e06a177a60e  /data/local/tmp/FdLeakDetectorUnitTest
+
+### mark_start  (cmd=)  rc=0
+
+
+### scenario  (cmd=/home/jerry/opencode2/specs/pipeline/20260722-fd-leak/scripts/scenario.sh)  rc=0
+Running main() from ../../third_party/googletest/googletest/src/gtest_main.cc
+[==========] Running 5 tests from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 5 tests from FdLeakDetectorUnitTest
+[ RUN      ] FdLeakDetectorUnitTest.FdLeakDetectorUnitTest001
+[       OK ] FdLeakDetectorUnitTest.FdLeakDetectorUnitTest001 (0 ms)
+[ RUN      ] FdLeakDetectorUnitTest.FdLeakDetectorUnitTest002
+[       OK ] FdLeakDetectorUnitTest.FdLeakDetectorUnitTest002 (1 ms)
+[ RUN      ] FdLeakDetectorUnitTest.FdLeakDetectorUnitTest003
+[       OK ] FdLeakDetectorUnitTest.FdLeakDetectorUnitTest003 (0 ms)
+[ RUN      ] FdLeakDetectorUnitTest.FdLeakDetectorUnitTest004
+[       OK ] FdLeakDetectorUnitTest.FdLeakDetectorUnitTest004 (0 ms)
+[ RUN      ] FdLeakDetectorUnitTest.FdLeakDetectorUnitTest005
+[       OK ] FdLeakDetectorUnitTest.FdLeakDetectorUnitTest005 (0 ms)
+[----------] 5 tests from FdLeakDetectorUnitTest (4 ms total)
+
+[----------] Global test environment tear-down
+[==========] 5 tests from 1 test suite ran. (4 ms total)
+[  PASSED  ] 5 tests.
+HAS_PASSED=1 HAS_FAILED=0 RC=0
+ALL TESTS PASSED
+
+### mark_end  (cmd=)  rc=0
+
+
+### hilog  (cmd=)  rc=0
+08-07 00:37:24.245     0     0 I A00000/HiLog: ========Zeroth log of type: app
+08-07 00:37:24.245     0     0 I I00000/HiLog: ========Zeroth log of type: init
+08-07 00:37:45.613   206   206 I A03d00/ArkTSApp: arkts.console: [loadLibraries] Registered ArkoalaNative_ark.z as InteropNativeModule
+08-07 00:37:45.613   206   206 I A03d00/ArkTSApp: arkts.console: [loadLibraries] Registered ArkoalaNative_ark.z as ArkUINativeModule
+08-07 00:37:45.613   206   206 I A03d00/ArkTSApp: arkts.console: [loadLibraries] Registered ArkoalaNative_ark.z as ArkUIGeneratedNativeModule
+08-07 00:37:45.616   206   206 I A03d00/ArkTSApp: arkts.console: [loadLibraries] Registered ArkoalaNative_ark.z as TestNativeModule
+08-07 00:37:45.616   206   206 I A03d00/ArkTSApp: arkts.console: [loadLibraries] Registered arkoala_native_ani as ArkNativeAni
+08-07 00:37:45.617   206   206 I A03d00/ArkTSApp: arkts.console: [loadLibraries] Loading InteropNativeModule [ArkoalaNative_ark.z]
+08-07 00:37:45.618   206   206 E A0ff00/Koala: Use ANI
+08-07 00:37:45.746   206   206 I A03d00/ArkTSApp: arkts.console: [loadLibraries] Loading InteropNativeModule [ArkoalaNative_ark.z]
+08-07 00:37:45.746   206   206 I A03d00/ArkTSApp: arkts.console: [loadLibraries] Loading ArkNativeAni [arkoala_native_ani]
+08-07 00:37:53.895  1509  1509 I A0001a/SystemUI_Default: volume_AbilityStage --> onCreate
+08-07 00:37:53.948  1509  1509 I A0001a/SystemUI_Default: SingleInstanceHelper --> Create key of EventManager
+08-07 00:37:53.950  1509  1509 I A0001a/SystemUI_Default: SingleInstanceHelper --> Create key of WindowManager
+08-07 00:37:53.955  1509  1509 I A0001a/SystemUI_Default: SingleInstanceHelper --> Create Audio Manager.
+08-07 00:37:53.955  1509  1509 I A0001a/SystemUI_Default: VolumePanelModel --> constructor
+08-07 00:37:53.962  1509  1509 I A0001a/SystemUI_Default: SingleInstanceHelper --> Create key of VolumePanelModel
+08-07 00:37:53.973  1518  1518 I A00500/SettingsData: DataAbilityStage onCreate
+08-07 00:37:54.011  1509  1509 I A0001a/SystemUI_Default: VolumePanel_ServiceExtAbility --> onCreate, want:com.ohos.systemui.volumepanel.ServiceExtAbility
+08-07 00:37:54.036  1509  1509 I A0001a/SystemUI_Default: WindowManager --> createWindow name: SystemUi_VolumePanel, rect: {"left":0,"top":0,"width":720,"height":1280}, url: pages/index
+08-07 00:37:54.227  1518  1518 I A00500/SettingsData: context start{"__context_impl__":{"__base_context_ptr__":{},"applicationInfo":{"name":"com.ohos.settingsdata","bundleType":0,"debug":true,"description":"","descriptionId":0,"enabled":true,"label":"$string:app_name","labelId":16777216,"icon":"$media:app_icon","iconId":16777217,"process":"com.ohos.settingsdata","permissions":[],"entryDir":"","codePath":"/data/app/el1/bundle/public/com.ohos.settingsdata","metadata":{},"metadataArray":[],"removable":false,"accessTokenId":537419802,"uid":10005,"iconResource":{"bundleName":"com.ohos.settingsdata","moduleName":"entry","id":16777217},"labelResource":{"bundleName":"com.ohos.settingsdata","moduleName":"entry","id":16777216},"descriptionResource":{"bundleName":"com.ohos.settingsdata","moduleName":"entry","id":0},"appDistributionType":"os_integration","appProvisionType":"release","systemApp":true,"dataUnclearable":false,"nativeLibraryPath":"","appIndex":0,"multiAppMode":{"multiAppModeType":0,"maxCount":0},"installSource":"pre-installed","releaseType":"Beta","cloudFileSyncEnabled":false,"cloudStructuredDataSyncEnabled":false,"flags":35},"currentHapModuleInfo":{"name":"entry","icon":"","iconId":0,"label":"","labelId":0,"description":"$string:entry_desc","descriptionId":16777221,"mainElementName":"MainAbility","abilitiesInfo":[],"extensionAbilitiesInfo":[{"bundleName":"com.ohos.settingsdata","moduleName":"entry","name":"DataExtAbility","labelId":0,"descriptionId":16777220,"iconId":16777223,"isVisible":true,"exported":true,"extensionAbilityType":5,"extensionAbilityTypeName":"dataShare","permissions":[],"applicationInfo":null,"metadata":[{"valueId":0,"name":"ohos.extension.d
+
+### uptime_after  (cmd=)  rc=0
+2385.31
+

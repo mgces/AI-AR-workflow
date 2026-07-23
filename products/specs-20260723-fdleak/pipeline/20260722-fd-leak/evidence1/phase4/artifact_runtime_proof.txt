@@ -1,0 +1,4 @@
+host_artifact=out/rk3568/tests/unittest/hiview/fd_leak_detector/FdLeakDetectorUnitTest
+host_sha256=fc12afde3b8f115a46558738a7f580abbff63aee64d9649867035e06a177a60e
+device_artifact=/data/local/tmp/FdLeakDetectorUnitTest
+device_sha256=fc12afde3b8f115a46558738a7f580abbff63aee64d9649867035e06a177a60e

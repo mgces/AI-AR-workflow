@@ -1,0 +1,4 @@
+exit_code=0
+success_banner=True
+error_banner=False
+matched=[32m=====build  successful=====[0m
