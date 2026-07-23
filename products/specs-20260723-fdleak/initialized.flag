@@ -1,0 +1,14 @@
+# OHOS AR Pipeline Initialized
+repo: /home/jerry/opencode2
+product: rk3568
+component: base/hiviewdfx/hiview
+build_target: hiview_package
+part: hiview
+device_serial: 7001005458323933328a013ce39c3800
+connection: override=172.22.144.1:8710
+hdc_bin: /home/jerry/.local/hdc/hdc
+head: c34bef4061e8d1733c30ec769bd91409141b5649
+checked_at: 2026-07-22T19:46:55+08:00
+phase0: passed
+current_phase: 1 (develop)
+warnings: oh_gc not installed, gitcode_auth not configured (needed before P6)
