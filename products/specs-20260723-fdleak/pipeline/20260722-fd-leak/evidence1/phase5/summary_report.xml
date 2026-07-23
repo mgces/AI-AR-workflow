@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<testsuites name="summary_report" starttime="2026-07-22 22:27:37" endtime="2026-07-22 22:27:45" errors="0" disabled="0" failures="0" tests="5" ignored="0" unavailable="0" modules="1" runmodules="1">
+  <testsuite name="FdLeakDetectorUnitTest" tests="5" failures="0" disabled="0" skipped="0" errors="0" time="0.004" timestamp="2026-07-22T22:27:40.684" modulename="fd_leak_detector">
+    <testcase name="FdLeakDetectorUnitTest001" file="../../base/hiviewdfx/hiview/plugins/reliability/fd_leak/test/unittest/fd_leak_detector_unit_test.cpp" line="64" status="run" result="completed" time="0." timestamp="2026-07-22T22:27:40.684" classname="FdLeakDetectorUnitTest" level="0" />
+    <testcase name="FdLeakDetectorUnitTest002" file="../../base/hiviewdfx/hiview/plugins/reliability/fd_leak/test/unittest/fd_leak_detector_unit_test.cpp" line="86" status="run" result="completed" time="0.001" timestamp="2026-07-22T22:27:40.685" classname="FdLeakDetectorUnitTest" level="0" />
+    <testcase name="FdLeakDetectorUnitTest003" file="../../base/hiviewdfx/hiview/plugins/reliability/fd_leak/test/unittest/fd_leak_detector_unit_test.cpp" line="110" status="run" result="completed" time="0." timestamp="2026-07-22T22:27:40.686" classname="FdLeakDetectorUnitTest" level="0" />
+    <testcase name="FdLeakDetectorUnitTest004" file="../../base/hiviewdfx/hiview/plugins/reliability/fd_leak/test/unittest/fd_leak_detector_unit_test.cpp" line="128" status="run" result="completed" time="0." timestamp="2026-07-22T22:27:40.687" classname="FdLeakDetectorUnitTest" level="1" />
+    <testcase name="FdLeakDetectorUnitTest005" file="../../base/hiviewdfx/hiview/plugins/reliability/fd_leak/test/unittest/fd_leak_detector_unit_test.cpp" line="146" status="run" result="completed" time="0." timestamp="2026-07-22T22:27:40.687" classname="FdLeakDetectorUnitTest" level="1" />
+  </testsuite>
+</testsuites>

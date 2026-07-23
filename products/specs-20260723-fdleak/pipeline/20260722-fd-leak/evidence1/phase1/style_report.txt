@@ -1,0 +1,5 @@
+changed_cxx=3 style_ok=True strict_ok=True
+
+--- oh_cpp_guard --format-only ---
+OHOS root: /home/jerry/opencode2
++ /home/jerry/opencode2/prebuilts/clang/ohos/linux-x86_64/llvm/bin/clang-format -style=file:/home/jerry/opencode2/.claude/skills/ohos-dev-cpp-coding-style/scripts/.clang-format --dry-run --Werror /home/jerry/opencode2/base/hiviewdfx/hiview/plugins/reliability/fd_leak/fd_leak_detector.cpp /home/jerry/opencode2/base/hiviewdfx/hiview/plugins/reliability/fd_leak/fd_leak_detector.h /home/jerry/opencode2/base/hiviewdfx/hiview/plugins/reliability/fd_leak/test/unittest/fd_leak_detector_unit_test.cpp

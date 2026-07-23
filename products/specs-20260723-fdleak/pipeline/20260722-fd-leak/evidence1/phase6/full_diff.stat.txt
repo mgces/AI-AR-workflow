@@ -1,0 +1,10 @@
+base=c34bef4061e8d1733c30ec769bd91409141b5649
+
+plugins/plugin_build/BUILD.gn                      |   1 +
+ plugins/plugin_build/bdfr_plugin_config            |   3 +-
+ plugins/reliability/fd_leak/BUILD.gn               |  46 ++++++
+ plugins/reliability/fd_leak/fd_leak_detector.cpp   | 146 +++++++++++++++++++
+ plugins/reliability/fd_leak/fd_leak_detector.h     |  45 ++++++
+ plugins/reliability/fd_leak/test/BUILD.gn          |  52 +++++++
+ .../test/unittest/fd_leak_detector_unit_test.cpp   | 155 +++++++++++++++++++++
+ 7 files changed, 447 insertions(+), 1 deletion(-)

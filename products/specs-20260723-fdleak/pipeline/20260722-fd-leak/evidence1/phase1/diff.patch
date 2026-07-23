@@ -1,0 +1,499 @@
+diff --git a/plugins/plugin_build/BUILD.gn b/plugins/plugin_build/BUILD.gn
+index 67029b9b..6d47d8f5 100644
+--- a/plugins/plugin_build/BUILD.gn
++++ b/plugins/plugin_build/BUILD.gn
+@@ -73,6 +73,7 @@ ohos_shared_library("bdfr") {
+     "$hiview_plugin/faultlogger:faultlogger",
+     "$hiview_plugin/faultlogger:libfaultlogger",
+     "$hiview_plugin/reliability/bbox_detectors:bbox_detector_with_cfi",
++    "$hiview_plugin/reliability/fd_leak:fd_leak_detector",
+   ]
+ 
+   external_deps = [
+diff --git a/plugins/plugin_build/bdfr_plugin_config b/plugins/plugin_build/bdfr_plugin_config
+index 4ba75759..dc061b4f 100644
+--- a/plugins/plugin_build/bdfr_plugin_config
++++ b/plugins/plugin_build/bdfr_plugin_config
+@@ -1,6 +1,7 @@
+-plugins:2
++plugins:3
+ Faultlogger[]:0 static
+ BBoxDetectorPlugin[thread:bbox_detector]:0 static
++FdLeakDetector[]:0 static
+ pipelines:2
+ faultloggerPipeline:EventValidator PrivacyController Faultlogger FaultloggerFilter SysEventDispatcher SysEventStore
+ BBoxDetectorPipeline:EventValidator PrivacyController BBoxDetectorPlugin SysEventDispatcher SysEventStore
+diff --git a/plugins/reliability/fd_leak/BUILD.gn b/plugins/reliability/fd_leak/BUILD.gn
+new file mode 100644
+index 00000000..5a93daeb
+--- /dev/null
++++ b/plugins/reliability/fd_leak/BUILD.gn
+@@ -0,0 +1,46 @@
++# Copyright (c) 2026 Huawei Device Co., Ltd.
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++import("//base/hiviewdfx/hiview/hiview.gni")
++import("//build/ohos.gni")
++
++config("fd_leak_detector_config") {
++  visibility = [ ":*" ]
++  include_dirs = [ "." ]
++}
++
++ohos_source_set("fd_leak_detector") {
++  sanitize = {
++    cfi = true
++    cfi_cross_dso = true
++    cfi_vcall_icall_only = true
++    debug = false
++  }
++  part_name = "hiview"
++  subsystem_name = "hiviewdfx"
++
++  sources = [ "fd_leak_detector.cpp" ]
++
++  configs = [ ":fd_leak_detector_config" ]
++
++  deps = [ "$hiview_base:hiviewbase" ]
++
++  external_deps = [
++    "c_utils:utils",
++    "hilog:libhilog",
++  ]
++}
++
++group("unittest") {
++  testonly = true
++  deps = [ "test:FdLeakDetectorUnitTest" ]
++}
+diff --git a/plugins/reliability/fd_leak/fd_leak_detector.cpp b/plugins/reliability/fd_leak/fd_leak_detector.cpp
+new file mode 100644
+index 00000000..c43178e2
+--- /dev/null
++++ b/plugins/reliability/fd_leak/fd_leak_detector.cpp
+@@ -0,0 +1,146 @@
++/*
++ * Copyright (c) 2026 Huawei Device Co., Ltd.
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++#include "fd_leak_detector.h"
++
++#include <cctype>
++#include <dirent.h>
++#include <string>
++
++#include "event_loop.h"
++#include "file_util.h"
++#include "hiview_logger.h"
++#include "plugin_factory.h"
++
++namespace OHOS {
++namespace HiviewDFX {
++REGISTER(FdLeakDetector);
++DEFINE_LOG_TAG("FdLeakDetector");
++
++namespace {
++const std::string FD_LEAK_OUTPUT_DIR = "/data/log/reliability/resource_leak/fd_leak/";
++const std::string FD_LEAK_RECORD_FILE = "fd_leak_record";
++} // namespace
++
++void FdLeakDetector::OnLoad()
++{
++    SetName("FdLeakDetector");
++    SetVersion("FdLeakDetector1.0");
++    auto context = GetHiviewContext();
++    if (context == nullptr) {
++        HIVIEW_LOGE("hiview context is null");
++        return;
++    }
++
++    outputDir_ = FD_LEAK_OUTPUT_DIR;
++    if (!FileUtil::FileExists(outputDir_)) {
++        if (!FileUtil::ForceCreateDirectory(outputDir_)) {
++            HIVIEW_LOGE("failed to create output dir: %{public}s", outputDir_.c_str());
++            return;
++        }
++    }
++    InitWorkLoop();
++    HIVIEW_LOGI("FdLeakDetector loaded");
++}
++
++void FdLeakDetector::InitWorkLoop()
++{
++    workLoop_ = GetHiviewContext()->GetSharedWorkLoop();
++    if (workLoop_ == nullptr) {
++        HIVIEW_LOGE("workLoop is null");
++        return;
++    }
++    auto task = [this] { this->CheckFdLeak(); };
++    timerSeqId_ = workLoop_->AddTimerEvent(nullptr, nullptr, task, kCheckIntervalSec, true);
++    HIVIEW_LOGI("fd leak check timer started, interval=%{public}d", kCheckIntervalSec);
++}
++
++void FdLeakDetector::OnUnload()
++{
++    if (workLoop_ != nullptr && timerSeqId_ > 0) {
++        workLoop_->RemoveEvent(timerSeqId_);
++    }
++    HIVIEW_LOGI("FdLeakDetector unloaded");
++}
++
++bool FdLeakDetector::OnEvent(std::shared_ptr<Event> &event)
++{
++    return false;
++}
++
++void FdLeakDetector::CheckFdLeak()
++{
++    auto dir = opendir("/proc");
++    if (dir == nullptr) {
++        HIVIEW_LOGE("failed to open /proc, errno=%{public}d", errno);
++        return;
++    }
++
++    for (struct dirent *ent = readdir(dir); ent != nullptr; ent = readdir(dir)) {
++        std::string name(ent->d_name);
++        if (name == "." || name == "..") {
++            continue;
++        }
++        // only process directories with all-digit names (pids)
++        if (ent->d_type != DT_DIR || name.empty() || !std::isdigit(name[0])) {
++            continue;
++        }
++        bool isAllDigit = true;
++        for (char c : name) {
++            if (!std::isdigit(c)) {
++                isAllDigit = false;
++                break;
++            }
++        }
++        if (!isAllDigit) {
++            continue;
++        }
++
++        int fdCount = CountFds(name);
++        if (fdCount > kFdThreshold) {
++            HIVIEW_LOGW("pid %{public}s fd count %{public}d exceeds threshold %{public}d", name.c_str(), fdCount,
++                        kFdThreshold);
++            WriteLeakRecord(name, fdCount);
++        }
++    }
++    closedir(dir);
++}
++
++int FdLeakDetector::CountFds(const std::string &pid)
++{
++    std::string fdPath = "/proc/" + pid + "/fd";
++    auto fdDir = opendir(fdPath.c_str());
++    if (fdDir == nullptr) {
++        // process may have exited or permission denied
++        return -1;
++    }
++
++    int count = 0;
++    for (struct dirent *ent = readdir(fdDir); ent != nullptr; ent = readdir(fdDir)) {
++        if (ent->d_name[0] != '.') {
++            count++;
++        }
++    }
++    closedir(fdDir);
++    return count;
++}
++
++void FdLeakDetector::WriteLeakRecord(const std::string &pid, int fdCount)
++{
++    std::string filePath = outputDir_ + FD_LEAK_RECORD_FILE;
++    std::string record = "pid=" + pid + " fd_count=" + std::to_string(fdCount) + "\n";
++    FileUtil::SaveStringToFile(filePath, record, false); // false = append mode
++}
++} // namespace HiviewDFX
++} // namespace OHOS
+diff --git a/plugins/reliability/fd_leak/fd_leak_detector.h b/plugins/reliability/fd_leak/fd_leak_detector.h
+new file mode 100644
+index 00000000..e2f6a711
+--- /dev/null
++++ b/plugins/reliability/fd_leak/fd_leak_detector.h
+@@ -0,0 +1,45 @@
++/*
++ * Copyright (c) 2026 Huawei Device Co., Ltd.
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++#ifndef HIVIEW_PLUGINS_FD_LEAK_DETECTOR_H
++#define HIVIEW_PLUGINS_FD_LEAK_DETECTOR_H
++
++#include <string>
++
++#include "plugin.h"
++
++namespace OHOS {
++namespace HiviewDFX {
++class FdLeakDetector : public Plugin {
++public:
++    FdLeakDetector(){};
++    ~FdLeakDetector(){};
++    void OnLoad() override;
++    void OnUnload() override;
++    bool OnEvent(std::shared_ptr<Event> &event) override;
++
++private:
++    void InitWorkLoop();
++    void CheckFdLeak();
++    int CountFds(const std::string &pid);
++    void WriteLeakRecord(const std::string &pid, int fdCount);
++
++    static constexpr int kFdThreshold = 5000;
++    static constexpr int kCheckIntervalSec = 60;
++    std::string outputDir_;
++    uint64_t timerSeqId_ = 0;
++};
++} // namespace HiviewDFX
++} // namespace OHOS
++#endif // HIVIEW_PLUGINS_FD_LEAK_DETECTOR_H
+diff --git a/plugins/reliability/fd_leak/test/BUILD.gn b/plugins/reliability/fd_leak/test/BUILD.gn
+new file mode 100644
+index 00000000..42f797c8
+--- /dev/null
++++ b/plugins/reliability/fd_leak/test/BUILD.gn
+@@ -0,0 +1,52 @@
++# Copyright (c) 2026 Huawei Device Co., Ltd.
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++import("//base/hiviewdfx/hiview/hiview.gni")
++import("//build/ohos.gni")
++import("//build/test.gni")
++
++module_output_path = "hiview/fd_leak_detector"
++
++config("fd_leak_detector_test_config") {
++  visibility = [ ":*" ]
++  include_dirs = [
++    "..",
++    "unittest",
++  ]
++}
++
++ohos_unittest("FdLeakDetectorUnitTest") {
++  sources = [ "unittest/fd_leak_detector_unit_test.cpp" ]
++
++  sources += [ "../fd_leak_detector.cpp" ]
++
++  configs = [ ":fd_leak_detector_test_config" ]
++
++  cflags_cc = [ "-Dprivate=public" ]
++  cflags_cc += [ "-Dprotected=public" ]
++
++  cflags = [
++    "-DUNITTEST",
++    "-Dprivate=public",
++  ]
++
++  external_deps = [
++    "c_utils:utils",
++    "googletest:gmock",
++    "googletest:gtest_main",
++    "hilog:libhilog",
++  ]
++
++  deps = [ "$hiview_base:hiviewbase_static_lib_for_tdd" ]
++
++  module_out_path = module_output_path
++}
+diff --git a/plugins/reliability/fd_leak/test/unittest/fd_leak_detector_unit_test.cpp b/plugins/reliability/fd_leak/test/unittest/fd_leak_detector_unit_test.cpp
+new file mode 100644
+index 00000000..75c2efda
+--- /dev/null
++++ b/plugins/reliability/fd_leak/test/unittest/fd_leak_detector_unit_test.cpp
+@@ -0,0 +1,155 @@
++/*
++ * Copyright (c) 2026 Huawei Device Co., Ltd.
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++#include <gtest/gtest.h>
++#include <fstream>
++#include <string>
++
++#include "fd_leak_detector.h"
++#include "file_util.h"
++#include "hiview_logger.h"
++#include "plugin_factory.h"
++
++using namespace std;
++using namespace testing;
++using namespace testing::ext;
++
++namespace OHOS {
++namespace HiviewDFX {
++class FdLeakDetectorUnitTest : public testing::Test {
++public:
++    void SetUp() override;
++    void TearDown() override;
++    static void SetUpTestCase();
++    static void TearDownTestCase();
++
++    static const string tempDir_;
++};
++
++const string FdLeakDetectorUnitTest::tempDir_ = "/data/local/tmp/fd_leak_test/";
++
++void FdLeakDetectorUnitTest::SetUpTestCase() {}
++
++void FdLeakDetectorUnitTest::TearDownTestCase()
++{
++    FileUtil::ForceRemoveDirectory(tempDir_);
++}
++
++void FdLeakDetectorUnitTest::SetUp()
++{
++    FileUtil::ForceCreateDirectory(tempDir_);
++}
++
++void FdLeakDetectorUnitTest::TearDown()
++{
++    FileUtil::ForceRemoveDirectory(tempDir_);
++}
++
++/**
++ * @tc.name: FdLeakDetectorUnitTest001
++ * @tc.desc: test plugin create and destroy
++ * @tc.type: FUNC
++ */
++HWTEST_F(FdLeakDetectorUnitTest, FdLeakDetectorUnitTest001, TestSize.Level0)
++{
++    /**
++     * @tc.steps: step1. create FdLeakDetector instance
++     * @tc.expect: instance is not null
++     */
++    auto plugin = make_shared<FdLeakDetector>();
++    ASSERT_NE(plugin, nullptr);
++
++    /**
++     * @tc.steps: step2. verify OnEvent returns false (no event handling)
++     * @tc.expect: OnEvent returns false
++     */
++    shared_ptr<Event> event = nullptr;
++    ASSERT_FALSE(plugin->OnEvent(event));
++}
++
++/**
++ * @tc.name: FdLeakDetectorUnitTest002
++ * @tc.desc: test WriteLeakRecord writes file correctly
++ * @tc.type: FUNC
++ */
++HWTEST_F(FdLeakDetectorUnitTest, FdLeakDetectorUnitTest002, TestSize.Level0)
++{
++    /**
++     * @tc.steps: step1. set output dir to temp dir and write record
++     * @tc.expect: file is created with correct content
++     */
++    auto plugin = make_shared<FdLeakDetector>();
++    ASSERT_NE(plugin, nullptr);
++
++    plugin->outputDir_ = tempDir_;
++    plugin->WriteLeakRecord("12345", 6000);
++
++    string filePath = tempDir_ + "fd_leak_record";
++    string content;
++    ASSERT_TRUE(FileUtil::LoadStringFromFile(filePath, content));
++    ASSERT_TRUE(content.find("pid=12345") != string::npos);
++    ASSERT_TRUE(content.find("fd_count=6000") != string::npos);
++}
++
++/**
++ * @tc.name: FdLeakDetectorUnitTest003
++ * @tc.desc: test CountFds with real /proc/self/fd
++ * @tc.type: FUNC
++ */
++HWTEST_F(FdLeakDetectorUnitTest, FdLeakDetectorUnitTest003, TestSize.Level0)
++{
++    /**
++     * @tc.steps: step1. call CountFds with "self" (current process)
++     * @tc.expect: returns a positive count (current process always has some fds)
++     */
++    auto plugin = make_shared<FdLeakDetector>();
++    ASSERT_NE(plugin, nullptr);
++
++    int count = plugin->CountFds("self");
++    ASSERT_GT(count, 0);
++}
++
++/**
++ * @tc.name: FdLeakDetectorUnitTest004
++ * @tc.desc: test CountFds with non-existent pid returns -1
++ * @tc.type: FUNC
++ */
++HWTEST_F(FdLeakDetectorUnitTest, FdLeakDetectorUnitTest004, TestSize.Level1)
++{
++    /**
++     * @tc.steps: step1. call CountFds with a non-existent pid
++     * @tc.expect: returns -1 (directory not found)
++     */
++    auto plugin = make_shared<FdLeakDetector>();
++    ASSERT_NE(plugin, nullptr);
++
++    int count = plugin->CountFds("99999999");
++    ASSERT_EQ(count, -1);
++}
++
++/**
++ * @tc.name: FdLeakDetectorUnitTest005
++ * @tc.desc: test FD_THRESHOLD constant is 5000
++ * @tc.type: FUNC
++ */
++HWTEST_F(FdLeakDetectorUnitTest, FdLeakDetectorUnitTest005, TestSize.Level1)
++{
++    /**
++     * @tc.steps: step1. verify threshold constant
++     * @tc.expect: FD_THRESHOLD equals 5000
++     */
++    ASSERT_EQ(FdLeakDetector::kFdThreshold, 5000);
++}
++} // namespace HiviewDFX
++} // namespace OHOS
