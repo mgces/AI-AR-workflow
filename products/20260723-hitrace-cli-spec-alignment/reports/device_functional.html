@@ -1,0 +1,63 @@
+<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>真机功能测试报告 — 20260723-hitrace-cli-spec-alignment</title><style>
+:root{color-scheme:light dark}
+*{box-sizing:border-box}
+body{font:15px/1.6 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  margin:0;padding:0;background:#f6f7f9;color:#1c2128}
+.wrap{max-width:960px;margin:0 auto;padding:32px 24px}
+h1{font-size:26px;margin:0 0 4px}
+h2{font-size:19px;margin:28px 0 10px;padding-bottom:6px;border-bottom:1px solid #d6dae0}
+.sub{color:#59636e;margin:0 0 20px}
+.badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600}
+.pass{background:#dafbe1;color:#1a7f37}.fail{background:#ffebe9;color:#cf222e}
+.warn{background:#fff8c5;color:#9a6700}
+table{border-collapse:collapse;width:100%;margin:8px 0;font-size:14px}
+th,td{border:1px solid #d6dae0;padding:6px 10px;text-align:left;vertical-align:top}
+th{background:#eaeef2;width:220px;white-space:nowrap}
+pre{background:#0d1117;color:#c9d1d9;padding:12px;border-radius:8px;overflow:auto;
+  font:12px/1.5 SFMono-Regular,Consolas,monospace;max-height:340px}
+.card{background:#fff;border:1px solid #d6dae0;border-radius:10px;padding:18px 22px;margin:16px 0}
+a{color:#0969da}
+</style></head><body><div class='wrap'><h1>真机功能测试报告</h1><p class='sub'>run=20260723-hitrace-cli-spec-alignment target=hitrace</p><div class='card'><span class='badge pass'>PASS</span> nonce=True marker=True runtime=True e2e=True device_cases=1/1 artifact_hash=True uptime 1185401.36-&gt;1185417.21 mono=True</div><h2>运行元数据(nonce / marker / uptime)</h2><pre>nonce=&lt;REDACTED-SERIAL&gt;
+uptime_before=1185401.36
+uptime_after=1185417.21
+marker=HITRACE_RUST_CLI_GET_LEVEL_OK
+runtime_marker=HITRACE_RUST_CLI_RUNTIME
+e2e_marker=HITRACE_RUST_CLI_GET_LEVEL_OK
+</pre><h2>产物一致性(主机 sha256 == 设备 sha256)</h2><pre>host_artifact=~/openharmony/out/rk3568/hiviewdfx/hitrace/hitrace
+host_sha256=bc9b69ddca969d6488a4e0a749e4fdf31fbc075fbf1dd42b67e3975e447b9a7e
+device_artifact=/data/local/tmp/hitrace-rust
+device_sha256=bc9b69ddca969d6488a4e0a749e4fdf31fbc075fbf1dd42b67e3975e447b9a7e
+</pre><h2>设备 hilog 抓取(末尾片段)</h2><pre>04-29 14:44:05.765     0     0 I I00000/HiLog: ========Zeroth log of type: init
+05-12 20:58:00.003 23442 23442 I A0002a/ScreenLock_Default: CommonEvent_TimeManagerSc --&gt; handle common event: usual.event.TIME_TICK
+05-12 20:58:00.004 23442 23442 I A0001a/SystemUI_Default: EventManager --&gt; PUBLISH : event: {&quot;target&quot;:&quot;local&quot;,&quot;data&quot;:{&quot;eventName&quot;:&quot;Time_Change_Event&quot;,&quot;args&quot;:{&quot;date&quot;:&quot;2021-05-12T12:58:00.004Z&quot;,&quot;timeFormat&quot;:true}}}
+05-12 20:58:00.019 23442 23442 I A0001a/SystemUI_Default: EventManager --&gt; PUBLISH : event: {&quot;target&quot;:&quot;local&quot;,&quot;data&quot;:{&quot;eventName&quot;:&quot;Time_Change_Event&quot;,&quot;args&quot;:{&quot;date&quot;:&quot;2021-05-12T12:58:00.019Z&quot;,&quot;timeFormat&quot;:false}}}
+05-12 20:59:00.003 23442 23442 I A0002a/ScreenLock_Default: CommonEvent_TimeManagerSc --&gt; handle common event: usual.event.TIME_TICK
+05-12 20:59:00.004 23442 23442 I A0001a/SystemUI_Default: EventManager --&gt; PUBLISH : event: {&quot;target&quot;:&quot;local&quot;,&quot;data&quot;:{&quot;eventName&quot;:&quot;Time_Change_Event&quot;,&quot;args&quot;:{&quot;date&quot;:&quot;2021-05-12T12:59:00.004Z&quot;,&quot;timeFormat&quot;:true}}}
+05-12 20:59:00.016 23442 23442 I A0001a/SystemUI_Default: EventManager --&gt; PUBLISH : event: {&quot;target&quot;:&quot;local&quot;,&quot;data&quot;:{&quot;eventName&quot;:&quot;Time_Change_Event&quot;,&quot;args&quot;:{&quot;date&quot;:&quot;2021-05-12T12:59:00.016Z&quot;,&quot;timeFormat&quot;:false}}}
+05-12 21:00:00.003 23442 23442 I A0002a/ScreenLock_Default: CommonEvent_TimeManagerSc --&gt; handle common event: usual.event.TIME_TICK
+05-12 21:00:00.004 23442 23442 I A0001a/SystemUI_Default: EventManager --&gt; PUBLISH : event: {&quot;target&quot;:&quot;local&quot;,&quot;data&quot;:{&quot;eventName&quot;:&quot;Time_Change_Event&quot;,&quot;args&quot;:{&quot;date&quot;:&quot;2021-05-12T13:00:00.004Z&quot;,&quot;timeFormat&quot;:true}}}
+05-12 21:00:00.016 23442 23442 I A0001a/SystemUI_Default: EventManager --&gt; PUBLISH : event: {&quot;target&quot;:&quot;local&quot;,&quot;data&quot;:{&quot;eventName&quot;:&quot;Time_Change_Event&quot;,&quot;args&quot;:{&quot;date&quot;:&quot;2021-05-12T13:00:00.016Z&quot;,&quot;timeFormat&quot;:false}}}
+05-12 21:01:00.004 23442 23442 I A0002a/ScreenLock_Default: CommonEvent_TimeManagerSc --&gt; handle common event: usual.event.TIME_TICK
+05-12 21:01:00.004 23442 23442 I A0001a/SystemUI_Default: EventManager --&gt; PUBLISH : event: {&quot;target&quot;:&quot;local&quot;,&quot;data&quot;:{&quot;eventName&quot;:&quot;Time_Change_Event&quot;,&quot;args&quot;:{&quot;date&quot;:&quot;2021-05-12T13:01:00.004Z&quot;,&quot;timeFormat&quot;:true}}}
+05-12 21:01:00.017 23442 23442 I A0001a/SystemUI_Default: EventManager --&gt; PUBLISH : event: {&quot;target&quot;:&quot;local&quot;,&quot;data&quot;:{&quot;eventName&quot;:&quot;Time_Change_Event&quot;,&quot;args&quot;:{&quot;date&quot;:&quot;2021-05-12T13:01:00.016Z&quot;,&quot;timeFormat&quot;:false}}}
+05-12 21:02:00.003 23442 23442 I A0002a/ScreenLock_Default: CommonEvent_TimeManagerSc --&gt; handle common event: usual.event.TIME_TICK
+05-12 21:02:00.004 23442 23442 I A0001a/SystemUI_Default: EventManager --&gt; PUBLISH : event: {&quot;target&quot;:&quot;local&quot;,&quot;data&quot;:{&quot;eventName&quot;:&quot;Time_Change_Event&quot;,&quot;args&quot;:{&quot;date&quot;:&quot;2021-05-12T13:02:00.004Z&quot;,&quot;timeFormat&quot;:true}}}
+05-12 21:02:00.016 23442 23442 I A0001a/SystemUI_Default: EventManager --&gt; PUBLISH : event: {&quot;target&quot;:&quot;local&quot;,&quot;data&quot;:{&quot;eventName&quot;:&quot;Time_Change_Event&quot;,&quot;args&quot;:{&quot;date&quot;:&quot;2021-05-12T13:02:00.016Z&quot;,&quot;timeFormat&quot;:false}}}
+05-12 21:03:00.004 23442 23442 I A0001a/SystemUI_Default: EventManager --&gt; PUBLISH : event: {&quot;target&quot;:&quot;local&quot;,&quot;data&quot;:{&quot;eventName&quot;:&quot;Time_Change_Event&quot;,&quot;args&quot;:{&quot;date&quot;:&quot;2021-05-12T13:03:00.003Z&quot;,&quot;timeFormat&quot;:false}}}
+05-12 21:03:00.025 23442 23442 I A0002a/ScreenLock_Default: CommonEvent_TimeManagerSc --&gt; handle common event: usual.event.TIME_TICK
+05-12 21:03:00.025 23442 23442 I A0001a/SystemUI_Default: EventManager --&gt; PUBLISH : event: {&quot;target&quot;:&quot;local&quot;,&quot;data&quot;:{&quot;eventName&quot;:&quot;Time_Change_Event&quot;,&quot;args&quot;:{&quot;date&quot;:&quot;2021-05-12T13:03:00.025Z&quot;,&quot;timeFormat&quot;:true}}}
+05-12 21:04:00.004 23442 23442 I A0002a/ScreenLock_Default: CommonEvent_TimeManagerSc --&gt; handle common event: usual.event.TIME_TICK
+05-12 21:04:00.004 23442 23442 I A0001a/SystemUI_Default: EventManager --&gt; PUBLISH : event: {&quot;target&quot;:&quot;local&quot;,&quot;data&quot;:{&quot;eventName&quot;:&quot;Time_Change_Event&quot;,&quot;args&quot;:{&quot;date&quot;:&quot;2021-05-12T13:04:00.004Z&quot;,&quot;timeFormat&quot;:true}}}
+05-12 21:04:00.015 23442 23442 I A0001a/SystemUI_Default: EventManager --&gt; PUBLISH : event: {&quot;target&quot;:&quot;local&quot;,&quot;data&quot;:{&quot;eventName&quot;:&quot;Time_Change_Event&quot;,&quot;args&quot;:{&quot;date&quot;:&quot;2021-05-12T13:04:00.015Z&quot;,&quot;timeFormat&quot;:false}}}
+05-12 21:05:00.004 23442 23442 I A0002a/ScreenLock_Default: CommonEvent_TimeManagerSc --&gt; handle common event: usual.event.TIME_TICK
+05-12 21:05:00.004 23442 23442 I A0001a/SystemUI_Default: EventManager --&gt; PUBLISH : event: {&quot;target&quot;:&quot;local&quot;,&quot;data&quot;:{&quot;eventName&quot;:&quot;Time_Change_Event&quot;,&quot;args&quot;:{&quot;date&quot;:&quot;2021-05-12T13:05:00.004Z&quot;,&quot;timeFormat&quot;:true}}}
+05-12 21:05:00.016 23442 23442 I A0001a/SystemUI_Default: EventManager --&gt; PUBLISH : event: {&quot;target&quot;:&quot;local&quot;,&quot;data&quot;:{&quot;eventName&quot;:&quot;Time_Change_Event&quot;,&quot;args&quot;:{&quot;date&quot;:&quot;2021-05-12T13:05:00.016Z&quot;,&quot;timeFormat&quot;:false}}}
+05-12 21:05:22.949 23442 23442 I A0002a/ScreenLock_Default: ScreenLock-ScreenLockService --&gt; app pss info is: 87502
+05-12 21:06:00.004 23442 23442 I A0002a/ScreenLock_Default: CommonEvent_TimeManagerSc --&gt; handle common event: usual.event.TIME_TICK
+05-12 21:06:00.004 23442 23442 I A0001a/SystemUI_Default: EventManager --&gt; PUBLISH : event: {&quot;target&quot;:&quot;local&quot;,&quot;data&quot;:{&quot;eventName&quot;:&quot;Time_Change_Event&quot;,&quot;args&quot;:{&quot;date&quot;:&quot;2021-05-12T13:06:00.004Z&quot;,&quot;timeFormat&quot;:true}}}
+05-12 21:06:00.016 23442 23442 I A0001a/SystemUI_Default: EventManager --&gt; PUBLISH : event: {&quot;target&quot;:&quot;local&quot;,&quot;data&quot;:{&quot;eventName&quot;:&quot;Time_Change_Event&quot;,&quot;args&quot;:{&quot;date&quot;:&quot;2021-05-12T13:06:00.016Z&quot;,&quot;timeFormat&quot;:false}}}
+05-12 21:07:00.003 23442 23442 I A0002a/ScreenLock_Default: CommonEvent_TimeManagerSc --&gt; handle common event: usual.event.TIME_TICK
+05-12 21:07:00.004 23442 23442 I A0001a/SystemUI_Default: EventManager --&gt; PUBLISH : event: {&quot;target&quot;:&quot;local&quot;,&quot;data&quot;:{&quot;eventName&quot;:&quot;Time_Change_Event&quot;,&quot;args&quot;:{&quot;date&quot;:&quot;2021-05-12T13:07:00.003Z&quot;,&quot;timeFormat&quot;:true}}}
+05-12 21:07:00.015 23442 23442 I A0001a/SystemUI_Default: EventManager --&gt; PUBLISH : event: {&quot;target&quot;:&quot;local&quot;,&quot;data&quot;:{&quot;eventName&quot;:&quot;Time_Change_Event&quot;,&quot;args&quot;:{&quot;date&quot;:&quot;2021-05-12T13:07:00.015Z&quot;,&quot;timeFormat&quot;:false}}}
+05-12 21:08:00.003 23442 23442 I A0002a/ScreenLock_Default: CommonEvent_TimeManagerSc --&gt; handle common event: usual.event.TIME_TICK
+05-12 21:08:00.004 23442 23442 I A0001a/SystemUI_Default: EventManager</pre></div></body></html>

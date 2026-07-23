@@ -1,0 +1,174 @@
+<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>质量验证报告 — 20260723-hitrace-cli-spec-alignment</title><style>
+:root{color-scheme:light dark}
+*{box-sizing:border-box}
+body{font:15px/1.6 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  margin:0;padding:0;background:#f6f7f9;color:#1c2128}
+.wrap{max-width:960px;margin:0 auto;padding:32px 24px}
+h1{font-size:26px;margin:0 0 4px}
+h2{font-size:19px;margin:28px 0 10px;padding-bottom:6px;border-bottom:1px solid #d6dae0}
+.sub{color:#59636e;margin:0 0 20px}
+.badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600}
+.pass{background:#dafbe1;color:#1a7f37}.fail{background:#ffebe9;color:#cf222e}
+.warn{background:#fff8c5;color:#9a6700}
+table{border-collapse:collapse;width:100%;margin:8px 0;font-size:14px}
+th,td{border:1px solid #d6dae0;padding:6px 10px;text-align:left;vertical-align:top}
+th{background:#eaeef2;width:220px;white-space:nowrap}
+pre{background:#0d1117;color:#c9d1d9;padding:12px;border-radius:8px;overflow:auto;
+  font:12px/1.5 SFMono-Regular,Consolas,monospace;max-height:340px}
+.card{background:#fff;border:1px solid #d6dae0;border-radius:10px;padding:18px 22px;margin:16px 0}
+a{color:#0969da}
+</style></head><body><div class='wrap'><h1>质量验证报告</h1><p class='sub'>run=20260723-hitrace-cli-spec-alignment</p><div class='card'><span class='badge pass'>PASS</span> type=UT tests=61 failures=0 errors=0 fresh=2026-07-23-14-53-21 | quality:coverage=evidence/phase5/coverage_report.html; performance=evidence/phase5/performance_report.md; power=evidence/phase5/power_report.md; stability=evidence/phase5/stability_report.md | review:auto_review_issues=0 guard rc=0 on 2 file(s) | external_review evidence/phase5/external_code_review_report.json issue_count=0 finding_count=0 blocker_count=0 issues=0 findings=0 blockers=0</div><h2>覆盖率报告</h2><pre>&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+  &lt;meta charset=&quot;utf-8&quot;&gt;
+  &lt;title&gt;hitrace Rust CLI P5 coverage&lt;/title&gt;
+  &lt;style&gt;
+    body { font-family: sans-serif; margin: 2rem; color: #1f2937; }
+    table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+    th, td { border: 1px solid #cbd5e1; padding: .45rem; text-align: left; }
+    th { background: #e2e8f0; }
+    .pass { color: #166534; font-weight: 700; }
+    code { background: #f1f5f9; padding: .1rem .25rem; }
+  &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;h1&gt;hitrace Rust CLI P5 coverage report&lt;/h1&gt;
+  &lt;p class=&quot;pass&quot;&gt;PASS — 61/61 device tests passed; failures=0, errors=0.&lt;/p&gt;
+  &lt;p&gt;
+    The rk3568 test binary was rebuilt with &lt;code&gt;use_clang_coverage=true&lt;/code&gt;,
+    executed on device with a fresh &lt;code&gt;GCOV_PREFIX&lt;/code&gt;, and its 17
+    &lt;code&gt;.gcda&lt;/code&gt; files were pulled and paired with the matching
+    &lt;code&gt;.gcno&lt;/code&gt; files. Raw evidence is in
+    &lt;code&gt;work/phase5/gcov_raw&lt;/code&gt;.
+  &lt;/p&gt;
+
+  &lt;h2&gt;Product-code coverage&lt;/h2&gt;
+  &lt;table&gt;
+    &lt;thead&gt;
+      &lt;tr&gt;
+        &lt;th&gt;Source&lt;/th&gt;&lt;th&gt;Lines&lt;/th&gt;&lt;th&gt;Line %&lt;/th&gt;
+        &lt;th&gt;Branches executed&lt;/th&gt;&lt;th&gt;Executed %&lt;/th&gt;
+        &lt;th&gt;Branches taken ≥1&lt;/th&gt;&lt;th&gt;Taken %&lt;/th&gt;
+      &lt;/tr&gt;
+    &lt;/thead&gt;
+    &lt;tbody&gt;
+      &lt;tr&gt;&lt;td&gt;cmd/rust/src/native.rs&lt;/td&gt;&lt;td&gt;129/144&lt;/td&gt;&lt;td&gt;89.58%&lt;/td&gt;&lt;td&gt;206/233&lt;/td&gt;&lt;td&gt;88.41%&lt;/td&gt;&lt;td&gt;98/233&lt;/td&gt;&lt;td&gt;42.06%&lt;/td&gt;&lt;/tr&gt;
+      &lt;tr&gt;&lt;td&gt;cmd/rust/src/orchestrator.rs&lt;/td&gt;&lt;td&gt;40/43&lt;/td&gt;&lt;td&gt;93.02%&lt;/td&gt;&lt;td&gt;64/68&lt;/td&gt;&lt;td&gt;94.12%&lt;/td&gt;&lt;td&gt;45/68&lt;/td&gt;&lt;td&gt;66.18%&lt;/td&gt;&lt;/tr&gt;
+      &lt;tr&gt;&lt;td&gt;cmd/rust/src/parser.rs&lt;/td&gt;&lt;td&gt;227/246&lt;/td&gt;&lt;td&gt;92.28%&lt;/td&gt;&lt;td&gt;384/408&lt;/td&gt;&lt;td&gt;94.12%&lt;/td&gt;&lt;td&gt;236/408&lt;/td&gt;&lt;td&gt;57.84%&lt;/td&gt;&lt;/tr&gt;
+      &lt;tr&gt;&lt;td&gt;cmd/rust/src/spec.rs&lt;/td&gt;&lt;td&gt;17/51&lt;/td&gt;&lt;td&gt;33.33%&lt;/td&gt;&lt;td&gt;37/105&lt;/td&gt;&lt;td&gt;35.24%&lt;/td&gt;&lt;td&gt;14/105&lt;/td&gt;&lt;td&gt;13.33%&lt;/td&gt;&lt;/tr&gt;
+      &lt;tr&gt;&lt;td&gt;cmd/native/hitrace_native.cpp&lt;/td&gt;&lt;td&gt;127/178&lt;/td&gt;&lt;td&gt;71.35%&lt;/td&gt;&lt;td&gt;42/54&lt;/td&gt;&lt;td&gt;77.78%&lt;/td&gt;&lt;td&gt;26/54&lt;/td&gt;&lt;td&gt;48.15%&lt;/td&gt;&lt;/tr&gt;
+      &lt;tr&gt;&lt;td&gt;cmd/native/hitrace_native_internal.h&lt;/td&gt;&lt;td&gt;22/22&lt;/td&gt;&lt;td&gt;100.00%&lt;/td&gt;&lt;td&gt;—&lt;/td&gt;&lt;td&gt;—&lt;/td&gt;&lt;td&gt;—&lt;/td&gt;&lt;td&gt;—&lt;/td&gt;&lt;/tr&gt;
+      &lt;tr&gt;&lt;td&gt;cmd/native/hitrace_executor.cpp&lt;/td&gt;&lt;td&gt;256/469&lt;/td&gt;&lt;td&gt;54.58%&lt;/td&gt;&lt;td&gt;135/197&lt;/td&gt;&lt;td&gt;68.53%&lt;/td&gt;&lt;td&gt;79/197&lt;/td&gt;&lt;td&gt;40.10%&lt;/td&gt;&lt;/tr&gt;
+      &lt;tr&gt;&lt;td&gt;cmd/native/hitrace_boot_trace.cpp&lt;/td&gt;&lt;td&gt;462/541&lt;/td&gt;&lt;td&gt;85.40%&lt;/td&gt;&lt;td&gt;234/240&lt;/td&gt;&lt;td&gt;97.50%&lt;/td&gt;&lt;td&gt;172/240&lt;/td&gt;&lt;td&gt;71.67%&lt;/td&gt;&lt;/tr&gt;
+      &lt;tr&gt;&lt;td&gt;cmd/hitrace_cmd.cpp&lt;/td&gt;&lt;td&gt;12/12&lt;/td&gt;&lt;td&gt;100.00%&lt;/td&gt;&lt;td&gt;—&lt;/td&gt;&lt;td&gt;—&lt;/td&gt;&lt;td&gt;—&lt;/td&gt;&lt;td&gt;—&lt;/td&gt;&lt;/tr&gt;
+    &lt;/tbody&gt;
+    &lt;tfoot&gt;
+      &lt;tr&gt;&lt;th&gt;Total&lt;/th&gt;&lt;th&gt;1292/1706&lt;/th&gt;&lt;th&gt;75.73%&lt;/th&gt;&lt;th&gt;1102/1305&lt;/th&gt;&lt;th&gt;84.44%&lt;/th&gt;&lt;th&gt;670/1305&lt;/th&gt;&lt;th&gt;51.34%&lt;/th&gt;&lt;/tr&gt;
+    &lt;/tfoot&gt;
+  &lt;/table&gt;
+
+  &lt;h2&gt;Method and interpretation&lt;/h2&gt;
+  &lt;ul&gt;
+    &lt;li&gt;Build: &lt;code&gt;./build.sh --product-name rk3568 --ccache --ninja-args=-j10 --ninja-args=-l10 --build-target HitraceCMDTest --gn-args use_clang_coverage=true&lt;/code&gt;.&lt;/li&gt;
+    &lt;li&gt;Device binary: &lt;code&gt;/data/test/HitraceCMDTest-p5-coverage&lt;/code&gt;.&lt;/li&gt;
+    &lt;li&gt;Fresh device data root: &lt;code&gt;/data/local/tmp/hitrace-p5-gcov-20260723-1422&lt;/code&gt;.&lt;/li&gt;
+    &lt;li&gt;Rust standard-library, libc++, and unrelated utility/header coverage are excluded from product totals.&lt;/li&gt;
+    &lt;li&gt;&lt;code&gt;spec.rs&lt;/code&gt; contains mostly static option/help tables; its functional single-source behavior is covered by the CLI contract tests even though table declarations are not executable lines.&lt;/li&gt;
+    &lt;li&gt;Long-running real trace I/O and hardware/error-only branches explain the lower executor line result; parser, orchestrator, boot control, and native boundary paths have direct coverage.&lt;/li&gt;
+  &lt;/ul&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</pre><h2>性能报告</h2><pre># hitrace Rust CLI P5 performance report
+
+Verdict: PASS for the approved functional quality gate. This is an
+observational device benchmark; the signed design defines no latency-regression
+threshold and this report does not claim improvement over a historical binary.
+
+## Environment
+
+- Date: 2026-07-23
+- Transport: `hdc -s &lt;REDACTED-HOST:PORT&gt;`
+- Device: `&lt;REDACTED-SERIAL&gt;`
+- Program: `/data/local/tmp/hitrace-rust`
+- Measured artifact SHA-256:
+  `bc9b69ddca969d6488a4e0a749e4fdf31fbc075fbf1dd42b67e3975e447b9a7e`
+- Clock: monotonic `/proc/uptime`
+
+## Result
+
+The workload invoked `hitrace-rust --get_level` 500 times with output
+discarded.
+
+| Metric | Result |
+| --- | ---: |
+| Iterations | 500 |
+| Failures | 0 |
+| Start uptime | 1187555.30 s |
+| End uptime | 1187584.90 s |
+| Elapsed | 29.60 s |
+| Mean wall time | 59.20 ms/invocation |
+| Throughput | 16.89 invocations/s |
+
+The command remained functionally correct throughout the benchmark. The exact
+reproduction script is `scripts/phase5/measure_quality.sh`; raw values are in
+`work/phase5/device_measurements.txt`.
+</pre><h2>功耗报告</h2><pre># hitrace Rust CLI P5 power-impact report
+
+Verdict: PASS with an explicit telemetry limitation. No persistent power lock
+or abnormal short-run thermal signal was observed. The board reports no battery
+sensor, so this report does not invent watt, current, or energy values.
+
+## Workload
+
+The same measured artifact executed 1500 short-lived CLI invocations:
+
+- 500 `--get_level` performance iterations.
+- 500 `--get_level`, 250 `--help`, and 250 deliberately invalid parser
+  iterations for stability.
+- Total observation window: 97.59 seconds
+  (uptime 1187549.32 to 1187646.91).
+
+## Device telemetry
+
+| Metric | Before | After | Delta |
+| --- | ---: | ---: | ---: |
+| GPU thermal | 43.750 °C | 44.375 °C | +0.625 °C |
+| SoC thermal | 44.375 °C | 45.555 °C | +1.180 °C |
+| Valid running locks | 0 | 0 | 0 |
+| Running-lock entries | 9 | 9 | 0 |
+| Battery present | 0 | 0 | 0 |
+| Voltage/current/energy | -1 / -1 / -1 | -1 / -1 / -1 | unavailable |
+
+BatteryService returned `present: 0` and `-1` for voltage, current, total
+energy, remaining energy, and battery temperature. Consequently no direct
+energy-consumption conclusion is made. The supported proxies show a small
+temperature rise under the concentrated workload and no surviving power lock.
+Raw values and the reproduction script are retained with the P5 evidence.
+</pre><h2>稳定性报告</h2><pre># hitrace Rust CLI P5 stability report
+
+Verdict: PASS — 1000/1000 mixed device invocations behaved as expected.
+
+## Environment
+
+- Device: `&lt;REDACTED-SERIAL&gt;`
+- Program: `/data/local/tmp/hitrace-rust`
+- Clock: monotonic `/proc/uptime`
+- Start/end: 1187586.38 s / 1187645.40 s
+- Elapsed: 59.02 s
+
+## Result
+
+| Scenario | Iterations | Unexpected results |
+| --- | ---: | ---: |
+| `--get_level` expected success | 500 | 0 failures |
+| `--help` expected success | 250 | 0 failures |
+| `--buffer_size nope` expected rejection | 250 | 0 unexpected successes |
+| Total | 1000 | 0 |
+
+After the loop, `pidof hitrace-rust` returned no residual process and the
+same explicitly selected device answered the online probe. PowerManager also
+reported zero valid running locks both before and after the workload.
+
+The exact reproduction script is `scripts/phase5/measure_quality.sh`; raw
+values are in `work/phase5/device_measurements.txt`.
+</pre></div></body></html>
