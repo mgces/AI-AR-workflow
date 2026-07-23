@@ -1,6 +1,6 @@
 # AI-AR-workflow — OHOS AR→上库 证据门控自动化流水线
 
-一套基于 Claude Code 的编排 agent:从**已澄清的 AR(架构需求)**出发,自动推进
+一套基于通用 Agent 技能协议的编排流程:从**已澄清的 AR(架构需求)**出发,自动推进
 OHOS(rk3568,C/C++ 系统组件)的完整研发生命周期,直到代码上库:
 
 ```
@@ -76,7 +76,7 @@ OHOS(rk3568,C/C++ 系统组件)的完整研发生命周期,直到代码上库:
 | **单一写入器** | 只有 `advance.py` 能写 `pipeline.json` 的阶段状态。模型没有任何工具能直接改它。 |
 | **签名证据账本(哈希链)** | 每个门控脚本把真实证据落盘,并向 `evidence/manifest.jsonl` 追加一条 **HMAC 签名**记录(含每个产物的 sha256)。记录带 `seq`+`prev`(上一条 hmac)形成**哈希链**。 |
 | **推进充要条件** | `advance.py` 推进 N→N+1 时校验:**哈希链完整** + 该阶段最后一条记录 `verdict=PASS` + HMAC 有效 + 每个产物当前 sha256 仍匹配 + 阶段顺序不可跳。任一不符即拒绝。 |
-| **密钥隔离** | per-run 密钥(32B,mode 600)存于 `~/.claude/.lifecycle-secret/<run>`,**不在**证据目录内,模型无法据此伪造签名。 |
+| **密钥隔离** | per-run 密钥(32B,mode 600)存于当前 Agent 配置目录的 `.lifecycle-secret/<run>`,**不在**证据目录内,模型无法据此伪造签名。 |
 | **真机 RTC 无关** | 设备 RTC 错乱,新鲜度不靠时间戳,而靠 per-run **nonce** + `/proc/uptime` 单调锚 + 内容切窗 + sha256。 |
 | **抗事后篡改 / 抗重放** | 改动证据文件 → `verify-all` sha256/HMAC 失配 → 降级回退;**重放一条历史合法 PASS 记录** → `seq`/`prev` 对不上链尾被拒(无密钥无法重签)。 |
 | **设计先行门控** | P1 拆两子门控:`gate_design.py` 先确定性校验 `AR_design.md` 6 必含章节并签名,`gate_develop.py` **强制依赖**该签名设计才允许写码通过。 |
@@ -133,19 +133,21 @@ AI-AR-workflow/
 
 本包是**便携副本**(便于版本管理与分享)。有两种使用方式:
 
-### 方式 A:让 Claude Code 自动发现技能(推荐用于交互式编排)
-把本包技能同步到 Claude 的技能目录 `~/.claude/skills/`。**原生二进制版 Claude Code 不扫描软链接目录**,
-所以用仓库自带的 `sync-skills.sh` 做真实拷贝(项目 `skills/` 为唯一真源,改完技能跑一次即可):
+### 方式 A:让 Agent 自动发现技能(推荐用于交互式编排)
+把本包技能同步到目标 Agent 的技能目录。技能目录可通过 `--target` 精确指定，
+也可用 `--agent` 使用常见目录约定；项目 `skills/` 是唯一真源:
 
 ```bash
-bash sync-skills.sh          # 项目 skills/ → ~/.claude/skills/(真实拷贝,排除 __pycache__)
+bash sync-skills.sh --agent claude       # 默认兼容旧用法
+bash sync-skills.sh --agent codex        # ~/.codex/skills/
+bash sync-skills.sh --target "$HOME/.my-agent/skills"  # 任意 Agent
 ```
 
-之后**重启 Claude Code 窗口**,说「跑流水线 / 从这个 AR 自动开发到上库」即可触发
-`ohos-ar-dev-workflow`。(`sync-skills.sh` 是单向拷贝,不会删除 `~/.claude/skills/` 下的其他技能。)
+之后**重启 Agent 会话**,说「跑流水线 / 从这个 AR 自动开发到上库」即可触发
+`ohos-ar-dev-workflow`。(`sync-skills.sh` 是单向拷贝,不会删除目标目录下的其他技能。)
 
-> 依赖技能的脚本路径会自动解析:门控脚本按 `环境变量 → 包内同级技能 → ~/.claude/skills`
-> 顺序查找 `oh_cpp_guard.py` / `openharmony_ci.py`,所以软链或就地用都能工作。
+> 依赖技能的脚本路径会自动解析:按 `环境变量 → 包内同级技能 → 旧版 Claude 技能目录`
+> 顺序查找所需脚本。复制到任意 Agent 的完整技能目录后，依赖技能会优先从当前安装位置查找。
 
 ### 方式 B:直接命令行驱动脚本(无需技能发现,可脚本化/CI 化)
 所有门控都是独立 Python 脚本,直接 `python3` 调用即可(见第 5 节)。
@@ -206,7 +208,7 @@ P0 会把探测到的序列号回填进 `pipeline.json` 与 `evidence/phase0/env
 | **P5 质量验证** | ohos-build-flash / developer_test(MST) / ohos-test-ut-generation / coverage / performance / power / stability / code-ruleset-style-check / ohos-dev-security-code-review | `gate_integration.py`(或 `gate_device_func.py --phase 5` + `gate_integration.py`) | 功能 summary `failures==0 && errors==0 && tests>0` **且 覆盖率、性能、功耗、稳定性报告全部生成并签名,代码 review 问题数为 0;证据 PASS 后需人工确认并 `consent --phase 5` 才进入 P6** | `summary_report.xml`、`coverage_report.*`、`performance_report.*`、`power_report.*`、`stability_report.*`、`code_review_report.txt`、`report_dir.txt` |
 | **P6 上库** | ohos-ci-gitcode-cli-usage / -gitcode-pr-review / -security-code-review / -openharmony-ci-analysis | `gate_upload_ci.py` | P1–P5 全过 + 上库前落全部代码 diff 供人工确认 + **A 本地自检零问题报告(commit 前硬控)** + `git commit -s`(DCO 签名)+ push + **`--issue` 绑定的 PR**(CI 门禁只对绑定 Issue 的 PR 触发)+ **B PR review 零问题报告(建 PR 后、CI 前硬控)** + consent --phase 6 + CI `overall∈{success,passed}` + PR head SHA==push SHA | `full_diff.patch`、`full_diff.stat.txt`、`local_code_review_report.*`、`pr.json`、`pr_create.txt`、`pr_review_report.*`、`ci_status.json` |
 
-每个阶段在 Claude Code 里的"做事"细节见 `skills/ohos-ar-dev-phases/phaseN-*.md`。
+每个阶段在 Agent 里的"做事"细节见 `skills/ohos-ar-dev-phases/phaseN-*.md`。
 
 ---
 

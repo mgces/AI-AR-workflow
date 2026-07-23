@@ -61,7 +61,7 @@ python3 $S/advance.py --pipeline-dir "$PDIR" advance  --phase 4
 ## 生成人读报告(证据/报告分离)
 门控证据(签名,机器验)落在 `evidence/`;**人读 HTML 报告**渲染到并列的 `reports/`:
 ```bash
-python3 ~/.claude/skills/ohos-ar-dev-workflow/scripts/render_report.py \
+python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-workflow/scripts/render_report.py" \
     --pipeline-dir "$PDIR" --kind device
 ```
 产出 `reports/device_functional.html`(真机完整报告:nonce/marker/e2e、hilog 片段、

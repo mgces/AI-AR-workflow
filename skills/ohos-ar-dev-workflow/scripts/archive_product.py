@@ -244,7 +244,8 @@ README_TEXT = """# 本产物如何复核
 已 gitignore,不进仓),复核步骤:
 
 ```bash
-S=~/.claude/skills/ohos-ar-dev-phases/scripts
+AGENT_SKILLS_DIR="${AGENT_SKILLS_DIR:-$HOME/.claude/skills}"
+S="$AGENT_SKILLS_DIR/ohos-ar-dev-phases/scripts"
 python3 $S/advance.py --pipeline-dir <本地 PDIR> verify-all   # 重校验全部签名证据
 python3 $S/advance.py --pipeline-dir <本地 PDIR> status
 ```

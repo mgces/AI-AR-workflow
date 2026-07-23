@@ -13,7 +13,7 @@ description: >
 
 ## 公共约定
 
-- 统一变量:`PDIR=specs/pipeline/<run>`,`S=~/.claude/skills/ohos-ar-dev-phases/scripts`。
+- 统一变量:`PDIR=specs/pipeline/<run>`,`AGENT_SKILLS_DIR=<Agent 技能根目录>`,`S=$AGENT_SKILLS_DIR/ohos-ar-dev-phases/scripts`。
 - 每阶段三步,**不可省第 2、3 步**:
   1. 用本阶段命名的 ohos-* 技能做事(写代码 / 生成测试 / 部署 / 建 PR)。
   2. `python3 $S/gate_<phase>.py --pipeline-dir "$PDIR" [参数]` —— 跑真实动作、产签名证据。

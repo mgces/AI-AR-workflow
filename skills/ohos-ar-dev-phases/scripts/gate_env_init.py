@@ -82,7 +82,7 @@ def main():
         msg = ("'%s' does not look like an OHOS source root (missing build.sh / "
                "test/testfwk/developer_test).\n"
                "Fix it one of these ways:\n"
-               "  * reopen Claude Code in your OHOS repo root, or\n"
+               "  * reopen your Agent in the OHOS repo root, or\n"
                "  * re-run `advance.py init` with --repo <ohos_root>, or\n"
                "  * export OHOS_ROOT=<ohos_root> before init." % repo)
         rel = "evidence/phase0/env.json"

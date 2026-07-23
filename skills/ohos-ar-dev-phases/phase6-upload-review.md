@@ -88,7 +88,7 @@ python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 6   # 同时再校�
 建 PR 前先渲染汇总报告,它同时写出 `reports/pr_description.md`;`gate_upload_ci.py` 建 PR 时
 **自动读取该文件并注入 PR 描述**(文件契约,门控无硬依赖):
 ```bash
-python3 ~/.claude/skills/ohos-ar-dev-workflow/scripts/render_report.py \
+python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-workflow/scripts/render_report.py" \
     --pipeline-dir "$PDIR" --kind summary
 ```
 `reports/summary.html` 与 PR 描述均含五块:**背景介绍 / 设计思路 / 修改概要 /

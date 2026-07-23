@@ -44,6 +44,6 @@ P6 upload ────┘    4) FAIL → 读 evidence/phaseN/ 真实日志,修�
 - 模型没有任何工具能写 `pipeline.json` 的阶段状态——只有 `advance.py`。
 - `advance.py` 只认 `manifest.jsonl` 里**该阶段最后一条、HMAC 签名有效、且记录的每个产物
   当前 sha256 仍匹配**的 PASS 记录。
-- 签名密钥(per-run,32B,mode 600)存在 `~/.claude/.lifecycle-secret/<run>`,不在证据目录里,
+- 签名密钥(per-run,32B,mode 600)存在当前 Agent 配置目录的 `.lifecycle-secret/<run>`,不在证据目录里,
   模型无法据此伪造签名。
 - 因此唯一让阶段通过的途径,是门控脚本真的跑出了真实证据。

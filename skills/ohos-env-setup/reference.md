@@ -266,4 +266,4 @@ bash scripts/ohos_env_bootstrap.sh --help     # 查看全部用法/环境变量
 常用变量：`CODE_DIR`（源码根）、`MANIFEST_REV=ebe9aa61`（完全复现）、`MANIFEST=https://...`（HTTPS）、
 `NPM_REGISTRY/PYPI_URL/TRUSTED_HOST`（内网镜像）、`SKIP_APT/SKIP_SYNC/SKIP_PREBUILTS=1`（all 流程里跳过某段）。
 
-或直接在 Claude Code 里执行 skill：`/ohos-env-setup`。
+或直接在支持技能发现的 Agent 里执行 skill：`/ohos-env-setup`。

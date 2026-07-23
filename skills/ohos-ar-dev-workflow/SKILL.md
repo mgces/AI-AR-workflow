@@ -55,7 +55,8 @@ GN 构建目标(`build_target`)、测试 `testpart` 与套件名、目标二进�
   RUN=$(date +%Y%m%d)-<ar-slug>
   PDIR=$OHOS_ROOT/specs/pipeline/$RUN
   mkdir -p "$PDIR"; printf '%s\n' "<AR 原文>" > "$PDIR/ar.md"
-  S=~/.claude/skills/ohos-ar-dev-phases/scripts
+  AGENT_SKILLS_DIR="${AGENT_SKILLS_DIR:-$HOME/.claude/skills}"
+  S="$AGENT_SKILLS_DIR/ohos-ar-dev-phases/scripts"
   python3 $S/advance.py --pipeline-dir "$PDIR" init \
       --build-target <gn_target> --part <testpart> \
       --base-commit "$(git -C $OHOS_ROOT rev-parse HEAD)"
@@ -71,7 +72,7 @@ GN 构建目标(`build_target`)、测试 `testpart` 与套件名、目标二进�
 读 `advance.py --pipeline-dir "$PDIR" status` 得到 `current_phase`,从那一阶段开始,
 对每个阶段执行【做事 → 跑门控 → advance】。**每轮循环开头先刷新 todo**(依 AR_design 派生细项):
 ```bash
-python3 ~/.claude/skills/ohos-ar-dev-workflow/scripts/refresh_todo.py --pipeline-dir "$PDIR"
+python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-workflow/scripts/refresh_todo.py" --pipeline-dir "$PDIR"
 ```
 再把同批细项灌进 `TodoWrite`(会话内可视,`todo.md` 为磁盘权威镜像)。各阶段的"做事"技能、门控命令、
 通过条件见 `../ohos-ar-dev-phases/SKILL.md` 与 `phaseN-*.md`。阶段顺序固定、不可跳过:
@@ -102,7 +103,7 @@ P6 通过(`advance --phase 6` 成功)即流水线完成。给用户一份汇总:
 **归档产物到 `products/`**:原始 run-state 证据(`env.json`/`hilog`/`pipeline.json`)含真实设备
 序列号与个人 `$HOME` 路径,**禁止**手动 `cp evidence/` 进仓。必须用脱敏归档器:
 ```bash
-python3 ~/.claude/skills/ohos-ar-dev-workflow/scripts/archive_product.py \
+python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-workflow/scripts/archive_product.py" \
     --pipeline-dir "$PDIR" --product-dir products/<run> --include-reports
 ```
 它只产出脱敏摘要(`ar.md` + `manifest_summary.md` + `README.md`),`--include-reports` 额外把
@@ -116,7 +117,7 @@ python3 ~/.claude/skills/ohos-ar-dev-workflow/scripts/archive_product.py \
 (数据模型/状态机)留 `TODO(人工补充)` 占位。目标已存在则写 `README.generated.md` 不覆盖,人工
 核对/补深度后 merge。这样"跑一次流水线"就为知识库多沉淀一个 feature 专题。
 ```bash
-python3 ~/.claude/skills/ohos-ar-dev-workflow/scripts/archive_product.py \
+python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-workflow/scripts/archive_product.py" \
     --pipeline-dir "$PDIR" --product-dir products/<run> --include-reports \
     --sink-feature hiviewdfx/hiview/<feature>
 ```

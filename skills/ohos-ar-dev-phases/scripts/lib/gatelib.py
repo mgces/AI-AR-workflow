@@ -36,16 +36,52 @@ PHASES = [
 PHASE_NAME = {i: n for i, n in PHASES}
 MAX_PHASE = max(i for i, _ in PHASES)
 
-SECRET_ROOT = os.path.expanduser("~/.claude/.lifecycle-secret")
+def _installed_skills_root():
+    """Return the active skills root from configuration or this file's path."""
+    configured = os.environ.get("AGENT_SKILLS_DIR")
+    if configured:
+        return os.path.abspath(os.path.expanduser(configured))
+    # This file is <skills>/ohos-ar-dev-phases/scripts/lib/gatelib.py.
+    return os.path.dirname(os.path.dirname(os.path.dirname(
+        os.path.dirname(os.path.abspath(__file__)))))
+
+
+def _default_secret_root():
+    """Keep per-run secrets beside the active Agent installation.
+
+    A source checkout keeps the historic Claude location so existing runs keep
+    working. An installed copy derives its Agent home from <home>/.*/skills.
+    """
+    explicit = os.environ.get("LIFECYCLE_SECRET_ROOT")
+    if explicit:
+        return os.path.abspath(os.path.expanduser(explicit))
+
+    configured_home = os.environ.get("AGENT_HOME")
+    if configured_home:
+        return os.path.join(os.path.abspath(os.path.expanduser(configured_home)),
+                            ".lifecycle-secret")
+
+    skills_root = _installed_skills_root()
+    agent_home = os.path.dirname(skills_root)
+    source_checkout = os.path.isdir(os.path.join(agent_home, ".git"))
+    if not source_checkout:
+        return os.path.join(agent_home, ".lifecycle-secret")
+
+    # Backwards-compatible default for scripts run directly from this checkout.
+    return os.path.expanduser("~/.claude/.lifecycle-secret")
+
+
+SECRET_ROOT = _default_secret_root()
 
 
 # ----------------------------------------------------------------------------
-# dependency-skill resolution (works both installed under ~/.claude/skills and
-# inside a self-contained bundle where sibling skills sit next to this one)
+# dependency-skill resolution (works both in an Agent install and inside a
+# self-contained bundle where sibling skills sit next to this one)
 # ----------------------------------------------------------------------------
 def resolve_dep(rel_subpath, env_var=None):
     """Locate a file inside a sibling dependency skill.
-    Order: $env_var override -> sibling of this skills root -> ~/.claude/skills.
+    Order: $env_var override -> sibling of this skills root -> configured
+    Agent skills directory -> legacy ~/.claude/skills.
     Returns the first existing path, else the sibling guess (caller may warn)."""
     if env_var and os.environ.get(env_var):
         return os.environ[env_var]
@@ -55,9 +91,14 @@ def resolve_dep(rel_subpath, env_var=None):
     sibling = os.path.join(skills_root, rel_subpath)
     if os.path.exists(sibling):
         return sibling
-    installed = os.path.expanduser(os.path.join("~/.claude/skills", rel_subpath))
-    if os.path.exists(installed):
-        return installed
+    configured_root = os.environ.get("AGENT_SKILLS_DIR")
+    if configured_root:
+        installed = os.path.join(os.path.expanduser(configured_root), rel_subpath)
+        if os.path.exists(installed):
+            return installed
+    legacy = os.path.expanduser(os.path.join("~/.claude/skills", rel_subpath))
+    if os.path.exists(legacy):
+        return legacy
     return sibling
 
 

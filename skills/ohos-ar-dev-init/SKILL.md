@@ -19,7 +19,8 @@ mirror aid-init,面向 OHOS 全量仓 + 真机。一次性、幂等。**不写�
 本技能引用到的 `gate_env_init.py`、`lib/device.sh` 都指这里:
 
 ```bash
-S=~/.claude/skills/ohos-ar-dev-phases/scripts   # 安装态;包内则 ~/code/AI-AR-workflow/skills/ohos-ar-dev-phases/scripts
+AGENT_SKILLS_DIR="${AGENT_SKILLS_DIR:-$HOME/.claude/skills}"
+S="$AGENT_SKILLS_DIR/ohos-ar-dev-phases/scripts"   # 安装态;包内则 <workflow>/skills/ohos-ar-dev-phases/scripts
 ls "$S/gate_env_init.py" "$S/lib/device.sh"     # 确认存在
 ```
 
@@ -71,13 +72,13 @@ python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 0
 
 ## 仓根(OHOS_ROOT)解析与纠错
 
-`advance.py init --repo` 默认取 **`$OHOS_ROOT`,否则 Claude 打开的当前目录(cwd)**。P0 会先校验
+`advance.py init --repo` 默认取 **`$OHOS_ROOT`,否则 Agent 打开的当前目录(cwd)**。P0 会先校验
 该目录是否像 OHOS 仓根(同时有 `build.sh` 与 `test/testfwk/developer_test/`)。**不像就立即失败**
 并给出可操作提示:
 
 ```
 PHASE 0 FAIL — '<dir>' does not look like an OHOS source root ...
-  * reopen Claude Code in your OHOS repo root, or
+  * reopen your Agent in your OHOS repo root, or
   * re-run `advance.py init` with --repo <ohos_root>, or
   * export OHOS_ROOT=<ohos_root> before init.
 ```

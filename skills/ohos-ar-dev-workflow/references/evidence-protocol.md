@@ -7,7 +7,7 @@
 - `evidence/manifest.jsonl`,每行一条门控记录:
   `{ts_utc,seq,prev,phase,gate,cmd,argv,exit_code,nonce,artifacts:[{path,sha256}],verdict,reason,hmac}`。
 - `hmac` = HMAC-SHA256(per-run 密钥, 规范化(去掉 hmac 字段、键排序) 的记录字节)。
-- 密钥:`~/.claude/.lifecycle-secret/<run_id>`,32 字节,mode 600,**不在** `specs/pipeline/` 内。
+- 密钥:当前 Agent 配置目录的 `.lifecycle-secret/<run_id>`,32 字节,mode 600,**不在** `specs/pipeline/` 内。
 - 篡改任一字段或任一 artifact → 重算 sha256/HMAC 不符 → `advance.py`/`verify-all` 拒绝。
 - **哈希链防重放**:每条记录带 `seq`(位置)+`prev`(上一条的 hmac),两者都进签名字节。
   因此把一条**历史上合法**的 PASS 记录复制到末尾(即使把 artifact 也回滚成当初内容)也无法闭合阶段——

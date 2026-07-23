@@ -66,7 +66,7 @@ python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 5
 
 ## 生成人读报告(证据/报告分离)
 ```bash
-python3 ~/.claude/skills/ohos-ar-dev-workflow/scripts/render_report.py \
+python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-workflow/scripts/render_report.py" \
     --pipeline-dir "$PDIR" --kind quality
 ```
 产出 `reports/quality.html`(覆盖率/性能/功耗/稳定性 + 功能 summary 聚合)。
