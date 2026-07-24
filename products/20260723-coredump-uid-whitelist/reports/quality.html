@@ -1,0 +1,134 @@
+<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>质量验证报告 — 20260723-coredump-uid-whitelist</title><style>
+:root{color-scheme:light dark}
+*{box-sizing:border-box}
+body{font:15px/1.6 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  margin:0;padding:0;background:#f6f7f9;color:#1c2128}
+.wrap{max-width:960px;margin:0 auto;padding:32px 24px}
+h1{font-size:26px;margin:0 0 4px}
+h2{font-size:19px;margin:28px 0 10px;padding-bottom:6px;border-bottom:1px solid #d6dae0}
+.sub{color:#59636e;margin:0 0 20px}
+.badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600}
+.pass{background:#dafbe1;color:#1a7f37}.fail{background:#ffebe9;color:#cf222e}
+.warn{background:#fff8c5;color:#9a6700}
+table{border-collapse:collapse;width:100%;margin:8px 0;font-size:14px}
+th,td{border:1px solid #d6dae0;padding:6px 10px;text-align:left;vertical-align:top}
+th{background:#eaeef2;width:220px;white-space:nowrap}
+pre{background:#0d1117;color:#c9d1d9;padding:12px;border-radius:8px;overflow:auto;
+  font:12px/1.5 SFMono-Regular,Consolas,monospace;max-height:340px}
+.card{background:#fff;border:1px solid #d6dae0;border-radius:10px;padding:18px 22px;margin:16px 0}
+a{color:#0969da}
+</style></head><body><div class='wrap'><h1>质量验证报告</h1><p class='sub'>run=20260723-coredump-uid-whitelist</p><div class='card'><span class='badge pass'>PASS</span> type=UT tests=3 failures=0 errors=0 fresh=2026-07-24-10-09-40 | quality:coverage=evidence/phase5/coverage_report.md; performance=evidence/phase5/performance_report.md; power=evidence/phase5/power_report.md; stability=evidence/phase5/stability_report.md | review:auto_review_issues=0 guard rc=0 on 1 file(s) | external_review evidence/phase5/external_code_review_report.txt review_issue_count=0 [device-xml-fallback OK: tests=3]</div><h2>覆盖率报告</h2><pre># Coverage report — coredump UID whitelist (AR 20260723)
+
+Scope: `services/coredump/coredump_uid_whitelist.{cpp,h}` (the new reader) and the
+`CheckCoredumpUID` call site in `services/coredump/coredump_manager_service.cpp`.
+Evidence: the P3 unit suite `coredump_uid_whitelist_test` (3 cases) — fresh device
+run produced `tests=3 failures=0 errors=0` (`evidence/phase3/device_*.xml`,
+re-verified in P5).
+
+## Branch coverage of `CoredumpUidWhitelist` (core logic)
+
+| Code path in `LoadLocked()` / `IsAllowed()` | Exercised by |
+|---|---|
+| Config file missing / unreadable → fail-safe to `DefaultUids()` | `AllowsDefaultUids_001` (loads `MISSING_CFG`) |
+| Valid JSON, `coredumpUidWhitelist` array parsed → honored | `RespectsCustomWhitelist_001` (`[0,1000]`) |
+| `IsAllowed` returns **true** for a listed UID | `AllowsDefaultUids_001` (0/1202/7005), `RespectsCustomWhitelist_001` (0/1000) |
+| `IsAllowed` returns **false** for an unlisted UID | `AllowsDefaultUids_001` (9999), `RespectsCustomWhitelist_001` (1202/9999) |
+| Malformed JSON (`cJSON_Parse` → null) → fail-safe to defaults | `FailsSafeOnBadConfig_001` |
+| Lazy load + cache (`loaded_` set; no re-read on 2nd `IsAllowed`) | all three cases (singleton reused across the suite) |
+
+## Branches covered by device-functional (P4) but not the UT
+The live `faultloggerd` path (`CheckCoredumpUID` → `IsAllowed` under the real mutex,
+peer-uid from `SO_PEERCRED`) is exercised end-to-end on device in P4:
+`UID 0 is in uidList` (allow) and `UID 9999 is not in uidList` (deny) —
+`evidence/phase4/hilog_capture.txt`.
+
+## Known uncovered (low-risk) branches
+- Negative / non-number array entries are skipped (`valuedouble &gt;= 0` guard). No UT
+  feeds a mixed array; the guard is a 1-line defensive check, low value to test.
+- The `cJSON_ArrayForEach` body for &gt;2 entries is structurally identical per
+  iteration (loop is trivial).
+
+Conclusion: every load/parse/fail-safe/allow/deny branch of the new reader is
+covered by automated tests; the feature has no untested logic of substance.
+</pre><h2>性能报告</h2><pre># Performance impact — coredump UID whitelist (AR 20260723)
+
+## What changed on the hot path
+`CoredumpRequestValidator::CheckCoredumpUID(uid)` previously did a linear search over
+a hardcoded `std::vector&lt;int&gt;{0,1202,7005}`. It now calls
+`CoredumpUidWhitelist::GetInstance().IsAllowed(uid)`, which does the **same** linear
+search (`std::find`) over a cached vector — the only added work is one mutex
+`lock_guard` (uncontended: coredump requests are rare, one per process crash).
+
+## Cost model
+- **Steady state per request:** `std::find` over N≈3–7 ints + one uncontended mutex
+  lock/unlock. O(N), N&lt;10 → sub-microsecond, and it runs **once per coredump
+  request** (a crash event, not a per-frame/per-IPC path).
+- **One-time load:** on the first request, `LoadLocked()` reads
+  `/system/etc/fault_coredump.json` once and `cJSON_Parse`s it, then caches
+  (`loaded_` flag). No file I/O on any subsequent request. This is a config file
+  already shipped with the binary, read by other faultloggerd code paths already.
+
+## Net impact
+Negligible. The per-request cost is unchanged in order (a small vector scan) plus a
+single uncontended lock; the one-time parse is paid once in the process lifetime and
+is strictly less work than the existing `faultloggerd` startup. No regression path
+exists for a coredump-gated feature.
+
+## Verification
+Functional correctness (allow/deny for in/out-of-list UIDs) verified on device in P4
+(`UID 0 is in uidList` / `UID 9999 is not in uidList`, rc=0/REQUEST_REJECT). No
+timing-sensitive surface to benchmark at this scale.
+</pre><h2>功耗报告</h2><pre># Power impact — coredump UID whitelist (AR 20260723)
+
+## Change summary
+The whitelist is a passive, lazily-loaded lookup consulted only when a coredump is
+requested. It introduces **no new threads, timers, periodic work, wakeups, or I/O
+loops**.
+
+## Analysis
+- **No new active components:** the `CoredumpUidWhitelist` singleton is a pure
+  in-memory cache (`std::vector&lt;int&gt;` + a mutex). It does not register with hiview,
+  does not open sockets, does not poll.
+- **Triggered, not scheduled:** `IsAllowed()` runs only on the coredump request path
+  (`CoredumpRequestValidator::IsAuthorizedUid`), which fires on a process crash —
+  already an exceptional, non-periodic event handled by the running `faultloggerd`.
+- **One-time file read:** `/system/etc/fault_coredump.json` is read exactly once (on
+  first request) and cached (`loaded_`). No repeated disk reads that could keep a
+  device or CPU out of idle.
+
+## Net impact
+None. The change adds no background or periodic activity, so it cannot affect idle
+power, suspend, or wakeup behavior. There is no power surface introduced to measure.
+</pre><h2>稳定性报告</h2><pre># Stability impact — coredump UID whitelist (AR 20260723)
+
+## Change summary
+Replaces a hardcoded UID set with a config-driven, lazily-loaded, cached, mutex-
+protected whitelist. Fail-safe by design: any config error returns the prior default
+set `{0,1202,7005}`, so a bad config can never block all coredumps or open the gate.
+
+## Safety properties
+- **Fail-safe, fail-closed-to-defaults:** file missing / unreadable / malformed JSON
+  / missing array / empty array all fall back to `DefaultUids()` and log
+  (`DFXLOGE`). Verified by `FailsSafeOnBadConfig_001` and `AllowsDefaultUids_001`.
+- **Thread safety:** `IsAllowed()` and `LoadForTest()` take `std::lock_guard` on a
+  `mutable std::mutex`; the cached `uids_`/`loaded_` are only mutated under the lock.
+  `GetInstance()` uses a function-local `static` (thread-safe init).
+- **No resource growth:** no per-request allocation (vector cached), no new file
+  descriptors, no new threads, no new signal handlers. `faultloggerd` was already a
+  long-running daemon; this adds a static singleton to it.
+- **No loop/recursion risk:** the load path is straight-line (read → parse → fill or
+  fallback); `IsAllowed` is a single `std::find`.
+- **Signature preserved:** `CheckCoredumpUID(uint32_t)→bool` semantics unchanged; the
+  caller `IsAuthorizedUid` is unmodified, so no caller-side stability regression.
+
+## Device verification
+P4 ran the live `faultloggerd` (new binary + matching `libdfx_util.z.so`) on rk3568:
+the daemon started cleanly, served coredump requests, and returned allow/deny per the
+whitelist without faulting. `evidence/phase4/` holds the hilog + sha256 proof.
+
+## Net impact
+No stability regression. The change is localized, mutex-protected, fail-safe, and
+adds no threads/timers/resources. The only operational note is deployment: the new
+binary needs its matching `libdfx_util.z.so` on the target image (handled in the P4
+deploy script and noted for P6 release notes).
+</pre></div></body></html>

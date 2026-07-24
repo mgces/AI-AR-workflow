@@ -1,0 +1,69 @@
+<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>真机功能测试报告 — 20260723-coredump-uid-whitelist</title><style>
+:root{color-scheme:light dark}
+*{box-sizing:border-box}
+body{font:15px/1.6 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  margin:0;padding:0;background:#f6f7f9;color:#1c2128}
+.wrap{max-width:960px;margin:0 auto;padding:32px 24px}
+h1{font-size:26px;margin:0 0 4px}
+h2{font-size:19px;margin:28px 0 10px;padding-bottom:6px;border-bottom:1px solid #d6dae0}
+.sub{color:#59636e;margin:0 0 20px}
+.badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600}
+.pass{background:#dafbe1;color:#1a7f37}.fail{background:#ffebe9;color:#cf222e}
+.warn{background:#fff8c5;color:#9a6700}
+table{border-collapse:collapse;width:100%;margin:8px 0;font-size:14px}
+th,td{border:1px solid #d6dae0;padding:6px 10px;text-align:left;vertical-align:top}
+th{background:#eaeef2;width:220px;white-space:nowrap}
+pre{background:#0d1117;color:#c9d1d9;padding:12px;border-radius:8px;overflow:auto;
+  font:12px/1.5 SFMono-Regular,Consolas,monospace;max-height:340px}
+.card{background:#fff;border:1px solid #d6dae0;border-radius:10px;padding:18px 22px;margin:16px 0}
+a{color:#0969da}
+</style></head><body><div class='wrap'><h1>真机功能测试报告</h1><p class='sub'>run=20260723-coredump-uid-whitelist target=faultloggerd</p><div class='card'><span class='badge pass'>PASS</span> nonce=True marker=True runtime=True e2e=True device_cases=2/2 artifact_hash=True uptime 81726.01-&gt;81731.54 mono=True</div><h2>运行元数据(nonce / marker / uptime)</h2><pre>nonce=&lt;REDACTED-SERIAL&gt;
+uptime_before=81726.01
+uptime_after=81731.54
+marker=CoredumpUidWhitelist e2e
+runtime_marker=uidList
+e2e_marker=allowed by whitelist
+</pre><h2>产物一致性(主机 sha256 == 设备 sha256)</h2><pre>host_artifact=~/work/ohos/out/rk3568/hiviewdfx/faultloggerd/faultloggerd
+host_sha256=01becc4c989c9310d5fc78d3ebd21c6316ebd32c6cd2ad4926e1d4f4e6661c95
+device_artifact=/system/bin/faultloggerd
+device_sha256=01becc4c989c9310d5fc78d3ebd21c6316ebd32c6cd2ad4926e1d4f4e6661c95
+</pre><h2>设备 hilog 抓取(末尾片段)</h2><pre>08-04 17:00:43.560   208   208 I A03d00/ArkTSApp: arkts.console: [loadLibraries] Registered ArkoalaNative_ark.z as ArkUINativeModule
+08-04 17:00:43.560   208   208 I A03d00/ArkTSApp: arkts.console: [loadLibraries] Registered ArkoalaNative_ark.z as ArkUIGeneratedNativeModule
+08-04 17:00:43.560   208   208 I A03d00/ArkTSApp: arkts.console: [loadLibraries] Registered ArkoalaNative_ark.z as TestNativeModule
+08-04 17:00:43.560   208   208 I A03d00/ArkTSApp: arkts.console: [loadLibraries] Registered arkoala_native_ani as ArkNativeAni
+08-04 17:00:43.562   208   208 I A03d00/ArkTSApp: arkts.console: [loadLibraries] Loading InteropNativeModule [ArkoalaNative_ark.z]
+08-04 17:00:43.562   208   208 E A0ff00/Koala: Use ANI
+08-04 17:00:43.590   208   208 I A03d00/ArkTSApp: arkts.console: [loadLibraries] Loading InteropNativeModule [ArkoalaNative_ark.z]
+08-04 17:00:43.590   208   208 I A03d00/ArkTSApp: arkts.console: [loadLibraries] Loading ArkNativeAni [arkoala_native_ani]
+08-04 17:00:45.906  1352  1352 I A0001a/SystemUI_Default: NavigationBar_AbilityStage --&gt; onCreate
+08-04 17:00:45.954  1352  1352 I A0001a/SystemUI_Default: SingleInstanceHelper --&gt; Create key of EventManager
+08-04 17:00:45.955  1352  1352 I A0001a/SystemUI_Default: SingleInstanceHelper --&gt; Create key of WindowManager
+08-04 17:00:45.961  1367  1367 I A03d00/JSAPP: [Ringtone] MyAbilityStage onCreate
+08-04 17:00:45.988  1371  1371 I A03d00/JSAPP: [TelephonyData:]TelephonyDataAbilityStage:onCreate
+08-04 17:00:46.004  1352  1352 I A0001a/SystemUI_Default: NavigationBar_ServiceExtAbility --&gt; onCreate, want: {&quot;deviceId&quot;:&quot;&quot;,&quot;bundleName&quot;:&quot;com.ohos.systemui&quot;,&quot;abilityName&quot;:&quot;com.ohos.systemui.navigationbar.ServiceExtAbility&quot;,&quot;moduleName&quot;:&quot;default_navigationBar&quot;,&quot;uri&quot;:&quot;&quot;,&quot;type&quot;:&quot;&quot;,&quot;flags&quot;:0,&quot;action&quot;:&quot;&quot;,&quot;parameters&quot;:{&quot;component.startup.newRules&quot;:true,&quot;moduleName&quot;:&quot;default_navigationBar&quot;,&quot;ohos.aafwk.param.callerAbilityName&quot;:&quot;&quot;,&quot;ohos.aafwk.param.callerBundleName&quot;:&quot;&quot;,&quot;ohos.aafwk.param.callerNativeName&quot;:&quot;_foundation&quot;,&quot;ohos.aafwk.param.callerPid&quot;:454,&quot;ohos.aafwk.param.callerToken&quot;:671394084,&quot;ohos.aafwk.param.callerUid&quot;:5523,&quot;ohos.param.callerAppCloneIndex&quot;:0},&quot;fds&quot;:{},&quot;entities&quot;:[]}
+08-04 17:00:46.023  1352  1352 I A0001a/SystemUI_Default: NavBarConfiguration --&gt; initNavBarConfiguration dis {&quot;id&quot;:0,&quot;name&quot;:&quot;MIPI&quot;,&quot;alive&quot;:true,&quot;state&quot;:2,&quot;refreshRate&quot;:69,&quot;rotation&quot;:0,&quot;width&quot;:720,&quot;height&quot;:1280,&quot;densityDPI&quot;:240,&quot;orientation&quot;:0,&quot;densityPixels&quot;:1.5,&quot;scaledDensity&quot;:1.5,&quot;xDPI&quot;:268.941162109375,&quot;yDPI&quot;:268.6942138671875,&quot;colorSpaces&quot;:[],&quot;hdrFormats&quot;:[],&quot;availableWidth&quot;:0,&quot;availableHeight&quot;:0,&quot;screenShape&quot;:0,&quot;x&quot;:0,&quot;y&quot;:0,&quot;sourceMode&quot;:1,&quot;supportedRefreshRates&quot;:[]}
+08-04 17:00:46.023  1352  1352 I A0001a/SystemUI_Default: NavBarConfiguration --&gt; initNavBarConfiguration maxWidth 720 maxHeight 1280 minHeight 0
+08-04 17:00:46.024  1352  1352 I A0001a/SystemUI_Default: NavBarConfiguration --&gt; direction is 2
+08-04 17:00:46.092  1352  1352 I A0001a/SystemUI_Default: volume_AbilityStage --&gt; onCreate
+08-04 17:00:46.117  1352  1352 I A0001a/SystemUI_Default: SingleInstanceHelper --&gt; Create Audio Manager.
+08-04 17:00:46.117  1352  1352 I A0001a/SystemUI_Default: VolumePanelModel --&gt; constructor
+08-04 17:00:46.117  1352  1352 I A0001a/SystemUI_Default: SingleInstanceHelper --&gt; Create key of VolumePanelModel
+08-04 17:00:46.232  1363  1363 I A0001b/Launcher_Default: AtomicServiceAbilityManager --&gt; getInstance!
+08-04 17:00:46.245  1352  1352 I A03d00/JSAPP: [Demo] MyAbilityStage onCreate
+08-04 17:00:46.267  1352  1352 I A0001a/SystemUI_Default: VolumePanel_ServiceExtAbility --&gt; onCreate, want:com.ohos.systemui.volumepanel.ServiceExtAbility
+08-04 17:00:46.275  1352  1352 I A0001a/SystemUI_Default: WindowManager --&gt; createWindow name: SystemUi_VolumePanel, rect: {&quot;left&quot;:0,&quot;top&quot;:0,&quot;width&quot;:720,&quot;height&quot;:1280}, url: pages/index
+08-04 17:00:46.283  1352  1352 I A0002a/ScreenLock_Default: ScreenLock-ServiceExtAbility --&gt; onCreate, want:com.ohos.systemui.screenlock.ServiceExtAbility
+08-04 17:00:46.284  1363  1363 I A0001b/Launcher_Default: Launcher MyAbilityStage --&gt; onCreate is called
+08-04 17:00:46.288  1352  1352 I A0001a/SystemUI_Default: EventBus --&gt; add event[screenChangeEvent] callback, size: 1
+08-04 17:00:46.295  1371  1371 I A03d00/JSAPP: [TelephonyData:]TelephonyDataAbilityStage:onDestroy
+08-04 17:00:46.296  1352  1352 I A0002a/ScreenLock_Default: ScreenLock-ServiceExtAbility --&gt; createWindow success.
+08-04 17:00:46.409  1363  1363 I A0001b/Launcher_Default: LauncherMainAbility --&gt; onCreate start
+08-04 17:00:46.410  1363  1363 I A0001b/Launcher_Default: RdbStoreManager --&gt; initRdbConfig start
+08-04 17:00:46.425  1363  1363 I A0001b/Launcher_Default: LauncherMainAbility --&gt; onRequest, want:com.ohos.launcher.MainAbility
+08-04 17:00:46.430  1363  1363 E A0001b/Launcher_Default: WindowManager --&gt; findWindow errCode: 1300002, errMsg: This window state is abnormal.[window][findWindow]msg: The window is not created or destroyed.
+08-04 17:00:46.432  1363  1363 I A0001b/Launcher_Default: LocalEventManager --&gt; sendLocalEvent event: &quot;launcher.event.EVENT_OPEN_FOLDER_TO_CLOSE&quot;
+08-04 17:00:46.432  1363  1363 I A0001b/Launcher_Default: LocalEventManager --&gt; sendLocalEvent, send local event with no receiver
+08-04 17:00:46.471  1352  1352 I A0001a/SystemUI_Default: EventManager --&gt; PUBLISH : event: {&quot;target&quot;:&quot;local&quot;,&quot;data&quot;:{&quot;eventName&quot;:&quot;Time_Change_Event&quot;,&quot;args&quot;:{&quot;date&quot;:&quot;2017-08-04T09:00:46.470Z&quot;,&quot;timeFormat&quot;:false}}}
+08-04 17:00:46.471  1352  1352 I A0002a/ScreenLock_Default: CommonEvent_TimeManagerSc --&gt; registerSubscriber success, size: 1
+08-04 17:00:46.472  1352  1352 I A0001a/SystemUI_Default: NavBarConfiguration --&gt; deviceInfo.deviceTypedefault
+08-04 17:00:46.473  1352  1352 I A0001a/SystemUI_Default:</pre></div></body></html>
