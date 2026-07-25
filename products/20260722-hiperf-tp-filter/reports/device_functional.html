@@ -1,0 +1,57 @@
+<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>真机功能测试报告 — 20260722-hiperf-tp-filter</title><style>
+:root{color-scheme:light dark}
+*{box-sizing:border-box}
+body{font:15px/1.6 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  margin:0;padding:0;background:#f6f7f9;color:#1c2128}
+.wrap{max-width:960px;margin:0 auto;padding:32px 24px}
+h1{font-size:26px;margin:0 0 4px}
+h2{font-size:19px;margin:28px 0 10px;padding-bottom:6px;border-bottom:1px solid #d6dae0}
+.sub{color:#59636e;margin:0 0 20px}
+.badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600}
+.pass{background:#dafbe1;color:#1a7f37}.fail{background:#ffebe9;color:#cf222e}
+.warn{background:#fff8c5;color:#9a6700}
+table{border-collapse:collapse;width:100%;margin:8px 0;font-size:14px}
+th,td{border:1px solid #d6dae0;padding:6px 10px;text-align:left;vertical-align:top}
+th{background:#eaeef2;width:220px;white-space:nowrap}
+pre{background:#0d1117;color:#c9d1d9;padding:12px;border-radius:8px;overflow:auto;
+  font:12px/1.5 SFMono-Regular,Consolas,monospace;max-height:340px}
+.card{background:#fff;border:1px solid #d6dae0;border-radius:10px;padding:18px 22px;margin:16px 0}
+a{color:#0969da}
+</style></head><body><div class='wrap'><h1>真机功能测试报告</h1><p class='sub'>run=20260722-hiperf-tp-filter target=hiperf_target</p><div class='card'><span class='badge pass'>PASS</span> nonce=True marker=True runtime=True e2e=True device_cases=3/3 artifact_hash=True uptime 53136.21-&gt;53148.29 mono=True</div><h2>运行元数据(nonce / marker / uptime)</h2><pre>nonce=&lt;REDACTED-SERIAL&gt;
+uptime_before=53136.21
+uptime_after=53148.29
+marker=HIPERF_P4_GATE_PASS
+runtime_marker=HIPERF_TP_FILTER_NOT_TRACE
+e2e_marker=HIPERF_TP_FILTER_D1_OK
+</pre><h2>产物一致性(主机 sha256 == 设备 sha256)</h2><pre>host_artifact=~/ohos/openharmony/out/rk3568/developtools/hiperf/hiperf
+host_sha256=0513be71ac54201d1d4d950fdcad6f2b0b30bde3d77cb11933917973dd00ebb9
+device_artifact=/data/local/tmp/hiperf
+device_sha256=0513be71ac54201d1d4d950fdcad6f2b0b30bde3d77cb11933917973dd00ebb9
+</pre><h2>设备 hilog 抓取(末尾片段)</h2><pre>08-11 21:50:22.628     0     0 I A00000/HiLog: ========Zeroth log of type: app
+08-11 21:50:22.628     0     0 I I00000/HiLog: ========Zeroth log of type: init
+08-11 21:50:40.432   204   204 I A03d00/ArkTSApp: arkts.console: [loadLibraries] Registered ArkoalaNative_ark.z as InteropNativeModule
+08-11 21:50:40.432   204   204 I A03d00/ArkTSApp: arkts.console: [loadLibraries] Registered ArkoalaNative_ark.z as ArkUINativeModule
+08-11 21:50:40.432   204   204 I A03d00/ArkTSApp: arkts.console: [loadLibraries] Registered ArkoalaNative_ark.z as ArkUIGeneratedNativeModule
+08-11 21:50:40.433   204   204 I A03d00/ArkTSApp: arkts.console: [loadLibraries] Registered ArkoalaNative_ark.z as TestNativeModule
+08-11 21:50:40.433   204   204 I A03d00/ArkTSApp: arkts.console: [loadLibraries] Registered arkoala_native_ani as ArkNativeAni
+08-11 21:50:40.434   204   204 I A03d00/ArkTSApp: arkts.console: [loadLibraries] Loading InteropNativeModule [ArkoalaNative_ark.z]
+08-11 21:50:40.491   204   204 E A0ff00/Koala: Use ANI
+08-11 21:50:40.521   204   204 I A03d00/ArkTSApp: arkts.console: [loadLibraries] Loading InteropNativeModule [ArkoalaNative_ark.z]
+08-11 21:50:40.521   204   204 I A03d00/ArkTSApp: arkts.console: [loadLibraries] Loading ArkNativeAni [arkoala_native_ani]
+08-11 21:50:43.277  1529  1529 I A0001a/SystemUI_Default: NavigationBar_AbilityStage --&gt; onCreate
+08-11 21:50:43.307  1529  1529 I A0001a/SystemUI_Default: SingleInstanceHelper --&gt; Create key of EventManager
+08-11 21:50:43.308  1529  1529 I A0001a/SystemUI_Default: SingleInstanceHelper --&gt; Create key of WindowManager
+08-11 21:50:43.321  1549  1549 I A00500/SettingsData: DataAbilityStage onCreate
+08-11 21:50:43.349  1529  1529 I A0001a/SystemUI_Default: NavigationBar_ServiceExtAbility --&gt; onCreate, want: {&quot;deviceId&quot;:&quot;&quot;,&quot;bundleName&quot;:&quot;com.ohos.systemui&quot;,&quot;abilityName&quot;:&quot;com.ohos.systemui.navigationbar.ServiceExtAbility&quot;,&quot;moduleName&quot;:&quot;default_navigationBar&quot;,&quot;uri&quot;:&quot;&quot;,&quot;type&quot;:&quot;&quot;,&quot;flags&quot;:0,&quot;action&quot;:&quot;&quot;,&quot;parameters&quot;:{&quot;component.startup.newRules&quot;:true,&quot;moduleName&quot;:&quot;default_navigationBar&quot;,&quot;ohos.aafwk.param.callerAbilityName&quot;:&quot;&quot;,&quot;ohos.aafwk.param.callerBundleName&quot;:&quot;&quot;,&quot;ohos.aafwk.param.callerNativeName&quot;:&quot;_foundation&quot;,&quot;ohos.aafwk.param.callerPid&quot;:438,&quot;ohos.aafwk.param.callerToken&quot;:671742404,&quot;ohos.aafwk.param.callerUid&quot;:5523,&quot;ohos.param.callerAppCloneIndex&quot;:0},&quot;fds&quot;:{},&quot;entities&quot;:[]}
+08-11 21:50:43.363  1529  1529 I A0001a/SystemUI_Default: NavBarConfiguration --&gt; initNavBarConfiguration dis {&quot;id&quot;:0,&quot;name&quot;:&quot;MIPI&quot;,&quot;alive&quot;:true,&quot;state&quot;:2,&quot;refreshRate&quot;:69,&quot;rotation&quot;:0,&quot;width&quot;:720,&quot;height&quot;:1280,&quot;densityDPI&quot;:240,&quot;orientation&quot;:0,&quot;densityPixels&quot;:1.5,&quot;scaledDensity&quot;:1.5,&quot;xDPI&quot;:268.941162109375,&quot;yDPI&quot;:268.6942138671875,&quot;colorSpaces&quot;:[],&quot;hdrFormats&quot;:[],&quot;availableWidth&quot;:0,&quot;availableHeight&quot;:0,&quot;screenShape&quot;:0,&quot;x&quot;:0,&quot;y&quot;:0,&quot;sourceMode&quot;:1,&quot;supportedRefreshRates&quot;:[]}
+08-11 21:50:43.363  1529  1529 I A0001a/SystemUI_Default: NavBarConfiguration --&gt; initNavBarConfiguration maxWidth 720 maxHeight 1280 minHeight 0
+08-11 21:50:43.364  1529  1529 I A0001a/SystemUI_Default: NavBarConfiguration --&gt; direction is 2
+08-11 21:50:43.372  1561  1561 I A03d00/JSAPP: [Ringtone] MyAbilityStage onCreate
+08-11 21:50:43.395  1529  1529 I A0001a/SystemUI_Default: volume_AbilityStage --&gt; onCreate
+08-11 21:50:43.401  1553  1553 I A03d00/JSAPP: [TelephonyData:]TelephonyDataAbilityStage:onCreate
+08-11 21:50:43.415  1529  1529 I A0001a/SystemUI_Default: SingleInstanceHelper --&gt; Create Audio Manager.
+08-11 21:50:43.416  1529  1529 I A0001a/SystemUI_Default: VolumePanelModel --&gt; constructor
+08-11 21:50:43.416  1529  1529 I A0001a/SystemUI_Default: SingleInstanceHelper --&gt; Create key of VolumePanelModel
+08-11 21:50:43.437  1529  1529 I A0001a/SystemUI_Default: VolumePanel_ServiceExtAbility --&gt; onCreate, want:com.ohos.systemui.volumepanel.ServiceExtAbility
+08-11 21:50:43.450  1529  1529 I A0001a/SystemUI_Default: WindowManager --&gt; createWindow name: SystemUi_VolumePanel, rect: {&quot;left&quot;:0,&quot;top&quot;:0,&quot;width&quot;:720,&quot;height&quot;:1280}, url: pages/index
+08-11 21:50:43.507  1549  1549 I A00500/SettingsData: context start{&quot;__context_impl__&quot;:{&quot;__base_context_ptr__&quot;:{},&quot;applicationInfo&quot;:{&quot;name&quot;:&quot;com.ohos.settingsdata&quot;,&quot;bundleType&quot;:0,&quot;debug&quot;:true,&quot;description&quot;:&quot;&quot;,&quot;descriptionId&quot;:0,&quot;enabled&quot;:true,&quot;label&quot;:&quot;$string:app_name&quot;,&quot;labelId&quot;:16777216,&quot;icon&quot;:&quot;$media:app_icon&quot;,&quot;iconId&quot;:16777217,&quot;process&quot;:&quot;com.ohos.settingsdata&quot;,&quot;permissions&quot;:[],&quot;entryDir&quot;:&quot;&quot;,&quot;codePath&quot;:&quot;/data/app/el1/bundle/public/com.ohos.settingsdata&quot;,&quot;metadata&quot;:{},&quot;metadataArray&quot;:[],&quot;removable&quot;:false,&quot;accessTokenId&quot;:537660375,&quot;uid&quot;:10007,&quot;iconResource&quot;:{&quot;bundleName&quot;:&quot;com.ohos.settingsdata&quot;,&quot;moduleName&quot;:&quot;entry&quot;,&quot;id&quot;:16777217},&quot;labelResource&quot;:{&quot;bundleName&quot;:&quot;com.ohos.settingsdata&quot;,&quot;moduleName&quot;:&quot;entry&quot;,&quot;id&quot;:16777216},&quot;descriptionResource&quot;:{&quot;bundleName&quot;:&quot;com.ohos.settingsdata&quot;,&quot;moduleName&quot;:&quot;entry&quot;,&quot;id&quot;:0},&quot;appDistributionType&quot;:&quot;os_integration&quot;,&quot;appProvisionType&quot;:&quot;release&quot;,&quot;systemApp&quot;:true,&quot;dataUnclearable&quot;:false,&quot;nativeLibraryPath&quot;:&quot;&quot;,&quot;appIndex&quot;:0,&quot;multiAppMode&quot;:{&quot;multiAppModeType&quot;:0,&quot;maxCount&quot;:0},&quot;installSource&quot;:&quot;pre-installed&quot;,&quot;releaseType&quot;:&quot;Beta&quot;,&quot;cloudFileSyncEnabled&quot;:false,&quot;cloudStructuredDataSyncEnabled&quot;:false,&quot;flags&quot;:35},&quot;currentHapModuleInfo&quot;:{&quot;name&quot;:&quot;entry&quot;,&quot;icon&quot;:&quot;&quot;,&quot;iconId&quot;:0,&quot;label&quot;:&quot;&quot;,&quot;labelId&quot;:0,&quot;description&quot;:&quot;$string:entry_desc&quot;,&quot;descriptionId&quot;:16777221,&quot;mainElementName&quot;:&quot;MainAbility&quot;,&quot;abilitiesInfo&quot;:[],&quot;extensionAbilitiesInfo&quot;:[{&quot;bundleName&quot;:&quot;com.ohos.settingsdata&quot;,&quot;moduleName&quot;:&quot;entry&quot;,&quot;name&quot;:&quot;DataExtAbility&quot;,&quot;labelId&quot;:0,&quot;descriptionId&quot;:16777220,&quot;iconId&quot;:16777223,&quot;isVisible&quot;:true,&quot;exported&quot;:true,&quot;extensionAbilityType&quot;:5,&quot;extensionAbilityTypeName&quot;:&quot;dataShare&quot;,&quot;permissions&quot;:[],&quot;applicationInfo&quot;:null,&quot;metadata&quot;:[{&quot;valueId&quot;:0,&quot;name&quot;:&quot;ohos.extension.dataShare&quot;,&quot;value&quot;:&quot;&quot;,&quot;resource&quot;:&quot;$profile:data_share_config&quot;}],&quot;enabled&quot;:true,&quot;readPermission&quot;:&quot;&quot;,&quot;writePermission&quot;:&quot;ohos.permission.MANAGE_SECURE_SETTINGS&quot;,&quot;skills&quot;:[],&quot;appIndex&quot;:0},{&quot;bundleName&quot;:&quot;com.ohos.settingsdata&quot;,&quot;moduleName&quot;:&quot;entry&quot;,&quot;name&quot;:&quot;UserChangeStaticSubscriber&quot;,&quot;labelId&quot;:0,&quot;descriptionId&quot;:0,&quot;iconId&quot;:16</pre></div></body></html>

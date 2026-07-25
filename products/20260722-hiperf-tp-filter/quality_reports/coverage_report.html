@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"/><title>hiperf tp-filter coverage</title></head>
+<body>
+<h1>hiperf --tp-filter 测试覆盖（P5）</h1>
+<p>来源：P3 设备 UT <code>hiperf_unittest</code> + AR 契约 gtest 全量验证。</p>
+<ul>
+<li>契约测试点：5/5 PASS（见 evidence/phase3/gtest_coverage.txt）</li>
+<li>模块：<code>tracepoint_filter.cpp</code>、<code>subcommand_record.cpp</code>（ParseTracepointFilterOptions）、<code>perf_events.cpp</code>（ConfigureTracepointFilters）</li>
+<li>设备 UT 总用例：1311，failures=0（report 2026-07-23-17-47-13）</li>
+</ul>
+<p>说明：本特性为 record 路径增量逻辑，覆盖率以契约 gtest + 真机 UT 回归为主；未单独跑 gcov 全仓采集。</p>
+</body>
+</html>
