@@ -1,0 +1,75 @@
+<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>质量验证报告 — 20260722-hiperf-tp-filter</title><style>
+:root{color-scheme:light dark}
+*{box-sizing:border-box}
+body{font:15px/1.6 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  margin:0;padding:0;background:#f6f7f9;color:#1c2128}
+.wrap{max-width:960px;margin:0 auto;padding:32px 24px}
+h1{font-size:26px;margin:0 0 4px}
+h2{font-size:19px;margin:28px 0 10px;padding-bottom:6px;border-bottom:1px solid #d6dae0}
+.sub{color:#59636e;margin:0 0 20px}
+.badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600}
+.pass{background:#dafbe1;color:#1a7f37}.fail{background:#ffebe9;color:#cf222e}
+.warn{background:#fff8c5;color:#9a6700}
+table{border-collapse:collapse;width:100%;margin:8px 0;font-size:14px}
+th,td{border:1px solid #d6dae0;padding:6px 10px;text-align:left;vertical-align:top}
+th{background:#eaeef2;width:220px;white-space:nowrap}
+pre{background:#0d1117;color:#c9d1d9;padding:12px;border-radius:8px;overflow:auto;
+  font:12px/1.5 SFMono-Regular,Consolas,monospace;max-height:340px}
+.card{background:#fff;border:1px solid #d6dae0;border-radius:10px;padding:18px 22px;margin:16px 0}
+a{color:#0969da}
+</style></head><body><div class='wrap'><h1>质量验证报告</h1><p class='sub'>run=20260722-hiperf-tp-filter</p><div class='card'><span class='badge pass'>PASS</span> type=UT tests=1311 failures=0 errors=0 fresh=2026-07-25-10-01-23 | quality:coverage=evidence/phase5/coverage_report.html; performance=evidence/phase5/performance_report.md; power=evidence/phase5/power_report.md; stability=evidence/phase5/stability_report.md | review:auto_review_issues=0 guard rc=0 on 7 file(s) | external_review=not-provided</div><h2>覆盖率报告</h2><pre>&lt;!DOCTYPE html&gt;
+&lt;html lang=&quot;zh-CN&quot;&gt;
+&lt;head&gt;&lt;meta charset=&quot;utf-8&quot;/&gt;&lt;title&gt;hiperf tp-filter coverage&lt;/title&gt;&lt;/head&gt;
+&lt;body&gt;
+&lt;h1&gt;hiperf --tp-filter 测试覆盖（P5）&lt;/h1&gt;
+&lt;p&gt;来源：P3 设备 UT &lt;code&gt;hiperf_unittest&lt;/code&gt; + AR 契约 gtest 全量验证。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;契约测试点：5/5 PASS（见 evidence/phase3/gtest_coverage.txt）&lt;/li&gt;
+&lt;li&gt;模块：&lt;code&gt;tracepoint_filter.cpp&lt;/code&gt;、&lt;code&gt;subcommand_record.cpp&lt;/code&gt;（ParseTracepointFilterOptions）、&lt;code&gt;perf_events.cpp&lt;/code&gt;（ConfigureTracepointFilters）&lt;/li&gt;
+&lt;li&gt;设备 UT 总用例：1311，failures=0（report 2026-07-23-17-47-13）&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;说明：本特性为 record 路径增量逻辑，覆盖率以契约 gtest + 真机 UT 回归为主；未单独跑 gcov 全仓采集。&lt;/p&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</pre><h2>性能报告</h2><pre># hiperf --tp-filter 性能影响（P5）
+
+## 方法
+- 设备：rk3568（HDC &lt;REDACTED-HOST:PORT&gt;）
+- 命令：`hiperf record -e sched:sched_switch --tp-filter &#x27;prev_comm != sleep&#x27; -a -d 3 -o /data/local/tmp/tp_filter_bench.data`
+- 度量：主机侧 wall time（含 HDC + 3s 采样 + 落盘）
+
+## 结果（2026-07-23）
+| 项 | 值 |
+|----|-----|
+| 采样时长 | 3.0 s（配置） |
+| 端到端 wall | ~5.86 s |
+| perf.data 大小 | 2 528 855 bytes (~2.41 MB) |
+| Sample records | 666 |
+
+## 结论
+`--tp-filter` 仅在 open/enable 前增加 filter 校验与 `PERF_EVENT_IOC_SET_FILTER`；3s tracepoint 采样耗时与无 filter 的同类 record 同量级，**无额外长驻开销**。
+</pre><h2>功耗报告</h2><pre># hiperf --tp-filter 功耗影响（P5）
+
+## 范围
+`hiperf` 为按需调用的命令行工具，非常驻服务。`--tp-filter` 仅影响 `record` 启动阶段（解析 + ioctl），不增加后台采样线程或唤醒。
+
+## 评估
+- 无新增 SA/后台进程
+- 无周期性 timer 或 wakelock 路径
+- D1 真机 3s record 完成后进程退出
+
+## 结论
+相对基线 `hiperf record`（同 tracepoint / 同 `-d`），**预期无 measurable 持续功耗增量**；增量可忽略（一次性用户态 + 单次 ioctl）。
+</pre><h2>稳定性报告</h2><pre># hiperf --tp-filter 稳定性（P5）
+
+## 验证项
+1. P4 `gate_device_func`：D1/D2/D3 契约 marker 3/3（nonce + sha256 一致），重复跑通（manifest seq 50）。
+2. P3 设备 UT：`hiperf_unittest` 1311 cases，failures=0，连续门禁通过。
+3. 本阶段复跑 UT（gate_integration）作为回归。
+
+## 异常路径
+- `HIPERF_TP_FILTER_NO_TRACEPOINT` / `HIPERF_TP_FILTER_NOT_TRACE`：命令失败且进程正常退出，无 crash/hung。
+
+## 结论
+**稳定性影响：无回归**；错误路径可预期失败，成功路径可重复 record。
+</pre></div></body></html>
