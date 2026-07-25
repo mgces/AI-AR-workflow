@@ -248,6 +248,20 @@ class GateDevelopStrongControlTest(unittest.TestCase):
 
         self.assertEqual({"E2E_OK": str(script)}, found)
 
+    def test_changed_files_coverage_exact_and_suffix(self) -> None:
+        declared = ["foundation/a/src/mgr.cpp", "include/a.h", "missing.cpp"]
+        touched = ["repo/foundation/a/src/mgr.cpp", "include/a.h", "other.cpp"]
+        present, missing = gate_develop.changed_files_coverage(declared, touched)
+        self.assertIn("foundation/a/src/mgr.cpp", present)  # suffix match
+        self.assertIn("include/a.h", present)               # exact match
+        self.assertEqual(["missing.cpp"], missing)
+
+    def test_changed_files_coverage_all_present(self) -> None:
+        present, missing = gate_develop.changed_files_coverage(
+            ["a.cpp"], ["a.cpp", "b.cpp"])
+        self.assertEqual([], missing)
+        self.assertEqual(["a.cpp"], present)
+
 
 if __name__ == "__main__":
     unittest.main()

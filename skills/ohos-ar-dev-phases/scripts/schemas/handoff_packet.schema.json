@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ohos-ar/control/handoff_packet",
+  "title": "Handoff Packet",
+  "description": "Control-layer handoff from one phase to the next, written on PASS. Carries the bundle continuity and the entry inputs the next phase should consume. NOT a truth source: the receiving gate still re-reads the signed contract + manifest, never this packet, for its verdict.",
+  "type": "object",
+  "required": [
+    "control_protocol_version",
+    "from_phase",
+    "to_phase"
+  ],
+  "properties": {
+    "control_protocol_version": {"type": "integer", "minimum": 1},
+    "from_phase": {"type": ["integer", "string"]},
+    "from_phase_name": {"type": "string"},
+    "to_phase": {"type": ["integer", "string", "null"]},
+    "to_phase_name": {"type": ["string", "null"]},
+    "bundle_id": {"type": ["string", "null"]},
+    "bundle_revision": {"type": ["integer", "string", "null"]},
+    "next_expected_action_class": {"type": ["string", "null"]},
+    "required_inputs": {"type": "array"},
+    "entry_refs": {"type": "array"},
+    "notes": {"type": ["string", "null"]}
+  }
+}

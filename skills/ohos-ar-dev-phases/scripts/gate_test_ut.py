@@ -32,6 +32,255 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib
 import gatelib as gl  # noqa: E402
 
 SUCCESS_RE = re.compile(r"=====build.*successful=====")
+TEST_DEVELOP_STATUS_PARTS = ("test_develop", "phase1_test_develop.json")
+TEST_DEVELOP_SCOPE_PARTS = ("test_develop", "signed_test_scope.json")
+TEST_DEVELOP_MATRIX_PARTS = ("test_develop", "test_intent_matrix.json")
+REPAIR_PACKET_PARTS = ("repairs", "current.json")
+COMPLETION_RECEIPT_PARTS = ("test_author", "completion_receipt.json")
+HANDOFF_PARTS = ("test_author", "handoff_to_device_functional.json")
+MAX_RETRY_ROUNDS = 2
+MAX_REPAIR_ROUNDS = 2
+
+
+def _unique_ordered(items):
+    seen = set()
+    out = []
+    for item in items:
+        if item and item not in seen:
+            seen.add(item)
+            out.append(item)
+    return out
+
+
+
+def _test_bundle_context(pdir):
+    scope = gl.read_control_json(pdir, *TEST_DEVELOP_SCOPE_PARTS) or {}
+    matrix = gl.read_control_json(pdir, *TEST_DEVELOP_MATRIX_PARTS) or {}
+    status = gl.read_control_json(pdir, *TEST_DEVELOP_STATUS_PARTS) or {}
+    items = matrix.get("items") or []
+    suspect_files = _unique_ordered(
+        (scope.get("changed_files_under_test") or []) +
+        [path for item in items for path in (item.get("depends_on_files") or [])])
+    suspect_tests = _unique_ordered([item.get("expected_gtest") for item in items])
+    bundle_revision = scope.get("bundle_revision") or status.get("bundle_revision") or ""
+    return {
+        "bundle_id": "phase1-bundle" if bundle_revision else "",
+        "bundle_revision": bundle_revision,
+        "suspect_files": suspect_files,
+        "suspect_tests": suspect_tests,
+        "downstream_revalidate_scope": status.get("downstream_revalidate_scope") or "P4_P5",
+    }
+
+
+
+def _repair_round_metadata(pdir, *, phase, bundle_revision_from, recommended_next_action,
+                           failure_class=None):
+    # Delegates the retry-vs-repair split (§9.1/§9.2) to the shared helper so all
+    # gates count and budget both circuit breakers identically.
+    prev = gl.read_control_json(pdir, *REPAIR_PACKET_PARTS) or {}
+    return gl.repair_round_metadata(
+        prev, phase=phase, bundle_revision_from=bundle_revision_from,
+        recommended_next_action=recommended_next_action, failure_class=failure_class,
+        max_repair_rounds=MAX_REPAIR_ROUNDS, max_retry_rounds=MAX_RETRY_ROUNDS)
+
+
+
+def _write_repair_packet(pdir, *, failure_class, problems, last_failure_reason,
+                         regen_signals=None):
+    bundle = _test_bundle_context(pdir)
+    repair_disallowed = gl.regen_signal_present(**(regen_signals or {}))
+    base_action = gl.classify_repair_vs_regenerate(
+        failure_class, repair_disallowed=repair_disallowed)
+    rounds = _repair_round_metadata(
+        pdir,
+        phase=3,
+        bundle_revision_from=bundle.get("bundle_revision") or "",
+        recommended_next_action=base_action,
+        failure_class=failure_class,
+    )
+    packet = {
+        "phase": 3,
+        "phase_name": "test-author",
+        "bundle_id": bundle.get("bundle_id") or "phase1-bundle",
+        "bundle_revision_from": bundle.get("bundle_revision") or "",
+        "active": True,
+        "failure_class": failure_class,
+        "suspect_files": bundle.get("suspect_files") or [],
+        "suspect_tests": bundle.get("suspect_tests") or [],
+        "allowed_fix_scope": ["declared test files", "unit-test target inputs"],
+        "must_rerun": ["gate_test_ut.py"],
+        "downstream_revalidate_scope": gl.scope_for_failure(
+            failure_class, bundle.get("downstream_revalidate_scope")),
+        "repair_disallowed_if": [
+            "functional requirement changes are needed",
+            "signed contract is unrecoverable",
+        ],
+        "regen_trigger_if": [
+            "fix requires new functional code outside the phase1 freeze",
+            "required gtest set changes",
+        ],
+        "regen_required": repair_disallowed,
+        "regen_signals": sorted(k for k, v in (regen_signals or {}).items() if v),
+        "last_failure_reason": last_failure_reason,
+        "problems": problems or [],
+        "max_retry_rounds": MAX_RETRY_ROUNDS,
+        "max_repair_rounds": MAX_REPAIR_ROUNDS,
+        "retry_rounds": rounds["retry_rounds"],
+        "repair_rounds": rounds["repair_rounds"],
+        "human_escalation_needed": rounds["human_escalation_needed"],
+        "escalation_note": rounds["escalation_note"],
+        "recommended_next_action": "human_escalation" if rounds["human_escalation_needed"] else base_action,
+    }
+    gl.write_repair_packet(pdir, REPAIR_PACKET_PARTS, packet)
+    return packet
+
+
+
+def _write_completion_controls(pdir, *, tests, failures, errors, fresh_dir, coverage_missing):
+    bundle = _test_bundle_context(pdir)
+    bundle_revision = bundle.get("bundle_revision") or ""
+    receipt = {
+        "phase": 3,
+        "logical_phase_id": "test_author",
+        "bundle_id": bundle.get("bundle_id") or "phase1-bundle",
+        "bundle_revision": bundle_revision,
+        "semantic_done": True,
+        "truth_layer_pass_known": True,
+        "next_phase_ready": True,
+        "human_gate_pending": False,
+        "next_phase": 4,
+        "downstream_revalidate_scope": bundle.get("downstream_revalidate_scope") or "P4_P5",
+        "tests": tests,
+        "failures": failures,
+        "errors": errors,
+        "fresh_report_dir": fresh_dir,
+        "missing_gtests": coverage_missing or [],
+    }
+    handoff = {
+        "bundle_id": bundle.get("bundle_id") or "phase1-bundle",
+        "bundle_revision": bundle_revision,
+        "from_phase": 3,
+        "from_phase_name": "test-author",
+        "to_phase": 4,
+        "to_phase_name": "device-functional",
+        "logical_phase_id": "test_author",
+        "logical_phase_name": "test-author",
+        "objective_completed": True,
+        "produced_artifacts": [
+            gl.control_artifact_ref(COMPLETION_RECEIPT_PARTS, "completion_receipt"),
+        ],
+        "facts_for_next_phase": [
+            "unit-test verification passed",
+            "fresh developer_test report was produced",
+            "bundle revision continuity held",
+        ],
+        "risks": [],
+        "open_questions": [],
+        "recommended_next_action": {
+            "phase": 4,
+            "action": "device-functional",
+            "next_gate": "advance.py advance --phase 3",
+        },
+        "requires_repair": False,
+        "repair_scope_hint": bundle.get("suspect_files") or [],
+        "downstream_revalidate_scope": bundle.get("downstream_revalidate_scope") or "P4_P5",
+    }
+    gl.write_completion_receipt(pdir, COMPLETION_RECEIPT_PARTS, receipt)
+    gl.write_handoff_packet(pdir, HANDOFF_PARTS, handoff)
+
+
+
+def _record_result(pdir, verdict, reason, arts, *, cmd, exit_code, test_target,
+                   suite, part, tests=None, failures=None, errors=None,
+                   fresh_dir=None, contract_status=None, coverage_missing=None,
+                   failure_class=None, problems=None, resume_hint=None):
+
+    checks = [
+        "target=%s" % test_target,
+        "suite=%s" % suite,
+        "part=%s" % part,
+        "exit_code=%s" % exit_code,
+    ]
+    if tests is not None:
+        checks.append("tests=%s" % tests)
+    if failures is not None:
+        checks.append("failures=%s" % failures)
+    if errors is not None:
+        checks.append("errors=%s" % errors)
+    if fresh_dir:
+        checks.append("fresh_report=%s" % fresh_dir)
+    if contract_status:
+        checks.append("contract=%s" % contract_status)
+    if coverage_missing:
+        checks.append("missing_gtests=%d" % len(coverage_missing))
+    gl.write_phase_summary(
+        pdir, 3, "gate_test_ut.py", verdict, reason, checks=checks,
+        extra={
+            "test_target": test_target,
+            "suite": suite,
+            "part": part,
+            "exit_code": exit_code,
+            "tests": tests,
+            "failures": failures,
+            "errors": errors,
+            "fresh_report_dir": fresh_dir,
+            "contract_status": contract_status,
+            "missing_gtests": coverage_missing or [],
+            "failure_class": failure_class,
+        })
+    if verdict == "PASS":
+        gl.clear_failure_report(pdir, 3)
+        gl.write_repair_packet(
+            pdir, REPAIR_PACKET_PARTS,
+            gl.build_cleared_repair_packet(
+                3, "test-author", cleared_by="gate_test_ut.py",
+                bundle_revision_from=_test_bundle_context(pdir).get(
+                    "bundle_revision") or ""))
+        _write_completion_controls(
+            pdir,
+            tests=tests,
+            failures=failures,
+            errors=errors,
+            fresh_dir=fresh_dir,
+            coverage_missing=coverage_missing,
+        )
+    else:
+        gl.write_failure_report(
+            pdir, 3, "gate_test_ut.py", reason,
+            problems=problems or [], resume_hint=resume_hint,
+            extra={
+                "test_target": test_target,
+                "suite": suite,
+                "part": part,
+                "exit_code": exit_code,
+                "tests": tests,
+                "failures": failures,
+                "errors": errors,
+                "fresh_report_dir": fresh_dir,
+                "contract_status": contract_status,
+                "missing_gtests": coverage_missing or [],
+                "failure_class": failure_class,
+            })
+        _write_repair_packet(
+            pdir,
+            failure_class=failure_class,
+            problems=problems or [],
+            last_failure_reason=reason,
+        )
+    gl.write_gate_phase_memory_card(
+        pdir, 3, "test-author", verdict=verdict,
+        bundle_revision=_test_bundle_context(pdir).get("bundle_revision"),
+        current_blocker=None if verdict == "PASS" else reason,
+        forbidden_actions=["modify_functional_code_outside_test_scope"],
+        next_expected_action_class=(
+            "advance_phase" if verdict == "PASS" else "repair_or_regenerate"),
+        last_failure_class=None if verdict == "PASS" else failure_class,
+        primary_entry_doc=gl.controls_relpath("next_action.json"),
+        primary_handoff_doc=gl.controls_relpath(*HANDOFF_PARTS))
+    gl.write_gate_stage_packet_from_def(
+        pdir, "test_author", "test-author", physical_phase=3)
+    gl.emit(pdir, 3, "gate_test_ut.py", verdict=verdict, reason=reason,
+            cmd=cmd, exit_code=exit_code, artifacts_rel=arts)
 
 
 def passed_gtests(result_xml_paths):
@@ -105,9 +354,14 @@ def main():
     bok, tail_rel = build_target(repo, args.test_target, pdir)
     arts.append(tail_rel)
     if not bok:
-        gl.emit(pdir, 3, "gate_test_ut.py", verdict="FAIL",
-                reason="test target build failed: %s" % args.test_target,
-                cmd="build %s" % args.test_target, artifacts_rel=arts)
+        reason = "test target build failed: %s" % args.test_target
+        _record_result(
+            pdir, "FAIL", reason, arts,
+            cmd="build %s" % args.test_target, exit_code=None,
+            test_target=args.test_target, suite=args.suite, part=part,
+            failure_class="test_target_build_failed",
+            problems=["build failed for unit-test target %s" % args.test_target],
+            resume_hint="修复单测构建问题后重跑 gate_test_ut.py")
         sys.exit("PHASE 3 FAIL: test target build failed")
 
     # 2. snapshot report dirs before the run
@@ -133,9 +387,14 @@ def main():
     after = set(glob.glob(os.path.join(reports, "20*")))
     fresh = sorted(after - before)
     if not fresh:
-        gl.emit(pdir, 3, "gate_test_ut.py", verdict="FAIL",
-                reason="no new reports/<timestamp>/ dir produced this run",
-                cmd=run_cmd, exit_code=proc.returncode, artifacts_rel=arts)
+        reason = "no new reports/<timestamp>/ dir produced this run"
+        _record_result(
+            pdir, "FAIL", reason, arts,
+            cmd=run_cmd, exit_code=proc.returncode,
+            test_target=args.test_target, suite=args.suite, part=part,
+            failure_class="fresh_report_missing",
+            problems=["developer_test produced no fresh reports/<timestamp> directory"],
+            resume_hint="确认 developer_test 真正执行并产出新报告后重跑 gate_test_ut.py")
         sys.exit("PHASE 3 FAIL: harness produced no fresh report dir")
     fresh_dir = fresh[-1]
     with open(os.path.join(pdir, "evidence/phase3/report_dir.txt"), "w") as f:
@@ -147,9 +406,15 @@ def main():
     if not os.path.exists(summary):
         summary = os.path.join(reports, "latest", "summary_report.xml")
     if not os.path.exists(summary):
-        gl.emit(pdir, 3, "gate_test_ut.py", verdict="FAIL",
-                reason="summary_report.xml not found in fresh report dir",
-                cmd=run_cmd, exit_code=proc.returncode, artifacts_rel=arts)
+        reason = "summary_report.xml not found in fresh report dir"
+        _record_result(
+            pdir, "FAIL", reason, arts,
+            cmd=run_cmd, exit_code=proc.returncode,
+            test_target=args.test_target, suite=args.suite, part=part,
+            fresh_dir=os.path.basename(fresh_dir),
+            failure_class="summary_report_missing",
+            problems=["summary_report.xml missing from fresh developer_test report"],
+            resume_hint="确认 developer_test 产出 summary_report.xml 后重跑 gate_test_ut.py")
         sys.exit("PHASE 3 FAIL: no summary_report.xml")
     sum_rel = "evidence/phase3/summary_report.xml"
     shutil.copy(summary, os.path.join(pdir, sum_rel))
@@ -176,6 +441,8 @@ def main():
     # the AR_design test points. Recovered from the HMAC-signed AR_design.
     c_ok, contract, c_detail = gl.load_signed_contract(pdir)
     coverage_ok = True
+    missing = []
+    contract_status = "ok" if c_ok else ""
     if c_ok:
         required = [c["gtest"] for c in contract["test_cases"]]
         result_paths = [os.path.join(pdir, r) for r in result_rels]
@@ -194,21 +461,52 @@ def main():
         if missing:
             reason += " MISSING: %s" % ", ".join(missing)
     elif "absent" in c_detail:
+        contract_status = "absent"
         reason += " (AR-CONTRACT-BYPASS: %s)" % c_detail
     else:
-        gl.emit(pdir, 3, "gate_test_ut.py", verdict="FAIL",
-                reason="ar-contract unrecoverable: %s" % c_detail,
-                cmd=run_cmd, exit_code=proc.returncode, artifacts_rel=arts)
+        reason = "ar-contract unrecoverable: %s" % c_detail
+        _record_result(
+            pdir, "FAIL", reason, arts,
+            cmd=run_cmd, exit_code=proc.returncode,
+            test_target=args.test_target, suite=args.suite, part=part,
+            tests=tests, failures=failures, errors=errors,
+            fresh_dir=os.path.basename(fresh_dir),
+            contract_status="unrecoverable",
+            failure_class="ar_contract_unrecoverable",
+            problems=["signed ar-contract not recoverable: %s" % c_detail],
+            resume_hint="修复/重新签名 AR_design 后重跑 gate_test_ut.py")
         sys.exit("PHASE 3 FAIL: ar-contract unrecoverable: %s" % c_detail)
 
     print(reason)
     if numeric_ok and coverage_ok:
-        gl.emit(pdir, 3, "gate_test_ut.py", verdict="PASS", reason=reason,
-                cmd=run_cmd, exit_code=proc.returncode, artifacts_rel=arts)
+        _record_result(
+            pdir, "PASS", reason, arts,
+            cmd=run_cmd, exit_code=proc.returncode,
+            test_target=args.test_target, suite=args.suite, part=part,
+            tests=tests, failures=failures, errors=errors,
+            fresh_dir=os.path.basename(fresh_dir),
+            contract_status=contract_status, coverage_missing=missing)
         print("PHASE 3 PASS — advance.py advance --phase 3")
         return
-    gl.emit(pdir, 3, "gate_test_ut.py", verdict="FAIL", reason=reason,
-            cmd=run_cmd, exit_code=proc.returncode, artifacts_rel=arts)
+    problems = []
+    if tests <= 0:
+        problems.append("summary_report.xml reported tests=0")
+    if failures != 0:
+        problems.append("summary_report.xml reported failures=%d" % failures)
+    if errors != 0:
+        problems.append("summary_report.xml reported errors=%d" % errors)
+    if missing:
+        problems += ["required gtest not passed: %s" % g for g in missing]
+    failure_class = "gtest_coverage_missing" if missing else "unit_test_verdict_failed"
+    _record_result(
+        pdir, "FAIL", reason, arts,
+        cmd=run_cmd, exit_code=proc.returncode,
+        test_target=args.test_target, suite=args.suite, part=part,
+        tests=tests, failures=failures, errors=errors,
+        fresh_dir=os.path.basename(fresh_dir),
+        contract_status=contract_status, coverage_missing=missing,
+        failure_class=failure_class, problems=problems,
+        resume_hint="修复单测失败/覆盖缺口后重跑 gate_test_ut.py")
     sys.exit("PHASE 3 FAIL: %s" % reason)
 
 

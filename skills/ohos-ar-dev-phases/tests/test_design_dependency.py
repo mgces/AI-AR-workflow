@@ -33,9 +33,12 @@ ohos_unittest
 
 ```ar-contract
 {
-  "build_artifacts": ["out/rk3568/liba.z.so"],
-  "test_cases": [{"point": "点一", "gtest": "ATest.Case001"}],
-  "device_cases": [{"desc": "触发", "marker": "AR_DEV_A_OK"}]
+  "contract_version": "2.0",
+  "requirements": [{"id": "REQ-001", "desc": "点一"}],
+  "build_artifacts": [{"id": "BA-001", "path": "out/rk3568/liba.z.so", "for_requirements": ["REQ-001"]}],
+  "test_cases": [{"id": "TC-001", "point": "点一", "gtest": "ATest.Case001", "for_requirements": ["REQ-001"]}],
+  "device_cases": [{"id": "DC-001", "desc": "触发", "marker": "AR_DEV_A_OK", "process": "com.demo.ar", "artifact_loaded": "/data/app/liba.z.so", "for_requirements": ["REQ-001"]}],
+  "changed_files": [{"id": "FILE-001", "path": "notes.txt", "for_requirements": ["REQ-001"]}]
 }
 ```
 """

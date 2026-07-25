@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ohos-ar/control/substate",
+  "title": "Phase Substate Snapshot",
+  "description": "Control-layer substate machine snapshot (e.g. P7 integration/quality/review, P8 precheck/consent/push/ci/finalize). NOT a truth source: it records where inside a phase the run is, but pass authority remains with the signed manifest + advance.py.",
+  "type": "object",
+  "required": [
+    "control_protocol_version",
+    "phase",
+    "substate"
+  ],
+  "properties": {
+    "control_protocol_version": {"type": "integer", "minimum": 1},
+    "phase": {"type": "integer", "minimum": 0},
+    "phase_name": {"type": "string"},
+    "substate": {"type": "string"},
+    "substate_order": {"type": "array", "items": {"type": "string"}},
+    "substate_index": {"type": ["integer", "null"]},
+    "next_substate": {"type": ["string", "null"]},
+    "next_expected_action_class": {"type": ["string", "null"]},
+    "human_gate_pending": {"type": "boolean"},
+    "human_escalation_needed": {"type": "boolean"},
+    "escalation_note": {"type": ["string", "null"]},
+    "blockers": {"type": "array"}
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ohos-ar/control/bundle_definition",
+  "title": "Development Bundle Definition",
+  "description": "P1 design-orchestrate output describing the frozen development bundle: the requirements, changed files, and downstream coverage obligations (build/test/device) derived from the signed ar-contract. NAVIGATION/CONTROL layer only — the signed manifest + ar-contract remain the pass authority; this packet never gates a verdict.",
+  "type": "object",
+  "required": [
+    "control_protocol_version",
+    "bundle_id",
+    "logical_phase_id",
+    "requirements",
+    "changed_files"
+  ],
+  "properties": {
+    "control_protocol_version": {"type": "integer", "minimum": 1},
+    "phase": {"type": ["integer", "null"]},
+    "logical_phase_id": {"type": "string"},
+    "bundle_id": {"type": "string"},
+    "bundle_revision": {"type": ["string", "null"]},
+    "source_design": {"type": ["string", "null"]},
+    "source_contract": {"type": ["string", "null"]},
+    "requirements": {"type": "array"},
+    "changed_files": {"type": "array"},
+    "build_artifacts": {"type": "array"},
+    "test_cases": {"type": "array"},
+    "device_cases": {"type": "array"},
+    "suspect_files": {"type": "array"},
+    "suspect_tests": {"type": "array"},
+    "downstream_revalidate_scope": {"type": ["string", "null"]}
+  }
+}

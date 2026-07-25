@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ohos-ar/control/completion_receipt",
+  "title": "Completion Receipt",
+  "description": "Control-layer receipt written on a gate PASS. Advisory continuity signal for the next phase. NOT a truth source: truth_layer_pass_known merely mirrors what the signed manifest already proved; advance.py + signed manifest remain authoritative.",
+  "type": "object",
+  "required": [
+    "control_protocol_version",
+    "phase",
+    "semantic_done",
+    "next_phase_ready"
+  ],
+  "properties": {
+    "control_protocol_version": {"type": "integer", "minimum": 1},
+    "phase": {"type": "integer", "minimum": 0},
+    "phase_name": {"type": "string"},
+    "bundle_revision": {"type": ["integer", "string", "null"]},
+    "semantic_done": {"type": "boolean"},
+    "truth_layer_pass_known": {"type": "boolean"},
+    "next_phase_ready": {"type": "boolean"},
+    "human_gate_pending": {"type": "boolean"},
+    "next_phase": {"type": ["integer", "string", "null"]}
+  }
+}

@@ -52,6 +52,24 @@ def dev(snippet, env=None):
     return run('. "%s"\n%s' % (DEVICE_SH, snippet), env=env)
 
 
+def _write_bootstrap_controls(pdir, verdict, *, blocker=None,
+                              failure_class=None):
+    """Emit P0's control-layer footprint: a bootstrap memory card + stage
+    packet so a weak model entering the first window has the same navigation
+    surface every later phase gets. Best-effort, non-authoritative — a write
+    failure never changes the P0 verdict (truth stays in the signed manifest)."""
+    gl.write_gate_phase_memory_card(
+        pdir, 0, "bootstrap", verdict=verdict,
+        current_blocker=None if verdict == "PASS" else (blocker or "unknown"),
+        next_expected_action_class=(
+            "advance_phase" if verdict == "PASS" else "repair_environment"),
+        last_failure_class=None if verdict == "PASS" else failure_class,
+        primary_entry_doc=gl.controls_relpath("next_action.json"))
+    gl.write_gate_stage_packet_from_def(
+        pdir, "bootstrap", "bootstrap", physical_phase=0)
+
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--pipeline-dir")
@@ -90,6 +108,8 @@ def main():
             json.dump({"repo": repo, "error": "not_an_ohos_root"}, f, indent=2)
         gl.emit(pdir, 0, "gate_env_init.py", verdict="FAIL",
                 reason="repo is not an OHOS root: %s" % repo, artifacts_rel=[rel])
+        _write_bootstrap_controls(pdir, "FAIL", blocker="not_an_ohos_root",
+                                  failure_class="bootstrap_input_missing")
         sys.exit("PHASE 0 FAIL — %s" % msg)
 
     # repo-level stability marker: once a real compile probe has passed here, we
@@ -222,6 +242,9 @@ def main():
         gl.emit(pdir, 0, "gate_env_init.py", verdict="FAIL",
                 reason="missing capabilities: %s" % ",".join(hard_fail),
                 artifacts_rel=arts)
+        _write_bootstrap_controls(
+            pdir, "FAIL", blocker="missing capabilities: %s" % ",".join(hard_fail),
+            failure_class="bootstrap_input_missing")
         sys.exit("PHASE 0 FAIL — missing: %s" % ",".join(hard_fail))
 
     soft_warn = [n for (n, k, ok, d, ph) in checks if k == "SOFT" and not ok]
@@ -237,6 +260,7 @@ def main():
     reason = "all capabilities present; serial=%s%s" % (
         serial, (" (warn: %s)" % ",".join(soft_warn)) if soft_warn else "")
     gl.emit(pdir, 0, "gate_env_init.py", verdict="PASS", reason=reason, artifacts_rel=arts)
+    _write_bootstrap_controls(pdir, "PASS")
     print("PHASE 0 PASS — run: advance.py --pipeline-dir %s advance --phase 0" % pdir)
 
 

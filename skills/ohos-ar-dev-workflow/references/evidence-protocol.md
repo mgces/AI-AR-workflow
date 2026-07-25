@@ -1,55 +1,295 @@
 # 防伪协议(evidence-protocol)
 
-目标:让"阶段通过"无法被自由文本伪造,且真机证据在**设备 RTC 错乱**下仍可信。
+目标：让“阶段通过”无法被自由文本伪造，并且让主机 / 真机 / 上库证据都能在弱模型场景下通过结构化导航文件恢复，但**只有签名 manifest 能真正放行**。
 
-## 1. 签名账本
+## 1. 签名账本（唯一真相源）
 
-- `evidence/manifest.jsonl`,每行一条门控记录:
-  `{ts_utc,seq,prev,phase,gate,cmd,argv,exit_code,nonce,artifacts:[{path,sha256}],verdict,reason,hmac}`。
-- `hmac` = HMAC-SHA256(per-run 密钥, 规范化(去掉 hmac 字段、键排序) 的记录字节)。
-- 密钥:当前 Agent 配置目录的 `.lifecycle-secret/<run_id>`,32 字节,mode 600,**不在** `specs/pipeline/` 内。
-- 篡改任一字段或任一 artifact → 重算 sha256/HMAC 不符 → `advance.py`/`verify-all` 拒绝。
-- **哈希链防重放**:每条记录带 `seq`(位置)+`prev`(上一条的 hmac),两者都进签名字节。
-  因此把一条**历史上合法**的 PASS 记录复制到末尾(即使把 artifact 也回滚成当初内容)也无法闭合阶段——
-  它的 `seq`/`prev` 对不上真实链尾,而无密钥无法重新签名。`validate_closing_entry` 先 `verify_chain`
-  校验全链连续,再看该阶段末条 PASS。(旧的无 `seq` 账本按 legacy 只做逐条 HMAC 校验,向后兼容。)
+- `evidence/manifest.jsonl` 每行一条门控记录：
 
-## 2. 主机侧证据(P1/P2/P3/P5 报告)
+```json
+{
+  "ts_utc": "...",
+  "seq": 12,
+  "prev": "<上一条 hmac>",
+  "phase": 4,
+  "gate": "gate_device_func.py",
+  "cmd": "...",
+  "argv": ["..."],
+  "exit_code": 0,
+  "nonce": "...",
+  "artifacts": [{"path": "evidence/phase4/hilog_capture.txt", "sha256": "..."}],
+  "verdict": "PASS",
+  "reason": "...",
+  "hmac": "..."
+}
+```
 
-- 主机时钟正确。新鲜度锚:
-  - P2:记录 build.log 启动前字节偏移,只在**新追加的尾部**找成功横幅 → 旧横幅无效。
-  - P3/P5:运行前后对 `developer_test/reports/20*` 做集合差,要求**本次新建**报告目录 → 旧报告无效。
-  - P1:用 git `base_commit`→`HEAD` 的 tracked diff 加 untracked 文件清单/内容指纹,与时间无关。
-- 通过条件全部是可解析事实:exit code、横幅字符串、`<testsuites>` 的 tests/failures/errors。
+- `hmac = HMAC-SHA256(per-run secret, canonical-json(record_without_hmac))`
+- per-run secret 在 `.lifecycle-secret/<run_id>`，不放进 pipeline 目录。
+- `seq + prev` 一并签名，形成哈希链：
+  - 篡改任一字段 / artifact → HMAC 或 sha256 不符
+  - 把历史 PASS 记录复制到末尾 → `seq/prev` 对不上，`verify_chain()` 失败
+- `advance.py` / `verify-all` 永远先验 manifest，再决定是否可推进。
 
-## 3. 真机证据(P4,及设备型 P5)— RTC 无关三锚
+## 2. 导航层 JSON（非真相源）
 
-1. **per-run nonce**(`secrets.token_hex(16)`):主机生成,注入 hilog
-   (`log -t LIFECYCLE_GATE NONCE=<n> START/END`)并经 `$GATE_NONCE` 传给场景脚本,
-   要求抓取文本中**必含本次 nonce**——旧/伪造日志不可能含本次随机串。
-2. **`/proc/uptime` 单调锚**:部署前/抓取后各采一次,要求严格递增且 >0
-   → 证明抓取发生在本次 boot、且在部署之后,完全不依赖墙钟。
-3. **内容切窗 + sha256**:用 START/END nonce 标记界定窗口(非时间);原始抓取整体 sha256 入签名记录。
-4. **命令留痕**:每条 `hdc` 命令 + exit code 落 `device_cmds.txt`;部署命令非 0 即判 FAIL。
+每个 phase 现在都会尽量写：
 
-## 4. 上库证据(P6)— SHA 绑定
+- `evidence/phaseN/phase_summary.json`
+- `evidence/phaseN/failure_report.json`（失败/阻塞时）
 
-- 真实证据 = 已创建的 PR(号/URL/head SHA)+ `openharmony_ci.py` 对该 PR `overall==success`。
-- CI 状态绑定到**本次 push 的不可变 commit SHA**:PR head SHA 必须等于本地 push 的 SHA,
-  杜绝"旧 commit 的绿"冒充。
-- push 为唯一对外不可逆动作:无 `--allow-push` 时只做 DRY(不产 PASS);需 `consent --phase 6` 令牌。
+并在 run 根目录 / 控制层写：
 
-## 5. 人工确认门(P4 真机 / P5 质量与 review / P6 上库)
+- `next_action.json`（兼容根路径）
+- `controls/next_action.json`（控制层正式镜像）
+- `controls/memory_cards/current.json`（advance.py 投影）与 `controls/memory_cards/phase<N>.json`（各 gate 写）
+- `controls/receipts/*.json`
+- `controls/handoffs/*.json`
+- `controls/repairs/current.json`（repair packet；PASS 时置 `active=false`）
+- 各 logical phase 目录下的 entry / receipt / handoff / index（见 pipeline-schema.md 的 `controls/` 布局）
+- `todo.json`
 
-证据 PASS 不等于自动放行。**P4 真机功能测试**、**P5 质量与 code review 报告** 与
-**P6 上库** 三个阶段,门控产出真实证据后**停下并把真实结果/产物路径呈现给人**
-(P4 还打印 hilog 末尾片段),等人工核对真机结果、P5 覆盖率/性能/功耗/稳定性/code review 报告、
-或上库结果。人工认可后 `advance.py consent --phase 4|5|6 --token <人>` 写入 `consent_tokens`,
-`advance` 才放行;缺令牌时 `advance --phase 4|5|6` 直接 HOLD 不推进。
+这些文件的作用：
 
-consent 是**签名且绑定证据**的记录(非明文令牌):`consent --phase N` 会先校验该阶段当前的
-签名 PASS 证据,再把 consent 绑定到该证据的 `entry_id` 并 HMAC 签名。因此:
-(a) 没出 PASS 证据的阶段无法盖章;(b) 重跑门控产生新证据后旧 consent 自动失效、必须重新确认;
-(c) 手改 `pipeline.json` 里的 consent 记录会破坏其 HMAC。consent 只由 `advance.py` 写。
-(注:per-run 密钥人机共用,签名不从密码学上区分"人"与"模型";它消除的是"凭空盖章"与"陈旧
-consent 复用"两个实际漏洞。真正的带外人机确认列为后续增强。)
+- 让弱模型 / 恢复流程快速获得“当前卡在哪、下一步是什么、最近失败是什么”；
+- 让 `advance.py status --json` / `advance.py next` / `refresh_todo.py` 可以直接聚合展示；
+- 把旧物理 phase 投影成 machine-readable 的 logical phase / action / handoff / receipt 视图。
+
+### 2.1 packet schema 与校验（依赖可选）
+
+控制层的 5 类 packet 加 index 各有一份 draft-07 JSON Schema，位于
+`skills/ohos-ar-dev-phases/scripts/schemas/`：
+
+| kind | schema |
+| --- | --- |
+| `repair_packet` | `repair_packet.schema.json` |
+| `completion_receipt` | `completion_receipt.schema.json` |
+| `handoff_packet` | `handoff_packet.schema.json` |
+| `phase_memory_card` | `phase_memory_card.schema.json` |
+| `substate` | `substate.schema.json` |
+| `index` | `index.schema.json` |
+
+写入统一走 `gatelib` 的 typed helper（`write_repair_packet` /
+`write_completion_receipt` / `write_handoff_packet` / `write_phase_memory_card` /
+`write_substate_snapshot` / `write_control_index` 等），它们会：
+
+1. 补齐 `control_protocol_version`；
+2. 调 `validate_control_payload(kind, payload)` 做**建议性**校验；
+3. 无论校验结果如何都照常写盘。
+
+`validate_control_payload()` **依赖可选**：能 `import jsonschema` 就用它，
+否则退化为内置的 required-keys + 顶层类型检查（返回值里的 `validated_by`
+会标明是 `jsonschema` / `structural` / `none`）。这样控制层可以搬到没有
+第三方依赖的弱模型运行环境。
+
+校验失败**只是建议**，绝不改变任何 gate 的 verdict——它不是放行条件。
+
+它们**不能**单独作为通过依据，原因：
+
+- 没有 HMAC 账本签名约束；
+- 允许 best-effort 写入，写失败不能反向影响真实 gate verdict；
+- schema 校验不通过同样不影响 verdict（仅作为导航质量提示）；
+- `advance.py` 推进前仍会回到 manifest 重新验签、验 artifact sha256、验 consent 绑定。
+
+## 3. 主机侧新鲜度锚（P1 / P2 / P3 / P5）
+
+### P1
+
+- 设计固化依赖签名 `AR_design.md` 副本，而不是工作树草稿。
+- 开发阶段依赖 `base_commit`、`functional_fingerprint`、`locked_all_paths`：
+  - 改功能代码/配置 → 后续 phase 一律拒绝，要求 `reset` 回 P1
+  - P3/P4/P5 只能新增独立测试路径
+
+### P2
+
+- 直接捕获本次 `build.sh` 的 stdout 作为权威 fresh build 证据；
+- 通过条件：`rc==0` + success banner present + error banner absent；
+- 额外硬门控：签名 contract 的 `build_artifacts[]` 必须全部产出。
+
+相关导航摘要：
+
+- `phase_summary.json.success_banner_seen`
+- `phase_summary.json.error_banner_seen`
+- `phase_summary.json.contract_status`
+- `phase_summary.json.build_artifacts_missing`
+- `failure_report.json.failure_class`
+
+### P3
+
+- 运行前后对 `developer_test/reports/20*` 做集合差，要求出现 **fresh** 报告目录；
+- 解析 `summary_report.xml` 的 `tests/failures/errors`；
+- 额外硬门控：签名 contract 的 `test_cases[].gtest` 必须逐个在 fresh result xml 中以 passed 形式出现。
+
+相关摘要：
+
+- `fresh_report_dir`
+- `missing_gtests`
+- `contract_status`
+- `failure_class`
+
+### P5
+
+- 同样要求 fresh integration report；
+- 功能 suite 必须通过；
+- quality reports（coverage/performance/power/stability）必须齐全，除非显式 downgrade；
+- review 报告必须 machine-readable zero issues。
+
+相关摘要：
+
+- `quality_ok` / `quality_detail`
+- `review_ok` / `review_detail`
+- `quality_gate_downgraded`
+- `failure_class`
+
+## 4. 真机侧证据（P4 / 设备型 P5）
+
+旧模型只靠 marker 命中容易被伪造；当前 P4 已升级为“四锚联合证明”：
+
+### 4.1 per-run nonce
+
+- 主机生成随机 nonce；
+- 注入 hilog fence：
+  - `NONCE=<n> BASELINE_START`
+  - `NONCE=<n> START`
+  - `NONCE=<n> END`
+- 场景脚本通过 `$GATE_NONCE` 使用同一个 nonce；
+- 本次抓取文本必须包含本次 nonce，旧日志不能冒充。
+
+### 4.2 `/proc/uptime` 单调锚
+
+- 部署前 / 抓取后各采一次 `/proc/uptime`；
+- 要求严格递增且 >0；
+- 证明抓取发生在本次设备会话内，不依赖 RTC。
+
+### 4.3 baseline / trigger 分窗
+
+P4 不再对整份 hilog 做模糊匹配，而是切成：
+
+- `hilog_baseline_window.txt`
+- `hilog_trigger_window.txt`
+
+`device_cases[].absent_before_trigger=true` 时：
+
+- marker 在 baseline window 出现即 FAIL；
+- 这把“本次触发前就存在的旧行为”排除掉了。
+
+### 4.4 process provenance + artifact loaded + real side effect
+
+对每个签名 `device_case`：
+
+- 在 trigger window 里找 marker 命中行；
+- 解析 PID；
+- 校验该 PID 的进程与 `device_cases[].process` 一致；
+- 校验 `/proc/<pid>/exe` 或 `/proc/<pid>/maps` 确实加载了 `artifact_loaded`；
+- 执行 `side_effect`（当前最小支持 `shell_assert`）并记录 stdout/stderr/returncode/pass-fail。
+
+结构化证据：
+
+- `device_case_results.json`
+  - 每个 case 单独记录 `marker_seen`、`marker_pid`、`process_match`、`artifact_loaded_verified`、`side_effect_ok`、`negative_control_ok`、`problems`
+- `phase_summary.json`
+  - 聚合级 `process_provenance_verified`、`artifact_loaded_verified`、`side_effect_verified`、`negative_control_verified`
+- `failure_report.json`
+  - `failure_class` 例子：
+    - `marker_emitted_by_non_target_process`
+    - `artifact_not_loaded_by_target_process`
+    - `side_effect_assertion_failed`
+    - `marker_present_before_trigger`
+
+## 5. code review 证据（P5 / P6）
+
+P5 和 P6 都要求 **machine-readable zero-issue** 报告：
+
+- JSON 计数字段如 `issue_count/finding_count/problem_count/blocker_count == 0`
+- 或数组字段 `issues/findings/problems/blockers` 为空
+- 或文本 `review_issue_count=0`
+
+任何非零 / 缺失 / 不可解析都 fail closed。
+
+P6 需要两道 review：
+
+1. **local self-review**（commit/push 前）
+2. **PR review**（PR 创建后、CI 检查前）
+
+相关导航信息会体现在 P6 `phase_summary.json` / `failure_report.json`：
+
+- `local_review_detail`
+- `pr_review_detail`
+- `failure_class=review_gate_failed`
+
+## 6. 上库与 CI 证据（P6）
+
+P6 的真实不可逆动作是 push + create PR。
+
+### DRY RUN
+
+无 `--allow-push` 时：
+
+- 只写 full diff / stat 和导航性 FAIL 摘要；
+- `failure_class=dry_run_no_pass`；
+- 明确表示“计划已准备，但未执行外部动作”。
+
+### 真正 PASS 的条件
+
+- P1–P5 已 advance 完毕；
+- phase 6 consent 已记录；
+- review 双门都为零问题；
+- PR 存在；
+- CI overall 是 success；
+- 远端 PR head SHA == 本次 pushed SHA。
+
+这最后一条是关键：
+
+- 防止“旧 commit 的绿色 CI”冒充当前提交；
+- 若 PR head SHA 不可读 / 不匹配，则 fail closed。
+
+相关摘要字段：
+
+- `repo_slug`
+- `branch`
+- `pr`
+- `ci_overall`
+- `ci_ok`
+- `pushed_sha`
+- `pr_head_sha`
+- `sha_ok`
+- `mode`
+- `failure_class`
+
+## 7. consent 绑定（P1 / P4 / P5 / P6）
+
+consent 不是普通字符串标记，而是 `advance.py` 写入的、绑定到某条 PASS 证据 entry 的签名对象：
+
+- P1：设计人工批准，供 `gate_develop.py` 校验
+- P4/P5/P6：结果人工批准，供 `advance.py advance` 校验
+
+性质：
+
+- 没有当前 PASS 证据时不能盖章；
+- 重跑 gate 产生新 PASS 后，旧 consent 自动失效；
+- 手改 `pipeline.json` 中的 consent 内容会破坏其 HMAC。
+
+## 8. 弱模型恢复路径（强制窗口启动顺序）
+
+每个新窗口必须按此固定顺序读取（与 §15 窗口启动顺序一致，由
+`gatelib.window_startup_order()` 生成，落入 memory card 的
+`window_startup_order` 字段并镜像进 `next_action.json`）：
+
+1. `controls/memory_cards/current.json`（phase memory card；它自身携带本顺序）
+2. `advance.py status --json`
+3. 当前 logical phase 的 `Stage Packet`（`controls/packets/<logical_phase_id>.json`）
+4. 最新 `Handoff Packet` 或 `Repair Packet`
+5. 当前阶段 `completion_receipt.json`（若存在）
+6. 当前阶段 `failure_report.json` / `phase_summary.json`（若存在）
+7. 当前阶段必要 evidence
+
+禁止的启动顺序：先读全局 README、先读大段日志、先读后续阶段 packet、先回看整条历史对话。
+
+但执行推进前必须回到 truth layer：
+
+1. `validate_closing_entry()` 验 manifest / artifact
+2. `verify_consent()` 验 consent 绑定
+3. 指纹 / 路径漂移检查
+
+这样既有可恢复的结构化控制层，又不会把 JSON 摘要变成第二真相源——放行权仍只来自
+signed manifest + artifact sha + consent + `advance.py`。

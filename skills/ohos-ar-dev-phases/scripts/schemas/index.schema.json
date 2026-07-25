@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ohos-ar/control/index",
+  "title": "Control Index",
+  "description": "Control-layer index that converges pointers to entry/handoff/failure/receipt docs and artifact/evidence references for a phase. NOT a truth source: it is a convenience map of relpaths only.",
+  "type": "object",
+  "required": ["control_protocol_version"],
+  "properties": {
+    "control_protocol_version": {"type": "integer", "minimum": 1},
+    "phase": {"type": ["integer", "null"]},
+    "phase_name": {"type": ["string", "null"]},
+    "kind": {"type": ["string", "null"]},
+    "primary_entry_doc": {"type": ["string", "null"]},
+    "primary_handoff_doc": {"type": ["string", "null"]},
+    "primary_failure_doc": {"type": ["string", "null"]},
+    "primary_completion_receipt": {"type": ["string", "null"]},
+    "entries": {"type": "array"},
+    "artifacts": {"type": "array"},
+    "evidence": {"type": "array"}
+  }
+}

@@ -137,19 +137,122 @@ def design_section(pdir, name_keywords):
 # ----------------------------------------------------------------------------
 # renderers
 # ----------------------------------------------------------------------------
+def _process_summary_pairs(summary, failure, repair):
+    """Repair / retry / downstream-scope pairs for the human report.
+
+    Sourced from the control layer (repair packet) and phase_summary/failure_report.
+    These are advisory navigation aids — they never granted a verdict, so the
+    renderer shows them purely to help a human (or weak model) see how many
+    repair/retry rounds a phase burned and how far a failure must re-validate."""
+    pairs = []
+    scope = None
+    for src in (repair, failure, summary):
+        if src and src.get("downstream_revalidate_scope"):
+            scope = src.get("downstream_revalidate_scope")
+            break
+    if scope:
+        pairs.append(("downstream 重验范围", clean(scope)))
+    if repair:
+        if repair.get("failure_class"):
+            pairs.append(("失败分类", clean(repair.get("failure_class"))))
+        rr = repair.get("retry_rounds")
+        mrr = repair.get("max_retry_rounds")
+        if rr is not None or mrr is not None:
+            pairs.append(("retry 轮次", "%s / %s" % (clean(rr), clean(mrr))))
+        pr = repair.get("repair_rounds")
+        mpr = repair.get("max_repair_rounds")
+        if pr is not None or mpr is not None:
+            pairs.append(("repair 轮次", "%s / %s" % (clean(pr), clean(mpr))))
+        if repair.get("recommended_next_action"):
+            pairs.append(("建议下一步", clean(repair.get("recommended_next_action"))))
+        if repair.get("human_escalation_needed"):
+            note = repair.get("escalation_note") or "熔断:需人工介入"
+            pairs.append(("熔断状态", "<span class='badge fail'>%s</span>" % clean(note)))
+        if repair.get("regen_required"):
+            sigs = "; ".join(repair.get("regen_signals") or []) or "regen"
+            pairs.append(("需重生成(regen)", clean(sigs)))
+    return pairs
+
+
 def render_device(pdir, state, entries, phase=4):
     ev = phase_verdict(entries, phase)
     meta = read_ev(pdir, "evidence/phase%d/run_meta.txt" % phase) or "(no run_meta)"
     proof = read_ev(pdir, "evidence/phase%d/artifact_runtime_proof.txt" % phase) or "(no artifact proof)"
     hilog = read_ev(pdir, "evidence/phase%d/hilog_capture.txt" % phase) or "(no hilog)"
-    tail = "\n".join(hilog.strip().splitlines()[-40:])
+    baseline = read_ev(pdir, "evidence/phase%d/hilog_baseline_window.txt" % phase) or "(no baseline window)"
+    trigger = read_ev(pdir, "evidence/phase%d/hilog_trigger_window.txt" % phase) or "(no trigger window)"
+    case_results = read_ev(pdir, "evidence/phase%d/device_case_results.json" % phase) or ""
+    summary = None
+    failure = None
+    repair = None
+    try:
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
+            os.path.abspath(__file__))), "..", "ohos-ar-dev-phases", "scripts", "lib"))
+        import gatelib as gl
+        summary = gl.read_phase_summary(pdir, phase)
+        failure = gl.read_failure_report(pdir, phase)
+        # control-layer process footprint (repair/retry/scope) — advisory only
+        repair = gl.read_repair_packet(pdir, ("repairs", "current.json"))
+    except Exception:
+        pass
+    tail = "\n".join((trigger if trigger and not trigger.startswith("(no ") else hilog).strip().splitlines()[-40:])
+
+    def _cases_html(raw_json):
+        if not raw_json:
+            return "<p class='sub'>未产出</p>"
+        try:
+            data = json.loads(raw_json)
+        except Exception:
+            return _pre(raw_json)
+        rows = []
+        for r in data.get("results", []):
+            marker = clean(r.get("marker"))
+            pid = clean(r.get("marker_pid") if r.get("marker_pid") is not None else "-")
+            proc = clean(r.get("process_expected") or "-")
+            verdict = _badge("PASS" if r.get("ok") else "FAIL")
+            details = []
+            details.append("marker_seen=%s" % clean(r.get("marker_seen")))
+            details.append("process_match=%s" % clean(r.get("process_match")))
+            details.append("artifact_loaded=%s" % clean(r.get("artifact_loaded_verified")))
+            details.append("side_effect=%s" % clean(r.get("side_effect_ok")))
+            details.append("negative_control=%s" % clean(r.get("negative_control_ok")))
+            if r.get("problems"):
+                details.append("problems=" + clean("; ".join(r.get("problems", []))))
+            rows.append("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (
+                verdict, marker, pid, proc, "<br>".join(details)))
+        if not rows:
+            return "<p class='sub'>未声明 device_cases</p>"
+        return ("<table><tr><th>Verdict</th><th>Marker</th><th>PID</th>"
+                "<th>Expected process</th><th>Checks</th></tr>%s</table>" % "".join(rows))
+
+    summary_pairs = []
+    if summary:
+        summary_pairs.extend([
+            ("process provenance", clean(summary.get("process_provenance_verified"))),
+            ("artifact loaded", clean(summary.get("artifact_loaded_verified"))),
+            ("side effect", clean(summary.get("side_effect_verified"))),
+            ("negative control", clean(summary.get("negative_control_verified"))),
+            ("baseline window", clean(summary.get("baseline_window_found"))),
+            ("trigger window", clean(summary.get("trigger_window_found"))),
+        ])
     body = "<h1>真机功能测试报告</h1><p class='sub'>run=%s target=%s</p>" % (
         clean(state.get("run_id")), clean(state.get("build_target")))
     body += "<div class='card'>%s %s</div>" % (
         _badge(ev.get("verdict") if ev else None),
         clean(ev.get("reason") if ev else "(no verdict)"))
+    if failure and failure.get("failure_class"):
+        body += "<div class='card'><strong>failure_class:</strong> %s</div>" % clean(failure.get("failure_class"))
+    if summary_pairs:
+        body += _section("P4 抗伪造摘要", _kv_table(summary_pairs))
+    process_pairs = _process_summary_pairs(summary, failure, repair)
+    if process_pairs:
+        body += _section("控制层流程摘要(repair / retry / 重验范围;仅导航,不授放行)",
+                         _kv_table(process_pairs))
     body += _section("运行元数据(nonce / marker / uptime)", _pre(meta))
     body += _section("产物一致性(主机 sha256 == 设备 sha256)", _pre(proof))
+    body += _section("device_cases 逐项结果", _cases_html(case_results))
+    body += _section("基线窗口(触发前必须为空的 marker 看这里)", _pre(baseline))
+    body += _section("触发窗口(真正用于判定的日志窗口)", _pre(trigger))
     body += _section("设备 hilog 抓取(末尾片段)", _pre(tail))
     return _page("真机功能测试报告 — %s" % state.get("run_id"), body)
 

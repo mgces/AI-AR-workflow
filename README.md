@@ -12,6 +12,12 @@ OHOS(rk3568,C/C++ 系统组件)的完整研发生命周期,直到代码上库:
 绝不能用模型的自由文本当作阶段结束。** 真实证据 = 真实构建日志的成功横幅、真机
 `hdc`+`hilog` 抓取、`gtest`/`xdevice` 测试报告、CI 绿状态。
 
+> **两套阶段编号并存**:上面的 **物理 phase 0–6** 是底层状态机与 `evidence/` 目录的真实编号;
+> 面向(弱)模型执行的是一层 **逻辑阶段 P0–P8**(见第 12 节),由 `advance.py` 投影,把物理
+> phase1 拆成 `P1 design-orchestrate / P2 feature-develop / P3 test-develop` 三个逻辑子阶段,
+> 并把物理 phase5/6 内的 P7/P8 拆成更细的子状态。**逻辑投影只是导航层,放行权仍只在
+> 物理 phase 的签名证据 + `advance.py`。** 本文正文的 P1–P6 若无特别说明均指**物理 phase**。
+
 ---
 
 ## 0. 流程图(端到端)
@@ -82,6 +88,8 @@ OHOS(rk3568,C/C++ 系统组件)的完整研发生命周期,直到代码上库:
 | **设计先行门控** | P1 拆两子门控:`gate_design.py` 先确定性校验 `AR_design.md` 6 必含章节并签名,`gate_develop.py` **强制依赖**该签名设计才允许写码通过。 |
 | **签名且绑定证据的 consent** | P4/P5/P6 人工确认令牌**签名**并绑定当前 PASS 证据的 entry_id;凭空盖章、重跑门控后旧 consent 复用都会失效。 |
 | **改码回 P1 重走(功能指纹分层)** | P1 锁定**功能指纹**(仅**非测试路径**内容,相对 `base_commit`、commit 无关)。改**功能代码/配置内容** → `advance P2..P6` 因功能指纹漂移被拒;**P3/P4/P5 只允许新增独立测试文件**(test 路径),新增非测试路径被拒——必须 `advance.py reset` 回 P1。P6 的 `git commit -s` 不算漂移。 |
+| **真机抗伪造三层证明(P4)** | 真机功能不再只认"日志里出现过 marker",而是叠加:①**进程溯源**——marker 命中行绑定 PID,校验进程名与契约 `device_cases[].process` 一致、且 `/proc/<pid>/exe\|maps` 真加载了 `artifact_loaded`;②**副作用断言**——`side_effect` 的 `shell_assert` 命令实跑并比对期望;③**负对照差分**——按 `absent_before_trigger` 切 baseline/trigger 窗口,marker 若在触发前已出现即 FAIL。证据优先级:进程溯源 > artifact_loaded > side_effect > baseline/trigger 差分 > runtime/e2e marker > 纯文本 marker。 |
+| **失败三分回路 + 双熔断 + 人工升级** | 失败按 `Retry / Repair / Regenerate` 三分(§10 判定矩阵机械化):Retry 同阶段重试不动 bundle;Repair 新窗口修复、bundle revision 升级、显式声明 `downstream_revalidate_scope`;越设计边界才 Regenerate 回 P1/P2/P3。`MAX_RETRY_ROUNDS`/`MAX_REPAIR_ROUNDS`(默认各 2)超预算即 `human_escalation_needed`。外部 API/网络瞬时不可用(`external_api_unstable`)与"真红 CI"区分,前者直接升级人工而非空转 repair。 |
 
 > 已用真证据验证:篡改任一 evidence 字节 → sha256 失配被拒;伪造 manifest verdict
 > 为 PASS → HMAC 失配被拒。详见文末「验证记录」。
@@ -106,16 +114,18 @@ AI-AR-workflow/
     │   ├── SKILL.md
     │   ├── phase1-develop.md … phase6-upload-review.md
     │   └── scripts/                        ★ 系统承重核心
-    │       ├── advance.py                  ← 唯一状态写入器(init/advance/consent/reset/verify-all/status)
+    │       ├── advance.py                  ← 唯一状态写入器(init/advance/consent/reset/verify-all/status/next)
     │       ├── gate_env_init.py            ← P0 环境+真机预检
-    │       ├── gate_design.py              ← P1a 设计固化(校验 AR_design.md 6 章节并签名)
+    │       ├── gate_design.py              ← P1a 设计固化(校验 AR_design.md 6 章节 + ar-contract 契约并签名;派生 bundle)
     │       ├── gate_develop.py             ← P1b git/untracked diff + C++ 强门控(依赖签名 AR_design)
+    │       ├── prepare_test_bundle.py      ← P3 test-develop 薄层(test_intent_matrix + bundle revision;非真相门)
     │       ├── gate_build.py               ← P2 编译(捕获 build.sh stdout 判横幅)
     │       ├── gate_test_ut.py             ← P3 ohos_unittest(developer_test)
-    │       ├── gate_device_func.py         ← P4 真机功能(nonce+uptime+hilog)
+    │       ├── gate_device_func.py         ← P4 真机功能(nonce+uptime+hilog+抗伪造三层证明)
     │       ├── gate_integration.py         ← P5 功能与质量验证(MST + 覆盖率/性能/功耗/稳定性报告)
     │       ├── gate_upload_ci.py           ← P6 上库(oh-gc PR + CI 绿,SHA 绑定)
-    │       └── lib/{gatelib.py, device.sh} ← 签名账本(HMAC 链+指纹分层) + hdc-over-WSL helper
+    │       ├── schemas/                    ← 控制层各包 draft-07 schema(stage_packet/handoff/repair/…/bundle_definition)
+    │       └── lib/{gatelib.py, device.sh} ← 签名账本(HMAC 链+指纹分层)+ 控制层 helper + hdc-over-WSL helper
     ├── ohos-ar-dev-init/               ← 一次性环境配置
     │
     └── (被各阶段调用的现有能力技能,随包携带)
@@ -204,7 +214,7 @@ P0 会把探测到的序列号回填进 `pipeline.json` 与 `evidence/phase0/env
 | **P1 设计+开发** | (P1a)写 AR_design.md → (P1b)ohos-dev-sa-codegen / -napi-module / code-ruleset-style-check / tdd-enforcer | `gate_design.py`(P1a)+ `gate_develop.py`(P1b) | P1a:AR_design.md 6 必含章节齐全并签名;P1b:已有签名 AR_design **且** 相对 `base_commit` 有 tracked/untracked 改动 **且** C/C++ 格式 guard + 强规则检查通过 | `AR_design.md`、`design_check.txt`(P1a);`diff.patch`、`changed_files.txt`、`style_report.txt`、`strict_cpp_report.txt`(P1b) |
 | **P2 编译** | ohos-dev-build-execution-diagnosis / ohos-build-flash | `gate_build.py` | build.sh exit 0 **且** 输出含 `=====build…successful=====` 且无 error 横幅 | `build_stdout.log`、`build_banner.txt`(失败再加 `error_distill.txt`) |
 | **P3 测试** | ohos-test-ut-generation / tdd-enforcer | `gate_test_ut.py` | 编出测试二进制 + developer_test 本次**新建**报告 + `tests>0 && failures==0 && errors==0` | `summary_report.xml`、`result_*.xml`、`start_sh_stdout.txt`、`report_dir.txt` |
-| **P4 真机** | ohos-build-flash / ohos-dev-hdc-command-usage | `gate_device_func.py` | 部署命令全 exit 0 + 主机/设备产物 sha256 一致 + hilog 含**本次 nonce**、功能 marker、运行时 marker、端到端 marker + uptime 单调;**证据 PASS 后停下,人工核对真机真实结果并 `consent --phase 4` 才推进** | `hilog_capture.txt`、`device_cmds.txt`、`run_meta.txt`、`artifact_runtime_proof.txt` |
+| **P4 真机** | ohos-build-flash / ohos-dev-hdc-command-usage | `gate_device_func.py` | 部署命令全 exit 0 + 主机/设备产物 sha256 一致 + hilog 含**本次 nonce**、功能 marker、运行时 marker、端到端 marker + uptime 单调 + **抗伪造三层**(进程溯源 `process` / `artifact_loaded` 加载证明 / `side_effect` shell 断言 / `absent_before_trigger` 负对照差分);**证据 PASS 后停下,人工核对真机真实结果并 `consent --phase 4` 才推进** | `hilog_capture.txt`、`device_cmds.txt`、`run_meta.txt`、`artifact_runtime_proof.txt`、`device_case_results.json` |
 | **P5 质量验证** | ohos-build-flash / developer_test(MST) / ohos-test-ut-generation / coverage / performance / power / stability / code-ruleset-style-check / ohos-dev-security-code-review | `gate_integration.py`(或 `gate_device_func.py --phase 5` + `gate_integration.py`) | 功能 summary `failures==0 && errors==0 && tests>0` **且 覆盖率、性能、功耗、稳定性报告全部生成并签名,代码 review 问题数为 0;证据 PASS 后需人工确认并 `consent --phase 5` 才进入 P6** | `summary_report.xml`、`coverage_report.*`、`performance_report.*`、`power_report.*`、`stability_report.*`、`code_review_report.txt`、`report_dir.txt` |
 | **P6 上库** | ohos-ci-gitcode-cli-usage / -gitcode-pr-review / -security-code-review / -openharmony-ci-analysis | `gate_upload_ci.py` | P1–P5 全过 + 上库前落全部代码 diff 供人工确认 + **A 本地自检零问题报告(commit 前硬控)** + `git commit -s`(DCO 签名)+ push + **`--issue` 绑定的 PR**(CI 门禁只对绑定 Issue 的 PR 触发)+ **B PR review 零问题报告(建 PR 后、CI 前硬控)** + consent --phase 6 + CI `overall∈{success,passed}` + PR head SHA==push SHA | `full_diff.patch`、`full_diff.stat.txt`、`local_code_review_report.*`、`pr.json`、`pr_create.txt`、`pr_review_report.*`、`ci_status.json` |
 
@@ -222,9 +232,20 @@ $REPO/specs/pipeline/{YYYYMMDD}-{slug}/
 ├── ar.md                # 输入的已澄清 AR 原文
 ├── AR_design.md         # P1a 固化的设计文档(6 必含章节;签名副本在 evidence/phase1/)
 ├── todo.md              # 人读镜像(由 refresh_todo.py 依 AR_design 重写,与 TodoWrite 双轨)
+├── next_action.json     # 导航层:当前逻辑阶段/物理 phase/substate/下一步(controls/ 内有镜像)
 ├── evidence/            # ← 机器证据(签名,gitignore),真相所在
 │   ├── manifest.jsonl   #   追加式 HMAC 链式签名证据账本
 │   └── phase0/ … phase6/  # 各阶段真实产物(含 phase1/AR_design.md 签名副本)
+├── controls/            # ← 弱模型控制/导航层(best-effort,非放行依据,可缺失容忍)
+│   ├── next_action.json #   与 root 同源镜像
+│   ├── packets/         #   各逻辑阶段 Stage Packet(entry/exit/allowed/forbidden;由共享 def 表产)
+│   ├── memory_cards/    #   Phase Memory Card(current.json:5~10 条最重要事实,新窗口先读)
+│   ├── handoffs/        #   Handoff Packet(阶段→下一阶段事实摘要)
+│   ├── repairs/         #   Repair Packet(bundle_revision_from/suspect_*/downstream_revalidate_scope/repair_disallowed_if/regen_trigger_if)
+│   ├── receipts/        #   Completion Receipt(semantic_done/truth_layer_pass_known/next_phase_ready/human_gate_pending)
+│   ├── indexes/         #   artifact/evidence/report 三类索引(避免在目录里迷路)
+│   ├── design_orchestrate/ … upload_review/  # 各逻辑阶段专属产物(bundle 定义 / 子状态快照等)
+│   └── test_develop/    #   P3 薄层:signed_test_scope / test_intent_matrix(prepare_test_bundle.py 产)
 └── reports/             # ← 人读 HTML 审计报告(脱敏,可归档),与 evidence/ 分离
     ├── device_functional.html          # 真机功能完整报告
     ├── quality.html                    # 覆盖率/性能/功耗/稳定性
@@ -233,7 +254,9 @@ $REPO/specs/pipeline/{YYYYMMDD}-{slug}/
     └── index.html
 ```
 `pipeline.json` 字段(含 `functional_fingerprint` / `locked_all_paths`)说明见
-`skills/ohos-ar-dev-workflow/references/pipeline-schema.md`。
+`skills/ohos-ar-dev-workflow/references/pipeline-schema.md`;`controls/` 各包的字段结构见
+`skills/ohos-ar-dev-phases/scripts/schemas/*.schema.json`(draft-07)与
+`products/20260723-weak-model-optimization/stage_packet_templates.md`。
 
 > 归档到 `products/` 时用 `archive_product.py --include-reports`:只落脱敏摘要
 > (`ar.md` + `manifest_summary.md`)与脱敏 HTML;原始 `evidence/` 留本地(gitignore)。
@@ -263,9 +286,13 @@ advance.py  init        --git-dir <组件> --build-target <t> --part <p> [--base
             consent     --phase N --token <s>   # 记录 P4 真机/P5 质量报告/P6 上库 的人工确认
             reset       --reason <s>            # 改了代码 → 回 P1 重走(打回 P1-P6)
             verify-all                          # 重校验已通过阶段(篡改/代码漂移则回退)
-            status
+            status                              # [--json] 含 logical_phase_id/physical_phase/substate/action_kind/control_refs
+            next                                # 导航层:输出当前逻辑阶段+下一步(retry/repair/regenerate/escalate),并写 next_action.json
 gate_env_init.py    --pipeline-dir P
-gate_design.py      --pipeline-dir P [--design F]   # P1a:校验 AR_design.md 6 章节并签名(默认 <PDIR>/AR_design.md)
+gate_design.py      --pipeline-dir P [--design F] [--allow-contract-v1]
+                    # P1a:校验 AR_design.md 6 章节 + ar-contract 契约(v2:拒 TODO/TBD 占位 + 需求/文件/测试/设备引用闭环)并签名;派生初始 bundle 定义
+prepare_test_bundle.py --pipeline-dir P
+                    # P3 test-develop 薄层(非真相门):冻结快照对齐 + test_intent_matrix + bundle revision 升级 + P3 handoff;被 advance.py 在 phase1 收尾前硬要求
 gate_develop.py     --pipeline-dir P [--no-style] [--allow-missing-design]
                     # 强制依赖签名 AR_design;--no-style 仅无 C/C++ 改动时兼容;--allow-missing-design 仅 legacy run 留痕放行
 gate_build.py       --pipeline-dir P [--target T]
@@ -273,6 +300,7 @@ gate_test_ut.py     --pipeline-dir P --test-target T --suite S [--part P]
 gate_device_func.py --pipeline-dir P [--deploy-script f] --scenario-script f --marker M
                     --host-artifact F --device-artifact P
                     --runtime-marker M --e2e-marker M [--phase 4|5]
+                    # 契约里的 device_cases[].process / artifact_loaded / side_effect / absent_before_trigger 驱动抗伪造三层证明
 gate_integration.py --pipeline-dir P [--testtype MST] --suites S1 [S2 …] [--part P]
                     --coverage-report F --performance-report F --power-report F --stability-report F
                     [--code-review-report F]
@@ -309,3 +337,58 @@ gate_upload_ci.py   --pipeline-dir P --repo-slug owner/repo --branch B [--base m
 「thin 入口 + thick 阶段 skill + 确定性门控脚本」三层,借鉴 AID/MigBot 工作流,但
 **阶段边界是脚本门控,不是用户点头**(证据自动放行;仅 **P4 真机结果**、**P5 质量/review** 与 **P6 上库** 在证据 PASS 后停下等人工签名 consent 确认)。
 架构图见 `skills/ohos-ar-dev-workflow/README.md`。
+
+---
+
+## 12. 逻辑阶段控制层(面向弱模型,导航非放行)
+
+为让中等能力模型(如 `minimax2.7`/`glm5.1`)也能稳定跑完整条链,在**不改动真相层**的前提下,
+叠加了一层 machine-readable 的执行控制/窗口隔离/失败恢复协议。设计与置信度评估见
+`products/20260723-weak-model-optimization/`。
+
+### 12.1 逻辑阶段 P0–P8 到物理 phase 的投影
+
+`advance.py` 把物理 phase 投影成 9 个逻辑阶段,物理 phase1 承载三个逻辑子阶段:
+
+| 逻辑阶段 | 逻辑名 | 物理 phase | 主门控 |
+|---|---|---:|---|
+| P0 | bootstrap | 0 | gate_env_init.py |
+| P1 | design-orchestrate | 1 | gate_design.py |
+| P2 | feature-develop | 1 | gate_develop.py |
+| P3 | test-develop | 1 | prepare_test_bundle.py(薄层) |
+| P4 | build-verify | 2 | gate_build.py |
+| P5 | test-author | 3 | gate_test_ut.py |
+| P6 | device-functional | 4 | gate_device_func.py |
+| P7 | quality-verify | 5 | gate_integration.py(含 4 子状态) |
+| P8 | upload-review | 6 | gate_upload_ci.py(含 7 子状态) |
+
+`advance.py status --json` / `next` 输出 `logical_phase_id / logical_phase_name /
+physical_phase / logical_substate / action_kind / control_refs`。P7 子状态:
+`integration-run / quality-check / review-check / human-review-await`;P8 子状态:
+`precheck / local-review / consent-await / push-pr / pr-review / ci-green / finalize`。
+
+### 12.2 控制包家族(全部落 `controls/`,best-effort,非放行依据)
+
+- **Stage Packet** — 每逻辑阶段唯一执行入口(目标/准入/退出/allowed/forbidden/failure classes),由 `gatelib.STAGE_PACKET_DEFS` 共享 def 表统一产出,9 个 gate 运行时自发。
+- **Handoff Packet** — 阶段→下一阶段的事实摘要。
+- **Repair Packet** — 修复窗口最小连续上下文(`bundle_revision_from`/`suspect_files`/`suspect_tests`/`downstream_revalidate_scope`/`repair_disallowed_if`/`regen_trigger_if`)。
+- **Phase Memory Card** — 5~10 条最重要事实(bundle_revision/current_blocker/forbidden_actions/next_expected_action_class/last_failure_class/human_escalation_needed),新窗口按 `window_startup_order()` 先读。
+- **Completion Receipt** — 极短退出凭据(semantic_done/truth_layer_pass_known/next_phase_ready/human_gate_pending)。
+- **Development Bundle** — P1 冻结的开发交付单元(需求/changed_files/构建/测试/设备覆盖义务),draft-07 schema。
+- **artifact / evidence / report 三类索引** — 让弱模型不在目录里迷路。
+
+每个包都有 draft-07 schema(`scripts/schemas/*.json`)与 `validate_control_payload()`
+**建议性**校验(`validated_by ∈ {jsonschema, structural, none}`);校验失败**只告警不挡写入、
+绝不改变门控 verdict**。
+
+### 12.3 失败三分回路
+
+`Retry`(同阶段重试,不动 bundle)/ `Repair`(新窗口修复,bundle revision 升级,声明
+`downstream_revalidate_scope ∈ {P4_only, P4_P5, P4_to_P6, P4_to_P7, all_downstream}`)/
+`Regenerate`(越设计边界 → 回 P1/P2/P3 重派生)。§10 判定矩阵机械化为
+`REGENERATE_FAILURE_CLASSES` 与 regen 信号;双熔断 `MAX_RETRY_ROUNDS`/`MAX_REPAIR_ROUNDS`
+(默认各 2)超预算即人工升级;`external_api_unstable`(外部 API/网络瞬时不可用)与真红 CI
+区分后直接升级人工。
+
+> **不变式**:控制层的一切写入都是 best-effort,`pipeline.json` 唯一写入者仍是 `advance.py`,
+> 放行唯一真相源仍是 `evidence/manifest.jsonl` 签名记录。控制 JSON 永远不是第二真相源。

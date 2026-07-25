@@ -1,0 +1,123 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ohos-ar/control/stage_packet",
+  "title": "Stage Packet",
+  "description": "Control-layer stage definition (§3 template) for one logical phase: what the window may read, change, and produce, plus entry/exit protocol, failure classes, retry/repair budgets and human-escalation conditions. NOT a truth source: the gate still re-reads the signed contract + manifest, never this packet, for its verdict. Extra fields are allowed.",
+  "type": "object",
+  "required": [
+    "control_protocol_version",
+    "phase_identity",
+    "authority_boundary"
+  ],
+  "properties": {
+    "control_protocol_version": {"type": "integer", "minimum": 1},
+    "phase_identity": {
+      "type": "object",
+      "required": ["phase_id", "phase_name"],
+      "properties": {
+        "phase_id": {"type": ["string", "integer"]},
+        "phase_name": {"type": "string"},
+        "physical_phase": {"type": ["integer", "null"]},
+        "bundle_id": {"type": ["string", "null"]},
+        "bundle_revision": {"type": ["string", "integer", "null"]},
+        "upstream_dependencies": {"type": "array"},
+        "packet_version": {"type": ["integer", "string"]},
+        "derived_from": {"type": "array"}
+      }
+    },
+    "authority_boundary": {
+      "type": "object",
+      "required": ["not_truth_source"],
+      "properties": {
+        "packet_role": {"type": "string"},
+        "not_truth_source": {"type": "boolean"},
+        "truth_sources": {"type": "array"}
+      }
+    },
+    "phase_goal": {
+      "type": "object",
+      "properties": {
+        "summary": {"type": ["string", "null"]},
+        "completion_definition": {"type": "array"},
+        "non_goals": {"type": "array"}
+      }
+    },
+    "entry_protocol": {
+      "type": "object",
+      "properties": {
+        "entry_preconditions": {"type": "array"},
+        "entry_blockers": {"type": "array"},
+        "entry_checklist": {"type": "array"}
+      }
+    },
+    "required_inputs": {
+      "type": "object",
+      "properties": {
+        "files": {"type": "array"},
+        "fields": {"type": "array"},
+        "prior_evidence": {"type": "array"}
+      }
+    },
+    "indexes": {
+      "type": "object",
+      "properties": {
+        "artifact_index": {"type": "object"},
+        "evidence_index": {"type": "object"},
+        "report_index": {"type": "object"}
+      }
+    },
+    "allowed_context": {"type": "object"},
+    "forbidden_context": {"type": "array"},
+    "allowed_actions": {"type": "array"},
+    "forbidden_actions": {"type": "array"},
+    "change_scope": {
+      "type": "object",
+      "properties": {
+        "allowed_paths": {"type": "array"},
+        "forbidden_paths": {"type": "array"},
+        "expansion_policy": {"type": "object"}
+      }
+    },
+    "expected_outputs": {
+      "type": "object",
+      "properties": {
+        "code_changes": {"type": "array"},
+        "artifacts": {"type": "array"},
+        "summaries": {"type": "array"},
+        "must_emit_handoff": {"type": "boolean"}
+      }
+    },
+    "success_semantics": {
+      "type": "object",
+      "properties": {
+        "semantic_success": {"type": "array"},
+        "advance_note": {"type": "string"}
+      }
+    },
+    "exit_protocol": {
+      "type": "object",
+      "properties": {
+        "exit_conditions": {"type": "array"},
+        "exit_artifacts_required": {"type": "array"},
+        "exit_state_transition": {"type": "object"}
+      }
+    },
+    "failure_classes": {
+      "type": "object",
+      "properties": {
+        "retry": {"type": "array"},
+        "repair": {"type": "array"},
+        "regenerate": {"type": "array"}
+      }
+    },
+    "retry_policy": {
+      "type": "object",
+      "properties": {
+        "max_retry_rounds": {"type": "integer", "minimum": 0},
+        "max_repair_rounds": {"type": "integer", "minimum": 0}
+      }
+    },
+    "human_escalation_conditions": {"type": "array"},
+    "handoff_requirements": {"type": "object"}
+  }
+}

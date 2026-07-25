@@ -50,19 +50,50 @@ class TestRefreshTodo(unittest.TestCase):
         # must not crash and must still list phases
         self.assertIn("P0 环境初始化", out)
 
+    def test_build_todo_data_carries_control_fields(self):
+        state = self._state(1)
+        state.update({
+            "logical_phase_id": "design_orchestrate",
+            "logical_phase_name": "design-orchestrate",
+            "action_kind": "run_gate",
+            "control_protocol_version": 1,
+            "control_refs": {
+                "next_action": "controls/next_action.json",
+                "memory_card": "controls/memory_cards/current.json",
+            },
+        })
+        data = rt.build_todo_data(state, DESIGN, [])
+        self.assertEqual(data["logical_phase_id"], "design_orchestrate")
+        self.assertEqual(data["logical_phase_name"], "design-orchestrate")
+        self.assertEqual(data["action_kind"], "run_gate")
+        self.assertEqual(data["control_protocol_version"], 1)
+        self.assertEqual(data["control_refs"]["next_action"], "controls/next_action.json")
+
     def test_main_writes_file(self):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         pdir = tmp.name
         os.makedirs(os.path.join(pdir, "evidence", "phase1"))
+        state = self._state(1)
+        state.update({
+            "logical_phase_id": "design_orchestrate",
+            "logical_phase_name": "design-orchestrate",
+            "action_kind": "run_gate",
+            "control_protocol_version": 1,
+            "control_refs": {"next_action": "controls/next_action.json"},
+        })
         with open(os.path.join(pdir, "pipeline.json"), "w") as f:
-            json.dump(self._state(1), f)
+            json.dump(state, f)
         with open(os.path.join(pdir, "evidence/phase1/AR_design.md"), "w") as f:
             f.write(DESIGN)
         sys.argv = ["refresh_todo.py", "--pipeline-dir", pdir]
         rt.main()
         with open(os.path.join(pdir, "todo.md")) as f:
             self.assertIn("实现 `src/manager.cpp`", f.read())
+        with open(os.path.join(pdir, "todo.json")) as f:
+            data = json.load(f)
+        self.assertEqual(data["logical_phase_id"], "design_orchestrate")
+        self.assertEqual(data["control_refs"]["next_action"], "controls/next_action.json")
 
 
 if __name__ == "__main__":

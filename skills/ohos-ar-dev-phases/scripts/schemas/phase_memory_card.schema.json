@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ohos-ar/control/phase_memory_card",
+  "title": "Phase Memory Card",
+  "description": "Control-layer minimal working-memory card for the current phase, so a weak model can re-orient after context loss. NOT a truth source: it summarizes derived navigation state only; the signed manifest + advance.py remain authoritative.",
+  "type": "object",
+  "required": [
+    "control_protocol_version",
+    "phase",
+    "phase_name"
+  ],
+  "properties": {
+    "control_protocol_version": {"type": "integer", "minimum": 1},
+    "phase": {"type": "integer", "minimum": 0},
+    "phase_name": {"type": "string"},
+    "bundle_revision": {"type": ["integer", "string", "null"]},
+    "current_blocker": {"type": ["string", "null"]},
+    "forbidden_actions": {"type": "array", "items": {"type": "string"}},
+    "next_expected_action_class": {"type": ["string", "null"]},
+    "last_failure_class": {"type": ["string", "null"]},
+    "human_escalation_needed": {"type": "boolean"},
+    "primary_entry_doc": {"type": ["string", "null"]},
+    "primary_failure_doc": {"type": ["string", "null"]},
+    "primary_handoff_doc": {"type": ["string", "null"]}
+  }
+}

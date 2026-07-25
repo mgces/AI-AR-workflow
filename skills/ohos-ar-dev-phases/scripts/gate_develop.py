@@ -36,6 +36,72 @@ FORMAT_EXTENSIONS = (".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx")
 HEADER_EXTENSIONS = (".h", ".hh", ".hpp", ".hxx")
 DISALLOWED_CPP_EXTENSIONS = (".cc", ".cxx", ".hh", ".hpp", ".hxx")
 
+# P2 feature-develop -> P3 test-develop handoff (control layer, non-authoritative).
+P2_HANDOFF_PARTS = ("feature_develop", "handoff_p2_to_p3.json")
+P2_RECEIPT_PARTS = ("feature_develop", "completion_receipt_p2.json")
+FREEZE_PARTS = ("test_develop", "development_freeze_snapshot.json")
+
+
+def _write_handoff_to_test_develop(pdir, contract, *, changed, present_declared,
+                                   freeze_snapshot):
+    """On a develop PASS, emit the P2->P3 completion receipt and handoff packet so
+    the P3 test-develop window can start from a machine-readable entry doc.
+    Navigation only: prepare_test_bundle.py and the gates still re-read the
+    signed contract + freeze snapshot, never this packet, to decide anything."""
+    bundle_revision = (freeze_snapshot or {}).get("bundle_revision") or ""
+    bundle_id = (freeze_snapshot or {}).get("bundle_id") or "phase1-bundle"
+    receipt = {
+        "phase": 1,
+        "logical_phase_id": "feature_develop",
+        "logical_phase_name": "feature-develop",
+        "phase_scope": "phase1-subflow",
+        "bundle_id": bundle_id,
+        "bundle_revision": bundle_revision,
+        "semantic_done": True,
+        "truth_layer_pass_known": False,
+        "next_phase_ready": True,
+        "human_gate_pending": False,
+        "next_phase": 1,
+        "next_logical_phase_id": "test_develop",
+        "changed_files": list(changed or []),
+        "declared_changed_files_present": list(present_declared or []),
+    }
+    handoff = {
+        "from_phase": 1,
+        "from_phase_name": "develop",
+        "logical_phase_id": "feature_develop",
+        "logical_phase_name": "feature-develop",
+        "to_phase": 1,
+        "to_phase_name": "develop",
+        "to_logical_phase_id": "test_develop",
+        "phase_scope": "phase1-subflow",
+        "bundle_id": bundle_id,
+        "bundle_revision": bundle_revision,
+        "objective_completed": True,
+        "truth_layer_pass_known": False,
+        "produced_artifacts": [
+            gl.control_artifact_ref(FREEZE_PARTS, "development_freeze_snapshot"),
+            gl.control_artifact_ref(P2_RECEIPT_PARTS, "completion_receipt"),
+        ],
+        "facts_for_next_phase": [
+            "feature code passed style + strict + changed_files coverage",
+            "development freeze snapshot was recorded",
+            "test authoring must not modify functional code",
+        ],
+        "risks": [],
+        "open_questions": [],
+        "recommended_next_action": {
+            "phase": 1,
+            "action": "test-develop",
+            "next_gate": "prepare_test_bundle.py",
+        },
+        "requires_repair": False,
+        "test_cases": contract.get("test_cases") or [],
+        "changed_files": list(changed or []),
+    }
+    gl.write_completion_receipt(pdir, P2_RECEIPT_PARTS, receipt)
+    gl.write_handoff_packet(pdir, P2_HANDOFF_PARTS, handoff)
+
 
 def git(repo, *a):
     return subprocess.run(["git", "-C", repo, *a], text=True, capture_output=True)
@@ -118,6 +184,72 @@ def include_inside_extern_c(text):
         if inside and stripped.startswith("}"):
             inside = False
     return False
+
+
+def _norm(p):
+    return (p or "").replace("\\", "/").strip().lstrip("./")
+
+
+def changed_files_coverage(declared, touched):
+    """For each contract-declared changed_file, decide whether an actually-touched
+    file matches it. Matching is exact on the normalized path, then falls back to
+    a path-suffix match so a repo-root-relative declaration
+    ('foundation/a/src/mgr.cpp') still matches a git path that is nested or
+    prefixed differently. Returns (present:list, missing:list)."""
+    tset = [_norm(t) for t in touched]
+    present, missing = [], []
+    for d in declared:
+        nd = _norm(d)
+        hit = any(t == nd or t.endswith("/" + nd) or nd.endswith("/" + t)
+                  for t in tset)
+        (present if hit else missing).append(d)
+    return present, missing
+
+
+def _test_target_from_gtest(gtest_id):
+    if not gtest_id:
+        return None
+    suite = str(gtest_id).split(".", 1)[0].strip()
+    suite = suite.split("/", 1)[0].strip()
+    return suite or None
+
+
+def _collect_test_intent_matrix(contract, changed_files):
+    matrix = []
+    for tc in contract.get("test_cases", []) or []:
+        gtest_id = tc.get("gtest")
+        matrix.append({
+            "test_case_id": tc.get("id") or gtest_id,
+            "covers_requirement_ids": tc.get("for_requirements") or [],
+            "expected_target": _test_target_from_gtest(gtest_id),
+            "expected_suite": _test_target_from_gtest(gtest_id),
+            "expected_gtest": gtest_id,
+            "depends_on_files": changed_files,
+            "negative_cases": [],
+            "device_followup_needed": bool(tc.get("for_requirements") and any(
+                set(tc.get("for_requirements") or []) &
+                set(dc.get("for_requirements") or [])
+                for dc in (contract.get("device_cases") or [])
+            )),
+        })
+    return matrix
+
+
+def write_development_freeze_snapshot(pdir, state, contract, changed_files, tracked_changed,
+                                      untracked, present_declared, cov_missing):
+    return {
+        "phase": 1,
+        "logical_phase_id": "feature_develop",
+        "base_commit": state.get("base_commit"),
+        "functional_fingerprint": gl.functional_fingerprint(state),
+        "locked_all_paths": gl._changed_paths(state),
+        "changed_files": changed_files,
+        "tracked_changed": tracked_changed,
+        "untracked": untracked,
+        "declared_changed_files": contract.get("changed_files") or [],
+        "declared_changed_files_present": present_declared,
+        "declared_changed_files_missing": cov_missing,
+    }
 
 
 def main():
@@ -254,10 +386,86 @@ def main():
         f.write("  - pointer lifetime, integer overflow proof, function size and parameter-count judgment\n")
     arts.append(strict_rel)
 
-    reason = "base/head %s->%s, %d file(s) changed (%d untracked), style_ok=%s strict_ok=%s%s" % (
-        base[:12], head[:12], len(changed), len(untracked), style_ok, strict_ok, design_bypass)
+    # CHANGED-FILES COVERAGE (P1 hard gate for v2 contracts): every changed_files[]
+    # declared in the signed ar-contract must correspond to an actually-touched
+    # file. Recovered from the SIGNED design only (never the working-tree design).
+    # v1 / absent contract -> nothing to enforce; tampered -> FAIL.
+    cov_ok, cov_missing, cov_note = True, [], ""
+    present_declared = []
+    c_ok, contract, c_detail = gl.load_signed_contract(pdir)
+    if c_ok and contract.get("changed_files"):
+        declared = contract["changed_files"]
+        present_declared, cov_missing = changed_files_coverage(declared, changed)
+        cov_ok = not cov_missing
+        cov_rel = "evidence/phase1/changed_files_coverage.txt"
+        with open(os.path.join(pdir, cov_rel), "w", encoding="utf-8") as f:
+            f.write("declared (from signed ar-contract): %d\ntouched: %d\n\n"
+                    % (len(declared), len(changed)))
+            for d in declared:
+                f.write("[%s] %s\n" % ("OK " if d not in cov_missing else "MISS", d))
+        arts.append(cov_rel)
+        cov_note = " changed_files_cov=%d/%d" % (len(present_declared), len(declared))
+    elif c_ok:
+        cov_note = " (no changed_files in contract)"
+    elif c_detail and "tampered" in c_detail:
+        gl.write_failure_report(pdir, 1, "gate_develop.py",
+                                "ar-contract unrecoverable: %s" % c_detail,
+                                resume_hint="重跑 gate_design.py 重新签名设计")
+        gl.emit(pdir, 1, "gate_develop.py", verdict="FAIL",
+                reason="ar-contract unrecoverable: %s" % c_detail, artifacts_rel=arts)
+        sys.exit("PHASE 1 FAIL: ar-contract unrecoverable: %s" % c_detail)
+
+    reason = ("base/head %s->%s, %d file(s) changed (%d untracked), "
+              "style_ok=%s strict_ok=%s%s%s") % (
+        base[:12], head[:12], len(changed), len(untracked), style_ok, strict_ok,
+        cov_note, design_bypass)
+    if cov_missing:
+        reason += "; MISSING changed_files: %s" % ", ".join(cov_missing)
     print(reason)
-    verdict = "PASS" if (style_ok and strict_ok) else "FAIL"
+    verdict = "PASS" if (style_ok and strict_ok and cov_ok) else "FAIL"
+
+    problems = []
+    if not style_ok:
+        problems.append("style check failed")
+    if not strict_ok:
+        problems += (strict_issues + dependency_issues)
+    if cov_missing:
+        problems += ["declared changed_file not touched: %s" % m for m in cov_missing]
+    if verdict == "PASS":
+        freeze_snapshot = write_development_freeze_snapshot(
+            pdir, state, contract or {}, changed, tracked_changed, untracked,
+            present_declared, cov_missing)
+        gl.write_control_json(
+            pdir, "test_develop", "development_freeze_snapshot.json",
+            payload=freeze_snapshot, best_effort=True)
+        _write_handoff_to_test_develop(
+            pdir, contract or {}, changed=changed,
+            present_declared=present_declared,
+            freeze_snapshot=freeze_snapshot)
+        gl.write_phase_summary(pdir, 1, "gate_develop.py", "PASS", reason,
+                               checks=["diff", "style", "strict", "changed_files"])
+        gl.clear_failure_report(pdir, 1)
+    else:
+        gl.write_phase_summary(pdir, 1, "gate_develop.py", "FAIL", reason,
+                               checks=problems)
+        gl.write_failure_report(pdir, 1, "gate_develop.py", reason,
+                                problems=problems,
+                                resume_hint="修复后重跑 gate_develop.py")
+
+    gl.write_gate_phase_memory_card(
+        pdir, 1, "develop", verdict=verdict,
+        current_blocker=None if verdict == "PASS" else reason,
+        forbidden_actions=[
+            "edit_design_as_if_it_were_unsigned_working_copy",
+            "skip_signed_design_consent_check",
+        ],
+        next_expected_action_class=(
+            "prepare_test_bundle" if verdict == "PASS" else "repair_or_regenerate"),
+        last_failure_class=None if verdict == "PASS" else "develop_gate_failed",
+        primary_entry_doc=gl.controls_relpath("next_action.json"),
+        primary_handoff_doc=gl.controls_relpath(*P2_HANDOFF_PARTS))
+    gl.write_gate_stage_packet_from_def(
+        pdir, "feature_develop", "feature-develop", physical_phase=1)
     gl.emit(pdir, 1, "gate_develop.py", verdict=verdict, reason=reason,
             artifacts_rel=arts)
     if verdict == "PASS":

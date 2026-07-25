@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ohos-ar/control/repair_packet",
+  "title": "Repair Packet",
+  "description": "Control-layer (navigation) repair/retry routing packet emitted by a gate on FAIL. NOT a truth source: pass authority stays with the signed manifest + advance.py. Consumed by weak models to decide retry vs repair vs regenerate.",
+  "type": "object",
+  "required": [
+    "control_protocol_version",
+    "phase",
+    "phase_name",
+    "active",
+    "failure_class",
+    "recommended_next_action"
+  ],
+  "properties": {
+    "control_protocol_version": {"type": "integer", "minimum": 1},
+    "phase": {"type": "integer", "minimum": 0},
+    "phase_name": {"type": "string"},
+    "bundle_id": {"type": ["string", "null"]},
+    "bundle_revision_from": {"type": ["integer", "string", "null"]},
+    "active": {"type": "boolean"},
+    "failure_class": {"type": ["string", "null"]},
+    "suspect_files": {"type": "array", "items": {"type": "string"}},
+    "suspect_tests": {"type": "array", "items": {"type": "string"}},
+    "allowed_fix_scope": {"type": "array", "items": {"type": "string"}},
+    "must_rerun": {"type": "array", "items": {"type": "string"}},
+    "downstream_revalidate_scope": {"type": ["string", "null"]},
+    "repair_disallowed_if": {"type": "array", "items": {"type": "string"}},
+    "regen_trigger_if": {"type": "array", "items": {"type": "string"}},
+    "last_failure_reason": {"type": ["string", "null"]},
+    "problems": {"type": "array"},
+    "max_retry_rounds": {"type": "integer", "minimum": 0},
+    "max_repair_rounds": {"type": "integer", "minimum": 0},
+    "retry_rounds": {"type": "integer", "minimum": 0},
+    "repair_rounds": {"type": "integer", "minimum": 0},
+    "human_escalation_needed": {"type": "boolean"},
+    "escalation_note": {"type": ["string", "null"]},
+    "recommended_next_action": {"type": ["string", "null"]}
+  },
+  "if": {"properties": {"active": {"const": true}}, "required": ["active"]},
+  "then": {
+    "properties": {
+      "failure_class": {"type": "string"},
+      "recommended_next_action": {"type": "string"}
+    }
+  }
+}
