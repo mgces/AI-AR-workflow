@@ -16,3 +16,7 @@ products/**/pipeline-state/
 products/**/*_manifest.jsonl
 products/**/*.log
 skills/code-ruleset-style-check/s/
+
+# knowledge-base BM25 lexical search index — derived output, rebuild locally
+# with openharmony-knowledge-base/tools/search/build_index.py (never commit).
+openharmony-knowledge-base/generated/search-index/

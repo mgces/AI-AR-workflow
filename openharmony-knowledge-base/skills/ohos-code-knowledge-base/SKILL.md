@@ -173,3 +173,29 @@ Report:
 - source-domain entry, machine summary, and verification links;
 - dynamic target, invalid config, product-context, and runtime-confirmation limitations;
 - source repository status confirmation.
+
+## Lexical Search Index (BM25) — build & incremental refresh
+
+The knowledge base ships a **dependency-free BM25 lexical search** under `tools/search/`, used by
+the P1 design phase (`ohos-ar-dev-phases/phase1-design.md`) to pull relevant subsystem/feature
+docs as advisory design input. It is pure-Python (standard library only), fully offline, and locks
+to no model. The index is derived output under `generated/search-index/` and is **gitignored** —
+rebuild locally after cloning.
+
+- **Build / full rebuild**:
+  ```bash
+  python3 openharmony-knowledge-base/tools/search/build_index.py          # incremental (full if absent)
+  python3 openharmony-knowledge-base/tools/search/build_index.py --rebuild # discard cache, full rebuild
+  ```
+- **Incremental refresh (核心)**: after adding or editing ANY `*.md` (e.g. a new
+  `subsystems/.../features/<feature>/README.md`), just rerun `build_index.py` — it compares each
+  file's sha against the manifest and only re-chunks changed/new files, reusing the rest. This is
+  how the search corpus keeps growing without a full re-index.
+- **Query**:
+  ```bash
+  python3 openharmony-knowledge-base/tools/search/kb_search.py \
+      --query-file <text> --k 8 --out <out.md>
+  ```
+  `kb_search.py` also auto-detects a stale/missing index and triggers an incremental rebuild before
+  searching, so callers never see an out-of-date or absent index. All failures degrade to a
+  placeholder + exit 0 (advisory, never blocks P1).

@@ -3,6 +3,20 @@
 设计固化是独立物理阶段。不先固化设计,不允许写代码。
 本阶段闭合门为 `gate_design.py`(签名 `emit(phase 1)`),另需**人工 consent**放行到 P2。
 
+## 设计前:检索知识库(可选输入,不进门控)
+
+写 `AR_design.md` 前,先对 `openharmony-knowledge-base` 做一次 BM25 词法检索,把与本次 AR
+最相关的子系统/feature 事实文档摘要拉出来,作为设计参考(如已有同类 feature 专题、目标组件
+所在子系统的能力域/进程/构建目标):
+```bash
+python3 openharmony-knowledge-base/tools/search/kb_search.py \
+    --query-file "$PDIR/ar.md" --k 8 --out "$PDIR/design_refs.md" || true
+```
+产出 `$PDIR/design_refs.md`(命中文档路径 + 章节 + 预览 + BM25 分数),写 6 章节时可据此复用
+既有事实、对齐命名与目录。**这是 advisory 输入,不是门控输入**:`gate_design.py` 不校验
+`design_refs.md`,检索失败(索引缺失会自动增量重建;仍失败则写占位)也不阻挡 P1。首次运行会
+自动建索引,无需手动预建;知识库更新后重跑 `kb_search.py` 会自动增量刷新索引。
+
 ## 设计固化(gate_design.py)
 
 先写 `$PDIR/AR_design.md`,**必须包含 6 个章节**(标题存在 + body 非空,门控确定性校验):

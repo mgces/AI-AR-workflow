@@ -81,7 +81,7 @@ python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-workflow/scripts/refresh_todo.py" --pipel
 
 | 阶段 | 做事(调用技能) | 门控脚本 | 结束证据 |
 |---|---|---|---|
-| P1 设计 | 写 AR_design.md(6 章节 + ```ar-contract``` 契约块)→ **人工 consent**(P2 门内校验) | `gate_design.py`(`emit 1`) | 签名 AR_design(6 章节 + 契约)+ **P1 设计 consent**(绑签名条目) |
+| P1 设计 | **(设计前)** `kb_search.py` 检索知识库生成 `design_refs.md`(advisory,失败不阻断)→ 写 AR_design.md(6 章节 + ```ar-contract``` 契约块)→ **人工 consent**(P2 门内校验) | `gate_design.py`(`emit 1`) | 签名 AR_design(6 章节 + 契约)+ **P1 设计 consent**(绑签名条目) |
 | P2 开发 | sa-codegen / napi-module / code-ruleset-style-check / tdd-enforcer / code-skeletons | `gate_develop.py`(`emit 2`,强制依赖签名 AR_design + P1 consent) | git/untracked diff 非空 + C++ 强门控报告;**闭合时锁定功能指纹** |
 | P3 测试开发 | test-ut-generation / tdd-enforcer / code-ruleset-style-check(**只增独立测试**,编译前写完测试代码) | `gate_test_develop.py`(`emit 3`,对新增测试源强制 `--rules-only` 规则门控) | 契约每个 `test_cases[].gtest` 的 suite 出现在新测试文件中(**编写**覆盖)+ 测试源签名快照 + 测试代码规则检测报告 |
 | P4 编译 | build-execution-diagnosis / build-flash | `gate_build.py`(`emit 4`) | build.log 成功横幅 + 契约 `build_artifacts` 全部编译出 |
@@ -114,17 +114,11 @@ python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-workflow/scripts/archive_product.py" \
 `reports/*.html` 脱敏后一并归档。原始可验签证据留在本地 run-state 目录(已 gitignore)。`.gitignore`
 已封禁 `products/**/evidence/`、`pipeline.json`、`*_manifest.jsonl`、`*.log` 等原始产物。
 
-**沉淀 feature 专题回填知识库(可选)**:加 `--sink-feature <subsystem>/<component>/<feature>`
-(路径由你显式给出,你知道 git_dir/build_target),归档器会把本次 run 的**事实骨架**
-(目标组件/文件职责/构建测试目标/各阶段 verdict/真机标记)脱敏后写到
-`openharmony-knowledge-base/subsystems/<subsystem>/features/<feature>/README.md`;深度分析
-(数据模型/状态机)留 `TODO(人工补充)` 占位。目标已存在则写 `README.generated.md` 不覆盖,人工
-核对/补深度后 merge。这样"跑一次流水线"就为知识库多沉淀一个 feature 专题。
-```bash
-python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-workflow/scripts/archive_product.py" \
-    --pipeline-dir "$PDIR" --product-dir products/<run> --include-reports \
-    --sink-feature hiviewdfx/hiview/<feature>
-```
+**沉淀 feature 专题回填知识库(按需,非每次)**:回填**不是**流水线常规完成步骤——只在你确实
+想把某次 run 沉淀成知识库 feature 专题时,**手动**跑归档器加 `--sink-feature <subsystem>/<component>/<feature>`
+(把事实骨架脱敏写到 `openharmony-knowledge-base/subsystems/.../features/<feature>/README.md`,
+目标已存在则写 `README.generated.md` 不覆盖)。详见 `../ohos-ar-dev-phases/phase8-upload-review.md`。
+知识库更新后,P1 的 `kb_search.py` 会在下次检索时自动增量刷新索引。
 
 参考:`references/gate-contract.md`(门控契约)、`references/evidence-protocol.md`(防伪协议)、
 `references/pipeline-schema.md`(状态结构)。
