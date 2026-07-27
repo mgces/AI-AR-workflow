@@ -42,6 +42,7 @@ STAGE_PACKET_INDEX_PARTS = ("design_orchestrate", "stage_packet_index.json")
 INITIAL_BUNDLE_PARTS = ("design_orchestrate", "initial_bundle_definition.json")
 DESIGN_RECEIPT_PARTS = ("design_orchestrate", "completion_receipt_p1.json")
 DESIGN_HANDOFF_PARTS = ("design_orchestrate", "handoff_to_feature_develop.json")
+REPAIR_PACKET_PARTS = ("repairs", "current.json")
 
 
 def _derive_design_controls(pdir, contract, *, contract_rel, design_rel):
@@ -75,7 +76,7 @@ def _derive_design_controls(pdir, contract, *, contract_rel, design_rel):
     }
     design_index = {
         "phase": 1,
-        "phase_name": "develop",
+        "phase_name": "design-orchestrate",
         "kind": "report_index",
         "primary_entry_doc": design_rel,
         "primary_handoff_doc": gl.controls_relpath(*DESIGN_HANDOFF_PARTS),
@@ -87,7 +88,7 @@ def _derive_design_controls(pdir, contract, *, contract_rel, design_rel):
     }
     stage_packet_index = {
         "phase": 1,
-        "phase_name": "develop",
+        "phase_name": "design-orchestrate",
         "kind": "stage_packet_index",
         "entries": [
             {
@@ -148,11 +149,11 @@ def _derive_design_controls(pdir, contract, *, contract_rel, design_rel):
     }
     handoff = {
         "from_phase": 1,
-        "from_phase_name": "develop",
+        "from_phase_name": "design-orchestrate",
         "logical_phase_id": "design_orchestrate",
         "logical_phase_name": "design-orchestrate",
         "to_phase": 1,
-        "to_phase_name": "develop",
+        "to_phase_name": "feature-develop",
         "to_logical_phase_id": "feature_develop",
         "phase_scope": "phase1-subflow",
         "bundle_id": "phase1-bundle",
@@ -348,19 +349,36 @@ def main():
         _fail(reason, problems=problems,
               hint="补齐缺失章节/占位/契约闭环后重跑 gate_design.py")
 
-    gl.write_gate_phase_memory_card(
-        pdir, 1, "develop", verdict=verdict,
-        current_blocker=None if verdict == "PASS" else reason,
-        forbidden_actions=[
-            "write_feature_code_before_design_consent",
-            "skip_ar_contract_generation",
-        ],
-        next_expected_action_class=(
-            "human_consent_then_feature_develop" if verdict == "PASS" else "repair_design"),
-        last_failure_class=None if verdict == "PASS" else "design_gate_failed",
-        human_escalation_needed=False,
-        primary_entry_doc=gl.controls_relpath(*DESIGN_INDEX_PARTS),
-        primary_handoff_doc=gl.controls_relpath(*DESIGN_HANDOFF_PARTS))
+    if verdict == "PASS":
+        gl.write_gate_phase_memory_card(
+            pdir, 1, "design-orchestrate", verdict="PASS",
+            current_blocker=None,
+            forbidden_actions=[
+                "write_feature_code_before_design_consent",
+                "skip_ar_contract_generation",
+            ],
+            next_expected_action_class="consent",
+            last_failure_class=None,
+            human_escalation_needed=False,
+            primary_entry_doc=gl.controls_relpath(*DESIGN_INDEX_PARTS),
+            primary_handoff_doc=gl.controls_relpath(*DESIGN_HANDOFF_PARTS))
+    else:
+        # S2: P1 now emits a repair packet (+ FAIL card) via finalize_control so
+        # a weak model gets a concrete repair route for a malformed design/
+        # contract, and the circuit breaker (S1) can escalate a design that
+        # keeps failing. Suspect = the design doc itself. Navigation only.
+        gl.finalize_control(
+            pdir, phase=1, phase_name="design-orchestrate", verdict="FAIL",
+            repair_packet_parts=REPAIR_PACKET_PARTS,
+            failure_class="design_gate_failed",
+            suspect_files=["evidence/phase1/AR_design.md"],
+            problems=problems, last_failure_reason=reason,
+            must_rerun=["gate_design.py"],
+            next_action_class="repair",
+            forbidden_actions=[
+                "write_feature_code_before_design_consent",
+                "skip_ar_contract_generation",
+            ])
     gl.write_gate_stage_packet_from_def(
         pdir, "design_orchestrate", "design-orchestrate", physical_phase=1)
     gl.emit(pdir, 1, "gate_design.py", verdict=verdict, reason=reason,

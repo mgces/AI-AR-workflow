@@ -153,6 +153,11 @@ def _write_repair_packet(pdir, *, phase, failure_class, problems, last_failure_r
         "active": True,
         "failure_class": failure_class,
         "suspect_files": bundle.get("suspect_files") or [],
+        # S3: P6 failures are device-behavior (marker missing, process mismatch,
+        # artifact not loaded, side-effect assertion) — there is no source
+        # file:line locus to extract from a hilog window, so suspect_locations is
+        # deliberately empty here; suspect_files/suspect_tests carry the fallback.
+        "suspect_locations": [],
         "suspect_tests": bundle.get("suspect_tests") or [],
         "allowed_fix_scope": [
             "declared test files",
@@ -176,6 +181,7 @@ def _write_repair_packet(pdir, *, phase, failure_class, problems, last_failure_r
         "problems": problems or [],
         "max_retry_rounds": MAX_RETRY_ROUNDS,
         "max_repair_rounds": MAX_REPAIR_ROUNDS,
+        "fallback_key": rounds["fallback_key"],
         "retry_rounds": rounds["retry_rounds"],
         "repair_rounds": rounds["repair_rounds"],
         "human_escalation_needed": rounds["human_escalation_needed"],
@@ -988,7 +994,9 @@ def main():
         bundle_revision=_test_bundle_context(pdir, phase).get("bundle_revision"),
         current_blocker=None if verdict == "PASS" else reason,
         next_expected_action_class=(
-            "advance_phase" if verdict == "PASS" else "repair_or_regenerate"),
+            "advance" if verdict == "PASS"
+            else gl.action_class_for("repair_or_regenerate",
+                                     failure_class=failure_class)),
         last_failure_class=None if verdict == "PASS" else failure_class,
         primary_entry_doc=gl.controls_relpath("next_action.json"),
         primary_handoff_doc=gl.controls_relpath(*_dev_meta["handoff_parts"]))
@@ -1047,7 +1055,8 @@ def _fail(pdir, phase, nonce, cmds_log, reason, failure_class="device_functional
         pdir, phase, _phase_control_meta(phase)["phase_name"], verdict="FAIL",
         bundle_revision=_test_bundle_context(pdir, phase).get("bundle_revision"),
         current_blocker=reason,
-        next_expected_action_class="repair_or_regenerate",
+        next_expected_action_class=gl.action_class_for(
+            "repair_or_regenerate", failure_class=failure_class),
         last_failure_class=failure_class,
         primary_entry_doc=gl.controls_relpath("next_action.json"))
     _fail_meta = _phase_control_meta(phase)

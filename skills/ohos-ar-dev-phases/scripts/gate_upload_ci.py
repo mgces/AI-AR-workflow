@@ -32,6 +32,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 import gatelib as gl  # noqa: E402
@@ -110,6 +111,7 @@ P8_FAILURE_TO_SUBSTATE = {
     "push_failed": "push_pr",
     "pr_create_failed": "push_pr",
     "pr_metadata_incomplete": "push_pr",
+    "commit_message_invalid": "push_pr",
     "pr_review_blocked": "pr_review",
     "ci_not_green": "ci_green",
     "pr_head_sha_mismatch": "ci_green",
@@ -181,6 +183,27 @@ def _is_transport_failure(proc):
     return not (proc.stdout or "").strip() and not (proc.stderr or "").strip()
 
 
+def _query_ci_with_backoff(cmd, env, *, max_attempts, base_delay):
+    """E1: query the CI/PR status endpoint with bounded exponential backoff on
+    TRANSPORT failures only. A transport outage (endpoint down/throttled) is
+    transient, so a short retry often clears it and avoids a needless human
+    escalation. Retry is strictly gated on `_is_transport_failure`: the moment
+    the remote returns ANY verdict (exit 0, or non-zero WITH output — including a
+    red CI), we stop and return that result unchanged. This preserves the
+    fail-closed invariant — a real red CI is never retried into a green — while
+    only smoothing genuine flakiness. Returns (last_proc, attempts_made)."""
+    attempts = max(1, max_attempts)
+    proc = None
+    for attempt in range(1, attempts + 1):
+        proc = subprocess.run(cmd, text=True, capture_output=True, env=env)
+        if not _is_transport_failure(proc) or attempt == attempts:
+            return proc, attempt
+        delay = base_delay * (2 ** (attempt - 1))
+        print("CI status query transport failure (attempt %d/%d); retrying in "
+              "%.1fs" % (attempt, attempts, delay), file=sys.stderr)
+        time.sleep(delay)
+    return proc, attempts
+
 
 def _test_bundle_context(pdir):
     scope = gl.read_control_json(pdir, *TEST_DEVELOP_SCOPE_PARTS) or {}
@@ -234,6 +257,7 @@ def _repair_round_metadata(pdir, *, phase, bundle_revision_from, recommended_nex
     return {
         "repair_rounds": base["repair_rounds"],
         "retry_rounds": base["retry_rounds"],
+        "fallback_key": base["fallback_key"],
         "human_escalation_needed": (
             base["human_escalation_needed"] or external_conflict or external_instability),
         "escalation_note": "; ".join(reasons) if reasons else "",
@@ -326,7 +350,7 @@ def _write_substate_snapshot(pdir, *, substate_id, mode=None, ci_ok=None,
 
 
 def _write_repair_packet(pdir, *, failure_class, problems, last_failure_reason,
-                         regen_signals=None):
+                         regen_signals=None, suspect_locations=None):
     bundle = _test_bundle_context(pdir)
     repair_disallowed = gl.regen_signal_present(**(regen_signals or {}))
     base_action = gl.classify_repair_vs_regenerate(
@@ -346,6 +370,7 @@ def _write_repair_packet(pdir, *, failure_class, problems, last_failure_reason,
         "active": True,
         "failure_class": failure_class,
         "suspect_files": bundle.get("suspect_files") or [],
+        "suspect_locations": gl.normalize_suspect_locations(suspect_locations),
         "suspect_tests": bundle.get("suspect_tests") or [],
         "allowed_fix_scope": [
             "declared test files",
@@ -369,6 +394,7 @@ def _write_repair_packet(pdir, *, failure_class, problems, last_failure_reason,
         "problems": problems or [],
         "max_retry_rounds": MAX_RETRY_ROUNDS,
         "max_repair_rounds": MAX_REPAIR_ROUNDS,
+        "fallback_key": rounds["fallback_key"],
         "retry_rounds": rounds["retry_rounds"],
         "repair_rounds": rounds["repair_rounds"],
         "human_escalation_needed": rounds["human_escalation_needed"],
@@ -499,6 +525,14 @@ def commit_pending_changes(gdir, title, pdir):
     if add.returncode != 0:
         _fail(pdir, "git add failed: %s" % add.stderr.strip()[:500])
     msg = title or "P6 upload"
+    # B6: fail closed on a placeholder/empty subject BEFORE the irreversible
+    # push. The old `title or "P6 upload"` fallback would have silently shipped
+    # the literal placeholder — exactly the message a weak model leaves behind.
+    ok, detail = validate_commit_message(msg)
+    if not ok:
+        _fail(pdir, "commit message rejected (%s). Provide a descriptive "
+                    "--title, then re-run P8." % detail,
+              failure_class="commit_message_invalid")
     commit = run('git -C %s commit -s -m %s' % (gdir, json.dumps(msg)))
     if commit.returncode != 0:
         _fail(pdir, "git commit -s failed: %s" % commit.stderr.strip()[:500])
@@ -509,6 +543,39 @@ def normalize_issue(raw):
     """Accept '12345' or '#12345', always return '#12345'."""
     s = str(raw).strip().lstrip("#").strip()
     return "#%s" % s if s else ""
+
+
+# B6: subjects a weak model tends to leave when it never wrote a real message.
+# Rejecting only this closed set keeps the check false-positive-free — any real
+# descriptive subject passes untouched. Semantic quality (does the message
+# describe the change?) still rests with PR/human review; this only stops the
+# degenerate placeholder from reaching the irreversible push.
+_PLACEHOLDER_SUBJECTS = {
+    "p6 upload", "upload", "update", "updates", "fix", "fixes", "wip", "test",
+    "tests", "tmp", "temp", "commit", "changes", "change", "misc", "todo", ".",
+}
+
+
+def validate_commit_message(msg):
+    """B6: return (ok, detail) for a commit SUBJECT (first line). Fail-closed,
+    conservative contract mirrored locally so a weak model learns its message is
+    unacceptable BEFORE the irreversible push, not after. Rejects an empty,
+    too-short, over-long, or placeholder subject — nothing else. This is NOT a
+    truth-layer gate: the signed PASS still rests on review + CI + SHA binding;
+    a bad subject fails the phase the same way a missing review report does."""
+    text = (msg or "").strip()
+    if not text:
+        return False, "empty commit message"
+    subject = text.splitlines()[0].strip()
+    if not subject:
+        return False, "empty commit subject line"
+    if len(subject) < 8:
+        return False, "commit subject too short (<8 chars): %r" % subject
+    if len(subject) > 100:
+        return False, "commit subject too long (>100 chars): %r" % subject[:60]
+    if subject.lower() in _PLACEHOLDER_SUBJECTS:
+        return False, "commit subject is a placeholder, not a description: %r" % subject
+    return True, "ok"
 
 
 def build_pr_body(gdir, issue_ref, pdir=None):
@@ -571,7 +638,7 @@ def _record_result(pdir, verdict, reason, arts, *, cmd=None, repo_slug=None,
                    pushed_sha=None, pr_head=None, sha_ok=None,
                    local_review_detail=None, pr_review_detail=None,
                    mode=None, failure_class=None, problems=None,
-                   resume_hint=None, emit_manifest=True):
+                   resume_hint=None, emit_manifest=True, suspect_locations=None):
     checks = []
     if mode:
         checks.append("mode=%s" % mode)
@@ -639,6 +706,7 @@ def _record_result(pdir, verdict, reason, arts, *, cmd=None, repo_slug=None,
             failure_class=failure_class or "upload_ci_failed",
             problems=problems or [],
             last_failure_reason=reason,
+            suspect_locations=suspect_locations,
         )
         substate_id = _p8_substate_for(
             verdict, mode=mode, failure_class=failure_class,
@@ -676,7 +744,9 @@ def _record_result(pdir, verdict, reason, arts, *, cmd=None, repo_slug=None,
         bundle_revision=_test_bundle_context(pdir).get("bundle_revision"),
         current_blocker=None if verdict == "PASS" else reason,
         next_expected_action_class=(
-            "finalize" if verdict == "PASS" else "repair_or_regenerate"),
+            "complete" if verdict == "PASS"
+            else gl.action_class_for("repair_or_regenerate",
+                                     failure_class=failure_class)),
         last_failure_class=None if verdict == "PASS" else failure_class,
         primary_entry_doc=gl.controls_relpath("next_action.json"),
         primary_handoff_doc=gl.controls_relpath(*COMPLETION_RECEIPT_PARTS))
@@ -717,6 +787,14 @@ def main():
                          "Same zero-issue contract. Non-zero blocks the CI check and the PASS.")
     ap.add_argument("--allow-push", action="store_true",
                     help="actually push + create PR (irreversible). Without it: DRY run.")
+    ap.add_argument("--ci-query-attempts", type=int, default=3,
+                    help="E1: max attempts for the CI/PR status query. Retry fires "
+                         "ONLY on transport failure (endpoint down/throttled); any "
+                         "parsed verdict — including a red CI — stops retrying. "
+                         "Default 3.")
+    ap.add_argument("--ci-query-backoff", type=float, default=2.0,
+                    help="E1: base seconds for exponential backoff between CI-query "
+                         "transport retries (attempt N waits base*2^(N-1)). Default 2.0.")
     args = ap.parse_args()
     pdir = gl.pipeline_dir(args.pipeline_dir)
     state = gl.load_state(pdir)
@@ -880,15 +958,24 @@ def main():
     # CI status for this PR
     env = dict(os.environ)
     env.setdefault("XDG_CACHE_HOME", "/tmp/openharmony-ci-cache")
-    ci = subprocess.run([sys.executable, CI_SCRIPT, "--pr", str(pr_number),
-                         "--repo", args.repo_slug, "--json"],
-                        text=True, capture_output=True, env=env)
+    ci, ci_attempts = _query_ci_with_backoff(
+        [sys.executable, CI_SCRIPT, "--pr", str(pr_number),
+         "--repo", args.repo_slug, "--json"],
+        env, max_attempts=args.ci_query_attempts,
+        base_delay=args.ci_query_backoff)
     ci_rel = "evidence/phase6/ci_status.json"
     with open(os.path.join(pdir, ci_rel), "w") as f:
         f.write(ci.stdout or ci.stderr)
     overall = ""
+    ci_defect_locations = []
     try:
-        overall = json.loads(ci.stdout).get("overall_result", "")
+        ci_json = json.loads(ci.stdout)
+        overall = ci_json.get("overall_result", "")
+        # H6: backfill WHICH codecheck defect class the remote flagged into the
+        # repair packet. Advisory only — the PASS/FAIL verdict below stays bound
+        # to overall_result + head-SHA; this just makes a red CI legible instead
+        # of an opaque overall_result the weak model first sees post-push.
+        ci_defect_locations = gl.suspect_locations_from_ci_codecheck(ci_json)
     except Exception:
         pass
 
@@ -898,6 +985,10 @@ def main():
     # transport-layer failure do we treat it as external instability, which
     # routes to human escalation (§7.5) instead of an endless local repair loop.
     ci_transport_failure = (not overall) and _is_transport_failure(ci)
+    if ci_transport_failure and ci_attempts > 1:
+        print("CI status query still failing at transport layer after %d "
+              "attempts; classifying as external_api_unstable" % ci_attempts,
+              file=sys.stderr)
 
     arts.append(ci_rel)
 
@@ -949,6 +1040,7 @@ def main():
         local_review_detail=local_detail, pr_review_detail=pr_review_detail,
         mode="push" if args.allow_push else "verify_pr",
         failure_class=failure_class, problems=problems,
+        suspect_locations=ci_defect_locations,
         resume_hint="修复 PR review / CI / SHA 绑定问题后重跑 gate_upload_ci.py")
     if verdict == "PASS":
         print("PHASE 8 PASS — advance.py advance --phase 8")
@@ -976,7 +1068,8 @@ def _fail(pdir, reason, extra_arts=None, failure_class="upload_ci_failed",
         pdir, 8, "upload-review", verdict="FAIL",
         bundle_revision=_test_bundle_context(pdir).get("bundle_revision"),
         current_blocker=reason,
-        next_expected_action_class="repair_or_regenerate",
+        next_expected_action_class=gl.action_class_for(
+            "repair_or_regenerate", failure_class=failure_class),
         last_failure_class=failure_class,
         primary_entry_doc=gl.controls_relpath("next_action.json"))
     gl.emit(pdir, 8, "gate_upload_ci.py", verdict="FAIL", reason=reason,

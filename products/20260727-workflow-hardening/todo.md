@@ -1,8 +1,30 @@
 # Workflow Hardening — Todo / Backlog (2026-07-27)
 
-Legend: `[x]` done this batch · `[ ]` open · `(P)` priority.
+Legend: `[x]` done · `[~]` partial · `[ ]` open · `(P)` priority.
+Confidence: **~88%** (up from 82% baseline). Full status in `status_review.md`; task-level
+breakdown in `remaining_tasks.md`.
 
-## This batch — DONE
+## Batch 2 (control-layer + file-hygiene hardening) — DONE
+- [x] **(A1/S1)** Circuit breaker uses revision-agnostic `fallback_key` — empty
+      `bundle_revision` runs now accumulate counts and escalate (no-op bug fixed).
+- [x] **(A2/A4/A7/S2)** Unified `finalize_control()`; P1/P2/P3 FAIL now emit repair
+      packet + breaker; `advance.py` has cur==1/2/3 escalation/awaiting_repair branches.
+- [x] **(A3/S3)** Structured `suspect_locations[]` (file/line/rule) backfilled from
+      build lines / gtest xml / ci-codecheck / ruleset findings-json.
+- [x] **(A5/S4)** `next_expected_action_class` collapsed to single enum + schema +
+      fail-closed validator; compound tokens removed.
+- [x] **(S5)** `ControlContractError` — control layer fails closed on its own bug.
+- [x] **(B1/H1)** License-header guard; **(B2/H5)** GN reference; **(B3/H2)** byte
+      hygiene; **(B5/H4)** all-text banned-term scan — new `file_hygiene_guard.py`,
+      blocking + fail-closed in P2 (`gate_develop`) and P3 (`gate_test_develop`).
+- [x] **(B4/H3)** JSON validity check (`json.load`) on changed `.json`.
+- [x] **(H6)** P8 backfills CI codecheck defect class into `suspect_locations`.
+- [x] Batch-2 regression tests: `test_s3_s4_control_hardening.py`,
+      `test_init_hiview_default.py`, `test_file_hygiene_guard.py`, +
+      `test_control_protocol.py` breaker/fallback-key cases.
+- [x] Full unittest suite green: 298 + 19 + 10 = 327.
+
+## Batch 1 (ruleset + init + PR fetch) — DONE
 - [x] **(P1)** Check ALL gate-level rules, not just severe/fatal: export all 304
       workbook sensitive words to `data/ruleset_c.json`
       (`scripts/build_ruleset_data.py`) + keep 15 high-precision regex `G.*` rules;
@@ -24,37 +46,42 @@ Legend: `[x]` done this batch · `[ ]` open · `(P)` priority.
       `ohos-dev-gitcode-pr-review/SKILL.md`.
 - [x] Full unittest suite green across affected skills.
 
-## Open — rule coverage
-- [x] All 304 workbook sensitive words (敏感词) checked (see this batch).
-- [ ] **(P)** Encode more of the 213 `G.*` coding rules that are *safely*
-      line-detectable (currently 15). Do NOT encode semantic/metric rows
-      (圈复杂度, 大函数, switch 分支数, FossScan, ...) as regex — they false-positive;
-      leave them to human/skill review. Track encoded vs. review-only IDs in a
-      coverage table.
-- [ ] Add a regression fixture per encoded rule (one positive + one clean) under
-      `code-ruleset-style-check/tests/` so future edits can't silently weaken a
-      blocker — and to guard `data/ruleset_c.json` loading.
-- [ ] Re-run `scripts/build_ruleset_data.py` whenever the workbook is updated
-      (data file is committed; guard has no openpyxl dependency at gate time).
+## Weak-model autonomy (from the confidence audit) — mostly DONE in batch 2
+- [x] Author-time coverage for leak classes CI catches but P2/P3 didn't (license
+      headers, BUILD.gn hygiene, byte hygiene, all-text banned terms) — see H1-H5.
+- [x] Tighten repair/regenerate circuit-breaker so a weak model gets an unambiguous
+      next-action on repeated failure (fallback_key breaker + finalize_control).
+- [x] Collapse `next_expected_action_class` to a single enforced enum (S4).
+- [x] **(A6/A8)** `inspect` fallback now forced to a concrete `next_command`
+      like `blocked` (`advance.py:865-895`); `gate_design.py:79,91` relabelled
+      `phase_name="design-orchestrate"`. Verified in tree.
+- [x] **(E1)** Built-in backoff/retry for `external_api_unstable` — bounded
+      exponential backoff on TRANSPORT failures only (`_query_ci_with_backoff`,
+      `gate_upload_ci.py:186`; flags `--ci-query-attempts`/`--ci-query-backoff`).
+      Retry loop now has a direct test (`test_query_ci_with_backoff_*`).
+- [ ] **(E2, hard ceiling)** On-device (P6) observation stability + CI semantic
+      checks + model patch quality — not fully coverable in-repo.
 
-## Open — weak-model autonomy (from the ~82% confidence audit)
-- [ ] Author-time coverage for the remaining leak classes CI still catches that
-      P2/P3 don't (e.g. BUILD.gn hygiene, license headers) — move each detectable
-      one earlier.
-- [ ] Tighten repair/regenerate circuit-breaker messaging so a weak model gets an
-      unambiguous next-action when a gate fails repeatedly (avoid loops).
-- [ ] Expand phase memory cards' `next_expected_action_class` vocabulary where a
-      weak model has been observed to pick the wrong recovery path.
+## gitcode / PR review — DONE
+- [x] Flag truncation when a PR exceeds the 100-comment fetch (`comment_truncation`
+      + "re-run with higher limit" hint) so it doesn't read as "all comments".
+- [x] Surface resolved vs. unresolved comment state (`comment_resolved()` +
+      resolved/unresolved/unknown tally) so review skips closed threads.
 
-## Open — gitcode / PR review
-- [ ] Paginate/aggregate when a PR genuinely exceeds the 100-comment fetch
-      (currently newest 100 only — log when truncated so it doesn't read as
-      "all comments").
-- [ ] Surface unresolved vs. resolved comment state if the CLI exposes it, so the
-      review loop doesn't re-address closed threads.
+## Verification / CI — DONE
+- [x] Integration test: a banned API in a P3 test file FAILS the gate
+      (`test_p3_disabled_api_in_test_fails_rules_only`).
+- [x] Test: bare `init` initializes hiview defaults + prints the NOTE
+      (`test_init_hiview_default.py`).
+- [x] **(B4)** `bundle.json` required-key check (`_bundle_required_keys_finding`,
+      `file_hygiene_guard.py:204`) — validates component keys, not just JSON validity.
 
-## Open — verification / CI
-- [ ] Add an integration test asserting a banned API in a P3 test file FAILS the
-      gate (locks in Fix 1's P3 wiring against regression).
-- [ ] Add a test asserting a bare `init` (no component flags) initializes with the
-      hiview defaults and prints the NOTE.
+## Remaining backlog (by ROI)
+- [x] **(B6)** commit-message format check — `validate_commit_message()`
+  (`gate_upload_ci.py`) rejects empty/too-short/over-long/placeholder subjects
+  fail-closed BEFORE the push (`failure_class="commit_message_invalid"`),
+  wired into `commit_pending_changes`; tested.
+- [x] **(E1)** Built-in backoff/retry for `external_api_unstable` — done
+  (see Batch 2 above); retry loop now directly tested.
+1. `[ ]` **(E2, hard ceiling)** On-device (P6) observation stability + CI semantic
+   checks + model patch quality — not fully coverable in-repo.

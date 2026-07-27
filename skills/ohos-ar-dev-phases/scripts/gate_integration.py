@@ -132,7 +132,7 @@ def _repair_round_metadata(pdir, *, phase, bundle_revision_from, recommended_nex
 
 
 def _write_repair_packet(pdir, *, failure_class, problems, last_failure_reason,
-                         regen_signals=None):
+                         regen_signals=None, suspect_locations=None):
     bundle = _test_bundle_context(pdir)
     repair_disallowed = gl.regen_signal_present(**(regen_signals or {}))
     base_action = gl.classify_repair_vs_regenerate(
@@ -152,6 +152,7 @@ def _write_repair_packet(pdir, *, failure_class, problems, last_failure_reason,
         "active": True,
         "failure_class": failure_class,
         "suspect_files": bundle.get("suspect_files") or [],
+        "suspect_locations": gl.normalize_suspect_locations(suspect_locations),
         "suspect_tests": bundle.get("suspect_tests") or [],
         "allowed_fix_scope": [
             "declared test files",
@@ -175,6 +176,7 @@ def _write_repair_packet(pdir, *, failure_class, problems, last_failure_reason,
         "problems": problems or [],
         "max_retry_rounds": MAX_RETRY_ROUNDS,
         "max_repair_rounds": MAX_REPAIR_ROUNDS,
+        "fallback_key": rounds["fallback_key"],
         "retry_rounds": rounds["retry_rounds"],
         "repair_rounds": rounds["repair_rounds"],
         "human_escalation_needed": rounds["human_escalation_needed"],
@@ -397,7 +399,8 @@ def _record_result(pdir, verdict, reason, arts, *, cmd, exit_code, testtype,
                    part, suites, tests=None, failures=None, errors=None,
                    fresh_dir=None, quality_ok=None, quality_detail=None,
                    review_ok=None, review_detail=None, downgraded=False,
-                   failure_class=None, problems=None, resume_hint=None):
+                   failure_class=None, problems=None, resume_hint=None,
+                   suspect_locations=None):
     human_escalation_needed = False
     escalation_reason = ""
     checks = [
@@ -474,6 +477,7 @@ def _record_result(pdir, verdict, reason, arts, *, cmd, exit_code, testtype,
             failure_class=failure_class,
             problems=problems or [],
             last_failure_reason=reason,
+            suspect_locations=suspect_locations,
         )
         human_escalation_needed = bool(repair.get("human_escalation_needed"))
         escalation_reason = repair.get("escalation_note") or ""
@@ -519,7 +523,9 @@ def _record_result(pdir, verdict, reason, arts, *, cmd, exit_code, testtype,
         bundle_revision=_test_bundle_context(pdir).get("bundle_revision"),
         current_blocker=None if verdict == "PASS" else reason,
         next_expected_action_class=(
-            "advance_phase" if verdict == "PASS" else "repair_or_regenerate"),
+            "advance" if verdict == "PASS"
+            else gl.action_class_for("repair_or_regenerate",
+                                     failure_class=failure_class)),
         last_failure_class=None if verdict == "PASS" else failure_class,
         human_escalation_needed=human_escalation_needed,
         primary_entry_doc=gl.controls_relpath("next_action.json"),
@@ -729,6 +735,12 @@ def main():
             failure_class = "quality_reports_missing_or_invalid"
         else:
             failure_class = "code_review_blocked"
+    # S3: when the integration functional suite itself failed, backfill the
+    # failing gtest cases as structured suspect_locations (same parser P5 uses).
+    # Quality/review failures carry no per-line locus, so leave it empty there —
+    # suspect_files stays the fallback. Advisory only; verdict is unchanged.
+    suspect_locations = (
+        gl.suspect_locations_from_gtest_xml([summary]) if not test_ok else [])
     _record_result(
         pdir, verdict, reason, arts,
         cmd=run_cmd, exit_code=proc.returncode,
@@ -739,6 +751,7 @@ def main():
         review_ok=review_ok, review_detail=review_detail,
         downgraded=downgraded, failure_class=failure_class,
         problems=problems,
+        suspect_locations=suspect_locations,
         resume_hint="修复集成/质量/review 问题后重跑 gate_integration.py")
     if verdict == "PASS":
         print("PHASE 7 PASS — inspect quality/review artifacts, then record consent:")

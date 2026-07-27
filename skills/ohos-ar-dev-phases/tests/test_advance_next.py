@@ -276,12 +276,21 @@ class TestAdvanceNext(unittest.TestCase):
             best_effort=False)
         data = json.loads(self._run("next", "--json").stdout)
         self.assertEqual(data["current_substate"], "blocked")
-        self.assertIsNone(data["next_gate"])
+        # S4 item (f): a blocked (escalation) state must NOT be a navigation
+        # dead-end. It carries a concrete next command (here the packet's own
+        # must_rerun target) so a weak model hands a human an exact instruction
+        # instead of a null next_gate.
+        self.assertEqual(data["next_gate"], "gate_build.py")
         self.assertEqual(data["required_inputs"], ["human_review"])
         self.assertIn("max_repair_rounds", data["resume_hint"])
         memory_card = gl.read_control_json(self.pdir, "memory_cards", "current.json")
         self.assertTrue(memory_card["human_escalation_needed"])
         self.assertEqual(memory_card["last_failure_class"], "build_verdict_failed")
+        # the card's action class is the normalized escalation member of the enum
+        self.assertEqual(
+            memory_card["next_expected_action_class"], "human_escalation")
+        self.assertIn(
+            memory_card["next_expected_action_class"], gl.ACTION_CLASSES)
 
     def test_derive_next_action_helper(self):
         state = gl.load_state(self.pdir)

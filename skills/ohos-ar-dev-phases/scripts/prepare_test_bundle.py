@@ -350,7 +350,9 @@ def run_prepare(pdir, state):
             "skip_development_freeze_snapshot",
             "treat_test_bundle_as_signed_truth",
         ],
-        next_expected_action_class="advance_phase",
+        # A bundle is prepared, not a phase closed: the next concrete action is
+        # to run the test-develop gate over it (run_gate), not to advance.
+        next_expected_action_class="run_gate",
         primary_entry_doc=gl.controls_relpath(*SCOPE_PARTS),
         primary_failure_doc=gl.controls_relpath(*FAILURE_PARTS),
         primary_handoff_doc=gl.controls_relpath(*HANDOFF_PARTS))

@@ -23,6 +23,7 @@ import os
 import re
 import sys
 import time
+import xml.etree.ElementTree as ET
 
 PHASES = [
     (0, "bootstrap"),
@@ -405,9 +406,33 @@ def _structural_type_ok(value, spec_type):
     return False
 
 
+def _spec_ok(value, spec):
+    """Return (ok, problem_or_None) for a single property spec, honoring the
+    subset of JSON Schema the control payloads actually use: `type`, `enum`, and
+    a flat `oneOf` of such specs. Keeps the no-jsonschema fallback from silently
+    accepting out-of-enum values (S4) — a degraded validator must still fail
+    closed on the enum contract, not wave it through."""
+    if not isinstance(spec, dict):
+        return True, None
+    if "oneOf" in spec:
+        for branch in spec["oneOf"]:
+            ok, _ = _spec_ok(value, branch)
+            if ok:
+                return True, None
+        return False, "does not match any oneOf branch"
+    if "type" in spec and not _structural_type_ok(value, spec["type"]):
+        return False, "has wrong type"
+    if "enum" in spec and value not in spec["enum"]:
+        return False, "value %r not in enum" % (value,)
+    return True, None
+
+
 def _structural_validate(payload, schema):
-    """Minimal required-keys + top-level type check used when jsonschema is
-    absent. Returns a list of human-readable problems (empty == valid)."""
+    """Minimal required-keys + type/enum check used when jsonschema is absent.
+    Returns a list of human-readable problems (empty == valid). Enforces enum
+    and a flat oneOf so the fallback fails closed on the action-class contract.
+    Problem wording is "field <name> <reason>" — kept stable for callers/tests
+    that match on the legacy "field <name> has wrong type" string."""
     problems = []
     if not isinstance(payload, dict):
         return ["payload is not an object"]
@@ -417,8 +442,9 @@ def _structural_validate(payload, schema):
     props = schema.get("properties", {})
     for key, spec in props.items():
         if key in payload and isinstance(spec, dict):
-            if not _structural_type_ok(payload[key], spec.get("type")):
-                problems.append("field %s has wrong type" % key)
+            ok, why = _spec_ok(payload[key], spec)
+            if not ok:
+                problems.append("field %s %s" % (key, why))
     return problems
 
 
@@ -1059,6 +1085,18 @@ def classify_repair_vs_regenerate(failure_class, repair_rounds=0,
     return "repair_window"
 
 
+def _breaker_fallback_key(phase, failure_class, recommended_next_action):
+    """Stable identity for a same-failure re-run when NO bundle_revision exists
+    (legacy / bypass / missing signed_test_scope). Without this the circuit
+    breaker would reset its counters every invocation and never escalate — the
+    one mechanism meant to stop an infinite retry loop would be a no-op in
+    exactly the degraded runs a weak model is most likely to be in. Keyed on the
+    dimensions that define "the same failure recurring": phase + failure class +
+    recommended action. Advisory only."""
+    raw = "|".join([str(phase), failure_class or "", recommended_next_action or ""])
+    return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:16]
+
+
 def repair_round_metadata(prev, *, phase, bundle_revision_from, recommended_next_action,
                           failure_class=None, max_repair_rounds=2, max_retry_rounds=2):
     """Split same-bundle re-runs into retry vs repair rounds (§9.1/§9.2).
@@ -1074,14 +1112,32 @@ def repair_round_metadata(prev, *, phase, bundle_revision_from, recommended_next
 
     Returns the shared fields; a caller may layer additional escalation
     conditions (e.g. external CI/SHA conflicts) on top of `human_escalation_needed`.
-    Advisory only — never authoritative over the signed manifest."""
+    Advisory only — never authoritative over the signed manifest.
+
+    When `bundle_revision_from` is empty (legacy / bypass / missing test bundle),
+    same-failure detection falls back to a content key (`fallback_key`) so the
+    counters still accumulate and the breaker can still escalate — instead of
+    being silently disabled. Runs that DO carry a bundle_revision are unaffected
+    (they take the revision branch exactly as before)."""
     prev = prev or {}
-    same_revision = (
-        prev.get("active", True) is not False and
-        prev.get("phase") == phase and
-        prev.get("bundle_revision_from") == bundle_revision_from and
-        bool(bundle_revision_from)
-    )
+    fallback_key = _breaker_fallback_key(phase, failure_class, recommended_next_action)
+    if bundle_revision_from:
+        same_revision = (
+            prev.get("active", True) is not False and
+            prev.get("phase") == phase and
+            prev.get("bundle_revision_from") == bundle_revision_from and
+            bool(bundle_revision_from)
+        )
+    else:
+        # revision-agnostic: identify a recurring failure by its content key so
+        # the breaker is NOT a no-op on runs without a signed bundle revision.
+        same_revision = (
+            prev.get("active", True) is not False and
+            prev.get("phase") == phase and
+            not prev.get("bundle_revision_from") and
+            prev.get("fallback_key") == fallback_key and
+            bool(fallback_key)
+        )
     prev_repair = int(prev.get("repair_rounds") or 0)
     prev_retry = int(prev.get("retry_rounds") or 0)
     # a retry is the SAME failure recommended for the SAME action on the SAME
@@ -1116,6 +1172,7 @@ def repair_round_metadata(prev, *, phase, bundle_revision_from, recommended_next
         "repair_rounds": repair_rounds,
         "retry_rounds": retry_rounds,
         "same_revision": same_revision,
+        "fallback_key": fallback_key,
         "policy_conflict": policy_conflict,
         "human_escalation_needed": repair_exhausted or retry_exhausted or policy_conflict,
         "escalation_reasons": escalation_reasons,
@@ -1207,6 +1264,334 @@ def compute_downstream_revalidate_scope(*scopes):
 
 def repair_budget_exhausted(repair_rounds, max_repair_rounds=2):
     return int(repair_rounds or 0) >= int(max_repair_rounds or 0)
+
+
+class ControlContractError(Exception):
+    """Raised by finalize_control() when it cannot build a COMPLETE navigation
+    artifact (non-empty enum failure_class + concrete next action + non-empty
+    suspects on FAIL). This is the control layer failing closed on its OWN bug —
+    it surfaces a degraded-navigation defect as a loud error instead of silently
+    shipping a card/packet a weak model can't act on. It is NOT authoritative
+    over the signed manifest and never changes a gate's PASS/FAIL verdict."""
+
+
+# Canonical next-action vocabulary (S4). A single enum shared by the phase
+# memory card and repair packet so the same field never means different things
+# depending on which layer wrote last. Advisory / navigation only.
+ACTION_CLASSES = (
+    "advance", "consent", "run_gate", "prepare_test_bundle",
+    "repair", "regenerate", "retry", "human_escalation",
+    "await_ci", "complete", "inspect",
+)
+
+# S4: legacy / composite next-action tokens gates emitted before the enum was
+# unified, mapped to the single ACTION_CLASSES vocabulary. `repair_or_regenerate`
+# is composite and resolved by failure class (see action_class_for).
+_ACTION_CLASS_ALIASES = {
+    "advance_phase": "advance",
+    "repair_window": "repair",
+    "repair_design": "repair",
+    "repair_environment": "repair",
+    "escalate": "human_escalation",
+    "blocked": "human_escalation",
+    "finalize": "complete",
+    "await": "await_ci",
+}
+
+
+def action_class_for(token, *, failure_class=None, escalate=False):
+    """Normalize any legacy/composite next-action token to a single member of
+    ACTION_CLASSES so cards and packets never disagree on vocabulary (S4/A5).
+
+    - escalate=True always wins (a tripped breaker overrides the nominal action).
+    - a token already in the enum passes through.
+    - `repair_or_regenerate` is resolved by the failure class via the same
+      classifier the repair packet uses, so card and packet agree.
+    - other known composites map through _ACTION_CLASS_ALIASES.
+    - an unrecognized token degrades to 'repair' (something needs fixing) rather
+      than shipping an out-of-enum value. Advisory only — never a verdict input."""
+    if escalate:
+        return "human_escalation"
+    if token in ACTION_CLASSES:
+        return token
+    if token == "repair_or_regenerate":
+        base = classify_repair_vs_regenerate(failure_class)
+        return "regenerate" if base == "regenerate" else "repair"
+    return _ACTION_CLASS_ALIASES.get(token, "repair")
+
+
+
+def normalize_suspect_locations(raw):
+    """S3: sanitize a list of structured suspect locations to {file,line,rule,
+    message} dicts the repair-packet schema accepts.
+
+    Backfill only — sourced from artifacts each gate ALREADY parses (code_ruleset
+    / file_hygiene `--json` findings, build.log error lines, gtest failure xml),
+    so no new parser is introduced. Entries without a usable `file` are dropped
+    (a location with no file cannot direct a fix); a non-int line becomes null;
+    rule/message are coerced to str-or-null. Deduped on (file,line,rule,message),
+    order-preserving. Never raises: a malformed entry is skipped, not fatal, so a
+    backfill bug can never turn a FAIL packet into a hard error. Advisory only."""
+    out = []
+    seen = set()
+    for item in (raw or []):
+        if not isinstance(item, dict):
+            continue
+        f = item.get("file")
+        if not f or not isinstance(f, str):
+            continue
+        line = item.get("line")
+        line = line if isinstance(line, int) and not isinstance(line, bool) else None
+        rule = item.get("rule")
+        rule = rule if isinstance(rule, str) else None
+        msg = item.get("message")
+        msg = msg if isinstance(msg, str) else None
+        key = (f, line, rule, msg)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append({"file": f, "line": line, "rule": rule, "message": msg})
+    return out
+
+
+def suspect_locations_from_findings_json(pdir, rel):
+    """S3 backfill: read a findings JSON a guard ALREADY wrote (code_ruleset /
+    file_hygiene `--json` output: {"findings": [{file,line,rule_id,message|
+    remediation}]}) and map it to suspect_location dicts. No new parsing — it
+    consumes the artifact the gate produced. Fail-soft: a missing/garbled file
+    yields [] (suspect_files still carries the fallback). `rel` is relative to
+    the pipeline dir, matching how the gates pass evidence paths."""
+    path = rel if os.path.isabs(rel) else os.path.join(pdir, rel)
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return []
+    findings = data.get("findings") if isinstance(data, dict) else data
+    out = []
+    for item in (findings or []):
+        if not isinstance(item, dict):
+            continue
+        out.append({
+            "file": item.get("file"),
+            "line": item.get("line"),
+            "rule": item.get("rule_id") or item.get("rule"),
+            "message": item.get("message") or item.get("remediation"),
+        })
+    return normalize_suspect_locations(out)
+
+
+_DIAG_RE = re.compile(
+    r"^\s*(?P<file>[^\s:][^:]*?):(?P<line>\d+)(?::\d+)?:\s*"
+    r"(?:fatal\s+)?error\s*:\s*(?P<message>.*)$")
+
+
+def suspect_locations_from_compiler_lines(lines):
+    """S3 backfill for P4: extract {file,line,message} from GCC/Clang-style
+    diagnostic lines the build gate ALREADY distilled (e.g. error_distill.txt's
+    marker hits). Not a new build-log parser — it reads the lines the gate kept,
+    matching only the canonical 'path:line:col: error: msg' form and ignoring
+    anything else. Fail-soft and bounded; advisory only (suspect_files stays the
+    fallback)."""
+    out = []
+    for ln in (lines or []):
+        m = _DIAG_RE.match(ln or "")
+        if not m:
+            continue
+        out.append({
+            "file": m.group("file").strip(),
+            "line": int(m.group("line")),
+            "rule": "compile_error",
+            "message": (m.group("message") or "").strip()[:300],
+        })
+    return normalize_suspect_locations(out)
+
+
+def suspect_locations_from_gtest_xml(result_xml_paths):
+    """S3 backfill for gtest phases (P5 unit, P7 integration): extract
+    {file,line,rule,message} for FAILING testcases from the gtest result xmls
+    the gate ALREADY parses. gtest emits `file`/`line` attributes on each
+    <testcase> plus a <failure message="..."> child; we read exactly those — no
+    new parser. Falls back to the source file the <failure> message names
+    (path:line:) when the testcase carries no file attr, and to
+    "Suite.Case" when neither is available. Fail-soft: an unparsable xml is
+    skipped. Advisory only (suspect_tests stays the base fallback)."""
+    locs = []
+    for path in (result_xml_paths or []):
+        try:
+            root = ET.parse(path).getroot()
+        except Exception:
+            continue
+        for tc in root.iter("testcase"):
+            fail = next((c for c in tc if c.tag in ("failure", "error")), None)
+            if fail is None:
+                continue
+            suite = tc.get("classname") or ""
+            name = tc.get("name") or ""
+            msg = (fail.get("message") or (fail.text or "")).strip()
+            f = tc.get("file")
+            line = tc.get("line")
+            if not f and msg:
+                m = re.match(r"\s*([^\s:][^:]*?):(\d+)", msg)
+                if m:
+                    f, line = m.group(1), m.group(2)
+            locs.append({
+                "file": f or ("%s.%s" % (suite, name) if suite else name),
+                "line": int(line) if (line and str(line).isdigit()) else None,
+                "rule": "gtest_failure",
+                "message": msg[:300] or ("%s.%s failed" % (suite, name)),
+            })
+    return normalize_suspect_locations(locs)
+
+
+def suspect_locations_from_ci_codecheck(ci_json):
+    """S3/H6 backfill for P8: map already-fetched CI codecheck defects to
+    suspect_location dicts so an upload FAIL can report WHICH defect class the
+    remote codecheck flagged, instead of an opaque `overall_result`.
+
+    Consumes the JSON the CI script ALREADY emits (`report["codecheck"]
+    ["tasks"][].defects[]`, each a normalize_codecheck_defect dict with
+    file/line/rule/content) — no new fetch, no new parser. Purely advisory:
+    the P8 verdict stays bound to `overall_result` + head-SHA. Fail-soft — a
+    missing/garbled codecheck block yields [] (suspect_files keeps the fallback).
+    Bounded so a defect flood cannot bloat the packet."""
+    if not isinstance(ci_json, dict):
+        return []
+    codecheck = ci_json.get("codecheck")
+    if not isinstance(codecheck, dict):
+        return []
+    out = []
+    for task in codecheck.get("tasks", []) or []:
+        if not isinstance(task, dict):
+            continue
+        for d in task.get("defects", []) or []:
+            if not isinstance(d, dict):
+                continue
+            line = d.get("line")
+            if isinstance(line, str) and line.strip().isdigit():
+                line = int(line.strip())
+            out.append({
+                "file": d.get("file") or d.get("file_name"),
+                "line": line,
+                "rule": d.get("rule") or d.get("rule_id") or d.get("checker"),
+                "message": (str(d.get("content") or "").strip()[:300]) or None,
+            })
+    # Bound the backfill: a red codecheck can carry hundreds of defects; the
+    # packet only needs enough to name the classes, not the whole report.
+    return normalize_suspect_locations(out)[:50]
+
+
+def finalize_control(pdir, *, phase, phase_name, verdict, repair_packet_parts,
+                     failure_class=None, suspect_files=None, suspect_tests=None,
+                     suspect_locations=None,
+                     problems=None, last_failure_reason=None, must_rerun=None,
+                     recommended_next_action=None, next_action_class=None,
+                     forbidden_actions=None, downstream_scope=None,
+                     bundle_revision_from="", max_repair_rounds=2,
+                     max_retry_rounds=2, best_effort=True):
+    """Single control-layer exit point a gate calls on FAIL (and, for the
+    phases that had none, this is what finally gives them a repair packet).
+
+    Guarantees, on FAIL, that BOTH a repair packet and a phase memory card exist
+    with a non-empty failure_class, a concrete recommended_next_action, and a
+    non-empty suspect list (suspect_files falls back so it is never empty). The
+    memory card's next_expected_action_class is drawn from ACTION_CLASSES.
+
+    Raises ControlContractError if a complete FAIL packet cannot be built — the
+    control layer fails closed on its own bug rather than emitting degraded
+    navigation. NEVER authoritative over the signed manifest; callers must not
+    gate a verdict on anything this returns.
+
+    Returns {"repair_packet": <dict|None>, "memory_card_rel": <str>}."""
+    if verdict != "FAIL":
+        # PASS path is handled by each gate's own completion-controls writer;
+        # finalize_control is the FAIL contract enforcer.
+        return {"repair_packet": None, "memory_card_rel": None}
+
+    if not failure_class:
+        raise ControlContractError(
+            "phase %s FAIL requires a non-empty failure_class" % phase)
+
+    # Suspect fallback (A4): never ship an empty suspect list. Prefer the
+    # explicit suspects; else the files named by structured suspect_locations
+    # (S3); else the changed functional files; else the failure class itself as
+    # a placeholder so the packet is still actionable.
+    locations = normalize_suspect_locations(suspect_locations)
+    suspects = list(suspect_files or [])
+    if not suspects and locations:
+        # backfill from the structured findings so files & locations agree
+        seen = set()
+        for loc in locations:
+            f = loc.get("file")
+            if f and f not in seen:
+                seen.add(f)
+                suspects.append(f)
+    if not suspects:
+        suspects = [failure_class]
+        (problems := list(problems or [])).append(
+            "suspects_unavailable: fell back to failure_class placeholder")
+
+    base_action = recommended_next_action or classify_repair_vs_regenerate(
+        failure_class)
+    rounds = repair_round_metadata(
+        read_control_json(pdir, *repair_packet_parts) or {},
+        phase=phase, bundle_revision_from=bundle_revision_from or "",
+        recommended_next_action=base_action, failure_class=failure_class,
+        max_repair_rounds=max_repair_rounds, max_retry_rounds=max_retry_rounds)
+    escalate = rounds["human_escalation_needed"]
+    final_action = "human_escalation" if escalate else base_action
+
+    action_class = next_action_class or (
+        "human_escalation" if escalate else
+        "regenerate" if base_action == "regenerate" else "repair")
+    if action_class not in ACTION_CLASSES:
+        raise ControlContractError(
+            "phase %s next_action_class %r not in ACTION_CLASSES" % (phase, action_class))
+
+    packet = {
+        "phase": phase,
+        "phase_name": phase_name,
+        "active": True,
+        "failure_class": failure_class,
+        "suspect_files": suspects,
+        "suspect_locations": locations,
+        "suspect_tests": list(suspect_tests or []),
+        "must_rerun": list(must_rerun or []),
+        "downstream_revalidate_scope": scope_for_failure(failure_class, downstream_scope),
+        "last_failure_reason": last_failure_reason,
+        "problems": list(problems or []),
+        "bundle_revision_from": bundle_revision_from or "",
+        "fallback_key": rounds["fallback_key"],
+        "max_retry_rounds": max_retry_rounds,
+        "max_repair_rounds": max_repair_rounds,
+        "retry_rounds": rounds["retry_rounds"],
+        "repair_rounds": rounds["repair_rounds"],
+        "human_escalation_needed": escalate,
+        "escalation_note": rounds["escalation_note"],
+        "recommended_next_action": final_action,
+    }
+    written = write_repair_packet(pdir, repair_packet_parts, packet,
+                                  best_effort=best_effort)
+    if not written or not written.get("validation", {}).get("ok", True):
+        raise ControlContractError(
+            "phase %s repair packet failed control-schema validation: %s"
+            % (phase, (written or {}).get("validation")))
+
+    card = write_gate_phase_memory_card(
+        pdir, phase, phase_name, verdict="FAIL",
+        current_blocker=last_failure_reason or failure_class,
+        forbidden_actions=list(forbidden_actions or []),
+        next_expected_action_class=action_class,
+        last_failure_class=failure_class,
+        human_escalation_needed=escalate,
+        primary_entry_doc=controls_relpath("next_action.json"))
+    if not card.get("validation", {}).get("ok", True):
+        raise ControlContractError(
+            "phase %s memory card failed control-schema validation: %s"
+            % (phase, card.get("validation")))
+
+    return {"repair_packet": packet, "memory_card_rel": card.get("rel")}
+
 
 
 # --- device evidence trust ordering (§17) -----------------------------------

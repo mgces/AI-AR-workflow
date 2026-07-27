@@ -80,6 +80,7 @@ P7_SUBSTATE_NAMES = {
     "quality_check": "quality-check",
     "review_check": "review-check",
     "human_review_await": "human-review-await",
+    "unknown_quality": "unknown-quality",
 }
 UPLOAD_SUBSTATE_PARTS = ("upload_review", "substate.json")
 P8_FAILURE_TO_SUBSTATE = {
@@ -110,6 +111,7 @@ P8_SUBSTATE_NAMES = {
     "pr_review": "pr-review",
     "ci_green": "ci-green",
     "finalize": "finalize",
+    "unknown_upload": "unknown-upload",
 }
 
 
@@ -263,10 +265,16 @@ def _read_quality_substate(pdir):
 def _phase5_substate(pdir, substate, repair_packet):
     if substate in ("blocked", "awaiting_repair"):
         failure_class = (repair_packet or {}).get("failure_class")
-        substate_id = P7_FAILURE_TO_SUBSTATE.get(failure_class, "integration_run")
+        # A8: an unmapped-but-present failure class must not be silently relabeled
+        # as "integration_run" (the first substate) — that reads as a benign
+        # re-run and hides an unclassified cause. Surface it explicitly.
+        default = "unknown_quality" if failure_class else "integration_run"
+        substate_id = P7_FAILURE_TO_SUBSTATE.get(failure_class, default)
         return {
             "id": substate_id,
             "name": P7_SUBSTATE_NAMES[substate_id],
+            "unclassified_failure_class": (
+                failure_class if substate_id == "unknown_quality" else None),
             "source": "repair_packet",
         }
     payload = _read_quality_substate(pdir)
@@ -303,10 +311,16 @@ def _read_upload_substate(pdir):
 def _phase6_substate(pdir, substate, repair_packet):
     if substate in ("blocked", "awaiting_repair"):
         failure_class = (repair_packet or {}).get("failure_class")
-        substate_id = P8_FAILURE_TO_SUBSTATE.get(failure_class, "precheck")
+        # A8: an unmapped-but-present failure class must not silently collapse to
+        # "precheck" (the first substate); that reads as "re-run prechecks" and
+        # buries an unclassified upload failure. Surface it explicitly instead.
+        default = "unknown_upload" if failure_class else "precheck"
+        substate_id = P8_FAILURE_TO_SUBSTATE.get(failure_class, default)
         return {
             "id": substate_id,
             "name": P8_SUBSTATE_NAMES[substate_id],
+            "unclassified_failure_class": (
+                failure_class if substate_id == "unknown_upload" else None),
             "human_escalation_needed": bool(
                 (repair_packet or {}).get("human_escalation_needed")),
             "escalation_reason": (repair_packet or {}).get("escalation_note") or "",
@@ -371,6 +385,23 @@ def _repair_required_inputs(packet):
     if packet.get("human_escalation_needed"):
         return ["human_review"]
     return ["scoped_fix"]
+
+
+def _escalation_next_gate(cur, packet):
+    """Concrete command a reviewer runs for a blocked (escalation) substate.
+
+    A blocked state must NEVER be a navigation dead-end: even though the model
+    cannot self-repair, the card/handoff still needs a runnable next command so
+    a weak model hands off to a human with an exact instruction instead of a
+    null. Prefer the repair packet's own rerun target; otherwise fall back to
+    the phase's consent command (human gate) or its gate rerun. This is
+    navigation only — it grants no pass authority."""
+    g = _repair_next_gate(packet)
+    if g:
+        return g
+    if cur in CONSENT_PHASES or cur == 1:
+        return "advance.py consent --phase %d --token <reviewer>" % cur
+    return PHASE_GATE_CMD.get(cur)
 
 
 
@@ -474,6 +505,16 @@ def _action_kind(substate, next_gate):
     return "inspect"
 
 
+def _inspect_fallback_command(cur, gate_cmd):
+    """A6: the concrete command an `inspect` fallback must carry so it is never a
+    dead-end (next_gate=None). Points at this phase's gate when one is known, so
+    a weak model always has a runnable next step even when the substate could not
+    be classified into a more specific action."""
+    if gate_cmd:
+        return gate_cmd
+    return "advance.py state"
+
+
 def _phase_token(cur):
     return "phase%d" % cur
 
@@ -547,7 +588,12 @@ def _memory_card_payload(next_action):
         "current_substate": current_substate,
         "current_blocker": blockers[0] if blockers else "none",
         "forbidden_actions": forbidden_actions,
-        "next_expected_action_class": next_action.get("action_kind"),
+        "next_expected_action_class": gl.action_class_for(
+            next_action.get("action_kind"),
+            failure_class=(repair_packet.get("failure_class")
+                           or failure.get("gate") or failure.get("reason")),
+            escalate=(current_substate == "blocked"
+                      or _repair_requires_escalation(repair_packet))),
         "last_failure_class": repair_packet.get("failure_class") or failure.get("gate") or failure.get("reason"),
         "human_escalation_needed": current_substate == "blocked" or _repair_requires_escalation(repair_packet),
         "repair_packet_present": bool(repair_packet),
@@ -694,6 +740,7 @@ def _derive_next_action(pdir, state):
     elif cur == 1:
         # Path B1: phase 1 is now design_orchestrate ONLY (feature_develop and
         # test_develop are their own physical phases 2 and 3).
+        required_inputs = None  # repair sub-branches set this; else derived below
         design_entry = gl.latest_design_entry(pdir)
         if design_entry is None:
             substate = "awaiting_design_gate"
@@ -717,11 +764,22 @@ def _derive_next_action(pdir, state):
                     substate = "ready_to_advance"
                     next_gate = "advance.py advance --phase 1"
                     resume_hint = _phase_resume_hint(cur, substate)
+                elif _repair_requires_escalation(repair_packet):
+                    substate = "blocked"
+                    next_gate = _escalation_next_gate(cur, repair_packet)
+                    resume_hint = _repair_resume_hint(repair_packet) or reason
+                    required_inputs = _repair_required_inputs(repair_packet)
+                elif repair_packet:
+                    substate = "awaiting_repair"
+                    next_gate = _repair_next_gate(repair_packet) or "gate_design.py"
+                    resume_hint = _repair_resume_hint(repair_packet) or reason
+                    required_inputs = _repair_required_inputs(repair_packet)
                 else:
                     substate = "awaiting_design_gate"
                     next_gate = "gate_design.py"
                     resume_hint = _phase_resume_hint(cur, substate, reason)
-        required_inputs = _phase_required_inputs(cur, substate)
+        if required_inputs is None:
+            required_inputs = _phase_required_inputs(cur, substate)
     elif cur == 2:
         # Path B1: feature_develop closes on a signed gate_develop.py PASS.
         ok, reason, _ = gl.validate_closing_entry(pdir, 2)
@@ -729,11 +787,22 @@ def _derive_next_action(pdir, state):
             substate = "ready_to_advance"
             next_gate = "advance.py advance --phase 2"
             resume_hint = _phase_resume_hint(cur, substate)
+            required_inputs = _phase_required_inputs(cur, substate)
+        elif _repair_requires_escalation(repair_packet):
+            substate = "blocked"
+            next_gate = _escalation_next_gate(cur, repair_packet)
+            resume_hint = _repair_resume_hint(repair_packet) or reason
+            required_inputs = _repair_required_inputs(repair_packet)
+        elif repair_packet:
+            substate = "awaiting_repair"
+            next_gate = _repair_next_gate(repair_packet) or "gate_develop.py"
+            resume_hint = _repair_resume_hint(repair_packet) or reason
+            required_inputs = _repair_required_inputs(repair_packet)
         else:
             substate = "awaiting_develop_gate"
             next_gate = "gate_develop.py"
             resume_hint = _phase_resume_hint(cur, substate, reason)
-        required_inputs = _phase_required_inputs(cur, substate)
+            required_inputs = _phase_required_inputs(cur, substate)
     elif cur == 3:
         # Path B1: test_develop closes on a signed gate_test_develop.py PASS,
         # proving test code was authored over the frozen feature bundle before
@@ -743,15 +812,26 @@ def _derive_next_action(pdir, state):
             substate = "ready_to_advance"
             next_gate = "advance.py advance --phase 3"
             resume_hint = _phase_resume_hint(cur, substate)
+            required_inputs = _phase_required_inputs(cur, substate)
+        elif _repair_requires_escalation(repair_packet):
+            substate = "blocked"
+            next_gate = _escalation_next_gate(cur, repair_packet)
+            resume_hint = _repair_resume_hint(repair_packet) or reason
+            required_inputs = _repair_required_inputs(repair_packet)
+        elif repair_packet:
+            substate = "awaiting_repair"
+            next_gate = _repair_next_gate(repair_packet) or "gate_test_develop.py"
+            resume_hint = _repair_resume_hint(repair_packet) or reason
+            required_inputs = _repair_required_inputs(repair_packet)
         else:
             substate = "awaiting_test_develop_gate"
             next_gate = "gate_test_develop.py"
             resume_hint = _phase_resume_hint(cur, substate, reason)
-        required_inputs = _phase_required_inputs(cur, substate)
+            required_inputs = _phase_required_inputs(cur, substate)
     else:
         if _repair_requires_escalation(repair_packet):
             substate = "blocked"
-            next_gate = None
+            next_gate = _escalation_next_gate(cur, repair_packet)
             resume_hint = _repair_resume_hint(repair_packet)
             required_inputs = _repair_required_inputs(repair_packet)
         elif repair_packet:
@@ -782,6 +862,20 @@ def _derive_next_action(pdir, state):
                 resume_hint = _phase_resume_hint(cur, substate, reason)
             required_inputs = _phase_required_inputs(cur, substate)
 
+    # A6: `inspect` must never be a dead-end. Any path that ends with the
+    # catch-all action (no known next_gate prefix) and a null next_gate gets a
+    # concrete recovery command — present the failure evidence to a human and
+    # re-run this phase's gate — exactly like `blocked` always carries one.
+    action_kind = _action_kind(substate, next_gate)
+    if action_kind == "inspect" and not next_gate and substate != "complete":
+        gate_cmd = PHASE_GATE_CMD.get(cur)
+        next_gate = _inspect_fallback_command(cur, gate_cmd)
+        if not resume_hint:
+            resume_hint = _phase_resume_hint(cur, substate)
+        resume_hint = (resume_hint + " " if resume_hint else "") + (
+            "Present evidence/phase%d logs and the current memory card to a "
+            "human, then re-run %s." % (cur, gate_cmd or "the phase gate"))
+        action_kind = _action_kind(substate, next_gate)
     payload.update({
         "current_substate": substate,
         "next_gate": next_gate,
@@ -793,7 +887,7 @@ def _derive_next_action(pdir, state):
         "control_protocol_version": CONTROL_PROTOCOL_VERSION,
         "logical_phase_id": logical_phase_id,
         "logical_phase_name": logical_phase_name,
-        "action_kind": _action_kind(substate, next_gate),
+        "action_kind": action_kind,
         "control_refs": _control_refs(cur, logical_phase_id),
     })
     payload["window_startup_order"] = gl.window_startup_order(

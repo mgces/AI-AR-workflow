@@ -138,6 +138,10 @@ class TestB1DevelopSequence(unittest.TestCase):
     def _author_test(self, suite="ATest"):
         os.makedirs(os.path.join(self.repo, "test"), exist_ok=True)
         with open(os.path.join(self.repo, "test", "a_test.cpp"), "w", encoding="utf-8") as f:
+            # carry the Apache-2.0 header so the P3 file-hygiene (H1) gate passes;
+            # real authored OHOS sources always ship this block.
+            f.write("/*\n * Copyright (c) 2026.\n"
+                    " * Licensed under the Apache License, Version 2.0 (the \"License\");\n */\n")
             f.write("TEST(%s, Case001) { EXPECT_TRUE(true); }\n" % suite)
 
     # ---- phase 1 (design_orchestrate) -----------------------------------------
@@ -278,6 +282,89 @@ class TestB1DevelopSequence(unittest.TestCase):
         self.assertIn("BYPASS", cp.stdout + cp.stderr)
         self.assertEqual(self._advance(3).returncode, 0)
         self.assertEqual(gl.load_state(self.pdir)["current_phase"], 4)
+
+    # ---- H1 file-hygiene (license header) blocking at author time -------------
+    def _repair_card(self, phase):
+        card = gl.read_phase_memory_card(
+            self.pdir, parts=("memory_cards", "phase%d.json" % phase))
+        repair = gl.read_repair_packet(self.pdir, ("repairs", "current.json"))
+        return card, repair
+
+    def test_p2_missing_license_header_fails_and_emits_repair(self):
+        # a changed C++ file with no Apache header must FAIL P2 (H1) and route
+        # through finalize_control: repair packet + enum FAIL card.
+        self._close_design()
+        os.makedirs(os.path.join(self.repo, "src"), exist_ok=True)
+        with open(os.path.join(self.repo, "src", "a.cpp"), "w", encoding="utf-8") as f:
+            f.write("int f() { return 0; }\n")  # no license header
+        cp = self._run("gate_develop.py")
+        self.assertNotEqual(cp.returncode, 0)
+        self.assertIn("hygiene", (cp.stdout + cp.stderr).lower())
+        card, repair = self._repair_card(2)
+        self.assertEqual(card["verdict"], "FAIL")
+        self.assertEqual(card["last_failure_class"], "code_ruleset_finding")
+        self.assertIn(card["next_expected_action_class"], gl.ACTION_CLASSES)
+        self.assertIsNotNone(repair)
+        self.assertTrue(repair.get("suspect_files"))
+
+    def test_p2_licensed_header_passes_h1(self):
+        # the same file WITH an Apache header clears H1 (no false positive).
+        self._close_design()
+        # satisfy the contract's declared changed_file (notes.txt); the headered
+        # .cpp is the H1 subject and must not add a hygiene finding.
+        with open(os.path.join(self.repo, "notes.txt"), "w", encoding="utf-8") as f:
+            f.write("some change\n")
+        os.makedirs(os.path.join(self.repo, "src"), exist_ok=True)
+        with open(os.path.join(self.repo, "src", "a.cpp"), "w", encoding="utf-8") as f:
+            f.write("/*\n * Copyright (c) 2026.\n"
+                    " * Licensed under the Apache License, Version 2.0.\n */\n"
+                    "int f() { return 0; }\n")
+        cp = self._run("gate_develop.py")
+        self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+
+    def test_p3_missing_license_header_on_authored_test_fails(self):
+        # an authored test file with no header must FAIL P3 (H1) and emit a
+        # repair packet routed to a repair action.
+        self._close_design()
+        self._close_feature_develop()
+        os.makedirs(os.path.join(self.repo, "test"), exist_ok=True)
+        with open(os.path.join(self.repo, "test", "a_test.cpp"), "w", encoding="utf-8") as f:
+            f.write("TEST(ATest, Case001) { EXPECT_TRUE(true); }\n")  # no header
+        cp = self._run("gate_test_develop.py")
+        self.assertNotEqual(cp.returncode, 0)
+        card, repair = self._repair_card(3)
+        self.assertEqual(card["verdict"], "FAIL")
+        self.assertEqual(card["last_failure_class"], "test_style_finding")
+        self.assertEqual(card["next_expected_action_class"], "repair")
+        self.assertIsNotNone(repair)
+
+    # ---- C2: banned-API (rules-only) blocking on authored test code -----------
+    def test_p3_disabled_api_in_test_fails_rules_only(self):
+        # C2 regression: a properly-headered test that COVERS the contract's
+        # suite but calls a banned API (system(), G.SEC.03) must still FAIL P3 via
+        # the --rules-only guard — locking the Fix-1 P3 rule wiring so a future
+        # edit cannot silently drop it. Also asserts S3 backfills the finding as a
+        # line-level suspect_location the weak model can act on.
+        self._close_design()
+        self._close_feature_develop()
+        os.makedirs(os.path.join(self.repo, "test"), exist_ok=True)
+        with open(os.path.join(self.repo, "test", "a_test.cpp"), "w", encoding="utf-8") as f:
+            f.write("/*\n * Copyright (c) 2026.\n"
+                    " * Licensed under the Apache License, Version 2.0.\n */\n")
+            # references suite ATest (authorship coverage passes) but calls a
+            # banned API, so ONLY the rules-only check may fail the phase.
+            f.write("TEST(ATest, Case001) { system(\"ls\"); EXPECT_TRUE(true); }\n")
+        cp = self._run("gate_test_develop.py")
+        self.assertNotEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+        card, repair = self._repair_card(3)
+        self.assertEqual(card["verdict"], "FAIL")
+        self.assertEqual(card["last_failure_class"], "test_style_finding")
+        self.assertEqual(card["next_expected_action_class"], "repair")
+        self.assertIsNotNone(repair)
+        # S3: the G.SEC.03 finding is backfilled as a structured suspect location.
+        locs = repair.get("suspect_locations") or []
+        self.assertTrue(any(l.get("rule") == "G.SEC.03" for l in locs), locs)
+        self.assertTrue(any(l.get("file", "").endswith("a_test.cpp") for l in locs), locs)
 
 
 if __name__ == "__main__":

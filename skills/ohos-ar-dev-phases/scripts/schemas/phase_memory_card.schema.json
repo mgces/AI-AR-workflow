@@ -16,7 +16,19 @@
     "bundle_revision": {"type": ["integer", "string", "null"]},
     "current_blocker": {"type": ["string", "null"]},
     "forbidden_actions": {"type": "array", "items": {"type": "string"}},
-    "next_expected_action_class": {"type": ["string", "null"]},
+    "next_expected_action_class": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "string",
+          "enum": [
+            "advance", "consent", "run_gate", "prepare_test_bundle",
+            "repair", "regenerate", "retry", "human_escalation",
+            "await_ci", "complete", "inspect"
+          ]
+        }
+      ]
+    },
     "last_failure_class": {"type": ["string", "null"]},
     "human_escalation_needed": {"type": "boolean"},
     "primary_entry_doc": {"type": ["string", "null"]},

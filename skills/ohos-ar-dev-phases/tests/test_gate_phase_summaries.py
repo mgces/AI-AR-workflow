@@ -672,6 +672,73 @@ class TestUploadSummaryHelpers(SummaryFixture):
         self.assertTrue(repair["human_escalation_needed"])
         self.assertTrue(substate["human_escalation_needed"])
         self.assertIn("external API instability", substate["escalation_reason"])
+        # P8 no-regression (S1): the breaker change added a fallback_key field to
+        # the packet but must NOT alter P8's external-instability escalation — the
+        # human backstop the user required to stay intact still trips here.
+        self.assertIn("fallback_key", repair)
+
+    def test_query_ci_with_backoff_retries_only_on_transport_failure(self):
+        # E1: the backoff loop retries a TRANSPORT outage but stops the instant
+        # the remote returns any verdict — a red CI is never retried into green.
+        class P:
+            def __init__(self, rc, out="", err=""):
+                self.returncode, self.stdout, self.stderr = rc, out, err
+
+        real_run, real_sleep = gate_upload_ci.subprocess.run, gate_upload_ci.time.sleep
+        slept = []
+        gate_upload_ci.time.sleep = lambda d: slept.append(d)
+        try:
+            # Two transport outages, then a parsed red-CI verdict → 3 attempts,
+            # returns the verdict (not retried away), 2 backoff sleeps.
+            seq = [P(1, err="connection reset by peer"),
+                   P(1, err="HTTP 503 Service Unavailable"),
+                   P(1, out='{"overall_result": "failed"}')]
+            calls = {"n": 0}
+
+            def fake_run(cmd, **kw):
+                i = calls["n"]
+                calls["n"] += 1
+                return seq[i]
+            gate_upload_ci.subprocess.run = fake_run
+            proc, attempts = gate_upload_ci._query_ci_with_backoff(
+                ["ci", "status"], {}, max_attempts=5, base_delay=1.0)
+            self.assertEqual(attempts, 3)
+            self.assertEqual(proc.stdout, '{"overall_result": "failed"}')
+            self.assertEqual(slept, [1.0, 2.0])  # exponential: 1, 2
+
+            # An immediate verdict → exactly one attempt, zero sleeps.
+            slept.clear()
+            calls["n"] = 0
+            seq[:] = [P(0, out='{"overall_result": "success"}')]
+            proc, attempts = gate_upload_ci._query_ci_with_backoff(
+                ["ci", "status"], {}, max_attempts=5, base_delay=1.0)
+            self.assertEqual(attempts, 1)
+            self.assertEqual(slept, [])
+
+            # Persistent transport outage → capped at max_attempts, N-1 sleeps.
+            slept.clear()
+            calls["n"] = 0
+            seq[:] = [P(1, err="rate limit exceeded")] * 10
+            proc, attempts = gate_upload_ci._query_ci_with_backoff(
+                ["ci", "status"], {}, max_attempts=3, base_delay=1.0)
+            self.assertEqual(attempts, 3)
+            self.assertTrue(gate_upload_ci._is_transport_failure(proc))
+            self.assertEqual(slept, [1.0, 2.0])
+        finally:
+            gate_upload_ci.subprocess.run = real_run
+            gate_upload_ci.time.sleep = real_sleep
+
+    def test_validate_commit_message_rejects_placeholders(self):
+        # B6: a weak model's degenerate subject must fail BEFORE the push.
+        for bad in ("", "   ", "P6 upload", "upload", "wip", "fix", "update",
+                    "short", "x" * 101):
+            ok, _ = gate_upload_ci.validate_commit_message(bad)
+            self.assertFalse(ok, "expected reject: %r" % bad)
+        # A real descriptive subject passes untouched (with or without a body).
+        for good in ("Add hiview event upload retry path",
+                     "fix(upload): guard against empty CI verdict\n\nbody text"):
+            ok, detail = gate_upload_ci.validate_commit_message(good)
+            self.assertTrue(ok, "expected pass: %r (%s)" % (good, detail))
 
 
 if __name__ == "__main__":

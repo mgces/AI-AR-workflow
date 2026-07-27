@@ -287,7 +287,7 @@ class TestGateDesignV2(ControlWriteValidationMixin, unittest.TestCase):
         self.assertEqual(card["verdict"], "PASS")
         self.assertEqual(card["current_blocker"], "none")
         self.assertEqual(card["next_expected_action_class"],
-                         "human_consent_then_feature_develop")
+                         "consent")
         self.assertIn("treat_navigation_files_as_truth_source",
                       card["forbidden_actions"])
         self.assertIn("skip_ar_contract_generation", card["forbidden_actions"])
@@ -310,8 +310,19 @@ class TestGateDesignV2(ControlWriteValidationMixin, unittest.TestCase):
         self.assertIsNotNone(card)
         self.assertEqual(card["verdict"], "FAIL")
         self.assertEqual(card["last_failure_class"], "design_gate_failed")
-        self.assertEqual(card["next_expected_action_class"], "repair_design")
+        self.assertEqual(card["next_expected_action_class"], "repair")
         self.assertNotEqual(card["current_blocker"], "none")
+
+        # S2/S4 lock: P1 FAIL now emits a repair packet through finalize_control,
+        # and the card's failure/action classes are non-empty and in the enum.
+        self.assertIn(card["last_failure_class"], (
+            "design_gate_failed", "ar_contract_invalid"))
+        self.assertIn(card["next_expected_action_class"], gl.ACTION_CLASSES)
+        repair = gl.read_repair_packet(self.pdir, ("repairs", "current.json"))
+        self.assertIsNotNone(repair)
+        self.assertTrue(repair.get("failure_class"))
+        self.assertTrue(repair.get("suspect_files"))  # never empty (A4 fallback)
+        self.assertIn("fallback_key", repair)  # S1: breaker key present
 
     def test_derived_controls_grant_no_pass_authority(self):
         # a PASS run derives receipts/handoffs, but phase 1 must NOT be advanced

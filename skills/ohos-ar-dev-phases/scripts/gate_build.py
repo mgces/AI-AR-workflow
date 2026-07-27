@@ -90,7 +90,8 @@ def _repair_round_metadata(pdir, *, phase, bundle_revision_from, recommended_nex
 
 
 def _write_repair_packet(pdir, *, target, failure_class, problems, last_failure_reason,
-                         artifacts_missing=None, contract_status=None, regen_signals=None):
+                         artifacts_missing=None, contract_status=None, regen_signals=None,
+                         suspect_locations=None):
     bundle = _test_bundle_context(pdir)
     # §10 matrix: if the gate detected a design-boundary signal (or the failure
     # class is definitionally unrecoverable), a same-window repair is disallowed
@@ -113,6 +114,7 @@ def _write_repair_packet(pdir, *, target, failure_class, problems, last_failure_
         "active": True,
         "failure_class": failure_class,
         "suspect_files": bundle.get("suspect_files") or [],
+        "suspect_locations": gl.normalize_suspect_locations(suspect_locations),
         "suspect_tests": bundle.get("suspect_tests") or [],
         "allowed_fix_scope": ["build target inputs", "declared test files"],
         "must_rerun": ["gate_build.py"],
@@ -134,6 +136,7 @@ def _write_repair_packet(pdir, *, target, failure_class, problems, last_failure_
         "problems": problems or [],
         "max_retry_rounds": MAX_RETRY_ROUNDS,
         "max_repair_rounds": MAX_REPAIR_ROUNDS,
+        "fallback_key": rounds["fallback_key"],
         "retry_rounds": rounds["retry_rounds"],
         "repair_rounds": rounds["repair_rounds"],
         "human_escalation_needed": rounds["human_escalation_needed"],
@@ -210,7 +213,7 @@ def _write_completion_controls(pdir, *, target, artifacts_present, contract_stat
 def _record_result(pdir, verdict, reason, arts, *, cmd, exit_code, target,
                    banner_ok=None, banner_err=None, artifacts_missing=None,
                    contract_status=None, failure_class=None, problems=None,
-                   resume_hint=None):
+                   resume_hint=None, suspect_locations=None):
     checks = [
         "target=%s" % target,
         "exit_code=%s" % exit_code,
@@ -266,13 +269,16 @@ def _record_result(pdir, verdict, reason, arts, *, cmd, exit_code, target,
             last_failure_reason=reason,
             artifacts_missing=artifacts_missing,
             contract_status=contract_status,
+            suspect_locations=suspect_locations,
         )
     gl.write_gate_phase_memory_card(
         pdir, 4, "build-verify", verdict=verdict,
         bundle_revision=_test_bundle_context(pdir).get("bundle_revision"),
         current_blocker=None if verdict == "PASS" else reason,
         next_expected_action_class=(
-            "advance_phase" if verdict == "PASS" else "repair_or_regenerate"),
+            "advance" if verdict == "PASS"
+            else gl.action_class_for("repair_or_regenerate",
+                                     failure_class=failure_class)),
         last_failure_class=None if verdict == "PASS" else failure_class,
         primary_entry_doc=gl.controls_relpath("next_action.json"),
         primary_handoff_doc=gl.controls_relpath(*HANDOFF_PARTS))
@@ -407,11 +413,17 @@ def main():
         problems.append("error banner present in build output")
     if artifacts_missing:
         problems += ["missing build_artifact: %s" % rel for rel in artifacts_missing]
+    # S3: backfill line-level suspects from the compiler diagnostics already in
+    # the captured build output (bounded scan of lines we kept; no new parser).
+    # suspect_files stays the non-empty fallback.
+    suspect_locations = gl.suspect_locations_from_compiler_lines(
+        out_text.splitlines())[:100]
     _record_result(
         pdir, "FAIL", reason, arts, cmd=cmd, exit_code=rc, target=target,
         banner_ok=banner_ok, banner_err=banner_err,
         artifacts_missing=artifacts_missing, contract_status=contract_status,
         failure_class=failure_class, problems=problems,
+        suspect_locations=suspect_locations,
         resume_hint="修复构建/产物问题后重跑 gate_build.py")
     sys.exit("PHASE 4 FAIL: %s" % reason)
 

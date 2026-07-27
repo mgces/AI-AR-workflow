@@ -209,6 +209,27 @@ def maybe_parse_json(text: str) -> object | None:
         return None
 
 
+# D2: the oh-gc CLI has no --resolved filter, but GitCode comment objects may
+# carry a resolved-ish field under one of several names depending on API
+# version. Read whichever is present so the review loop can skip already-closed
+# threads instead of re-processing them; when none is present we report None
+# (unknown) rather than guessing "open".
+_RESOLVED_KEYS = ("resolved", "is_resolved", "isResolved", "resolvable")
+_STATE_RESOLVED = {"resolved", "closed", "outdated"}
+
+
+def comment_resolved(comment: object) -> bool | None:
+    if not isinstance(comment, dict):
+        return None
+    for key in _RESOLVED_KEYS:
+        if key in comment and isinstance(comment[key], bool):
+            return comment[key]
+    state = comment.get("state") or comment.get("status")
+    if isinstance(state, str) and state:
+        return state.strip().lower() in _STATE_RESOLVED
+    return None
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Collect GitCode PR metadata, diff, and comments.")
     parser.add_argument("ref", help="PR number or URL")
@@ -276,6 +297,39 @@ def main() -> int:
         print(json.dumps({"ok": False, "out_dir": str(out_dir), "failures": failures}, ensure_ascii=False, indent=2))
         return 1
 
+    # D1: the comment fetch is capped at --comments-limit (newest-first). When a
+    # type returns exactly the cap, older comments were almost certainly dropped;
+    # surface that explicitly so downstream review never reads a truncated set as
+    # "all comments" and re-opens threads it never actually saw.
+    comment_truncation = []
+    comment_resolution = {}
+    for filename, comment_type in (("pr-comments.json", "pr_comment"),
+                                   ("pr-diff-comments.json", "diff_comment")):
+        parsed = maybe_parse_json((out_dir / filename).read_text(encoding="utf-8"))
+        count = len(parsed) if isinstance(parsed, list) else None
+        if count is not None and count >= args.comments_limit:
+            comment_truncation.append({
+                "comment_type": comment_type,
+                "fetched": count,
+                "limit": args.comments_limit,
+                "note": ("fetched %d comments == --comments-limit; older comments "
+                         "are likely truncated. Re-run with a higher "
+                         "--comments-limit to see the full thread history."
+                         % count),
+            })
+        # D2: tally resolved/unresolved/unknown so the review loop can skip
+        # closed threads. "unknown" means the CLI/API did not expose a state.
+        if isinstance(parsed, list):
+            tally = {"resolved": 0, "unresolved": 0, "unknown": 0}
+            for comment in parsed:
+                state = comment_resolved(comment)
+                tally["unknown" if state is None
+                      else "resolved" if state else "unresolved"] += 1
+            comment_resolution[comment_type] = tally
+    if comment_truncation:
+        for item in comment_truncation:
+            print("WARNING: %s" % item["note"], file=sys.stderr)
+
     diff_text = (out_dir / "pr-diff.txt").read_text(encoding="utf-8")
     diff_json = maybe_parse_json((out_dir / "pr-diff.json").read_text(encoding="utf-8"))
     changed_files = parse_name_only((out_dir / "pr-diff-name-only.txt").read_text(encoding="utf-8"))
@@ -299,9 +353,14 @@ def main() -> int:
         },
         "artifacts": results,
         "files": file_summaries,
+        "comment_truncation": comment_truncation,
+        "comment_resolution": comment_resolution,
     }
     write_json(out_dir / "summary.json", summary)
-    print(json.dumps({"ok": True, "out_dir": str(out_dir), "files": len(file_summaries)}, ensure_ascii=False, indent=2))
+    print(json.dumps({"ok": True, "out_dir": str(out_dir),
+                      "files": len(file_summaries),
+                      "comment_truncation": comment_truncation},
+                     ensure_ascii=False, indent=2))
     return 0
 
 

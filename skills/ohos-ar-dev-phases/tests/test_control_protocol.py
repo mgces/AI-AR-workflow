@@ -604,6 +604,61 @@ class TestRepairRoundMetadata(unittest.TestCase):
         self.assertEqual(r["retry_rounds"], 0)
 
 
+class TestRevisionAgnosticBreaker(unittest.TestCase):
+    """S1: with an empty bundle_revision (legacy / bypass / no-bundle runs, e.g.
+    P1-P3), the breaker keys on a stable fallback_key derived from
+    (phase, failure_class, recommended_next_action) so consecutive identical
+    failures still accumulate and escalate — previously they reset every round,
+    making escalation a no-op for those runs (A1)."""
+
+    def _next(self, prev, **kw):
+        kw.setdefault("phase", 2)
+        kw.setdefault("bundle_revision_from", "")
+        kw.setdefault("recommended_next_action", "repair_window")
+        r = gl.repair_round_metadata(prev, **kw)
+        # a persisted repair packet carries the identity fields the next round
+        # compares against (phase / bundle_revision_from / failure_class /
+        # recommended_next_action); the raw helper returns only the counters +
+        # fallback_key, so layer the identity in as the real gates do.
+        return {**r, "active": True, "phase": kw["phase"],
+                "bundle_revision_from": kw["bundle_revision_from"],
+                "failure_class": kw.get("failure_class"),
+                "recommended_next_action": kw["recommended_next_action"]}
+
+    def test_fallback_key_present_and_stable(self):
+        r = self._next(None, failure_class="x")
+        self.assertTrue(r["fallback_key"])
+        # deterministic function of (phase, failure_class, recommended_next_action)
+        r2 = self._next(None, failure_class="x")
+        self.assertEqual(r["fallback_key"], r2["fallback_key"])
+        self.assertEqual(r["retry_rounds"], 0)
+
+    def test_same_failure_counts_as_same_revision(self):
+        prev = self._next(None, failure_class="x")
+        r = self._next(prev, failure_class="x")
+        self.assertTrue(r["same_revision"])
+        self.assertEqual(r["retry_rounds"], 1)
+
+    def test_different_failure_changes_key_and_resets_retry(self):
+        prev = self._next(None, failure_class="x")
+        r = self._next(prev, failure_class="y")
+        self.assertNotEqual(r["fallback_key"], prev["fallback_key"])
+        self.assertFalse(r["same_revision"])
+        self.assertEqual(r["retry_rounds"], 0)
+
+    def test_consecutive_empty_revision_failures_escalate(self):
+        # the A1 lock: same failure, empty revision -> retry budget exhausts and
+        # escalates to a human (was previously impossible for no-bundle runs).
+        prev = None
+        escalated = False
+        for _ in range(4):
+            prev = self._next(prev, failure_class="x", max_retry_rounds=2)
+            if prev["human_escalation_needed"]:
+                escalated = True
+                break
+        self.assertTrue(escalated)
+
+
 class TestDeviceAnchorStrength(unittest.TestCase):
     def test_case_with_no_anchor_is_weak(self):
         self.assertEqual(gl.device_case_anchor_strength(

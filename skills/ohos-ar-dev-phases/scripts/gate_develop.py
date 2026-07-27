@@ -31,6 +31,11 @@ STYLE_GUARD = gl.resolve_dep("code-ruleset-style-check/scripts/code_ruleset_guar
                              env_var="CODE_RULESET_GUARD")
 CODE_RULESET_SKILL = gl.resolve_dep("code-ruleset-style-check/SKILL.md",
                                     env_var="CODE_RULESET_STYLE_SKILL")
+# H1: author-time mirror of the deterministic, no-false-positive CI file-hygiene
+# checks (license header today). Shares the code-ruleset skill so it ships and
+# resolves the same way as the content guard above.
+HYGIENE_GUARD = gl.resolve_dep("code-ruleset-style-check/scripts/file_hygiene_guard.py",
+                               env_var="FILE_HYGIENE_GUARD")
 
 FORMAT_EXTENSIONS = (".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx")
 HEADER_EXTENSIONS = (".h", ".hh", ".hpp", ".hxx")
@@ -38,6 +43,7 @@ DISALLOWED_CPP_EXTENSIONS = (".cc", ".cxx", ".hh", ".hpp", ".hxx")
 
 # P2 feature-develop -> P3 test-develop handoff (control layer, non-authoritative).
 P2_HANDOFF_PARTS = ("feature_develop", "handoff_p2_to_p3.json")
+REPAIR_PACKET_PARTS = ("repairs", "current.json")
 P2_RECEIPT_PARTS = ("feature_develop", "completion_receipt_p2.json")
 FREEZE_PARTS = ("test_develop", "development_freeze_snapshot.json")
 
@@ -170,6 +176,35 @@ def static_rule_checks(gdir, source_relpaths):
         if re.search(r"\[(=|&)(\]|\s*,)", text):
             issues.append("%s: G.RES.05-CPP: avoid default lambda captures" % rel)
     return checked, issues
+
+
+def file_hygiene_checks(pdir, gdir, changed, phase, guard_path):
+    """H1: run the deterministic file-hygiene guard (license header today) over
+    the changed files. Returns (problems, evidence_rel). A missing guard fails
+    closed — like the content guard — so a silent bypass cannot look clean. The
+    guard self-scopes (keeps only header-bearing extensions), so we pass every
+    changed path that exists on disk."""
+    rel = "evidence/phase%d/file_hygiene_report.txt" % phase
+    out = os.path.join(pdir, rel)
+    abs_paths = [os.path.join(gdir, f) for f in changed
+                 if os.path.isfile(os.path.join(gdir, f))]
+    if not os.path.exists(guard_path):
+        with open(out, "w", encoding="utf-8") as f:
+            f.write("BLOCKER: file_hygiene guard not found at %s\n" % guard_path)
+        return ["file-hygiene guard missing: %s" % guard_path], rel
+    json_rel = "evidence/phase%d/file_hygiene_findings.json" % phase
+    cp = subprocess.run(
+        [sys.executable, guard_path, "--json", os.path.join(pdir, json_rel), *abs_paths],
+        text=True, capture_output=True)
+    with open(out, "w", encoding="utf-8") as f:
+        f.write("file-hygiene guard over %d changed file(s):\nrc=%d\n%s\n%s"
+                % (len(abs_paths), cp.returncode, cp.stdout, cp.stderr))
+    problems = []
+    if cp.returncode != 0:
+        problems.append(
+            "file-hygiene finding (fix at author time so it does not surface at "
+            "the CI gate): %s" % (cp.stderr or cp.stdout).strip()[:600])
+    return problems, rel
 
 
 def include_inside_extern_c(text):
@@ -338,13 +373,17 @@ def main():
     if cxx and args.no_style:
         dependency_issues.append("--no-style is not allowed when C/C++ files changed")
 
+    style_findings_rel = "evidence/phase2/code_ruleset_findings.json"
     if cxx and not args.no_style and os.path.exists(STYLE_GUARD):
         abs_cxx = [os.path.join(gdir, f) for f in cxx if os.path.exists(os.path.join(gdir, f))]
         # full guard: clang-format + the deterministic rule blockers. Running
         # the rules here (not only clang-format) is what keeps banned APIs /
-        # sensitive strings from slipping past P2 into the CI gate.
-        cp = subprocess.run([sys.executable, STYLE_GUARD, *abs_cxx],
-                            text=True, capture_output=True)
+        # sensitive strings from slipping past P2 into the CI gate. `--json`
+        # captures the same findings structurally (S3 suspect_locations backfill).
+        cp = subprocess.run(
+            [sys.executable, STYLE_GUARD, "--json",
+             os.path.join(pdir, style_findings_rel), *abs_cxx],
+            text=True, capture_output=True)
         style_ok = cp.returncode == 0
         style_detail = (cp.stdout + cp.stderr)[:4000]
     elif cxx:
@@ -366,6 +405,15 @@ def main():
         f.write("  - API comment quality, class copy/move intent, inheritance intent, input validation completeness\n")
         f.write("  - pointer lifetime, integer overflow proof, function size and parameter-count judgment\n")
     arts.append(strict_rel)
+
+    # H1 FILE HYGIENE: deterministic, no-false-positive CI mirror (license
+    # header) over ALL changed files (the guard self-scopes to header-bearing
+    # extensions). Blocking, fail-closed — pulls the CI header check to author
+    # time so it never first surfaces at the CI gate.
+    hygiene_problems, hygiene_rel = file_hygiene_checks(
+        pdir, gdir, changed, 2, HYGIENE_GUARD)
+    arts.append(hygiene_rel)
+    hygiene_ok = not hygiene_problems
 
     # CHANGED-FILES COVERAGE (P1 hard gate for v2 contracts): every changed_files[]
     # declared in the signed ar-contract must correspond to an actually-touched
@@ -397,19 +445,21 @@ def main():
         sys.exit("PHASE 2 FAIL: ar-contract unrecoverable: %s" % c_detail)
 
     reason = ("base/head %s->%s, %d file(s) changed (%d untracked), "
-              "style_ok=%s strict_ok=%s%s%s") % (
+              "style_ok=%s strict_ok=%s hygiene_ok=%s%s%s") % (
         base[:12], head[:12], len(changed), len(untracked), style_ok, strict_ok,
-        cov_note, design_bypass)
+        hygiene_ok, cov_note, design_bypass)
     if cov_missing:
         reason += "; MISSING changed_files: %s" % ", ".join(cov_missing)
     print(reason)
-    verdict = "PASS" if (style_ok and strict_ok and cov_ok) else "FAIL"
+    verdict = "PASS" if (style_ok and strict_ok and hygiene_ok and cov_ok) else "FAIL"
 
     problems = []
     if not style_ok:
         problems.append("style check failed")
     if not strict_ok:
         problems += (strict_issues + dependency_issues)
+    if not hygiene_ok:
+        problems += hygiene_problems
     if cov_missing:
         problems += ["declared changed_file not touched: %s" % m for m in cov_missing]
     if verdict == "PASS":
@@ -433,18 +483,45 @@ def main():
                                 problems=problems,
                                 resume_hint="修复后重跑 gate_develop.py")
 
-    gl.write_gate_phase_memory_card(
-        pdir, 2, "develop", verdict=verdict,
-        current_blocker=None if verdict == "PASS" else reason,
-        forbidden_actions=[
-            "edit_design_as_if_it_were_unsigned_working_copy",
-            "skip_signed_design_consent_check",
-        ],
-        next_expected_action_class=(
-            "prepare_test_bundle" if verdict == "PASS" else "repair_or_regenerate"),
-        last_failure_class=None if verdict == "PASS" else "develop_gate_failed",
-        primary_entry_doc=gl.controls_relpath("next_action.json"),
-        primary_handoff_doc=gl.controls_relpath(*P2_HANDOFF_PARTS))
+    if verdict == "PASS":
+        gl.write_gate_phase_memory_card(
+            pdir, 2, "feature-develop", verdict="PASS",
+            current_blocker=None,
+            forbidden_actions=[
+                "edit_design_as_if_it_were_unsigned_working_copy",
+                "skip_signed_design_consent_check",
+            ],
+            next_expected_action_class="prepare_test_bundle",
+            last_failure_class=None,
+            primary_entry_doc=gl.controls_relpath("next_action.json"),
+            primary_handoff_doc=gl.controls_relpath(*P2_HANDOFF_PARTS))
+    else:
+        # S2: P2 now emits a repair packet (+ FAIL card) through the single
+        # control-layer exit point, so a weak model gets a structured retry/
+        # repair/escalate route instead of only "修复后重跑". The circuit breaker
+        # (S1) accumulates even without a bundle_revision. Navigation only —
+        # advance.py + the signed manifest still own the verdict.
+        failure_class = ("code_ruleset_finding" if (not style_ok or not hygiene_ok)
+                         else "develop_gate_failed")
+        # S3: backfill line-level suspects from the findings the guards already
+        # wrote (code_ruleset + file_hygiene `--json`). suspect_files stays the
+        # non-empty fallback; locations are an advisory refinement.
+        suspect_locations = (
+            gl.suspect_locations_from_findings_json(pdir, style_findings_rel)
+            + gl.suspect_locations_from_findings_json(
+                pdir, "evidence/phase2/file_hygiene_findings.json"))
+        gl.finalize_control(
+            pdir, phase=2, phase_name="feature-develop", verdict="FAIL",
+            repair_packet_parts=REPAIR_PACKET_PARTS,
+            failure_class=failure_class,
+            suspect_files=changed, suspect_locations=suspect_locations,
+            problems=problems,
+            last_failure_reason=reason,
+            must_rerun=["gate_develop.py"],
+            forbidden_actions=[
+                "edit_design_as_if_it_were_unsigned_working_copy",
+                "skip_signed_design_consent_check",
+            ])
     gl.write_gate_stage_packet_from_def(
         pdir, "feature_develop", "feature-develop", physical_phase=2)
     gl.emit(pdir, 2, "gate_develop.py", verdict=verdict, reason=reason,

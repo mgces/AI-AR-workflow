@@ -86,7 +86,7 @@ def _repair_round_metadata(pdir, *, phase, bundle_revision_from, recommended_nex
 
 
 def _write_repair_packet(pdir, *, failure_class, problems, last_failure_reason,
-                         regen_signals=None):
+                         regen_signals=None, suspect_locations=None):
     bundle = _test_bundle_context(pdir)
     repair_disallowed = gl.regen_signal_present(**(regen_signals or {}))
     base_action = gl.classify_repair_vs_regenerate(
@@ -106,6 +106,7 @@ def _write_repair_packet(pdir, *, failure_class, problems, last_failure_reason,
         "active": True,
         "failure_class": failure_class,
         "suspect_files": bundle.get("suspect_files") or [],
+        "suspect_locations": gl.normalize_suspect_locations(suspect_locations),
         "suspect_tests": bundle.get("suspect_tests") or [],
         "allowed_fix_scope": ["declared test files", "unit-test target inputs"],
         "must_rerun": ["gate_test_ut.py"],
@@ -125,6 +126,7 @@ def _write_repair_packet(pdir, *, failure_class, problems, last_failure_reason,
         "problems": problems or [],
         "max_retry_rounds": MAX_RETRY_ROUNDS,
         "max_repair_rounds": MAX_REPAIR_ROUNDS,
+        "fallback_key": rounds["fallback_key"],
         "retry_rounds": rounds["retry_rounds"],
         "repair_rounds": rounds["repair_rounds"],
         "human_escalation_needed": rounds["human_escalation_needed"],
@@ -193,7 +195,8 @@ def _write_completion_controls(pdir, *, tests, failures, errors, fresh_dir, cove
 def _record_result(pdir, verdict, reason, arts, *, cmd, exit_code, test_target,
                    suite, part, tests=None, failures=None, errors=None,
                    fresh_dir=None, contract_status=None, coverage_missing=None,
-                   failure_class=None, problems=None, resume_hint=None):
+                   failure_class=None, problems=None, resume_hint=None,
+                   suspect_locations=None):
 
     checks = [
         "target=%s" % test_target,
@@ -266,6 +269,7 @@ def _record_result(pdir, verdict, reason, arts, *, cmd, exit_code, test_target,
             failure_class=failure_class,
             problems=problems or [],
             last_failure_reason=reason,
+            suspect_locations=suspect_locations,
         )
     gl.write_gate_phase_memory_card(
         pdir, 5, "test-author", verdict=verdict,
@@ -273,7 +277,9 @@ def _record_result(pdir, verdict, reason, arts, *, cmd, exit_code, test_target,
         current_blocker=None if verdict == "PASS" else reason,
         forbidden_actions=["modify_functional_code_outside_test_scope"],
         next_expected_action_class=(
-            "advance_phase" if verdict == "PASS" else "repair_or_regenerate"),
+            "advance" if verdict == "PASS"
+            else gl.action_class_for("repair_or_regenerate",
+                                     failure_class=failure_class)),
         last_failure_class=None if verdict == "PASS" else failure_class,
         primary_entry_doc=gl.controls_relpath("next_action.json"),
         primary_handoff_doc=gl.controls_relpath(*HANDOFF_PARTS))
@@ -302,6 +308,13 @@ def passed_gtests(result_xml_paths):
             if not failed:
                 passed.add("%s.%s" % (suite, name) if suite else name)
     return passed
+
+
+def failed_gtest_locations(result_xml_paths):
+    """S3 backfill for P5. Thin wrapper over the shared gatelib parser (also used
+    by P7 integration) so both gtest phases extract failing-case locations the
+    same way. See gl.suspect_locations_from_gtest_xml."""
+    return gl.suspect_locations_from_gtest_xml(result_xml_paths)
 
 
 def check_gtest_coverage(required, passed):
@@ -498,6 +511,10 @@ def main():
     if missing:
         problems += ["required gtest not passed: %s" % g for g in missing]
     failure_class = "gtest_coverage_missing" if missing else "unit_test_verdict_failed"
+    # S3: backfill line-level suspects from the failing gtest cases in the result
+    # xmls we already parsed. suspect_tests stays the base signal.
+    suspect_locations = failed_gtest_locations(
+        [os.path.join(pdir, r) for r in result_rels])[:100]
     _record_result(
         pdir, "FAIL", reason, arts,
         cmd=run_cmd, exit_code=proc.returncode,
@@ -506,6 +523,7 @@ def main():
         fresh_dir=os.path.basename(fresh_dir),
         contract_status=contract_status, coverage_missing=missing,
         failure_class=failure_class, problems=problems,
+        suspect_locations=suspect_locations,
         resume_hint="修复单测失败/覆盖缺口后重跑 gate_test_ut.py")
     sys.exit("PHASE 5 FAIL: %s" % reason)
 

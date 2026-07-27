@@ -41,6 +41,7 @@ import prepare_test_bundle as ptb  # noqa: E402
 
 PHASE = 3
 GATE = "gate_test_develop.py"
+REPAIR_PACKET_PARTS = ("repairs", "current.json")
 FREEZE_PARTS = ("test_develop", "development_freeze_snapshot.json")
 
 # Same guard P2 uses. In P3 we run it RULES-ONLY: gtest macro bodies legitimately
@@ -49,6 +50,11 @@ FREEZE_PARTS = ("test_develop", "development_freeze_snapshot.json")
 # the CI gate. resolve_dep mirrors gate_develop so both phases share one source.
 STYLE_GUARD = gl.resolve_dep("code-ruleset-style-check/scripts/code_ruleset_guard.py",
                              env_var="CODE_RULESET_GUARD")
+# H1: same author-time file-hygiene guard P2 uses (license header). Test files
+# were never header-gated before P4/CI either, so run it here over the newly
+# authored tests so a missing header is caught at author time, not at CI.
+HYGIENE_GUARD = gl.resolve_dep("code-ruleset-style-check/scripts/file_hygiene_guard.py",
+                               env_var="FILE_HYGIENE_GUARD")
 CXX_EXTS = (".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx")
 
 
@@ -81,6 +87,34 @@ def _rule_check_new_tests(pdir, gdir, new_tests):
     if cp.returncode != 0:
         problems.append(
             "test code violates code_ruleset blockers (fix before build so it "
+            "does not surface at the CI gate): %s" % (cp.stderr or cp.stdout).strip()[:600])
+    return problems, rel
+
+
+def _hygiene_check_new_tests(pdir, gdir, new_tests):
+    """H1: run the deterministic file-hygiene guard (license header) over newly
+    authored test files. Returns (problems, evidence_rel). A missing guard fails
+    closed so a silent bypass cannot masquerade as clean. The guard self-scopes
+    to header-bearing extensions, so we pass every new test file on disk."""
+    rel = "evidence/phase3/test_hygiene_report.txt"
+    out = os.path.join(pdir, rel)
+    abs_paths = [os.path.join(gdir, t) for t in new_tests
+                 if os.path.isfile(os.path.join(gdir, t))]
+    if not os.path.exists(HYGIENE_GUARD):
+        with open(out, "w", encoding="utf-8") as f:
+            f.write("BLOCKER: file_hygiene guard not found at %s\n" % HYGIENE_GUARD)
+        return ["file-hygiene guard missing: %s" % HYGIENE_GUARD], rel
+    json_rel = "evidence/phase3/test_hygiene_findings.json"
+    cp = subprocess.run(
+        [sys.executable, HYGIENE_GUARD, "--json", os.path.join(pdir, json_rel), *abs_paths],
+        text=True, capture_output=True)
+    with open(out, "w", encoding="utf-8") as f:
+        f.write("test files hygiene-checked (%d):\nrc=%d\n%s\n%s"
+                % (len(abs_paths), cp.returncode, cp.stdout, cp.stderr))
+    problems = []
+    if cp.returncode != 0:
+        problems.append(
+            "authored test file missing license header (fix before build so it "
             "does not surface at the CI gate): %s" % (cp.stderr or cp.stdout).strip()[:600])
     return problems, rel
 
@@ -186,6 +220,11 @@ def main():
     style_problems, style_rel = _rule_check_new_tests(pdir, gdir, new_tests)
     arts.append(style_rel)
 
+    # H1 FILE HYGIENE: license-header mirror of the CI file check over the newly
+    # authored test files. Blocking, fail-closed — same as P2.
+    hygiene_problems, hygiene_rel = _hygiene_check_new_tests(pdir, gdir, new_tests)
+    arts.append(hygiene_rel)
+
     # CONTRACT AUTHORSHIP COVERAGE: recover the contract from the SIGNED design.
     c_ok, contract, c_detail = gl.load_signed_contract(pdir)
     contract_status = "ok" if c_ok else ""
@@ -232,6 +271,7 @@ def main():
     if non_test_extra:
         problems += ["feature freeze violated by non-test path: %s" % p for p in non_test_extra]
     problems += style_problems
+    problems += hygiene_problems
     if contract_status == "ok" and missing:
         problems += ["declared test_case not authored (suite not referenced by any new test file): %s"
                      % g for g in missing]
@@ -270,17 +310,45 @@ def main():
                                 resume_hint="为每个 test_cases.gtest 写引用其 suite 的新测试文件后"
                                             "重跑 gate_test_develop.py（不得改功能代码）")
 
-    gl.write_gate_phase_memory_card(
-        pdir, PHASE, "test-develop", verdict=verdict,
-        current_blocker=None if verdict == "PASS" else reason,
-        forbidden_actions=[
-            "modify_functional_code_after_feature_freeze",
-            "count_test_execution_as_authorship",
-            "treat_control_bundle_as_signed_truth",
-        ],
-        next_expected_action_class=(
-            "advance_phase" if verdict == "PASS" else "author_tests_or_repair"),
-        last_failure_class=None if verdict == "PASS" else "test_develop_authorship_failed")
+    if verdict == "PASS":
+        gl.write_gate_phase_memory_card(
+            pdir, PHASE, "test-develop", verdict="PASS",
+            current_blocker=None,
+            forbidden_actions=[
+                "modify_functional_code_after_feature_freeze",
+                "count_test_execution_as_authorship",
+                "treat_control_bundle_as_signed_truth",
+            ],
+            next_expected_action_class="advance",
+            last_failure_class=None)
+    else:
+        # S2: P3 now emits a repair packet (+ FAIL card) via finalize_control so
+        # a weak model gets a concrete author/repair route. A style finding is a
+        # code_ruleset finding in test code; otherwise authorship is incomplete.
+        style_failed = bool(style_problems) or bool(hygiene_problems)
+        failure_class = ("test_style_finding" if style_failed
+                         else "test_authoring_incomplete")
+        # S3: backfill line-level suspects from the findings the guards already
+        # wrote for the authored tests. suspect_files stays the fallback.
+        suspect_locations = (
+            gl.suspect_locations_from_findings_json(
+                pdir, "evidence/phase3/test_style_findings.json")
+            + gl.suspect_locations_from_findings_json(
+                pdir, "evidence/phase3/test_hygiene_findings.json"))
+        gl.finalize_control(
+            pdir, phase=PHASE, phase_name="test-develop", verdict="FAIL",
+            repair_packet_parts=REPAIR_PACKET_PARTS,
+            failure_class=failure_class,
+            suspect_files=new_tests, suspect_tests=new_tests,
+            suspect_locations=suspect_locations,
+            problems=problems, last_failure_reason=reason,
+            must_rerun=[GATE],
+            next_action_class=("repair" if style_failed else "run_gate"),
+            forbidden_actions=[
+                "modify_functional_code_after_feature_freeze",
+                "count_test_execution_as_authorship",
+                "treat_control_bundle_as_signed_truth",
+            ])
     gl.write_gate_stage_packet_from_def(
         pdir, "test_develop", "test-develop", physical_phase=PHASE)
     gl.emit(pdir, PHASE, GATE, verdict=verdict, reason=reason, artifacts_rel=arts)

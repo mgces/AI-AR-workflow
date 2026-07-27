@@ -62,7 +62,9 @@ def _write_bootstrap_controls(pdir, verdict, *, blocker=None,
         pdir, 0, "bootstrap", verdict=verdict,
         current_blocker=None if verdict == "PASS" else (blocker or "unknown"),
         next_expected_action_class=(
-            "advance_phase" if verdict == "PASS" else "repair_environment"),
+            "advance" if verdict == "PASS"
+            else gl.action_class_for("repair_environment",
+                                     failure_class=failure_class)),
         last_failure_class=None if verdict == "PASS" else failure_class,
         primary_entry_doc=gl.controls_relpath("next_action.json"))
     gl.write_gate_stage_packet_from_def(

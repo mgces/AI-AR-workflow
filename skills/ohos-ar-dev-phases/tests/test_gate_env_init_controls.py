@@ -45,7 +45,7 @@ class TestBootstrapControls(unittest.TestCase):
         self.assertEqual(card["phase"], 0)
         self.assertEqual(card["verdict"], "PASS")
         self.assertEqual(card["current_blocker"], "none")
-        self.assertEqual(card["next_expected_action_class"], "advance_phase")
+        self.assertEqual(card["next_expected_action_class"], "advance")
 
         packet = self._packet()
         self.assertIsNotNone(packet)
@@ -64,7 +64,10 @@ class TestBootstrapControls(unittest.TestCase):
         self.assertEqual(card["verdict"], "FAIL")
         self.assertEqual(card["current_blocker"], "missing capabilities: device")
         self.assertEqual(card["last_failure_class"], "bootstrap_input_missing")
-        self.assertEqual(card["next_expected_action_class"], "repair_environment")
+        # S4: repair_environment is not a member of ACTION_CLASSES; it
+        # normalizes to the single 'repair' class (the env fix is still a repair).
+        self.assertEqual(card["next_expected_action_class"], "repair")
+        self.assertIn(card["next_expected_action_class"], gl.ACTION_CLASSES)
 
     def test_control_writes_are_schema_valid(self):
         gate_env_init._write_bootstrap_controls(self.pdir, "PASS")

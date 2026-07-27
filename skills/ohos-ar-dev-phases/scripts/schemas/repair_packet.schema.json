@@ -18,9 +18,24 @@
     "phase_name": {"type": "string"},
     "bundle_id": {"type": ["string", "null"]},
     "bundle_revision_from": {"type": ["integer", "string", "null"]},
+    "fallback_key": {"type": ["string", "null"]},
     "active": {"type": "boolean"},
     "failure_class": {"type": ["string", "null"]},
     "suspect_files": {"type": "array", "items": {"type": "string"}},
+    "suspect_locations": {
+      "type": "array",
+      "description": "S3: structured, line-level backfill of suspect_files from already-parsed gate artifacts (code_ruleset/file_hygiene findings, build.log error lines, gtest failure xml). Navigation aid only — suspect_files remains the non-empty fallback; a weak model may ignore locations entirely. NOT a truth source.",
+      "items": {
+        "type": "object",
+        "required": ["file"],
+        "properties": {
+          "file": {"type": "string"},
+          "line": {"type": ["integer", "null"], "minimum": 0},
+          "rule": {"type": ["string", "null"]},
+          "message": {"type": ["string", "null"]}
+        }
+      }
+    },
     "suspect_tests": {"type": "array", "items": {"type": "string"}},
     "allowed_fix_scope": {"type": "array", "items": {"type": "string"}},
     "must_rerun": {"type": "array", "items": {"type": "string"}},
@@ -35,7 +50,19 @@
     "repair_rounds": {"type": "integer", "minimum": 0},
     "human_escalation_needed": {"type": "boolean"},
     "escalation_note": {"type": ["string", "null"]},
-    "recommended_next_action": {"type": ["string", "null"]}
+    "recommended_next_action": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "string",
+          "comment": "Packet routing vocabulary — DISTINCT from the card's ACTION_CLASSES enum. classify_repair_vs_regenerate() emits retry/repair_window/regenerate/escalate; finalize_control() may substitute human_escalation; inactive packets carry 'none'.",
+          "enum": [
+            "none", "retry", "repair_window", "regenerate",
+            "escalate", "human_escalation"
+          ]
+        }
+      ]
+    }
   },
   "if": {"properties": {"active": {"const": true}}, "required": ["active"]},
   "then": {
