@@ -15,3 +15,4 @@ products/**/pipeline.json
 products/**/pipeline-state/
 products/**/*_manifest.jsonl
 products/**/*.log
+skills/code-ruleset-style-check/s/
