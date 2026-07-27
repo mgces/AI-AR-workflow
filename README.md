@@ -34,6 +34,7 @@ OHOS(rk3568,C/C++ 系统组件)的完整研发生命周期,直到代码上库:
    └──────────────────────────────────────────────┼──────────────────────────────────────────────┘
                                                   ▼
    ┌──────────── P1 设计固化 gate_design.py ── AR_design.md 6 必含章节 + ar-contract 契约块,HMAC 签名 ┐
+   │      (设计前:kb_search.py 检索知识库 → design_refs.md 供参考,advisory 不进门控)              │
    │      目标组件 / 功能需求 / 完整代码框架 / 完整测试框架 / 需测试功能点 / 真机用例构造              │
    │      PASS(emit 1)─▶ advance --phase 1;需人工 consent --phase 1(在 P2 开发门内校验)             │
    └──────────────────────────────────────────────┼──────────────────────────────────────────────┘
@@ -59,12 +60,12 @@ OHOS(rk3568,C/C++ 系统组件)的完整研发生命周期,直到代码上库:
                                                   ▼
    ┌──────────── P6 真机 gate_device_func.py ── 部署 sha256 一致 ＋ hilog 含 nonce/marker/e2e ＋ ──┐
    │             uptime 单调 ── 证据 PASS(emit 6)──▶【停:人工核对真机结果】── consent --phase 6 ─▶ advance │
-   │             (render_report --kind device → reports/*.html)                                    │
+   │             (render_report --kind device → reports/device_functional.md)                      │
    └──────────────────────────────────────────────┼──────────────────────────────────────────────┘
                                                   ▼
    ┌──────────── P7 质量 gate_integration.py ── 功能 summary ＋ 覆盖率/性能/功耗/稳定性 ＋ review==0 ┐
    │             ── 证据 PASS(emit 7)──▶【停:人工核对质量/review】── consent --phase 7 ─▶ advance     │
-   │             (render_report --kind quality → reports/*.html)                                   │
+   │             (render_report --kind quality → reports/quality.md)                               │
    └──────────────────────────────────────────────┼──────────────────────────────────────────────┘
                                                   ▼
    ┌──────────── P8 上库 gate_upload_ci.py ─────────────────────────────────────────────────────── ┐
@@ -77,7 +78,7 @@ OHOS(rk3568,C/C++ 系统组件)的完整研发生命周期,直到代码上库:
    ▲ 任一阶段发现要改功能代码 ─────────────────────────────────────────────────────────────────────┐
    └──── advance.py reset --reason "…" ── 打回 P1 重走(功能指纹漂移会强制拒绝,不许只补跑当前阶段) ─┘
 
-   证据两轨分离:evidence/(机器,HMAC 签名,gitignore) ‖ reports/(人读 HTML,可脱敏归档)
+   证据两轨分离:evidence/(机器,HMAC 签名,gitignore) ‖ reports/(人读 Markdown,可脱敏归档)
 ```
 
 ---
@@ -117,7 +118,7 @@ AI-AR-workflow/
     │   ├── references/                     ← 门控契约 / 防伪协议 / 状态结构
     │   └── scripts/                        ← 归档与人读产物(纯 Python 无依赖)
     │       ├── archive_product.py          ← 脱敏归档到 products/(--include-reports)
-    │       ├── render_report.py            ← 渲染 reports/ 人读 HTML + PR 描述
+    │       ├── render_report.py            ← 渲染 reports/ 人读 Markdown + PR 描述
     │       └── refresh_todo.py             ← 依 AR_design 刷新 todo.md
     ├── ohos-ar-dev-phases/             ← thick 阶段说明 + 承重脚本
     │   ├── SKILL.md
@@ -221,7 +222,7 @@ P0 会把探测到的序列号回填进 `pipeline.json` 与 `evidence/phase0/env
 | 阶段 | 做事(调用的技能) | 门控脚本 | 通过条件 | 落盘证据(`evidence/phaseN/`) |
 |---|---|---|---|---|
 | **P0** | ohos-ar-dev-init | `gate_env_init.py` | build/compile/git/testfwk/hdc 二进制/真机(自动探测并记录序列号)全部就绪;oh-gc + gitcode token 为 SOFT 告警 | `env.json` |
-| **P1 设计** | 写 AR_design.md(6 章节 + ar-contract 契约块) | `gate_design.py`(emit 1) | AR_design.md 6 必含章节齐全 + ar-contract 三非空数组并签名 | `AR_design.md`、`design_check.txt` |
+| **P1 设计** | (设计前 kb_search 检索知识库,advisory)写 AR_design.md(6 章节 + ar-contract 契约块) | `gate_design.py`(emit 1) | AR_design.md 6 必含章节齐全 + ar-contract 三非空数组并签名 | `AR_design.md`、`design_check.txt` |
 | **P2 开发** | ohos-dev-sa-codegen / -napi-module / code-ruleset-style-check / tdd-enforcer / ohos-code-skeletons | `gate_develop.py`(emit 2) | 已有签名 AR_design **且** 已有绑定的 P1 设计 consent **且** 相对 `base_commit` 有 tracked/untracked 改动 **且** C/C++ 格式 guard + 强规则检查通过;**闭合时锁功能指纹** | `diff.patch`、`changed_files.txt`、`style_report.txt`、`strict_cpp_report.txt` |
 | **P3 测试开发** | ohos-test-ut-generation / tdd-enforcer(**只增独立测试**) | `gate_test_develop.py`(emit 3) | phase2 冻结快照存在 **且** 无新增非测试路径 **且** 契约每个 `test_cases[].gtest` 的 suite 被某个**新测试文件**引用(编写覆盖) | `new_test_files.txt`、`authorship_coverage.txt`、`authored/*`(签名快照) |
 | **P4 编译** | ohos-dev-build-execution-diagnosis / ohos-build-flash | `gate_build.py`(emit 4) | build.sh exit 0 **且** 输出含 `=====build…successful=====` 且无 error 横幅 **且** 契约 `build_artifacts` 全部编译出 | `build_tail.log`、`build_banner.txt`、`artifact_check.txt`(失败再加 `error_distill.txt`) |
@@ -236,7 +237,7 @@ P0 会把探测到的序列号回填进 `pipeline.json` 与 `evidence/phase0/env
 
 ## 7. 运行态目录(每个 AR 一个)
 
-证据两轨分离:`evidence/`(机器,HMAC 签名,gitignore)与 `reports/`(人读 HTML,可脱敏归档)并列。
+证据两轨分离:`evidence/`(机器,HMAC 签名,gitignore)与 `reports/`(人读 Markdown,可脱敏归档)并列。
 
 ```
 $REPO/specs/pipeline/{YYYYMMDD}-{slug}/
@@ -258,12 +259,12 @@ $REPO/specs/pipeline/{YYYYMMDD}-{slug}/
 │   ├── indexes/         #   artifact/evidence/report 三类索引(避免在目录里迷路)
 │   ├── design_orchestrate/ … upload_review/  # 各逻辑阶段专属产物(bundle 定义 / 子状态快照等)
 │   └── test_develop/    #   P3 薄层:signed_test_scope / test_intent_matrix(prepare_test_bundle.py 产)
-└── reports/             # ← 人读 HTML 审计报告(脱敏,可归档),与 evidence/ 分离
-    ├── device_functional.html          # 真机功能完整报告
-    ├── quality.html                    # 覆盖率/性能/功耗/稳定性
-    ├── summary.html                    # 上库汇总(背景/设计/修改/用例/结果)
+└── reports/             # ← 人读 Markdown 审计报告(脱敏,可归档),与 evidence/ 分离
+    ├── device_functional.md            # 真机功能完整报告
+    ├── quality.md                      # 覆盖率/性能/功耗/稳定性 + 代码 review(六段聚合)
+    ├── summary.md                      # 上库汇总(背景/设计/修改/用例/结果)
     ├── pr_description.md               # P8 汇总,gate_upload_ci 注入 PR 描述
-    └── index.html
+    └── index.md
 ```
 `pipeline.json` 字段(含 `functional_fingerprint` / `locked_all_paths`)说明见
 `skills/ohos-ar-dev-workflow/references/pipeline-schema.md`;`controls/` 各包的字段结构见
@@ -271,7 +272,7 @@ $REPO/specs/pipeline/{YYYYMMDD}-{slug}/
 `products/20260723-weak-model-optimization/stage_packet_templates.md`。
 
 > 归档到 `products/` 时用 `archive_product.py --include-reports`:只落脱敏摘要
-> (`ar.md` + `manifest_summary.md`)与脱敏 HTML;原始 `evidence/` 留本地(gitignore)。
+> (`ar.md` + `manifest_summary.md`)与脱敏 Markdown 报告;原始 `evidence/` 留本地(gitignore)。
 
 ---
 

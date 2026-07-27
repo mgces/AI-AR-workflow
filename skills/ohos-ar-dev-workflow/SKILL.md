@@ -86,9 +86,9 @@ python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-workflow/scripts/refresh_todo.py" --pipel
 | P3 测试开发 | test-ut-generation / tdd-enforcer / code-ruleset-style-check(**只增独立测试**,编译前写完测试代码) | `gate_test_develop.py`(`emit 3`,对新增测试源强制 `--rules-only` 规则门控) | 契约每个 `test_cases[].gtest` 的 suite 出现在新测试文件中(**编写**覆盖)+ 测试源签名快照 + 测试代码规则检测报告 |
 | P4 编译 | build-execution-diagnosis / build-flash | `gate_build.py`(`emit 4`) | build.log 成功横幅 + 契约 `build_artifacts` 全部编译出 |
 | P5 单测执行 | test-ut-generation / tdd-enforcer(**只增独立测试**) | `gate_test_ut.py`(`emit 5`) | developer_test summary_report.xml + 契约每个 `test_cases[].gtest` 通过(**执行**覆盖) |
-| P6 真机 | build-flash / hdc-command-usage | `gate_device_func.py`(`emit 6`) | 主机/设备产物 sha256 一致 + 含 nonce/功能 marker/运行时 marker/端到端 marker 的真机 hilog + 契约每个 `device_cases[].marker` 命中 **+ 人工确认(consent --phase 6)**;渲染 `reports/` device HTML |
-| P7 质量验证 | build-flash / developer_test MST / coverage / performance / power / stability / code-ruleset-style-check / security-code-review | `gate_integration.py`(`emit 7`;或 `gate_device_func.py --phase 7` + `gate_integration.py`) | 功能 summary + 覆盖率 + 性能 + 功耗 + 稳定性 + 代码 review 零问题 **+ 人工确认(consent --phase 7)**;渲染 `reports/` quality HTML |
-| P8 上库 | gitcode-cli / gitcode-pr-review / security-code-review / openharmony-ci-analysis | `gate_upload_ci.py`(`emit 8`) | A 本地自检零问题 + B PR review 零问题 + PR + CI 绿(SHA 绑定)**+ 人工确认(consent --phase 8)**;渲染 summary HTML + PR 描述注入 |
+| P6 真机 | build-flash / hdc-command-usage | `gate_device_func.py`(`emit 6`) | 主机/设备产物 sha256 一致 + 含 nonce/功能 marker/运行时 marker/端到端 marker 的真机 hilog + 契约每个 `device_cases[].marker` 命中 **+ 人工确认(consent --phase 6)**;渲染 `reports/device_functional.md` |
+| P7 质量验证 | build-flash / developer_test MST / coverage / performance / power / stability / code-ruleset-style-check / security-code-review | `gate_integration.py`(`emit 7`;或 `gate_device_func.py --phase 7` + `gate_integration.py`) | 功能 summary + 覆盖率 + 性能 + 功耗 + 稳定性 + 代码 review 零问题 **+ 人工确认(consent --phase 7)**;渲染 `reports/quality.md`(六段聚合含 review) |
+| P8 上库 | gitcode-cli / gitcode-pr-review / security-code-review / openharmony-ci-analysis | `gate_upload_ci.py`(`emit 8`) | A 本地自检零问题 + B PR review 零问题 + PR + CI 绿(SHA 绑定)**+ 人工确认(consent --phase 8)**;渲染 `reports/summary.md` + PR 描述注入 |
 
 每阶段成功后,同步更新 `TodoWrite` 与 `$PDIR/todo.md`(由 refresh_todo 重写,便于断点恢复)。
 
