@@ -1,4 +1,4 @@
-# P2 编译验证(build-verify)
+# P4 编译验证(build-verify,物理 phase 4)
 
 ## 做事(调用现有技能)
 - 构建与失败诊断:`ohos-dev-build-execution-diagnosis`(读 `out/rk3568/build.log` / `error.log`)。
@@ -13,7 +13,7 @@ python3 $S/gate_build.py --pipeline-dir "$PDIR"   # target 默认取 pipeline.js
 `./build.sh --product-name rk3568 --ccache --build-target <target>` →
 只在**新追加的尾部**找 `=====build rk3568 successful=====`,且无 error 横幅,且 build.sh exit 0。
 成功后从签名 AR_design 取契约 `build_artifacts`,**逐个校验产物文件真的已编译出**
-(路径先按相对仓根找,再回退 `out/rk3568/<rel>`),缺任一即 FAIL,写 `evidence/phase2/artifact_check.txt`
+(路径先按相对仓根找,再回退 `out/rk3568/<rel>`),缺任一即 FAIL,写 `evidence/phase4/artifact_check.txt`
 列出命中/缺失。失败时从新尾部蒸馏 `ninja: build stopped`/`FAILED:`/`ERROR at`/`[OHOS ERROR]` 到
 `error_distill.txt`。证据:`build_tail.log`、`build_banner.txt`、`artifact_check.txt`(、`error_distill.txt`)。
 契约缺失(legacy/`--allow-missing-contract`)→ 跳过产物覆盖并留 bypass 标;契约被篡改 → FAIL。
@@ -24,5 +24,5 @@ build.sh exit 0 **且** 成功横幅在本次启动后的尾部出现 **且** �
 
 ## 通过后
 ```bash
-python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 2
+python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 4
 ```

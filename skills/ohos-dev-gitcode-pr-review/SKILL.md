@@ -43,8 +43,12 @@ The script gathers:
 - `oh-gc pr:diff NUMBER --json`
 - `oh-gc pr:diff NUMBER --name-only`
 - `oh-gc pr:diff NUMBER --color never`
-- `oh-gc pr:comments NUMBER --json --comment-type pr_comment`
-- `oh-gc pr:comments NUMBER --json --comment-type diff_comment`
+- `oh-gc pr:comments NUMBER --json --comment-type pr_comment --latest --limit 100`
+- `oh-gc pr:comments NUMBER --json --comment-type diff_comment --latest --limit 100`
+
+`--latest --limit 100` is deliberate: `oh-gc pr:comments` defaults to only 30 comments in
+oldest-first order, so on a busy PR the most recent review comments are silently dropped.
+Fetching newest-first with a raised limit guarantees the latest feedback is captured.
 
 Review the generated artifact directory before making claims. Read artifacts in this order:
 

@@ -1,0 +1,1526 @@
+{
+  "source": "黄区C语言门禁规则集_OAT_敏感词 - 20260126.xlsx",
+  "total_workbook_rows": 545,
+  "sensitive_words": [
+    {
+      "rule_id": "WordsTool.1",
+      "word": "aab",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.2",
+      "word": "aapt2",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.3",
+      "word": "aar",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.4",
+      "word": "AAudio",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.5",
+      "word": "Accessibility",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.6",
+      "word": "Activity",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.7",
+      "word": "adb",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.8",
+      "word": "aidl",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.9",
+      "word": "AMS",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.10",
+      "word": "Android",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.11",
+      "word": "ANR",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.12",
+      "word": "AOSP",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.13",
+      "word": "apk",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.14",
+      "word": "ApnContext",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.15",
+      "word": "Applets",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.16",
+      "word": "ARCore_stub",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.17",
+      "word": "ART",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.18",
+      "word": "Asset Studio",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.19",
+      "word": "atrace",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.20",
+      "word": "AudioFlinger",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.21",
+      "word": "AudioFocus",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.22",
+      "word": "AudioState",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.23",
+      "word": "AVD",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.24",
+      "word": "BarringActive",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.25",
+      "word": "bicdriod",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.27",
+      "word": "Bionic",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.28",
+      "word": "blacklist",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.29",
+      "word": "broadcastreceiver",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.30",
+      "word": "Build flavor",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.31",
+      "word": "Build Variant",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.32",
+      "word": "bytecode-viewer",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.33",
+      "word": "canvasViewDidBeginUsingTool",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.34",
+      "word": "canvasViewDidEndUsingTool",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.35",
+      "word": "canvasViewDidFinishRendering",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.36",
+      "word": "canvasViewDrawingDidChange",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.37",
+      "word": "CarAppFocusManager",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.38",
+      "word": "CarHvacManager",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.39",
+      "word": "CarInfoManager",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.40",
+      "word": "CarPackageManager",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.41",
+      "word": "CarProperty",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.42",
+      "word": "CarSensor",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.43",
+      "word": "CarSensorManager",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.44",
+      "word": "Carservice",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.45",
+      "word": "CarSetting",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.46",
+      "word": "CarVendorExtensionManager",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.47",
+      "word": "Codec2",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.48",
+      "word": "CommandsInterface",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.49",
+      "word": "ConnectionRequest",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.50",
+      "word": "ConnectionService",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.51",
+      "word": "ConnectionServiceAdapter",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.52",
+      "word": "CoreML",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.53",
+      "word": "CreateML",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.54",
+      "word": "CreateMultiparty",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.55",
+      "word": "CTCall/CXCall",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.56",
+      "word": "CTCarrier",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.57",
+      "word": "CTCellularData",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.58",
+      "word": "CTSubscriber",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.59",
+      "word": "CTTelephonyNetworkInfo",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.60",
+      "word": "CXAction",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.61",
+      "word": "CXCallController",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.62",
+      "word": "CXCallObserver",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.63",
+      "word": "CXCallUpdate",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.64",
+      "word": "CXProvider",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.65",
+      "word": "CXTransaction",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.66",
+      "word": "d8",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.67",
+      "word": "dalvik",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.69",
+      "word": "DcController",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.70",
+      "word": "DcTracker",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.71",
+      "word": "DDMS",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.72",
+      "word": "DebugD",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.73",
+      "word": "DefaultDialerManager",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.74",
+      "word": "devtools",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.75",
+      "word": "dex",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.76",
+      "word": "dex2oat",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.77",
+      "word": "doze",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.78",
+      "word": "DriverCall",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.79",
+      "word": "DropBox",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.80",
+      "word": "DumpSys",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.81",
+      "word": "EMUI",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.82",
+      "word": "Espresso",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.83",
+      "word": "EuiccCardController",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.84",
+      "word": "EuiccConnector",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.85",
+      "word": "EuiccController",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.86",
+      "word": "eventlog",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.87",
+      "word": "FastApp",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.88",
+      "word": "Fernflower",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.89",
+      "word": "firebase",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.90",
+      "word": "FirstBeat",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.91",
+      "word": "flutter",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.92",
+      "word": "GatewayInfo",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.93",
+      "word": "GMS",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.94",
+      "word": "GMV",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.95",
+      "word": "Google",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.96",
+      "word": "GsmCdmaCall",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.97",
+      "word": "harmonyos",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.98",
+      "word": "HIDL",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.99",
+      "word": "HoldAndAnswer",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.100",
+      "word": "huawei",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.101",
+      "word": "HWC",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.103",
+      "word": "InboundSmsHandler",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.104",
+      "word": "InboundSmsTracker",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.105",
+      "word": "InCallAdapter",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.106",
+      "word": "InCallService",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.107",
+      "word": "IncomingLine",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.108",
+      "word": "installreferrer",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.109",
+      "word": "Intellj",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.110",
+      "word": "Intent",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.111",
+      "word": "iOS Background Modes",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.112",
+      "word": "ios CoreData",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.113",
+      "word": "Jad",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.114",
+      "word": "Jadx",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.115",
+      "word": "Java Crash",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.116",
+      "word": "Java Decompiler",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.117",
+      "word": "Javap",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.118",
+      "word": "jdec",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.119",
+      "word": "JD-Eclipse",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.120",
+      "word": "JD-GUI",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.121",
+      "word": "JD-IntelliJ",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.122",
+      "word": "jetpack",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.123",
+      "word": "JetPlayer",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.124",
+      "word": "Kotlin",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.125",
+      "word": "liblog",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.126",
+      "word": "libunwindstack",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.127",
+      "word": "LMK",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.128",
+      "word": "Logcat",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.130",
+      "word": "low memory killer",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.131",
+      "word": "Luyten",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.133",
+      "word": "Mediametrics",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.134",
+      "word": "Minjava",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.135",
+      "word": "MLKit",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.136",
+      "word": "monkeyrunner",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.137",
+      "word": "monkytest",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.138",
+      "word": "Morpho",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.139",
+      "word": "multidex",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.140",
+      "word": "MYFITNESSPAL",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.141",
+      "word": "MyScript",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.142",
+      "word": "Nbaio",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.143",
+      "word": "NDK",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.144",
+      "word": "NEURALA",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.145",
+      "word": "NinePatchChunk",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.146",
+      "word": "NuPlayer",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.147",
+      "word": "openjdk",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.148",
+      "word": "perfeto",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.149",
+      "word": "PhoneAccount",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.150",
+      "word": "PhoneAccountHandle",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.151",
+      "word": "PKCanvasView",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.152",
+      "word": "WordsTool.1PKEraserTool",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.153",
+      "word": "places",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.154",
+      "word": "play-services",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.155",
+      "word": "PrivateChat",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.156",
+      "word": "Procyon-decompiler",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.157",
+      "word": "proguard",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.159",
+      "word": "PSI",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.160",
+      "word": "quick application",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.161",
+      "word": "QuickApp",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.162",
+      "word": "react native",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.163",
+      "word": "Reko",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.164",
+      "word": "ReleaseAndAnswer",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.165",
+      "word": "ReleaseAndSwap",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.166",
+      "word": "RN",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.167",
+      "word": "Shell.APK",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.168",
+      "word": "simpleperf",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.171",
+      "word": "SmsManager",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.172",
+      "word": "SmsMessage",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.173",
+      "word": "SoudPool",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.174",
+      "word": "SoundTrigger",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.175",
+      "word": "Stagefright",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.176",
+      "word": "STM",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.178",
+      "word": "systrace",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.179",
+      "word": "Talkback",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.180",
+      "word": "Telecom",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.181",
+      "word": "TelephonyManager",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.182",
+      "word": "tensorflow",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.183",
+      "word": "tombstone",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.184",
+      "word": "ToneGenerator",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.185",
+      "word": "traceview",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.186",
+      "word": "Treble",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.187",
+      "word": "Trustlook",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.188",
+      "word": "UsbManager",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.189",
+      "word": "uuDeJava",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.190",
+      "word": "V8",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.191",
+      "word": "Vehicle HAL",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.192",
+      "word": "Vehicle Network Service",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.193",
+      "word": "VideoProfile",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.194",
+      "word": "VM Reboot VM WatchDog",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.195",
+      "word": "VMS",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.196",
+      "word": "VNDK",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.197",
+      "word": "VoiceCallManager",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.198",
+      "word": "VUE",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.199",
+      "word": "zidaneAAPT",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.200",
+      "word": "profiler",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.201",
+      "word": "libcore",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.202",
+      "word": "clang",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.204",
+      "word": "libc++",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.205",
+      "word": "libomp",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.206",
+      "word": "musl",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.207",
+      "word": "mingw",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.208",
+      "word": "nodejs",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.209",
+      "word": "WEEX",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.210",
+      "word": "WTF",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.211",
+      "word": "快应用",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.212",
+      "word": "quick application",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.213",
+      "word": "小程序",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.214",
+      "word": "安卓",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.215",
+      "word": "ADT",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.216",
+      "word": "Cursor",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.217",
+      "word": "最快",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.218",
+      "word": "最佳",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.219",
+      "word": "最美",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.220",
+      "word": "最高级",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.221",
+      "word": "最低价",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.222",
+      "word": "最受欢迎",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.223",
+      "word": "最先进",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.224",
+      "word": "最高搭载",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.225",
+      "word": "最高优惠",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.226",
+      "word": "最强",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.227",
+      "word": "最新科技",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.229",
+      "word": "No.1",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.230",
+      "word": "TOP.1",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.231",
+      "word": "一流",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.232",
+      "word": "国家级",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.233",
+      "word": "全球级",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.234",
+      "word": "世界级",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.235",
+      "word": "顶级",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.236",
+      "word": "顶尖",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.237",
+      "word": "尖端",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.238",
+      "word": "极品",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.239",
+      "word": "极佳",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.240",
+      "word": "绝佳",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.241",
+      "word": "绝对",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.242",
+      "word": "极致",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.243",
+      "word": "至薄",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.244",
+      "word": "超级",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.245",
+      "word": "超薄",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.246",
+      "word": "首个",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.247",
+      "word": "首选",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.248",
+      "word": "独家",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.249",
+      "word": "首次",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.250",
+      "word": "首款",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.251",
+      "word": "首发",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.252",
+      "word": "独一无二",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.253",
+      "word": "大牌",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.254",
+      "word": "金牌",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.255",
+      "word": "王牌",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.256",
+      "word": "领袖品牌",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.257",
+      "word": "世界领先",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.258",
+      "word": "领导者",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.259",
+      "word": "至尊",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.260",
+      "word": "领袖",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.261",
+      "word": "之王",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.262",
+      "word": "冠军",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.263",
+      "word": "引领者",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.264",
+      "word": "遥遥领先",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.265",
+      "word": "前所未有",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.266",
+      "word": "史无前例",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.267",
+      "word": "绝无仅有",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.268",
+      "word": "前所未见",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.269",
+      "word": "永恒",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.270",
+      "word": "永远",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.271",
+      "word": "最强",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.272",
+      "word": "中国驰名商标",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.273",
+      "word": "特供",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.274",
+      "word": "专供",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.275",
+      "word": "质量免检",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.276",
+      "word": "质量检测",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.277",
+      "word": "免抽检",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.278",
+      "word": "领导人推荐",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.279",
+      "word": "机关推荐",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.280",
+      "word": "机关检测",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.281",
+      "word": "再不抢就没了",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.282",
+      "word": "不会更便宜了",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.283",
+      "word": "错过就没机会了",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.284",
+      "word": "万人疯抢",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.285",
+      "word": "抢购",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.286",
+      "word": "疯抢",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.287",
+      "word": "限时限量",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.288",
+      "word": "全网最低价",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.289",
+      "word": "万能",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.290",
+      "word": "无敌",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.291",
+      "word": "真皮",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.292",
+      "word": "纯天然",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.293",
+      "word": "全新",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.294",
+      "word": "全面",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.295",
+      "word": "全金属机身",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.296",
+      "word": "权威",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.297",
+      "word": "AA",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.298",
+      "word": "Atomic Ability",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.299",
+      "word": "香港",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.300",
+      "word": "澳门",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.301",
+      "word": "台湾",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.302",
+      "word": "宗教",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.303",
+      "word": "色情",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.304",
+      "word": "战争",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.305",
+      "word": "疫情",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.306",
+      "word": "病毒",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.307",
+      "word": "末日",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.308",
+      "word": "恐怖袭击",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.309",
+      "word": "妖魔鬼怪",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.310",
+      "word": "车祸",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.311",
+      "word": "枪杀",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.312",
+      "word": "地震",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.313",
+      "word": "洪水",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.314",
+      "word": "地图",
+      "severity": "一般"
+    },
+    {
+      "rule_id": "WordsTool.315",
+      "word": "黄赌毒",
+      "severity": "一般"
+    }
+  ]
+}

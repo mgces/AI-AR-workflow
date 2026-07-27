@@ -83,7 +83,7 @@ class TestSinkFeature(unittest.TestCase):
         self.addCleanup(tmp.cleanup)
         pdir = os.path.join(tmp.name, "run")
         os.makedirs(os.path.join(pdir, "evidence", "phase1"))
-        os.makedirs(os.path.join(pdir, "evidence", "phase4"))
+        os.makedirs(os.path.join(pdir, "evidence", "phase6"))
         with open(os.path.join(pdir, "pipeline.json"), "w") as f:
             json.dump({"run_id": "r", "build_target": "hiview_package",
                        "test": {"part": "hiview"}, "phases": []}, f)
@@ -95,7 +95,7 @@ class TestSinkFeature(unittest.TestCase):
                         "### 文件清单\n- demo.cpp\n## 需测试的功能点\n- 边界\n")
         with open(os.path.join(pdir, "evidence/phase1/changed_files.txt"), "w") as f:
             f.write("demo.cpp\n")
-        with open(os.path.join(pdir, "evidence/phase4/run_meta.txt"), "w") as f:
+        with open(os.path.join(pdir, "evidence/phase6/run_meta.txt"), "w") as f:
             f.write("nonce=x\nserial=deadbeefcafef00d0123456789abcdef\n")
         with open(os.path.join(pdir, "evidence", "manifest.jsonl"), "w") as f:
             f.write(json.dumps({"phase": 3, "verdict": "PASS", "reason": "tests=5"}) + "\n")

@@ -17,7 +17,6 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 import gatelib as gl  # noqa: E402
-import gate_develop as gd  # noqa: E402
 
 
 FREEZE_PARTS = ("test_develop", "development_freeze_snapshot.json")
@@ -31,7 +30,7 @@ FAILURE_PARTS = ("test_develop", "failure_packet.json")
 
 def _block(pdir, failure_class, message, **extra):
     payload = {
-        "phase": 1,
+        "phase": 3,
         "logical_phase_id": "test_develop",
         "active": True,
         "failure_class": failure_class,
@@ -45,7 +44,7 @@ def _block(pdir, failure_class, message, **extra):
     gl.write_repair_packet(pdir, FAILURE_PARTS, payload)
     gl.write_control_json(pdir, *STATUS_PARTS, payload=payload, best_effort=True)
     gl.write_gate_phase_memory_card(
-        pdir, 1, "develop", verdict="FAIL",
+        pdir, 3, "test-develop", verdict="FAIL",
         current_blocker=message,
         forbidden_actions=[
             "modify_functional_code_outside_test_scope",
@@ -67,7 +66,7 @@ def _load_freeze_snapshot(pdir):
         _block(
             pdir,
             "development_freeze_snapshot_missing",
-            "PHASE 1 TEST-DEVELOP BLOCKED: missing development_freeze_snapshot.json; run gate_develop.py first",
+            "PHASE 3 TEST-DEVELOP BLOCKED: missing development_freeze_snapshot.json; run gate_develop.py first",
             required_inputs=["development_freeze_snapshot"],
             recommended_next_action="rerun_feature_develop",
             artifact_index={"freeze_snapshot": gl.controls_relpath(*FREEZE_PARTS)},
@@ -82,7 +81,7 @@ def _load_signed_contract_or_fail(pdir):
         _block(
             pdir,
             "signed_test_scope_unavailable",
-            "PHASE 1 TEST-DEVELOP BLOCKED: signed ar-contract unavailable: %s" % detail,
+            "PHASE 3 TEST-DEVELOP BLOCKED: signed ar-contract unavailable: %s" % detail,
             required_inputs=["signed_test_scope"],
             recommended_next_action="regenerate",
             human_escalation_needed="tampered" in detail,
@@ -113,7 +112,7 @@ def _verify_feature_freeze(pdir, state, freeze):
         _block(
             pdir,
             "feature_freeze_violated",
-            "PHASE 1 TEST-DEVELOP FAIL: feature freeze violated by non-test path(s):\n  %s\n"
+            "PHASE 3 TEST-DEVELOP FAIL: feature freeze violated by non-test path(s):\n  %s\n"
             "Reset/re-walk from phase1 develop if functional code changed."
             % "\n  ".join(non_test),
             current_paths=current_paths,
@@ -166,10 +165,10 @@ def _signed_test_scope_payload(pdir, freeze, contract, changed_files, matrix_ite
         contract.get("build_artifacts_meta") or contract.get("build_artifacts") or [])
     changed_scope = _scope_path_set(contract.get("changed_files_meta") or declared_changed)
     return {
-        "phase": 1,
+        "phase": 3,
         "logical_phase_id": "test_develop",
         "bundle_revision": bundle_revision,
-        "source_manifest_entry": gl.entry_id(gl.last_entry_for_phase(pdir, 1) or {"phase": 1})[:12],
+        "source_manifest_entry": gl.entry_id(gl.last_entry_for_phase(pdir, 2) or {"phase": 2})[:12],
         "freeze_snapshot": gl.controls_relpath(*FREEZE_PARTS),
         "requirements": requirement_ids,
         "declared_changed_files": changed_scope,
@@ -204,9 +203,9 @@ def _artifact_index(bundle_revision, matrix_items):
 
 def _evidence_index(pdir, freeze, expanded_paths):
     return {
-        "phase1_summary": gl.phase_summary_relpath(1),
-        "phase1_failure_report": gl.failure_report_relpath(1),
-        "development_manifest_entry": gl.entry_id(gl.last_entry_for_phase(pdir, 1) or {"phase": 1})[:12],
+        "develop_summary": gl.phase_summary_relpath(2),
+        "develop_failure_report": gl.failure_report_relpath(2),
+        "development_manifest_entry": gl.entry_id(gl.last_entry_for_phase(pdir, 2) or {"phase": 2})[:12],
         "changed_files_consistency": {
             "declared_present": freeze.get("declared_changed_files_present") or [],
             "declared_missing": freeze.get("declared_changed_files_missing") or [],
@@ -230,9 +229,9 @@ def _handoff_payload(pdir, freeze, bundle_revision, matrix_items, scope_payload,
     return {
         "bundle_id": "phase1-bundle",
         "bundle_revision": bundle_revision,
-        "from_phase": 1,
-        "from_phase_name": "develop",
-        "to_phase": 2,
+        "from_phase": 3,
+        "from_phase_name": "test-develop",
+        "to_phase": 4,
         "to_phase_name": "build-verify",
         "logical_phase_id": "test_develop",
         "logical_phase_name": "test-develop",
@@ -250,9 +249,9 @@ def _handoff_payload(pdir, freeze, bundle_revision, matrix_items, scope_payload,
         "risks": ["device follow-up needed"] if scope_payload.get("device_followup_requirement_ids") else [],
         "open_questions": [],
         "recommended_next_action": {
-            "phase": 2,
+            "phase": 4,
             "action": "build-verify",
-            "next_gate": "advance.py advance --phase 1",
+            "next_gate": "advance.py advance --phase 3",
         },
         "requires_repair": False,
         "repair_scope_hint": expanded_paths,
@@ -266,21 +265,21 @@ def _handoff_payload(pdir, freeze, bundle_revision, matrix_items, scope_payload,
 
 def _completion_receipt(bundle_revision):
     return {
-        "phase": 1,
+        "phase": 3,
         "logical_phase_id": "test_develop",
         "bundle_revision": bundle_revision,
         "semantic_done": True,
         "truth_layer_pass_known": True,
         "next_phase_ready": True,
         "human_gate_pending": False,
-        "next_phase": 2,
+        "next_phase": 4,
     }
 
 
 
 def build_status_payload(pdir, freeze, matrix_items, changed_files, expanded_paths, scope_payload, bundle_revision):
     return {
-        "phase": 1,
+        "phase": 3,
         "logical_phase_id": "test_develop",
         "objective_completed": True,
         "ready_for_build": True,
@@ -309,17 +308,16 @@ def build_status_payload(pdir, freeze, matrix_items, changed_files, expanded_pat
     }
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--pipeline-dir")
-    args = ap.parse_args()
-    pdir = gl.pipeline_dir(args.pipeline_dir)
-    state = gl.load_state(pdir)
+def run_prepare(pdir, state):
+    """Derive + persist the control-layer test bundle. Returns a dict of the
+    derived artifacts so a signed gate (gate_test_develop.py) can reuse them
+    without re-deriving. Control writes are best-effort; this never emits a
+    signed manifest record or mutates pipeline.json phase status."""
     freeze = _load_freeze_snapshot(pdir)
     contract = _load_signed_contract_or_fail(pdir)
     changed_files, expanded_paths = _verify_feature_freeze(pdir, state, freeze)
-    matrix_items = gd._collect_test_intent_matrix(contract, changed_files)
-    bundle_revision = gl.entry_id(gl.last_entry_for_phase(pdir, 1) or {"phase": 1})[:12]
+    matrix_items = gl.collect_test_intent_matrix(contract, changed_files)
+    bundle_revision = gl.entry_id(gl.last_entry_for_phase(pdir, 2) or {"phase": 2})[:12]
     scope_payload = _signed_test_scope_payload(
         pdir, freeze, contract, changed_files, matrix_items, bundle_revision)
     status = build_status_payload(
@@ -335,7 +333,7 @@ def main():
     gl.write_repair_packet(
         pdir, FAILURE_PARTS,
         {
-            "phase": 1,
+            "phase": 3,
             "logical_phase_id": "test_develop",
             "active": False,
             "cleared_by": "prepare_test_bundle.py",
@@ -344,7 +342,7 @@ def main():
     gl.write_control_json(pdir, *STATUS_PARTS,
                           payload=status, best_effort=True)
     gl.write_gate_phase_memory_card(
-        pdir, 1, "develop", verdict="PASS",
+        pdir, 3, "test-develop", verdict="PASS",
         bundle_revision=bundle_revision,
         current_blocker=None,
         forbidden_actions=[
@@ -356,7 +354,26 @@ def main():
         primary_entry_doc=gl.controls_relpath(*SCOPE_PARTS),
         primary_failure_doc=gl.controls_relpath(*FAILURE_PARTS),
         primary_handoff_doc=gl.controls_relpath(*HANDOFF_PARTS))
-    print("PHASE 1 TEST-DEVELOP READY — advance.py advance --phase 1")
+    return {
+        "freeze": freeze,
+        "contract": contract,
+        "changed_files": changed_files,
+        "expanded_paths": expanded_paths,
+        "matrix_items": matrix_items,
+        "bundle_revision": bundle_revision,
+        "scope_payload": scope_payload,
+        "status": status,
+    }
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--pipeline-dir")
+    args = ap.parse_args()
+    pdir = gl.pipeline_dir(args.pipeline_dir)
+    state = gl.load_state(pdir)
+    run_prepare(pdir, state)
+    print("PHASE 3 TEST-DEVELOP READY — advance.py advance --phase 3")
 
 
 if __name__ == "__main__":

@@ -51,30 +51,30 @@ def _write_handoff_to_test_develop(pdir, contract, *, changed, present_declared,
     bundle_revision = (freeze_snapshot or {}).get("bundle_revision") or ""
     bundle_id = (freeze_snapshot or {}).get("bundle_id") or "phase1-bundle"
     receipt = {
-        "phase": 1,
+        "phase": 2,
         "logical_phase_id": "feature_develop",
         "logical_phase_name": "feature-develop",
-        "phase_scope": "phase1-subflow",
+        "phase_scope": "phase",
         "bundle_id": bundle_id,
         "bundle_revision": bundle_revision,
         "semantic_done": True,
         "truth_layer_pass_known": False,
         "next_phase_ready": True,
         "human_gate_pending": False,
-        "next_phase": 1,
+        "next_phase": 3,
         "next_logical_phase_id": "test_develop",
         "changed_files": list(changed or []),
         "declared_changed_files_present": list(present_declared or []),
     }
     handoff = {
-        "from_phase": 1,
-        "from_phase_name": "develop",
+        "from_phase": 2,
+        "from_phase_name": "feature-develop",
         "logical_phase_id": "feature_develop",
         "logical_phase_name": "feature-develop",
-        "to_phase": 1,
-        "to_phase_name": "develop",
+        "to_phase": 3,
+        "to_phase_name": "test-develop",
         "to_logical_phase_id": "test_develop",
-        "phase_scope": "phase1-subflow",
+        "phase_scope": "phase",
         "bundle_id": bundle_id,
         "bundle_revision": bundle_revision,
         "objective_completed": True,
@@ -206,39 +206,17 @@ def changed_files_coverage(declared, touched):
     return present, missing
 
 
-def _test_target_from_gtest(gtest_id):
-    if not gtest_id:
-        return None
-    suite = str(gtest_id).split(".", 1)[0].strip()
-    suite = suite.split("/", 1)[0].strip()
-    return suite or None
-
-
-def _collect_test_intent_matrix(contract, changed_files):
-    matrix = []
-    for tc in contract.get("test_cases", []) or []:
-        gtest_id = tc.get("gtest")
-        matrix.append({
-            "test_case_id": tc.get("id") or gtest_id,
-            "covers_requirement_ids": tc.get("for_requirements") or [],
-            "expected_target": _test_target_from_gtest(gtest_id),
-            "expected_suite": _test_target_from_gtest(gtest_id),
-            "expected_gtest": gtest_id,
-            "depends_on_files": changed_files,
-            "negative_cases": [],
-            "device_followup_needed": bool(tc.get("for_requirements") and any(
-                set(tc.get("for_requirements") or []) &
-                set(dc.get("for_requirements") or [])
-                for dc in (contract.get("device_cases") or [])
-            )),
-        })
-    return matrix
+# Path B1: these two helpers moved to gatelib so gate_test_develop.py can reuse
+# them without importing this sibling gate. Thin aliases kept for back-compat
+# (prepare_test_bundle.py references gd._collect_test_intent_matrix).
+_test_target_from_gtest = gl.test_target_from_gtest
+_collect_test_intent_matrix = gl.collect_test_intent_matrix
 
 
 def write_development_freeze_snapshot(pdir, state, contract, changed_files, tracked_changed,
                                       untracked, present_declared, cov_missing):
     return {
-        "phase": 1,
+        "phase": 2,
         "logical_phase_id": "feature_develop",
         "base_commit": state.get("base_commit"),
         "functional_fingerprint": gl.functional_fingerprint(state),
@@ -268,7 +246,7 @@ def main():
     gdir = state.get("git_dir", repo)
     if not os.path.isabs(gdir):
         gdir = os.path.join(repo, gdir)
-    gl.evidence_dir(pdir, 1)
+    gl.evidence_dir(pdir, 2)
 
     # DESIGN DEPENDENCY (P1a): develop refuses unless AR_design was fixed and
     # signed by gate_design.py first, and that signed evidence is still intact.
@@ -276,11 +254,11 @@ def main():
     design_entry = gl.latest_design_entry(pdir)
     if design_entry is None:
         if not args.allow_missing_design:
-            gl.emit(pdir, 1, "gate_develop.py", verdict="FAIL",
+            gl.emit(pdir, 2, "gate_develop.py", verdict="FAIL",
                     reason="no signed AR_design — run gate_design.py first "
                            "(or --allow-missing-design for a legacy run)",
                     artifacts_rel=[])
-            sys.exit("PHASE 1 FAIL: AR_design not fixed. Run gate_design.py first.")
+            sys.exit("PHASE 2 FAIL: AR_design not fixed. Run gate_design.py first.")
         design_bypass = " DESIGN-GATE-LEGACY-BYPASS"
     else:
         secret = gl.load_secret(state["run_id"])
@@ -289,10 +267,10 @@ def main():
             and gl.sha256_file(os.path.join(pdir, a["path"])) == a["sha256"]
             for a in design_entry.get("artifacts", []))
         if not intact:
-            gl.emit(pdir, 1, "gate_develop.py", verdict="FAIL",
+            gl.emit(pdir, 2, "gate_develop.py", verdict="FAIL",
                     reason="AR_design evidence tampered/removed — re-run gate_design.py",
                     artifacts_rel=[])
-            sys.exit("PHASE 1 FAIL: AR_design evidence tampered. Re-run gate_design.py.")
+            sys.exit("PHASE 2 FAIL: AR_design evidence tampered. Re-run gate_design.py.")
 
         # P1 DESIGN CONSENT (human sign-off between design and development):
         # code development refuses unless a human recorded consent bound to THIS
@@ -302,11 +280,11 @@ def main():
         # base_commit is anchored, so a missing consent leaves state untouched.
         ok_c, c_reason = gl.verify_consent(state, 1, gl.entry_id(design_entry))
         if not ok_c:
-            gl.emit(pdir, 1, "gate_develop.py", verdict="FAIL",
+            gl.emit(pdir, 2, "gate_develop.py", verdict="FAIL",
                     reason="AR_design not human-consented: %s — run "
                            "advance.py consent --phase 1 --token <reviewer>" % c_reason,
                     artifacts_rel=[])
-            sys.exit("PHASE 1 FAIL (design consent required): %s\n"
+            sys.exit("PHASE 2 FAIL (design consent required): %s\n"
                      "  1) review the signed AR_design + compile path (build_artifacts) in:\n"
                      "     %s\n"
                      "  2) advance.py --pipeline-dir <PDIR> consent --phase 1 --token <reviewer>\n"
@@ -328,20 +306,20 @@ def main():
     # bypass both evidence and style checks.
     changed, tracked_changed, untracked = collect_changed_files(gdir, base)
     diff_text = build_diff_evidence(gdir, base, untracked)
-    diff_rel = "evidence/phase1/diff.patch"
+    diff_rel = "evidence/phase2/diff.patch"
     with open(os.path.join(pdir, diff_rel), "w", encoding="utf-8") as f:
         f.write(diff_text)
-    files_rel = "evidence/phase1/changed_files.txt"
+    files_rel = "evidence/phase2/changed_files.txt"
     with open(os.path.join(pdir, files_rel), "w") as f:
         f.write("base=%s\nhead=%s\n\n[tracked]\n%s\n\n[untracked]\n%s\n"
                 % (base, head, "\n".join(tracked_changed), "\n".join(untracked)))
     arts = [diff_rel, files_rel]
 
     if not changed:
-        gl.emit(pdir, 1, "gate_develop.py", verdict="FAIL",
+        gl.emit(pdir, 2, "gate_develop.py", verdict="FAIL",
                 reason="empty diff vs base %s — no code developed" % base[:12],
                 artifacts_rel=arts)
-        sys.exit("PHASE 1 FAIL: no changes vs base_commit")
+        sys.exit("PHASE 2 FAIL: no changes vs base_commit")
 
     # Strong C/C++ gate on changed files:
     #   * C/C++ changes cannot opt out with --no-style.
@@ -349,8 +327,8 @@ def main():
     #   * missing dependent skill sources fail closed instead of "treated as pass".
     style_ok, style_detail = True, "no C/C++ files changed"
     cxx = source_files(gdir, changed)
-    style_rel = "evidence/phase1/style_report.txt"
-    strict_rel = "evidence/phase1/strict_cpp_report.txt"
+    style_rel = "evidence/phase2/style_report.txt"
+    strict_rel = "evidence/phase2/strict_cpp_report.txt"
     strict_checked, strict_issues = static_rule_checks(gdir, cxx)
     dependency_issues = []
     if cxx and not os.path.exists(STYLE_GUARD):
@@ -362,7 +340,10 @@ def main():
 
     if cxx and not args.no_style and os.path.exists(STYLE_GUARD):
         abs_cxx = [os.path.join(gdir, f) for f in cxx if os.path.exists(os.path.join(gdir, f))]
-        cp = subprocess.run([sys.executable, STYLE_GUARD, "--format-only", *abs_cxx],
+        # full guard: clang-format + the deterministic rule blockers. Running
+        # the rules here (not only clang-format) is what keeps banned APIs /
+        # sensitive strings from slipping past P2 into the CI gate.
+        cp = subprocess.run([sys.executable, STYLE_GUARD, *abs_cxx],
                             text=True, capture_output=True)
         style_ok = cp.returncode == 0
         style_detail = (cp.stdout + cp.stderr)[:4000]
@@ -372,7 +353,7 @@ def main():
 
     strict_ok = not strict_issues and not dependency_issues
     with open(os.path.join(pdir, style_rel), "w", encoding="utf-8") as f:
-        f.write("changed_cxx=%d style_ok=%s strict_ok=%s\n\n--- oh_cpp_guard --format-only ---\n%s"
+        f.write("changed_cxx=%d style_ok=%s strict_ok=%s\n\n--- code_ruleset_guard (format+rules) ---\n%s"
                 % (len(cxx), style_ok, strict_ok, style_detail))
     arts.append(style_rel)
     with open(os.path.join(pdir, strict_rel), "w", encoding="utf-8") as f:
@@ -397,7 +378,7 @@ def main():
         declared = contract["changed_files"]
         present_declared, cov_missing = changed_files_coverage(declared, changed)
         cov_ok = not cov_missing
-        cov_rel = "evidence/phase1/changed_files_coverage.txt"
+        cov_rel = "evidence/phase2/changed_files_coverage.txt"
         with open(os.path.join(pdir, cov_rel), "w", encoding="utf-8") as f:
             f.write("declared (from signed ar-contract): %d\ntouched: %d\n\n"
                     % (len(declared), len(changed)))
@@ -408,12 +389,12 @@ def main():
     elif c_ok:
         cov_note = " (no changed_files in contract)"
     elif c_detail and "tampered" in c_detail:
-        gl.write_failure_report(pdir, 1, "gate_develop.py",
+        gl.write_failure_report(pdir, 2, "gate_develop.py",
                                 "ar-contract unrecoverable: %s" % c_detail,
                                 resume_hint="重跑 gate_design.py 重新签名设计")
-        gl.emit(pdir, 1, "gate_develop.py", verdict="FAIL",
+        gl.emit(pdir, 2, "gate_develop.py", verdict="FAIL",
                 reason="ar-contract unrecoverable: %s" % c_detail, artifacts_rel=arts)
-        sys.exit("PHASE 1 FAIL: ar-contract unrecoverable: %s" % c_detail)
+        sys.exit("PHASE 2 FAIL: ar-contract unrecoverable: %s" % c_detail)
 
     reason = ("base/head %s->%s, %d file(s) changed (%d untracked), "
               "style_ok=%s strict_ok=%s%s%s") % (
@@ -442,18 +423,18 @@ def main():
             pdir, contract or {}, changed=changed,
             present_declared=present_declared,
             freeze_snapshot=freeze_snapshot)
-        gl.write_phase_summary(pdir, 1, "gate_develop.py", "PASS", reason,
+        gl.write_phase_summary(pdir, 2, "gate_develop.py", "PASS", reason,
                                checks=["diff", "style", "strict", "changed_files"])
-        gl.clear_failure_report(pdir, 1)
+        gl.clear_failure_report(pdir, 2)
     else:
-        gl.write_phase_summary(pdir, 1, "gate_develop.py", "FAIL", reason,
+        gl.write_phase_summary(pdir, 2, "gate_develop.py", "FAIL", reason,
                                checks=problems)
-        gl.write_failure_report(pdir, 1, "gate_develop.py", reason,
+        gl.write_failure_report(pdir, 2, "gate_develop.py", reason,
                                 problems=problems,
                                 resume_hint="修复后重跑 gate_develop.py")
 
     gl.write_gate_phase_memory_card(
-        pdir, 1, "develop", verdict=verdict,
+        pdir, 2, "develop", verdict=verdict,
         current_blocker=None if verdict == "PASS" else reason,
         forbidden_actions=[
             "edit_design_as_if_it_were_unsigned_working_copy",
@@ -465,13 +446,13 @@ def main():
         primary_entry_doc=gl.controls_relpath("next_action.json"),
         primary_handoff_doc=gl.controls_relpath(*P2_HANDOFF_PARTS))
     gl.write_gate_stage_packet_from_def(
-        pdir, "feature_develop", "feature-develop", physical_phase=1)
-    gl.emit(pdir, 1, "gate_develop.py", verdict=verdict, reason=reason,
+        pdir, "feature_develop", "feature-develop", physical_phase=2)
+    gl.emit(pdir, 2, "gate_develop.py", verdict=verdict, reason=reason,
             artifacts_rel=arts)
     if verdict == "PASS":
-        print("PHASE 1 PASS — advance.py advance --phase 1")
+        print("PHASE 2 PASS — advance.py advance --phase 2")
     else:
-        sys.exit("PHASE 1 FAIL: %s" % reason)
+        sys.exit("PHASE 2 FAIL: %s" % reason)
 
 
 if __name__ == "__main__":

@@ -17,24 +17,32 @@ import os
 import re
 import sys
 
+# Path B1: physical phases 0-8. Old P1 (设计固化+代码开发) is now three real
+# phases — design-orchestrate (1), feature-develop (2), test-develop (3); build
+# and everything after it shift +2. Logical labels are unchanged, only the
+# physical numbers.
 PHASE_LABELS = [
     (0, "P0 环境初始化"),
-    (1, "P1 设计固化 + 代码开发"),
-    (2, "P2 编译验证"),
-    (3, "P3 测试用例编写与验证"),
-    (4, "P4 真机功能测试"),
-    (5, "P5 质量验证"),
-    (6, "P6 上库 review"),
+    (1, "P1 设计固化"),
+    (2, "P2 代码开发"),
+    (3, "P3 测试用例编写"),
+    (4, "P4 编译验证"),
+    (5, "P5 单元测试验证"),
+    (6, "P6 真机功能测试"),
+    (7, "P7 质量验证"),
+    (8, "P8 上库 review"),
 ]
 
 NEXT_STEP_TEXT = {
     0: "跑 gate_env_init 后 advance --phase 0",
-    1: "gate_design.py(AR_design+ar-contract)→ consent --phase 1 → 写代码 → gate_develop.py → advance --phase 1",
-    2: "gate_build.py → advance --phase 2",
-    3: "gate_test_ut.py(只增独立测试)→ advance --phase 3",
-    4: "gate_device_func.py → 人工 consent → advance --phase 4",
-    5: "gate_integration.py + 质量报告 → 人工 consent → advance --phase 5",
-    6: "gate_upload_ci.py(两份 review + PR + CI)→ 人工 consent → advance --phase 6",
+    1: "gate_design.py(AR_design+ar-contract)→ 人工 consent --phase 1 → advance --phase 1",
+    2: "写功能代码 → gate_develop.py → advance --phase 2",
+    3: "为每个 test_cases.gtest 写引用其 suite 的新测试文件 → gate_test_develop.py → advance --phase 3",
+    4: "gate_build.py → advance --phase 4",
+    5: "gate_test_ut.py(只增独立测试)→ advance --phase 5",
+    6: "gate_device_func.py → 人工 consent → advance --phase 6",
+    7: "gate_integration.py + 质量报告 → 人工 consent → advance --phase 7",
+    8: "gate_upload_ci.py(两份 review + PR + CI)→ 人工 consent → advance --phase 8",
 }
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(

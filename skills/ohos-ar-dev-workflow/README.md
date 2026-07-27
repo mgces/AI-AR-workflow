@@ -25,16 +25,19 @@
 
 ```
 P0 bootstrap ─┐
-P1 design+dev │  每阶段:
-P2 build      │    0) 每轮循环开头 refresh_todo.py 依 AR_design 刷新 todo.md
-P3 test       │    1) 用命名的 ohos-* 技能做事
-P4 device     ├─▶ 2) 跑 gate_*.py(脚本基于真实证据判 PASS/FAIL,产 HMAC 链签名记录)
-P5 quality    │    3) PASS → advance.py advance --phase N(校验签名+链+产物哈希后才推进)
-P6 upload ────┘    4) FAIL → 读 evidence/phaseN/ 真实日志,修复重跑(≤3 次)
-                   P1 拆两子门控:gate_design(AR_design 6 章节 + ar-contract 契约块,签名)→ 人工 consent --phase 1 → gate_develop(依赖签名设计 + P1 consent)
-                   P2/P3/P4 按签名契约做全量覆盖硬门控(build_artifacts / test_cases gtest / device_cases marker,缺一即 FAIL)
-                   P3/P4/P5 只允许新增独立测试文件(功能指纹漂移会被拒)
-                   P1/P4/P5/P6 需 advance.py consent(签名绑定证据)后才推进;并渲染 reports/ 人读 HTML
+P1 design     │  每阶段:
+P2 develop    │    0) 每轮循环开头 refresh_todo.py 依 AR_design 刷新 todo.md
+P3 test-dev   │    1) 用命名的 ohos-* 技能做事
+P4 build      ├─▶ 2) 跑 gate_*.py(脚本基于真实证据判 PASS/FAIL,产 HMAC 链签名记录)
+P5 test-exec  │    3) PASS → advance.py advance --phase N(校验签名+链+产物哈希后才推进)
+P6 device     │    4) FAIL → 读 evidence/phaseN/ 真实日志,修复重跑(≤3 次)
+P7 quality    │
+P8 upload ────┘    P1 设计门 gate_design(AR_design 6 章节 + ar-contract 契约块,签名 emit 1)→ 人工 consent --phase 1
+                   P2 开发门 gate_develop(依赖签名设计 + P1 consent,闭合时锁功能指纹)
+                   P3 测试开发门 gate_test_develop(编译前测试代码已写:契约 gtest suite 出现在新测试文件,签名 emit 3)
+                   P3/P4/P5/P6-7 按签名契约做全量覆盖硬门控(test_cases gtest 编写 / build_artifacts / test_cases gtest 执行 / device_cases marker,缺一即 FAIL)
+                   P3/P5/P6/P7 只允许新增独立测试文件(功能指纹漂移会被拒;check_code_drift 从 phase3 起生效)
+                   P1/P6/P7/P8 需 advance.py consent(签名绑定证据)后才推进;并渲染 reports/ 人读 HTML
 ```
 
 证据两轨:`evidence/`(机器,HMAC 链签名,gitignore) ‖ `reports/`(人读 HTML,脱敏可归档)。
@@ -42,10 +45,9 @@ P6 upload ────┘    4) FAIL → 读 evidence/phaseN/ 真实日志,修�
 ## 逻辑阶段控制层(面向弱模型,导航非放行)
 
 在真相层之上叠加一层 machine-readable 控制层,让中等能力模型也能稳定跑完整链。
-`advance.py` 把物理 phase0–6 投影成逻辑阶段 **P0–P8**(物理 phase1 拆 `P1 design-orchestrate /
-P2 feature-develop / P3 test-develop`;phase5/6 内 P7/P8 再拆子状态),
-`status --json` / `next` 输出 `logical_phase_id / physical_phase / logical_substate /
-action_kind / control_refs`。
+物理阶段与逻辑阶段现已 **1:1**(物理 phase0–8 即逻辑 **P0–P8**;phase6/7 内真机/集成再拆
+device/e2e 子状态),`advance.py status --json` / `next` 输出 `logical_phase_id / physical_phase /
+logical_substate / action_kind / control_refs`。
 
 ```
 run/controls/                        ← best-effort,非放行依据,可缺失容忍

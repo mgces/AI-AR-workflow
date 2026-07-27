@@ -92,7 +92,7 @@ class TestLayeredFingerprint(unittest.TestCase):
         self.assertNotEqual(fp1, gl.functional_fingerprint(self.state))
 
     def test_drift_decision_test_only_allowed(self):
-        # simulate P1 lock: functional edit done, lock fingerprints
+        # simulate P2 (feature-develop) close: functional edit done, lock fingerprints
         self._write("src/manager.cpp", "int f(){return 2;}\n")
         self.state["functional_fingerprint"] = gl.functional_fingerprint(self.state)
         self.state["locked_all_paths"] = gl._changed_paths(self.state)

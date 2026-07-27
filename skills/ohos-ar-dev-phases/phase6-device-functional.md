@@ -1,4 +1,6 @@
-# P4 真机功能测试(device-functional)
+# P6 真机功能测试(device-functional,物理 phase 6)
+
+`gate_device_func.py` 签名 `emit(phase 6)`(默认 `--phase 6`;集成复用时 `--phase 7`,见 phase7-quality)。
 
 ## 做事(调用现有技能)
 - 部署改动到真机:`ohos-build-flash`(remount rw → `file send` → `restorecon` → 重启守护
@@ -46,17 +48,17 @@ marker**(全量覆盖硬门控),并对 deploy/scenario 脚本跑 `find_marker_li
 marker 都不得写死在 deploy/scenario 脚本中。缺少任一项即 FAIL。
 
 ## ⚠️ 真机结果需人工确认(本阶段特殊)
-P4 与其它阶段不同:门控产出证据为 PASS 后**不自动放行**。脚本会停下并把真机真实结果与
+P6 与多数阶段不同:门控产出证据为 PASS 后**不自动放行**。脚本会停下并把真机真实结果与
 所有产物路径打印出来(含 hilog 抓取末尾片段),**等待人工核对真机测试结果**。编排器到这里
 **必须停住、把这些真实结果与产物呈现给用户,等用户确认**,不得自行继续。
 
 人工确认真机结果可接受后,记录 consent 再推进:
 ```bash
-python3 $S/advance.py --pipeline-dir "$PDIR" consent --phase 4 --token <审核人>
-python3 $S/advance.py --pipeline-dir "$PDIR" advance  --phase 4
+python3 $S/advance.py --pipeline-dir "$PDIR" consent --phase 6 --token <审核人>
+python3 $S/advance.py --pipeline-dir "$PDIR" advance  --phase 6
 ```
-`advance --phase 4` 在没有 phase-4 consent 时会 **HOLD**(打印复核指引,不推进);
-有 consent 且证据 PASS 才推进到 P5。consent 也是 `pipeline.json` 状态、由 `advance.py` 写。
+`advance --phase 6` 在没有 phase-6 consent 时会 **HOLD**(打印复核指引,不推进);
+有 consent 且证据 PASS 才推进到 P7。consent 也是 `pipeline.json` 状态、由 `advance.py` 写。
 
 ## 生成人读报告(证据/报告分离)
 门控证据(签名,机器验)落在 `evidence/`;**人读 HTML 报告**渲染到并列的 `reports/`:

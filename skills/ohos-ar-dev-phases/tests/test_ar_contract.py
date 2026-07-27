@@ -197,6 +197,7 @@ class TestLoadSignedContract(unittest.TestCase):
         self.secret = gl.create_secret(self.run_id)
         gl.save_state(self.pdir, {
             "run_id": self.run_id,
+            "phase_scheme": gl.PHASE_SCHEME,
             "phases": [{"id": i, "name": n, "status": "pending"} for i, n in gl.PHASES],
         })
 

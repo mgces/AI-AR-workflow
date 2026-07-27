@@ -1,9 +1,10 @@
-# P5 功能测试 + 质量报告 + 代码 review(quality)
+# P7 功能测试 + 质量报告 + 代码 review(quality,物理 phase 7)
 
-P5 = **功能测试** ∧ **代码覆盖率测试用例编写和测试** ∧ **性能/功耗增量测试**
+P7 = **功能测试** ∧ **代码覆盖率测试用例编写和测试** ∧ **性能/功耗增量测试**
 ∧ **稳定性影响测试** ∧ **代码 review 问题清零**。本阶段必须把真实测试报告和
-code review 报告落到 `evidence/phase5/`,最终只看该阶段 manifest 最后一条 PASS。
-证据 PASS 后仍需人工确认质量报告和 review 报告无问题,记录 `consent --phase 5` 后才可进入 P6。
+code review 报告落到 `evidence/phase7/`,最终只看该阶段 manifest 最后一条 PASS。
+`gate_integration.py` 签名 `emit(phase 7)`。证据 PASS 后仍需人工确认质量报告和 review 报告无问题,
+记录 `consent --phase 7` 后才可进入 P8。
 
 ## A. 套件型功能与质量测试
 做事:
@@ -29,7 +30,7 @@ python3 $S/gate_integration.py --pipeline-dir "$PDIR" \
 逻辑:
 1. 跑 `./start.sh run -t MST -tp <part> -ts ...`,集合差找本次新报告目录,解析
    `summary_report.xml`(`tests>0 && failures==0 && errors==0`)。
-2. 将覆盖率、性能、功耗、稳定性四类报告复制到 `evidence/phase5/` 并纳入 HMAC 签名证据。
+2. 将覆盖率、性能、功耗、稳定性四类报告复制到 `evidence/phase7/` 并纳入 HMAC 签名证据。
 3. 自动对改动 C/C++ 文件运行 `code_ruleset_guard.py`,生成
    `code_review_report.txt`;工具缺失或返回非 0 都判 FAIL。
 4. 如提供 `--code-review-report`,报告必须是机器可校验的零问题报告:
@@ -40,7 +41,7 @@ python3 $S/gate_integration.py --pipeline-dir "$PDIR" \
 临时兼容旧流程时可加 `--allow-missing-quality-reports`,但正式流水线不应使用。
 
 ## B. 设备行为型集成(端到端场景)
-当功能验证是"多组件协同的真机行为"而非套件时,复用 P4 真机门控,指定 `--phase 5`:
+当功能验证是"多组件协同的真机行为"而非套件时,复用 P6 真机门控,指定 `--phase 7`:
 ```bash
 python3 $S/gate_device_func.py --pipeline-dir "$PDIR" \
     --deploy-script /path/deploy.sh --scenario-script /path/integ_scenario.sh \
@@ -49,20 +50,20 @@ python3 $S/gate_device_func.py --pipeline-dir "$PDIR" \
     --device-artifact "/system/..." \
     --runtime-marker "<改动代码运行标记>" \
     --e2e-marker "<端到端集成成功标记>" \
-    --phase 5
+    --phase 7
 ```
-通过条件建议同 P4(主机/设备产物 sha256 一致 + nonce + marker + runtime_marker +
+通过条件建议同 P6(主机/设备产物 sha256 一致 + nonce + marker + runtime_marker +
 e2e_marker + uptime 单调)。走此路时,仍必须另外产出覆盖率、性能、功耗、稳定性报告和
-代码 review 报告,并用 `gate_integration.py` 纳入 P5 证据;否则 P5 不完整。
+代码 review 报告,并用 `gate_integration.py` 纳入 P7 证据;否则 P7 不完整。
 
 ## 通过后
 ```bash
-python3 $S/advance.py --pipeline-dir "$PDIR" consent --phase 5 --token <审核人>
-python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 5
+python3 $S/advance.py --pipeline-dir "$PDIR" consent --phase 7 --token <审核人>
+python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 7
 ```
 
-`advance --phase 5` 在没有 phase-5 consent 时会 **HOLD**。人工必须先检查
-`evidence/phase5/` 下的覆盖率、性能、功耗、稳定性和代码 review 报告,确认无问题后再签字。
+`advance --phase 7` 在没有 phase-7 consent 时会 **HOLD**。人工必须先检查
+`evidence/phase7/` 下的覆盖率、性能、功耗、稳定性和代码 review 报告,确认无问题后再签字。
 
 ## 生成人读报告(证据/报告分离)
 ```bash
@@ -73,4 +74,4 @@ python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-workflow/scripts/render_report.py" \
 `--allow-missing-quality-reports` 降级时,签名 reason 会带 `QUALITY-GATE-DOWNGRADED` 留痕。
 
 > ⚠️ 若本阶段(或任何阶段)发现需要**改代码**,先 `advance.py reset` 回 P1 重走,见
-> phase1 / 编排器护栏。改了码再继续 P5 会被 `advance` 以"代码指纹漂移"拒绝。
+> phase1 / 编排器护栏。改了码再继续 P7 会被 `advance` 以"代码指纹漂移"拒绝。

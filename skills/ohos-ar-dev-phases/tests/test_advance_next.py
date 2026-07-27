@@ -29,6 +29,7 @@ class TestAdvanceNext(unittest.TestCase):
         state = {
             "run_id": self.run_id, "ar": self.run_id, "build_target": "t",
             "current_phase": 0, "consent_tokens": {},
+            "phase_scheme": gl.PHASE_SCHEME,
             "phases": [{"id": i, "name": n, "status": "pending",
                         "manifest_ref": None, "closed_at_utc": None}
                        for i, n in gl.PHASES],
@@ -177,19 +178,20 @@ class TestAdvanceNext(unittest.TestCase):
         self.assertTrue(receipt["truth_layer_pass_known"])
         self.assertTrue(receipt["next_phase_ready"])
 
-    def test_next_awaiting_consent_for_p4(self):
-        # walk to P4 without consent, then a PASS should show awaiting_consent
+    def test_next_awaiting_consent_for_device_functional(self):
+        # Path B1: device_functional (a consent phase) is now physical phase 6.
+        # Walk to it without consent, then a PASS should show awaiting_consent.
         state = gl.load_state(self.pdir)
-        state["current_phase"] = 4
+        state["current_phase"] = 6
         gl.save_state(self.pdir, state)
-        self._emit_pass(4)
+        self._emit_pass(6)
         cp = self._run("next", "--json")
         data = json.loads(cp.stdout)
         self.assertEqual(data["current_substate"], "awaiting_consent")
         self.assertIn("consent", data["next_gate"])
         self.assertIn("reviewer_token", data["required_inputs"])
         memory_card = gl.read_control_json(self.pdir, "memory_cards", "current.json")
-        receipt = gl.read_control_json(self.pdir, "receipts", "phase4.json")
+        receipt = gl.read_control_json(self.pdir, "receipts", "phase6.json")
         self.assertEqual(memory_card["current_blocker"], "reviewer_token")
         self.assertTrue(receipt["truth_layer_pass_known"])
         self.assertTrue(receipt["human_gate_pending"])
@@ -215,54 +217,25 @@ class TestAdvanceNext(unittest.TestCase):
         self.assertEqual(state["current_phase"], 0)
         self.assertEqual(gl.phase_state(state, 0)["status"], "pending")
 
-    def test_next_phase1_test_develop_waits_for_prepare_step(self):
+    def test_next_phase3_test_develop_waits_for_signed_gate(self):
+        # Path B1: test_develop is its own physical phase 3. Before a signed
+        # gate_test_develop.py PASS closes it, next must point at that gate.
         state = gl.load_state(self.pdir)
-        state["current_phase"] = 1
-        state["repo"] = self.pdir
-        state["git_dir"] = self.pdir
-        state["base_commit"] = "HEAD"
+        state["current_phase"] = 3
         gl.save_state(self.pdir, state)
-        design_rel = os.path.join("evidence", "phase1", "AR_design.md")
-        os.makedirs(os.path.dirname(os.path.join(self.pdir, design_rel)), exist_ok=True)
-        with open(os.path.join(self.pdir, design_rel), "w", encoding="utf-8") as f:
-            f.write("# 设计\n## 目标组件\ncomp\n## 详细功能需求\nreq\n## 完整代码框架\n### 文件清单\n- notes.txt\n### 每文件功能\nnotes.txt do\n### 代码框架\nsk\n## 完整测试框架\noh\n## 需测试的功能点\n点一\n## 真机测试用例构造\n真机\n\n```ar-contract\n{\"contract_version\":\"2.0\",\"requirements\":[{\"id\":\"REQ-001\",\"desc\":\"点一\"}],\"build_artifacts\":[{\"id\":\"BA-001\",\"path\":\"out/rk3568/liba.z.so\",\"for_requirements\":[\"REQ-001\"]}],\"test_cases\":[{\"id\":\"TC-001\",\"point\":\"点一\",\"gtest\":\"ATest.Case001\",\"for_requirements\":[\"REQ-001\"]}],\"device_cases\":[{\"id\":\"DC-001\",\"desc\":\"触发\",\"marker\":\"AR_DEV_A_OK\",\"for_requirements\":[\"REQ-001\"]}],\"changed_files\":[{\"id\":\"FILE-001\",\"path\":\"notes.txt\",\"for_requirements\":[\"REQ-001\"]}]}\n```\n")
-        with open(os.path.join(self.pdir, "notes.txt"), "w", encoding="utf-8") as f:
-            f.write("ok\n")
-        design_entry = gl.emit(
-            self.pdir, 1, "gate_design.py", verdict="PASS",
-            reason="design ok", artifacts_rel=[design_rel],
-        )
-        state = gl.load_state(self.pdir)
-        state["consent_tokens"] = {
-            "1": gl.make_consent_record(
-                state["run_id"], 1, "reviewer", gl.entry_id(design_entry)
-            )
-        }
-        gl.save_state(self.pdir, state)
-        freeze = gd.write_development_freeze_snapshot(
-            self.pdir, state, {"changed_files": ["notes.txt"]},
-            ["notes.txt"], ["notes.txt"], [], ["notes.txt"], [])
-        gl.write_control_json(
-            self.pdir, "test_develop", "development_freeze_snapshot.json",
-            payload=freeze, best_effort=False)
-        rel = "evidence/phase1/report.txt"
-        os.makedirs(os.path.dirname(os.path.join(self.pdir, rel)), exist_ok=True)
-        with open(os.path.join(self.pdir, rel), "w", encoding="utf-8") as f:
-            f.write("ok\n")
-        gl.emit(self.pdir, 1, "gate_develop.py", verdict="PASS", reason="develop ok", artifacts_rel=[rel])
         data = json.loads(self._run("next", "--json").stdout)
         self.assertEqual(data["current_substate"], "awaiting_test_develop_gate")
-        self.assertEqual(data["next_gate"], "prepare_test_bundle.py")
-        self.assertEqual(data["required_inputs"], ["development_freeze_snapshot", "signed_test_scope"])
+        self.assertEqual(data["next_gate"], "gate_test_develop.py")
+        self.assertEqual(data["logical_phase_id"], "test_develop")
 
     def test_next_awaiting_repair_when_active_packet_exists(self):
         state = gl.load_state(self.pdir)
-        state["current_phase"] = 2
+        state["current_phase"] = 4
         gl.save_state(self.pdir, state)
         gl.write_control_json(
             self.pdir, "repairs", "current.json",
             payload={
-                "phase": 2,
+                "phase": 4,
                 "active": True,
                 "failure_class": "build_verdict_failed",
                 "must_rerun": ["gate_build.py"],
@@ -284,12 +257,12 @@ class TestAdvanceNext(unittest.TestCase):
 
     def test_next_blocks_when_repair_packet_requires_escalation(self):
         state = gl.load_state(self.pdir)
-        state["current_phase"] = 2
+        state["current_phase"] = 4
         gl.save_state(self.pdir, state)
         gl.write_control_json(
             self.pdir, "repairs", "current.json",
             payload={
-                "phase": 2,
+                "phase": 4,
                 "active": True,
                 "failure_class": "build_verdict_failed",
                 "must_rerun": ["gate_build.py"],
@@ -333,60 +306,35 @@ class TestAdvanceNext(unittest.TestCase):
         self.assertEqual(payload["action_kind"], "run_gate")
         self.assertEqual(
             payload["control_refs"]["receipt"],
-            os.path.join("controls", "receipts", "phase1-design-orchestrate.json"),
+            os.path.join("controls", "receipts", "phase1.json"),
         )
         self._run("next")
-        receipt = gl.read_control_json(
-            self.pdir, "receipts", "phase1-design-orchestrate.json")
-        handoff = gl.read_control_json(
-            self.pdir, "handoffs", "phase1-design-orchestrate-next.json")
+        receipt = gl.read_control_json(self.pdir, "receipts", "phase1.json")
         memory_card = gl.read_control_json(self.pdir, "memory_cards", "current.json")
-        self.assertEqual(receipt["phase_scope"], "phase1-subflow")
-        self.assertIn("phase1 design subflow is active", handoff["facts_for_next_phase"])
+        self.assertEqual(receipt["logical_phase_id"], "design_orchestrate")
         self.assertIn("skip_ar_contract_generation", memory_card["forbidden_actions"])
 
-    def test_phase1_develop_maps_to_feature_develop(self):
+    def test_phase2_develop_maps_to_feature_develop(self):
+        # Path B1: feature_develop is now its own physical phase 2.
         state = gl.load_state(self.pdir)
-        state["current_phase"] = 1
-        gl.save_state(self.pdir, state)
-        design_rel = os.path.join("evidence", "phase1", "AR_design.md")
-        os.makedirs(os.path.dirname(os.path.join(self.pdir, design_rel)), exist_ok=True)
-        with open(os.path.join(self.pdir, design_rel), "w", encoding="utf-8") as f:
-            f.write("# design\n\n```ar-contract\n{\"build_artifacts\":[\"out/a\"],\"test_cases\":[{\"point\":\"p\",\"gtest\":\"Suite.Case\"}],\"device_cases\":[{\"desc\":\"d\",\"marker\":\"m\"}]}\n```\n")
-        design_entry = gl.emit(
-            self.pdir, 1, "gate_design.py", verdict="PASS",
-            reason="design ok", artifacts_rel=[design_rel],
-        )
-        state = gl.load_state(self.pdir)
-        state["consent_tokens"] = {
-            "1": gl.make_consent_record(
-                state["run_id"], 1, "reviewer", gl.entry_id(design_entry)
-            )
-        }
+        state["current_phase"] = 2
         gl.save_state(self.pdir, state)
         payload = adv._derive_next_action(self.pdir, gl.load_state(self.pdir))
-        self.assertEqual(payload["current_substate"], "ready_to_advance")
         self.assertEqual(payload["logical_phase_id"], "feature_develop")
         self.assertEqual(payload["logical_phase_name"], "feature-develop")
-        self.assertEqual(payload["action_kind"], "advance")
         self.assertEqual(
             payload["control_refs"]["receipt"],
-            os.path.join("controls", "receipts", "phase1-feature-develop.json"),
+            os.path.join("controls", "receipts", "phase2.json"),
         )
         self._run("next")
-        receipt = gl.read_control_json(
-            self.pdir, "receipts", "phase1-feature-develop.json")
-        handoff = gl.read_control_json(
-            self.pdir, "handoffs", "phase1-feature-develop-next.json")
+        receipt = gl.read_control_json(self.pdir, "receipts", "phase2.json")
         memory_card = gl.read_control_json(self.pdir, "memory_cards", "current.json")
-        self.assertEqual(receipt["phase_scope"], "phase1-subflow")
-        self.assertIn("phase1 develop subflow is active", handoff["facts_for_next_phase"])
+        self.assertEqual(receipt["logical_phase_id"], "feature_develop")
         self.assertIn("skip_signed_design_consent_check", memory_card["forbidden_actions"])
 
-
-    def test_phase5_projects_p7_substate_from_quality_snapshot(self):
+    def test_phase7_projects_substate_from_quality_snapshot(self):
         state = gl.load_state(self.pdir)
-        state["current_phase"] = 5
+        state["current_phase"] = 7
         gl.save_state(self.pdir, state)
         gl.write_control_json(
             self.pdir, "quality_verify", "substate.json",
@@ -403,7 +351,7 @@ class TestAdvanceNext(unittest.TestCase):
                 "human_escalation_needed": False,
             },
             best_effort=False)
-        self._emit_pass(5)
+        self._emit_pass(7)
         data = json.loads(self._run("next", "--json").stdout)
         self.assertEqual(data["current_substate"], "awaiting_consent")
         self.assertEqual(data["logical_substate"]["id"], "human_review_await")
@@ -411,14 +359,14 @@ class TestAdvanceNext(unittest.TestCase):
         self.assertTrue(data["logical_substate"]["human_gate_pending"])
         self.assertEqual(data["logical_substate"]["source"], "quality_substate")
 
-    def test_phase5_repair_maps_failure_to_p7_substate(self):
+    def test_phase7_repair_maps_failure_to_quality_substate(self):
         state = gl.load_state(self.pdir)
-        state["current_phase"] = 5
+        state["current_phase"] = 7
         gl.save_state(self.pdir, state)
         gl.write_control_json(
             self.pdir, "repairs", "current.json",
             payload={
-                "phase": 5,
+                "phase": 7,
                 "active": True,
                 "failure_class": "quality_reports_missing_or_invalid",
                 "must_rerun": ["gate_integration.py"],
@@ -434,9 +382,9 @@ class TestAdvanceNext(unittest.TestCase):
         self.assertEqual(data["logical_substate"]["id"], "quality_check")
         self.assertEqual(data["logical_substate"]["source"], "repair_packet")
 
-    def test_phase6_projects_p8_substate_from_upload_snapshot(self):
+    def test_phase8_projects_substate_from_upload_snapshot(self):
         state = gl.load_state(self.pdir)
-        state["current_phase"] = 6
+        state["current_phase"] = 8
         gl.save_state(self.pdir, state)
         gl.write_control_json(
             self.pdir, "upload_review", "substate.json",
@@ -453,7 +401,7 @@ class TestAdvanceNext(unittest.TestCase):
                 "human_escalation_needed": False,
             },
             best_effort=False)
-        self._emit_pass(6)
+        self._emit_pass(8)
         data = json.loads(self._run("next", "--json").stdout)
         self.assertEqual(data["current_substate"], "awaiting_consent")
         self.assertEqual(data["logical_substate"]["id"], "consent_await")
@@ -461,14 +409,14 @@ class TestAdvanceNext(unittest.TestCase):
         self.assertTrue(data["logical_substate"]["human_gate_pending"])
         self.assertEqual(data["logical_substate"]["source"], "upload_substate")
 
-    def test_phase6_repair_maps_sha_conflict_to_ci_green_substate(self):
+    def test_phase8_repair_maps_sha_conflict_to_ci_green_substate(self):
         state = gl.load_state(self.pdir)
-        state["current_phase"] = 6
+        state["current_phase"] = 8
         gl.save_state(self.pdir, state)
         gl.write_control_json(
             self.pdir, "repairs", "current.json",
             payload={
-                "phase": 6,
+                "phase": 8,
                 "active": True,
                 "failure_class": "pr_head_sha_mismatch",
                 "must_rerun": ["gate_upload_ci.py"],
@@ -505,12 +453,13 @@ class TestAdvanceNext(unittest.TestCase):
         return None
 
     def test_every_control_write_from_advance_next_is_schema_valid(self):
-        # Walk P0 and the three phase1 subflows, then validate every packet the
-        # navigation layer wrote against its schema. A required-field regression
-        # (e.g. a handoff missing to_phase) fails here even though advance.py
-        # writes best-effort.
+        # Walk every physical phase 0-8 and validate every packet the navigation
+        # layer wrote against its schema. A required-field regression (e.g. a
+        # handoff missing to_phase) fails here even though advance.py writes
+        # best-effort. Under Path B1 the phases are 1:1 physical/logical, so this
+        # covers design(1)/develop(2)/test-develop(3) ... quality(7)/upload(8).
         self._run("next")
-        for phase in (0, 2, 3, 4, 5, 6):
+        for phase, _name in gl.PHASES:
             state = gl.load_state(self.pdir)
             state["current_phase"] = phase
             gl.save_state(self.pdir, state)

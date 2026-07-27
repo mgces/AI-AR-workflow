@@ -68,6 +68,7 @@ class TestDesignDependency(unittest.TestCase):
         gl.save_state(self.pdir, {
             "run_id": self.run_id, "repo": self.repo, "git_dir": self.repo,
             "base_commit": self.base, "consent_tokens": {},
+            "phase_scheme": gl.PHASE_SCHEME,
             "phases": [{"id": i, "name": n, "status": "pending"} for i, n in gl.PHASES],
         })
         # make a non-C/C++ change so develop has something to see without
@@ -145,7 +146,7 @@ class TestDesignDependency(unittest.TestCase):
         cp = self._run("gate_develop.py", "--allow-missing-design")
         self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
         # bypass is recorded in the signed reason
-        entry = gl.last_entry_for_phase(self.pdir, 1)
+        entry = gl.last_entry_for_phase(self.pdir, 2)
         self.assertIn("DESIGN-GATE-LEGACY-BYPASS", entry.get("reason", ""))
 
 

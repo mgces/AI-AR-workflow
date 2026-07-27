@@ -28,28 +28,42 @@ import gatelib as gl  # noqa: E402
 # Phases whose evidence gate must be followed by an explicit human sign-off
 # before advancing (the pipeline stops and shows real results/artifacts first).
 CONSENT_PHASES = {
-    4: "device functional test",
-    5: "quality reports and code review",
-    6: "upload push",
+    6: "device functional test",
+    7: "quality reports and code review",
+    8: "upload push",
 }
 
-# Phases where only NEW test files may appear beyond the P1-locked path set
-# (development is done; from here on the tree may add independent tests only).
-TEST_ONLY_PHASES = (3, 4, 5)
+# Phases where only NEW test files may appear beyond the P2-locked path set
+# (feature development is frozen at the close of phase 2; from here on the tree
+# may add independent tests only). This is the set of phases AFTER the
+# functional-fingerprint lock: test_develop(3), test_author(5),
+# device_functional(6), quality_verify(7). build_verify(4) is excluded — build
+# adds no files. NOTE: test_develop(3) MUST be included; it authors tests over
+# the frozen bundle, so it too may only add test files.
+TEST_ONLY_PHASES = (3, 5, 6, 7)
 
 PHASE_GATE_CMD = {
     0: "gate_env_init.py",
-    1: "gate_develop.py",
-    2: "gate_build.py",
-    3: "gate_test_ut.py",
-    4: "gate_device_func.py",
-    5: "gate_integration.py",
-    6: "gate_upload_ci.py",
+    1: "gate_design.py",
+    2: "gate_develop.py",
+    3: "gate_test_develop.py",
+    4: "gate_build.py",
+    5: "gate_test_ut.py",
+    6: "gate_device_func.py",
+    7: "gate_integration.py",
+    8: "gate_upload_ci.py",
 }
 
 CONTROL_PROTOCOL_VERSION = 1
 TEST_DEVELOP_STATUS_PARTS = ("test_develop", "phase1_test_develop.json")
 TEST_DEVELOP_FREEZE_PARTS = ("test_develop", "development_freeze_snapshot.json")
+
+# Default compiled component. The component to build is user-determined per AR,
+# but a sensible default (the hiview part) lets `init` run without three flags.
+# Override with --git-dir / --build-target / --part.
+DEFAULT_GIT_DIR = "base/hiviewdfx/hiview"
+DEFAULT_BUILD_TARGET = "hiview_package"
+DEFAULT_TEST_PART = "hiviewdfx"
 TEST_DEVELOP_SCOPE_PARTS = ("test_develop", "signed_test_scope.json")
 TEST_DEVELOP_MATRIX_PARTS = ("test_develop", "test_intent_matrix.json")
 QUALITY_SUBSTATE_PARTS = ("quality_verify", "substate.json")
@@ -100,25 +114,28 @@ P8_SUBSTATE_NAMES = {
 
 
 def check_code_drift(state, phase):
-    """Return (ok, message). Enforces, for phase>=2:
+    """Return (ok, message). Enforces, for phase>=3:
 
-    New (layered) runs — a functional fingerprint was locked at P1:
+    The functional fingerprint is locked at the close of phase 2
+    (feature_develop), so drift is only meaningful from phase 3 onward.
+
+    New (layered) runs — a functional fingerprint was locked at P2:
       * the functional fingerprint (non-test paths' content) must still match →
         any edit/add/delete of functional code or config is drift;
-      * in TEST_ONLY_PHASES, every path that appeared since P1 must be a test
-        path → only independent test files may be added.
+      * in TEST_ONLY_PHASES, every path that appeared since the P2 lock must be a
+        test path → only independent test files may be added.
 
     Legacy runs — only the old full-tree `code_fingerprint` was locked:
       * fall back to the original whole-tree drift check (behavior unchanged).
     """
-    if phase < 2:
+    if phase < 3:
         return True, "ok"
     flocked = state.get("functional_fingerprint")
     if flocked is not None:
         now_func = gl.functional_fingerprint(state)
         if now_func != flocked:
             return False, (
-                "REFUSED: functional code/config changed since P1 "
+                "REFUSED: functional code/config changed since P2 "
                 "(functional fingerprint %s.. != locked %s..).\n"
                 "Build/test/device evidence no longer matches the current code.\n"
                 "Rewalk from development:\n"
@@ -131,8 +148,8 @@ def check_code_drift(state, phase):
             if non_test:
                 return False, (
                     "REFUSED: phase %d may add INDEPENDENT TEST files only, but new "
-                    "non-test path(s) appeared since P1:\n  %s\n"
-                    "Functional code must be written in P1. Rewalk:\n"
+                    "non-test path(s) appeared since the P2 freeze:\n  %s\n"
+                    "Functional code must be written in P2 (feature_develop). Rewalk:\n"
                     "  advance.py --pipeline-dir <PDIR> reset --reason \"<why>\""
                     % (phase, "\n  ".join(non_test)))
         return True, "ok"
@@ -167,7 +184,7 @@ def _legacy_mode(pdir, state, entries):
 
 
 def _phase_required_inputs(phase, substate):
-    if substate in ("ready_to_advance", "ready_to_build_verify", "complete"):
+    if substate in ("ready_to_advance", "complete"):
         return []
     if substate in ("awaiting_consent", "awaiting_design_consent"):
         return ["reviewer_token"]
@@ -179,11 +196,11 @@ def _phase_required_inputs(phase, substate):
         return ["development_freeze_snapshot", "signed_test_scope"]
     return {
         0: ["build_target"],
-        2: ["build_target"],
-        3: ["unit_test_results"],
-        4: ["device_serial", "device_run_artifacts"],
-        5: ["quality_reports", "review_report"],
-        6: ["review_reports", "pr_and_ci_metadata"],
+        4: ["build_target"],
+        5: ["unit_test_results"],
+        6: ["device_serial", "device_run_artifacts"],
+        7: ["quality_reports", "review_report"],
+        8: ["review_reports", "pr_and_ci_metadata"],
     }.get(phase, [])
 
 
@@ -192,28 +209,28 @@ def _phase_resume_hint(phase, substate, reason=None):
         return "All phases are closed by signed evidence; the pipeline is complete."
     if substate == "ready_to_advance":
         return "The current phase already has valid signed PASS evidence; run advance.py advance to close it."
-    if substate == "ready_to_build_verify":
-        return "The phase1 test-develop bundle is ready; advance phase 1 so build verification can begin."
     if substate == "awaiting_consent":
         return "Inspect the real artifacts, record signed human consent, then rerun advance.py advance."
     if substate == "awaiting_design_consent":
-        return "Review the signed AR_design evidence, record phase-1 consent, then run gate_develop.py."
+        return "Review the signed AR_design evidence, record phase-1 consent, then advance phase 1."
     if substate == "awaiting_design_gate":
         return "Write AR_design.md with the required sections and ar-contract, then run gate_design.py."
     if substate == "awaiting_develop_gate":
         return "With signed design consent recorded, write code and run gate_develop.py."
     if substate == "awaiting_test_develop_gate":
-        return "Generate the phase1 test-develop bundle from the signed contract and frozen development snapshot."
+        return "Generate the test-develop bundle from the signed contract and frozen development snapshot, then run gate_test_develop.py."
     if substate == "blocked" and reason:
         return reason
     return {
         0: "Run gate_env_init.py to record signed bootstrap evidence.",
-        1: "Run the next phase-1 gate based on whether design is signed, code freeze exists, and the test-develop bundle is ready.",
-        2: "Run gate_build.py and wait for a signed build PASS.",
-        3: "Run gate_test_ut.py and wait for a signed unit-test PASS.",
-        4: "Run gate_device_func.py, inspect the real device result, then consent and advance.",
-        5: "Run gate_integration.py, inspect reports, then consent and advance.",
-        6: "Run gate_upload_ci.py, inspect upload/CI evidence, then consent and advance.",
+        1: "Run gate_design.py, then record phase-1 design consent and advance phase 1.",
+        2: "With signed design consent recorded, write feature code and run gate_develop.py.",
+        3: "Author tests over the frozen bundle and run gate_test_develop.py.",
+        4: "Run gate_build.py and wait for a signed build PASS.",
+        5: "Run gate_test_ut.py and wait for a signed unit-test PASS.",
+        6: "Run gate_device_func.py, inspect the real device result, then consent and advance.",
+        7: "Run gate_integration.py, inspect reports, then consent and advance.",
+        8: "Run gate_upload_ci.py, inspect upload/CI evidence, then consent and advance.",
     }.get(phase, "See the workflow skill for the next action.")
 
 
@@ -422,20 +439,18 @@ def _require_test_develop_gate(pdir, state, entries):
 
 
 def _logical_phase(cur, substate):
-    if cur == 0:
-        return "bootstrap", "bootstrap"
-    if cur == 1:
-        if substate in ("awaiting_design_gate", "awaiting_design_consent"):
-            return "design_orchestrate", "design-orchestrate"
-        if substate in ("awaiting_test_develop_gate", "ready_to_build_verify"):
-            return "test_develop", "test-develop"
-        return "feature_develop", "feature-develop"
+    # Path B1: physical phases are now 1:1 with logical phases (0-8), so this
+    # no longer needs the old phase-1 three-way substate split.
     return {
-        2: ("build_verify", "build-verify"),
-        3: ("test_author", "test-author"),
-        4: ("device_functional", "device-functional"),
-        5: ("quality_verify", "quality-verify"),
-        6: ("upload_review", "upload-review"),
+        0: ("bootstrap", "bootstrap"),
+        1: ("design_orchestrate", "design-orchestrate"),
+        2: ("feature_develop", "feature-develop"),
+        3: ("test_develop", "test-develop"),
+        4: ("build_verify", "build-verify"),
+        5: ("test_author", "test-author"),
+        6: ("device_functional", "device-functional"),
+        7: ("quality_verify", "quality-verify"),
+        8: ("upload_review", "upload-review"),
     }.get(cur, ("unknown", "unknown"))
 
 
@@ -464,12 +479,8 @@ def _phase_token(cur):
 
 
 def _logical_phase_token(cur, logical_phase_id):
-    if cur == 1 and logical_phase_id == "design_orchestrate":
-        return "phase1-design-orchestrate"
-    if cur == 1 and logical_phase_id == "feature_develop":
-        return "phase1-feature-develop"
-    if cur == 1 and logical_phase_id == "test_develop":
-        return "phase1-test-develop"
+    # Path B1: each physical phase 0-8 maps to exactly one logical phase, so the
+    # token is simply the physical phase token (no phase-1 composite tokens).
     return _phase_token(cur)
 
 
@@ -558,7 +569,7 @@ def _receipt_payload(next_action):
         "phase_name": next_action.get("current_phase_name"),
         "logical_phase_id": logical_phase_id,
         "logical_phase_name": next_action.get("logical_phase_name"),
-        "phase_scope": "phase1-subflow" if cur == 1 else "phase",
+        "phase_scope": "phase",
         "semantic_done": _semantic_done(next_action.get("current_substate")),
         "truth_layer_pass_known": _truth_layer_pass_known(
             next_action.get("current_substate")),
@@ -583,11 +594,11 @@ def _handoff_payload(next_action):
         facts.append("phase summary available")
     logical_phase_id = next_action.get("logical_phase_id")
     if logical_phase_id == "design_orchestrate":
-        facts.append("phase1 design subflow is active")
+        facts.append("design-orchestrate phase is active")
     elif logical_phase_id == "feature_develop":
-        facts.append("phase1 develop subflow is active")
+        facts.append("feature-develop phase is active")
     elif logical_phase_id == "test_develop":
-        facts.append("phase1 test-develop subflow is active")
+        facts.append("test-develop phase is active")
     risks = []
     if last_failure.get("reason"):
         risks.append(last_failure.get("reason"))
@@ -596,7 +607,7 @@ def _handoff_payload(next_action):
         "from_phase_name": next_action.get("current_phase_name"),
         "logical_phase_id": logical_phase_id,
         "logical_phase_name": next_action.get("logical_phase_name"),
-        "phase_scope": "phase1-subflow" if cur == 1 else "phase",
+        "phase_scope": "phase",
         "objective_completed": _semantic_done(next_action.get("current_substate")),
         "truth_layer_pass_known": _truth_layer_pass_known(
             next_action.get("current_substate")),
@@ -681,6 +692,8 @@ def _derive_next_action(pdir, state):
         resume_hint = _phase_resume_hint(cur, substate)
         required_inputs = []
     elif cur == 1:
+        # Path B1: phase 1 is now design_orchestrate ONLY (feature_develop and
+        # test_develop are their own physical phases 2 and 3).
         design_entry = gl.latest_design_entry(pdir)
         if design_entry is None:
             substate = "awaiting_design_gate"
@@ -701,22 +714,39 @@ def _derive_next_action(pdir, state):
             else:
                 ok, reason, _ = gl.validate_closing_entry(pdir, 1)
                 if ok:
-                    if _test_develop_ready(pdir) and _test_develop_scope_ready(pdir):
-                        substate = "ready_to_build_verify"
-                        next_gate = "advance.py advance --phase 1"
-                        resume_hint = _phase_resume_hint(cur, substate)
-                    elif _phase1_develop_pass_ready(pdir):
-                        substate = "awaiting_test_develop_gate"
-                        next_gate = "prepare_test_bundle.py"
-                        resume_hint = _phase_resume_hint(cur, substate)
-                    else:
-                        substate = "ready_to_advance"
-                        next_gate = "advance.py advance --phase 1"
-                        resume_hint = _phase_resume_hint(cur, substate)
+                    substate = "ready_to_advance"
+                    next_gate = "advance.py advance --phase 1"
+                    resume_hint = _phase_resume_hint(cur, substate)
                 else:
-                    substate = "awaiting_develop_gate"
-                    next_gate = "gate_develop.py"
+                    substate = "awaiting_design_gate"
+                    next_gate = "gate_design.py"
                     resume_hint = _phase_resume_hint(cur, substate, reason)
+        required_inputs = _phase_required_inputs(cur, substate)
+    elif cur == 2:
+        # Path B1: feature_develop closes on a signed gate_develop.py PASS.
+        ok, reason, _ = gl.validate_closing_entry(pdir, 2)
+        if ok:
+            substate = "ready_to_advance"
+            next_gate = "advance.py advance --phase 2"
+            resume_hint = _phase_resume_hint(cur, substate)
+        else:
+            substate = "awaiting_develop_gate"
+            next_gate = "gate_develop.py"
+            resume_hint = _phase_resume_hint(cur, substate, reason)
+        required_inputs = _phase_required_inputs(cur, substate)
+    elif cur == 3:
+        # Path B1: test_develop closes on a signed gate_test_develop.py PASS,
+        # proving test code was authored over the frozen feature bundle before
+        # build verification (phase 4) can begin.
+        ok, reason, _ = gl.validate_closing_entry(pdir, 3)
+        if ok:
+            substate = "ready_to_advance"
+            next_gate = "advance.py advance --phase 3"
+            resume_hint = _phase_resume_hint(cur, substate)
+        else:
+            substate = "awaiting_test_develop_gate"
+            next_gate = "gate_test_develop.py"
+            resume_hint = _phase_resume_hint(cur, substate, reason)
         required_inputs = _phase_required_inputs(cur, substate)
     else:
         if _repair_requires_escalation(repair_packet):
@@ -768,9 +798,9 @@ def _derive_next_action(pdir, state):
     })
     payload["window_startup_order"] = gl.window_startup_order(
         payload["control_refs"])
-    if cur == 5:
+    if cur == 7:
         payload["logical_substate"] = _phase5_substate(pdir, substate, repair_packet)
-    elif cur == 6:
+    elif cur == 8:
         payload["logical_substate"] = _phase6_substate(pdir, substate, repair_packet)
     return payload
 
@@ -865,6 +895,11 @@ def cmd_init(args):
         "build_target": args.build_target,
         "test": {"part": args.part, "ut_suites": [], "mst_suites": []},
         "base_commit": args.base_commit,
+        # Path B1: physical phase scheme. 9 = true 0-8 phases (design_orchestrate,
+        # feature_develop, and test_develop are distinct physical phases). Runs
+        # stamped 7 (or unstamped) use the legacy 3-in-1 phase-1 subflow and are
+        # refused by load_state until migrated (advance.py migrate).
+        "phase_scheme": gl.PHASE_SCHEME,
         "current_phase": 0,
         "consent_tokens": {},
         "code_fingerprint": None,
@@ -876,10 +911,19 @@ def cmd_init(args):
             for i, n in gl.PHASES
         ],
     }
+    # Persist first: _refresh_state_metadata derives next-action via
+    # validate_closing_entry, which reads pipeline.json back off disk. Then
+    # re-save so the derived navigation metadata lands in pipeline.json too.
+    gl.save_state(pdir, state)
     _refresh_state_metadata(pdir, state)
     gl.save_state(pdir, state)
     print("initialized pipeline at %s (run_id=%s)" % (pdir, run_id))
     print("secret: %s (mode 600)" % gl.secret_path(run_id))
+    if args.build_target == DEFAULT_BUILD_TARGET and args.git_dir in (None, DEFAULT_GIT_DIR):
+        print("NOTE: compiled component defaulted to hiview "
+              "(git_dir=%s build_target=%s part=%s). If this AR touches a "
+              "different component, re-init with --git-dir/--build-target/--part."
+              % (state["git_dir"], state["build_target"], state["test"]["part"]))
 
 
 def cmd_advance(args):
@@ -894,9 +938,9 @@ def cmd_advance(args):
     # Phases that require an explicit human sign-off AFTER their evidence gate
     # passes: the pipeline must stop, show the real results/artifacts, and only
     # advance once a person reviewed them and recorded consent.
-    #   P4 = real-device functional test result review
-    #   P5 = quality reports + code-review report review
-    #   P6 = irreversible upload push
+    #   phase 6 = real-device functional test result review
+    #   phase 7 = quality reports + code-review report review
+    #   phase 8 = irreversible upload push
     if phase in CONSENT_PHASES:
         # Consent must be bound to the phase's CURRENT closing PASS evidence.
         # Re-derive that entry_id and require a signed, matching consent record.
@@ -915,18 +959,21 @@ def cmd_advance(args):
                 "  3) then re-run: advance.py --pipeline-dir <PDIR> advance --phase %d"
                 % (phase, CONSENT_PHASES[phase], c_reason, ev, phase, phase))
 
-    # CODE-DRIFT CONTROL: once P1 locks the functional fingerprint, every later
-    # phase is validated against THAT functional code. Test files added in P3+ do
-    # not trip it, but functional edits do (and non-test additions are refused in
-    # test-only phases). Legacy runs fall back to the whole-tree check.
+    # CODE-DRIFT CONTROL: once phase 2 (feature_develop) locks the functional
+    # fingerprint, every later phase is validated against THAT functional code.
+    # Test files added in phase 3+ do not trip it, but functional edits do (and
+    # non-test additions are refused in test-only phases). Legacy runs fall back
+    # to the whole-tree check.
     ok_drift, drift_msg = check_code_drift(state, phase)
     if not ok_drift:
         sys.exit(drift_msg)
 
-    # P3 TEST-DEVELOP HARD GATE: closing phase 1 requires a signed test-develop
-    # bundle (unless legacy). Without it, downstream P2/P3/P4 would degrade to
-    # empty suspect scopes instead of refusing. See _require_test_develop_gate.
-    if phase == 1:
+    # TEST-DEVELOP HARD GATE (defense-in-depth): closing phase 3 also requires a
+    # signed test-develop bundle (unless legacy). The primary enforcement is now
+    # structural — phase 3 closes on a signed gate_test_develop.py PASS — but this
+    # keeps the control-bundle (signed_test_scope / matrix) validated so
+    # downstream phases never degrade to empty suspect scopes.
+    if phase == 3:
         ok_td, td_msg = _require_test_develop_gate(pdir, state, gl.read_manifest(pdir))
         if not ok_td:
             sys.exit(td_msg)
@@ -939,11 +986,13 @@ def cmd_advance(args):
     pe["status"] = "passed"
     pe["manifest_ref"] = gl.entry_id(entry)
     pe["closed_at_utc"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    # P1 locks the fingerprints that later phases must keep matching:
+    # Phase 2 (feature_develop close) locks the fingerprints that later phases
+    # must keep matching — the feature code is now complete and frozen before
+    # any test code is authored (phase 3+):
     #   * functional_fingerprint — non-test code/config content (drift => rewalk)
-    #   * locked_all_paths       — the path set at P1 (new paths after must be tests)
+    #   * locked_all_paths       — the path set at freeze (new paths after must be tests)
     #   * code_fingerprint       — legacy whole-tree value, kept for compatibility
-    if phase == 1:
+    if phase == 2:
         state["functional_fingerprint"] = gl.functional_fingerprint(state)
         state["locked_all_paths"] = gl._changed_paths(state)
         state["code_fingerprint"] = gl.code_fingerprint(state)
@@ -962,15 +1011,15 @@ def cmd_advance(args):
 
 def cmd_consent(args):
     """Record a one-time human consent for a phase that requires sign-off
-    (P1 AR_design review, P4 device-test review, P5 quality/review report
-    approval, P6 upload push).
+    (P1 AR_design review, phase 6 device-test review, phase 7 quality/review
+    report approval, phase 8 upload push).
 
     Consent is only meaningful AFTER the relevant gate has produced its real
     signed results for a human to inspect: we bind the consent to that exact
     signed PASS entry (evidence_ref = its entry_id) and HMAC-sign the record.
     Re-running the gate produces new evidence and invalidates this consent.
       * P1  -> bound to the gate_design PASS entry (enforced by gate_develop);
-      * P4/5/6 -> bound to the phase's closing PASS entry (enforced by advance)."""
+      * phase 6/7/8 -> bound to the phase's closing PASS entry (enforced by advance)."""
     pdir = gl.pipeline_dir(args.pipeline_dir)
     state = gl.load_state(pdir)
     if not args.token:
@@ -1023,8 +1072,8 @@ def cmd_consent(args):
 
 
 def cmd_reset(args):
-    """Rewind the pipeline to P1 (development) — used whenever a fix touches code.
-    Marks P1..P6 pending, clears consent + code fingerprint, keeps P0 (env) intact.
+    """Rewind the pipeline to P1 (design_orchestrate) — used whenever a fix touches code.
+    Marks P1..P8 pending, clears consent + code fingerprint, keeps P0 (env) intact.
     Recorded in the manifest so the rewalk is auditable."""
     pdir = gl.pipeline_dir(args.pipeline_dir)
     state = gl.load_state(pdir)
@@ -1047,18 +1096,73 @@ def cmd_reset(args):
                 artifacts_rel=[])
     except Exception:
         pass
-    print("RESET → P1 (develop). Reason: %s" % (args.reason or "code change"))
-    print("Redo P1→P6 in order; downstream evidence was invalidated.")
+    print("RESET → P1 (design_orchestrate). Reason: %s" % (args.reason or "code change"))
+    print("Redo P1→P8 in order; downstream evidence was invalidated.")
+
+
+def cmd_migrate(args):
+    """One-time Path B1 migration: rewrite a pre-9-phase pipeline.json onto the
+    9 physical phases (0-8).
+
+    Only runs when current_phase <= 1 (bootstrap or design_orchestrate). Beyond
+    that the old physical phase 1 collapsed three logical phases into a single
+    signed entry, so there is no evidence to split — those runs must reset and
+    rewalk from P1 instead.
+
+    This touches ONLY pipeline.json's phase_scheme, current_phase, and phases
+    array. It NEVER rewrites manifest entries (that would break the HMAC chain):
+    a run at phase <= 1 has at most a signed design entry at physical phase 1,
+    whose number is unchanged (phase 1 stays design_orchestrate)."""
+    pdir = gl.pipeline_dir(args.pipeline_dir)
+    state = gl.load_state(pdir, allow_legacy=True)
+    if state.get("phase_scheme") == gl.PHASE_SCHEME and len(state.get("phases", [])) == len(gl.PHASES):
+        print("already on phase_scheme=%d; nothing to migrate." % gl.PHASE_SCHEME)
+        return
+    cur = state.get("current_phase", 0)
+    if cur > 1:
+        sys.exit(
+            "ERROR: cannot migrate a run past phase 1 (current_phase=%d).\n"
+            "  The old physical phase 1 fused design/develop/test-develop into one\n"
+            "  signed entry; there is no safe way to split it. Reset and rewalk:\n"
+            "  advance.py --pipeline-dir %s reset --reason \"phase-scheme migration\""
+            % (cur, pdir))
+    # Preserve status of the phases that keep their number under B1 (0 bootstrap,
+    # 1 design_orchestrate); everything else becomes pending in the new layout.
+    old_status = {pe["id"]: pe for pe in state.get("phases", [])}
+    new_phases = []
+    for i, n in gl.PHASES:
+        prev = old_status.get(i) if i <= 1 else None
+        new_phases.append({
+            "id": i, "name": n,
+            "status": (prev or {}).get("status", "pending"),
+            "manifest_ref": (prev or {}).get("manifest_ref"),
+            "closed_at_utc": (prev or {}).get("closed_at_utc"),
+        })
+    state["phases"] = new_phases
+    state["phase_scheme"] = gl.PHASE_SCHEME
+    state["current_phase"] = cur  # unchanged: 0 or 1 keep their meaning
+    # Persist the new scheme stamp BEFORE deriving navigation metadata:
+    # _refresh_state_metadata -> validate_closing_entry re-reads pipeline.json
+    # from disk through the strict load_state guard, which would fail-closed on
+    # the still-unstamped legacy file. Save first so that reload sees scheme 9.
+    gl.save_state(pdir, state)
+    _refresh_state_metadata(pdir, state)
+    gl.save_state(pdir, state)
+    print("MIGRATED pipeline.json to phase_scheme=%d (9 physical phases 0-8); "
+          "current_phase=%d unchanged. Manifest entries were not touched."
+          % (gl.PHASE_SCHEME, cur))
 
 
 def cmd_verify_all(args):
     pdir = gl.pipeline_dir(args.pipeline_dir)
     state = gl.load_state(pdir)
     bad = 0
-    # code-drift check: if functional code changed since P1 locked (or, for legacy
-    # runs, the whole tree), rewind to P1. Uses the same layered logic as advance.
+    # code-drift check: if functional code changed since phase 2 locked (or, for
+    # legacy runs, the whole tree), rewind to P1. Uses the same layered logic as
+    # advance. Floor at phase 3 because the fingerprint is only locked once phase 2
+    # (feature_develop) closes, and drift is only meaningful from phase 3 onward.
     cur = state.get("current_phase", 0)
-    drift_ok, _ = check_code_drift(state, max(cur, 2))
+    drift_ok, _ = check_code_drift(state, max(cur, 3))
     if not drift_ok:
         for pe in state["phases"]:
             if pe["id"] >= 1:
@@ -1144,14 +1248,20 @@ def main():
     p.add_argument("--repo", default=os.environ.get("OHOS_ROOT", os.getcwd()),
                    help="OHOS repo root (build/developer_test base); "
                         "defaults to $OHOS_ROOT or the current directory")
-    p.add_argument("--git-dir", help="component git repo (repo-managed tree); "
-                                     "defaults to --repo. For OHOS use the changed "
-                                     "component path, e.g. base/hiviewdfx/hiview")
+    p.add_argument("--git-dir", default=DEFAULT_GIT_DIR,
+                   help="component git repo (repo-managed tree); the compiled "
+                        "component. Defaults to the hiview component (%s); for "
+                        "another AR pass its component path, e.g. "
+                        "foundation/... — this is user-determined." % DEFAULT_GIT_DIR)
     p.add_argument("--device-serial", default="",
                    help="pin a device serial; default empty = auto-detect the single "
                         "connected device at P0 (or set $DEVICE_SERIAL)")
-    p.add_argument("--build-target", required=True)
-    p.add_argument("--part", default="")
+    p.add_argument("--build-target", default=DEFAULT_BUILD_TARGET,
+                   help="GN build target to compile/verify. Defaults to the hiview "
+                        "part (%s); override per AR." % DEFAULT_BUILD_TARGET)
+    p.add_argument("--part", default=DEFAULT_TEST_PART,
+                   help="developer_test part. Defaults to the hiview part (%s)."
+                        % DEFAULT_TEST_PART)
     p.add_argument("--base-commit", default="")
     p.add_argument("--force", action="store_true")
     p.set_defaults(func=cmd_init)
@@ -1162,15 +1272,19 @@ def main():
 
     p = sub.add_parser("consent")
     p.add_argument("--phase", type=int, required=True,
-                   help="phase to sign off (1 design, 4 device test, "
-                        "5 quality/review, 6 upload)")
+                   help="phase to sign off (1 design, 6 device test, "
+                        "7 quality/review, 8 upload)")
     p.add_argument("--token", required=True)
     p.set_defaults(func=cmd_consent)
 
-    p = sub.add_parser("reset", help="rewind to P1 (development) — use whenever a "
-                                     "fix touches code; invalidates downstream phases")
+    p = sub.add_parser("reset", help="rewind to P1 (design_orchestrate) — use whenever "
+                                     "a fix touches code; invalidates downstream phases")
     p.add_argument("--reason", default="", help="what was fixed (audit trail)")
     p.set_defaults(func=cmd_reset)
+
+    p = sub.add_parser("migrate", help="one-time Path B1 migration of a pre-9-phase "
+                                       "pipeline.json (only if current_phase <= 1)")
+    p.set_defaults(func=cmd_migrate)
 
     p = sub.add_parser("verify-all")
     p.set_defaults(func=cmd_verify_all)

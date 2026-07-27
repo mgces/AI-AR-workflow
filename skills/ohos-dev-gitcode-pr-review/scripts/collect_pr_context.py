@@ -214,7 +214,10 @@ def main() -> int:
     parser.add_argument("ref", help="PR number or URL")
     parser.add_argument("--repo", help="OWNER/REPO override")
     parser.add_argument("--out-dir", help="Artifact directory. Defaults to .review-gitcode-pr/pr-<n>")
-    parser.add_argument("--comments-limit", type=int, default=100, help="How many comments to fetch per type")
+    parser.add_argument("--comments-limit", type=int, default=100,
+                        help="How many comments to fetch per type, newest-first "
+                             "(the CLI defaults to only 30, oldest-first, which "
+                             "silently drops the latest comments on busy PRs)")
     args = parser.parse_args()
 
     normalized = normalize_ref(args.ref)
@@ -236,6 +239,7 @@ def main() -> int:
             "--json",
             "--comment-type",
             "pr_comment",
+            "--latest",
             "--limit",
             str(args.comments_limit),
         ],
@@ -246,6 +250,7 @@ def main() -> int:
             "--json",
             "--comment-type",
             "diff_comment",
+            "--latest",
             "--limit",
             str(args.comments_limit),
         ],

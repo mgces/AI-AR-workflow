@@ -151,7 +151,7 @@ def build_feature_spec(pdir, state, entries, subsys, comp, feat):
     design = read_ev(pdir, "evidence/phase1/AR_design.md", 100000) \
         or read_ev(pdir, "AR_design.md", 100000)
     changed = read_ev(pdir, "evidence/phase1/changed_files.txt", 8000)
-    run_meta = read_ev(pdir, "evidence/phase4/run_meta.txt", 2000)
+    run_meta = read_ev(pdir, "evidence/phase6/run_meta.txt", 2000)
 
     def sec(kw, fallback="> TODO(人工补充):证据不足,读源码补充。"):
         b = _section_body(design, kw)

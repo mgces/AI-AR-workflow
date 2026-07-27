@@ -9,7 +9,7 @@ produced aggregate report. Same RTC-independent freshness proof as phase 3
 (a new host-clock reports/<timestamp>/ dir).
 
 For integration scenarios that are device-behavioral rather than suite-based,
-use gate_device_func.py --phase 5 instead (it is the alternative phase-5 closer).
+use gate_device_func.py --phase 7 instead (it is the alternative phase-7 closer).
 
 P5 also signs the quality evidence produced by the AR verification work:
 coverage, performance, power, and stability impact reports. P5 passes only when
@@ -139,13 +139,13 @@ def _write_repair_packet(pdir, *, failure_class, problems, last_failure_reason,
         failure_class, repair_disallowed=repair_disallowed)
     rounds = _repair_round_metadata(
         pdir,
-        phase=5,
+        phase=7,
         bundle_revision_from=bundle.get("bundle_revision") or "",
         recommended_next_action=base_action,
         failure_class=failure_class,
     )
     packet = {
-        "phase": 5,
+        "phase": 7,
         "phase_name": "quality-verify",
         "bundle_id": bundle.get("bundle_id") or "phase1-bundle",
         "bundle_revision_from": bundle.get("bundle_revision") or "",
@@ -253,7 +253,7 @@ def _p7_substate_payload(substate_id, *, tests=None, failures=None, errors=None,
         ]
     else:
         exit_conditions = [
-            "human consent is the only remaining step before advance.py advance --phase 5",
+            "human consent is the only remaining step before advance.py advance --phase 7",
         ]
     notes = []
     if tests is not None:
@@ -273,7 +273,7 @@ def _p7_substate_payload(substate_id, *, tests=None, failures=None, errors=None,
     if human_escalation_needed:
         notes.append("human escalation required")
     return {
-        "phase": 5,
+        "phase": 7,
         "phase_name": "quality-verify",
         "substate": substate_id,
         "substate_id": substate_id,
@@ -330,7 +330,7 @@ def _write_completion_controls(pdir, *, tests, failures, errors, fresh_dir,
         downgraded=downgraded,
     )
     receipt = {
-        "phase": 5,
+        "phase": 7,
         "logical_phase_id": "quality_verify",
         "bundle_id": bundle.get("bundle_id") or "phase1-bundle",
         "bundle_revision": bundle_revision,
@@ -338,7 +338,7 @@ def _write_completion_controls(pdir, *, tests, failures, errors, fresh_dir,
         "truth_layer_pass_known": True,
         "next_phase_ready": True,
         "human_gate_pending": True,
-        "next_phase": 6,
+        "next_phase": 8,
         "downstream_revalidate_scope": bundle.get("downstream_revalidate_scope") or "P4_P5",
         "tests": tests,
         "failures": failures,
@@ -356,9 +356,9 @@ def _write_completion_controls(pdir, *, tests, failures, errors, fresh_dir,
     handoff = {
         "bundle_id": bundle.get("bundle_id") or "phase1-bundle",
         "bundle_revision": bundle_revision,
-        "from_phase": 5,
+        "from_phase": 7,
         "from_phase_name": "quality-verify",
-        "to_phase": 6,
+        "to_phase": 8,
         "to_phase_name": "upload-review",
         "logical_phase_id": "quality_verify",
         "logical_phase_name": "quality-verify",
@@ -379,9 +379,9 @@ def _write_completion_controls(pdir, *, tests, failures, errors, fresh_dir,
         "risks": ["quality gate downgraded"] if downgraded else [],
         "open_questions": [],
         "recommended_next_action": {
-            "phase": 6,
+            "phase": 8,
             "action": "upload-review",
-            "next_gate": "advance.py advance --phase 5",
+            "next_gate": "advance.py advance --phase 7",
         },
         "requires_repair": False,
         "repair_scope_hint": bundle.get("suspect_files") or [],
@@ -430,7 +430,7 @@ def _record_result(pdir, verdict, reason, arts, *, cmd, exit_code, testtype,
         downgraded=downgraded,
     )
     gl.write_phase_summary(
-        pdir, 5, "gate_integration.py", verdict, reason, checks=checks,
+        pdir, 7, "gate_integration.py", verdict, reason, checks=checks,
         extra={
             "testtype": testtype,
             "part": part,
@@ -451,11 +451,11 @@ def _record_result(pdir, verdict, reason, arts, *, cmd, exit_code, testtype,
             "logical_substate_goal": P7_SUBSTATE_META[substate_id]["goal"],
         })
     if verdict == "PASS":
-        gl.clear_failure_report(pdir, 5)
+        gl.clear_failure_report(pdir, 7)
         gl.write_repair_packet(
             pdir, REPAIR_PACKET_PARTS,
             gl.build_cleared_repair_packet(
-                5, "quality-verify", cleared_by="gate_integration.py",
+                7, "quality-verify", cleared_by="gate_integration.py",
                 bundle_revision_from=_test_bundle_context(pdir).get(
                     "bundle_revision") or ""))
         _write_completion_controls(
@@ -491,7 +491,7 @@ def _record_result(pdir, verdict, reason, arts, *, cmd, exit_code, testtype,
             escalation_reason=escalation_reason,
         )
         gl.write_failure_report(
-            pdir, 5, "gate_integration.py", reason,
+            pdir, 7, "gate_integration.py", reason,
             problems=problems or [], resume_hint=resume_hint,
             extra={
                 "testtype": testtype,
@@ -515,7 +515,7 @@ def _record_result(pdir, verdict, reason, arts, *, cmd, exit_code, testtype,
                 "escalation_reason": escalation_reason,
             })
     gl.write_gate_phase_memory_card(
-        pdir, 5, "quality-verify", verdict=verdict,
+        pdir, 7, "quality-verify", verdict=verdict,
         bundle_revision=_test_bundle_context(pdir).get("bundle_revision"),
         current_blocker=None if verdict == "PASS" else reason,
         next_expected_action_class=(
@@ -528,20 +528,20 @@ def _record_result(pdir, verdict, reason, arts, *, cmd, exit_code, testtype,
     # weak model resuming mid-P7 reads the same goal/entry/exit/failure_classes
     # whether it landed here via `advance.py next` or by running the gate.
     gl.write_gate_stage_packet_from_def(
-        pdir, "quality_verify", "quality-verify", physical_phase=5)
-    gl.emit(pdir, 5, "gate_integration.py", verdict=verdict, reason=reason,
+        pdir, "quality_verify", "quality-verify", physical_phase=7)
+    gl.emit(pdir, 7, "gate_integration.py", verdict=verdict, reason=reason,
             cmd=cmd, exit_code=exit_code, artifacts_rel=arts)
 
 
 def code_review(state, pdir, arts):
     """Run the code_ruleset style guard on the changed C/C++ files.
-    Returns (ok, detail). Writes evidence/phase5/code_review_report.txt."""
+    Returns (ok, detail). Writes evidence/phase7/code_review_report.txt."""
     gdir = gl.resolve_git_dir(state)
     base = state.get("base_commit") or "HEAD"
     names = subprocess.run(["git", "-C", gdir, "diff", "--name-only", base],
                            text=True, capture_output=True).stdout.split()
     cxx = [f for f in names if f.endswith((".c", ".cc", ".cpp", ".cxx", ".h", ".hpp"))]
-    rel = "evidence/phase5/code_review_report.txt"
+    rel = "evidence/phase7/code_review_report.txt"
     out_path = os.path.join(pdir, rel)
     if not cxx:
         with open(out_path, "w", encoding="utf-8") as f:
@@ -557,12 +557,12 @@ def code_review(state, pdir, arts):
         arts.append(rel)
         return False, "auto_review_issues=1 guard missing"
     abs_cxx = [os.path.join(gdir, f) for f in cxx if os.path.exists(os.path.join(gdir, f))]
-    cp = subprocess.run([sys.executable, STYLE_GUARD, "--format-only", *abs_cxx],
+    cp = subprocess.run([sys.executable, STYLE_GUARD, *abs_cxx],
                         text=True, capture_output=True)
     issue_count = 0 if cp.returncode == 0 else 1
     with open(out_path, "w", encoding="utf-8") as f:
         f.write("review_issue_count=%d\n" % issue_count)
-        f.write("changed C/C++ (%d):\n%s\n\n--- oh_cpp_guard --format-only ---\nrc=%d\n%s\n%s"
+        f.write("changed C/C++ (%d):\n%s\n\n--- code_ruleset_guard (format+rules) ---\nrc=%d\n%s\n%s"
                 % (len(cxx), "\n".join(cxx), cp.returncode, cp.stdout, cp.stderr))
     arts.append(rel)
     return cp.returncode == 0, "auto_review_issues=%d guard rc=%d on %d file(s)" % (
@@ -578,7 +578,7 @@ def copy_external_review_report(args, pdir, arts):
     if not os.path.isfile(src):
         return False, "external_review missing: %s" % src
     _, ext = os.path.splitext(src)
-    rel = "evidence/phase5/external_code_review_report%s" % (ext or ".txt")
+    rel = "evidence/phase7/external_code_review_report%s" % (ext or ".txt")
     shutil.copy(src, os.path.join(pdir, rel))
     arts.append(rel)
     ok, detail = gl.parse_review_report_zero_issues(src)
@@ -602,7 +602,7 @@ def copy_quality_reports(args, pdir, arts):
         _, ext = os.path.splitext(src)
         if not ext:
             ext = ".txt"
-        rel = "evidence/phase5/%s%s" % (label, ext)
+        rel = "evidence/phase7/%s%s" % (label, ext)
         shutil.copy(src, os.path.join(pdir, rel))
         arts.append(rel)
         details.append("%s=%s" % (attr, rel))
@@ -632,7 +632,7 @@ def main():
     part = args.part or state.get("test", {}).get("part")
     if not part:
         sys.exit("ERROR: no testpart (pass --part or set test.part)")
-    gl.evidence_dir(pdir, 5)
+    gl.evidence_dir(pdir, 7)
     dt = os.path.join(repo, "test/testfwk/developer_test")
     reports = os.path.join(dt, "reports")
 
@@ -644,7 +644,7 @@ def main():
     run_cmd = "./start.sh run -t %s -tp %s %s -p %s" % (args.testtype, part, ts_args, product)
     print("running: (cd %s && %s)" % (dt, run_cmd))
     proc = subprocess.run(run_cmd, shell=True, cwd=dt, text=True, capture_output=True)
-    stdout_rel = "evidence/phase5/start_sh_stdout.txt"
+    stdout_rel = "evidence/phase7/start_sh_stdout.txt"
     with open(os.path.join(pdir, stdout_rel), "w", encoding="utf-8") as f:
         f.write(proc.stdout + "\n----stderr----\n" + proc.stderr)
     arts = [stdout_rel]
@@ -660,7 +660,7 @@ def main():
             failure_class="fresh_report_missing",
             problems=["developer_test produced no fresh reports/<timestamp> directory"],
             resume_hint="确认集成测试真正执行并产出新报告后重跑 gate_integration.py")
-        sys.exit("PHASE 5 FAIL: harness produced no fresh report dir")
+        sys.exit("PHASE 7 FAIL: harness produced no fresh report dir")
     fresh_dir = fresh[-1]
     summary = os.path.join(fresh_dir, "summary_report.xml")
     if not os.path.exists(summary):
@@ -675,13 +675,13 @@ def main():
             failure_class="summary_report_missing",
             problems=["summary_report.xml missing from fresh integration report"],
             resume_hint="确认集成测试报告完整产出后重跑 gate_integration.py")
-        sys.exit("PHASE 5 FAIL: no summary_report.xml")
-    sum_rel = "evidence/phase5/summary_report.xml"
+        sys.exit("PHASE 7 FAIL: no summary_report.xml")
+    sum_rel = "evidence/phase7/summary_report.xml"
     shutil.copy(summary, os.path.join(pdir, sum_rel))
     arts.append(sum_rel)
-    with open(os.path.join(pdir, "evidence/phase5/report_dir.txt"), "w") as f:
+    with open(os.path.join(pdir, "evidence/phase7/report_dir.txt"), "w") as f:
         f.write(os.path.basename(fresh_dir) + "\n")
-    arts.append("evidence/phase5/report_dir.txt")
+    arts.append("evidence/phase7/report_dir.txt")
 
     root = ET.parse(summary).getroot()
     tests = int(root.get("tests", "0"))
@@ -741,11 +741,11 @@ def main():
         problems=problems,
         resume_hint="修复集成/质量/review 问题后重跑 gate_integration.py")
     if verdict == "PASS":
-        print("PHASE 5 PASS — inspect quality/review artifacts, then record consent:")
-        print("  advance.py --pipeline-dir %s consent --phase 5 --token <审核人>" % pdir)
-        print("  advance.py --pipeline-dir %s advance --phase 5" % pdir)
+        print("PHASE 7 PASS — inspect quality/review artifacts, then record consent:")
+        print("  advance.py --pipeline-dir %s consent --phase 7 --token <审核人>" % pdir)
+        print("  advance.py --pipeline-dir %s advance --phase 7" % pdir)
     else:
-        sys.exit("PHASE 5 FAIL: %s (test_ok=%s quality_ok=%s review_ok=%s)" %
+        sys.exit("PHASE 7 FAIL: %s (test_ok=%s quality_ok=%s review_ok=%s)" %
                  (reason, test_ok, quality_ok, review_ok))
 
 

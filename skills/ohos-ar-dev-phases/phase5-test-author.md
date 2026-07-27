@@ -1,15 +1,16 @@
-# P3 测试用例编写与验证(test-author)
+# P5 单元测试执行与验证(test-author,物理 phase 5)
+
+测试**编写**已在 phase 3(test-develop)签名固化;本阶段**执行**这些测试并按契约做全量通过校验。
+`gate_test_ut.py` 签名 `emit(phase 5)`。
 
 ## ⚠️ 只增独立测试的硬约束
-P3 依据 `AR_design.md` 的"完整测试框架/需测试的功能点"补测试,**只能新增独立测试文件**
-(路径规则:`test/`、`unittest/`、`moduletest/`、`fuzztest/` 目录,或 `*Test.cpp`/`test_*.cpp`
-等命名;test 目录下的 BUILD.gn 也算测试)。**不得改动被测组件的功能代码/配置/功能目录的 BUILD.gn**。
-违反时 `advance --phase 3` 会以"功能指纹漂移"或"新增了非测试路径"拒绝,必须 `advance.py reset`
-回 P1 重走。真机功能测试必须用**真实态的功能代码 + 配置文件**运行(见 phase4)。
+本阶段仍**只能新增独立测试文件**(路径规则:`test/`、`unittest/`、`moduletest/`、`fuzztest/` 目录,
+或 `*Test.cpp`/`test_*.cpp` 等命名;test 目录下的 BUILD.gn 也算测试)。**不得改动被测组件的功能代码/配置/
+功能目录的 BUILD.gn**。违反时 `advance --phase 5` 会以"功能指纹漂移"或"新增了非测试路径"拒绝,
+必须 `advance.py reset` 回 P1 重走。真机功能测试必须用**真实态的功能代码 + 配置文件**运行(见 phase6)。
 
 ## 做事(调用现有技能)
-- 生成 OpenHarmony C/C++ 单测(HWTEST/HWTEST_F + `ohos_unittest` + BUILD.gn):
-  `ohos-test-ut-generation`。
+- 生成 OpenHarmony C/C++ 单测(HWTEST/HWTEST_F + `ohos_unittest` + BUILD.gn):`ohos-test-ut-generation`。
 - TDD 闭环:`tdd-enforcer`。确认测试 GN 目标名(`<Test>`)、`testpart`、套件二进制名(`-ts`)。
 
 ## 门控
@@ -27,7 +28,7 @@ python3 $S/gate_test_ut.py --pipeline-dir "$PDIR" \
    `report_dir.txt`、`test_build_tail.log`。
 6. 从签名 AR_design 取契约 `test_cases[].gtest`,把 per-suite `result_*.xml` 汇成**通过用例集**
    (某 `<testcase classname.name>` 无 `<failure>`/`<error>` 子节点即通过),要求**每个契约 gtest 都在
-   通过集里**(全量覆盖硬门控),缺任一即 FAIL,写 `evidence/phase3/gtest_coverage.txt` 列出命中/缺失。
+   通过集里**(全量覆盖硬门控),缺任一即 FAIL,写 `evidence/phase5/gtest_coverage.txt` 列出命中/缺失。
    契约 `gtest` 需精确等于 XML 的 `classname.name`(参数化名如 `Suite/0.Case`)。契约缺失(legacy/
    `--allow-missing-contract`)→ 跳过覆盖并留 bypass 标;契约被篡改 → FAIL。
 
@@ -37,5 +38,5 @@ python3 $S/gate_test_ut.py --pipeline-dir "$PDIR" \
 
 ## 通过后
 ```bash
-python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 3
+python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 5
 ```

@@ -217,13 +217,15 @@ class TestLogicalVocabulary(unittest.TestCase):
         labels = [row[0] for row in gl.LOGICAL_PHASES]
         self.assertEqual(labels, ["P%d" % i for i in range(9)])
 
-    def test_physical_projection_collapses_phase1_triple(self):
+    def test_physical_projection_is_one_to_one(self):
+        # Path B1: the old phase-1 triple was split into three real physical
+        # phases, so every logical phase now maps to exactly one physical phase.
         self.assertEqual(gl.physical_for_logical("design_orchestrate"), 1)
-        self.assertEqual(gl.physical_for_logical("feature_develop"), 1)
-        self.assertEqual(gl.physical_for_logical("test_develop"), 1)
-        self.assertEqual(
-            gl.logicals_for_physical(1),
-            ["design_orchestrate", "feature_develop", "test_develop"])
+        self.assertEqual(gl.physical_for_logical("feature_develop"), 2)
+        self.assertEqual(gl.physical_for_logical("test_develop"), 3)
+        self.assertEqual(gl.logicals_for_physical(1), ["design_orchestrate"])
+        self.assertEqual(gl.logicals_for_physical(2), ["feature_develop"])
+        self.assertEqual(gl.logicals_for_physical(3), ["test_develop"])
 
     def test_unknown_logical_id_falls_back_to_itself(self):
         self.assertEqual(gl.logical_label("no_such"), "no_such")
@@ -231,9 +233,9 @@ class TestLogicalVocabulary(unittest.TestCase):
 
     def test_stage_packet_carries_the_canonical_label(self):
         packet = gl.build_stage_packet_from_def(
-            "device_functional", "device-functional", physical_phase=4)
+            "device_functional", "device-functional", physical_phase=6)
         self.assertEqual(packet["phase_identity"]["logical_label"], "P6")
-        self.assertEqual(packet["phase_identity"]["physical_phase"], 4)
+        self.assertEqual(packet["phase_identity"]["physical_phase"], 6)
 
 
 if __name__ == "__main__":

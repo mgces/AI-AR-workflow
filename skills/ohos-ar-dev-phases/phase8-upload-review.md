@@ -1,9 +1,10 @@
-# P6 代码上库 review(upload-review)
+# P8 代码上库 review(upload-review,物理 phase 8)
 
 **唯一对外不可逆动作。** 即使全自动,push 前必须有人工一次性同意。
+`gate_upload_ci.py` 签名 `emit(phase 8)`。
 
 ## 做事(调用现有技能)
-两道 code review 夹住上库,均要求**机器可读的零问题报告**(与 P5 同一 review 报告契约:
+两道 code review 夹住上库,均要求**机器可读的零问题报告**(与 P7 同一 review 报告契约:
 JSON `issue_count/finding_count/...==0` 或 `issues/findings/...` 空数组,或文本 `review_issue_count=0`):
 
 - **A. 本地自检(commit 之前)**:对 `git diff base_commit` 的改动做 review。
@@ -19,7 +20,7 @@ JSON `issue_count/finding_count/...==0` 或 `issues/findings/...` 空数组,或�
 - CI 判读:`ohos-ci-openharmony-ci-analysis`(脚本 `openharmony_ci.py`)。
 
 ## 前置(门控会强校验)
-P1–P5 全部 `status==passed`(看 `advance.py status`)。
+P1–P7 全部 `status==passed`(看 `advance.py status`)。
 **先建好关联 Issue**(OpenHarmony CI 门禁只对绑定了 Issue 的 PR 触发):
 ```bash
 oh-gc issue create --repo <owner/repo> --title "<标题>" --body "<描述>"   # 记下返回的 #编号
@@ -32,7 +33,7 @@ oh-gc issue create --repo <owner/repo> --title "<标题>" --body "<描述>"   # 
        --repo-slug <base-owner/repo> --branch <local_branch> --base master \
        --title "<title>" --issue <issue编号>
    ```
-   DRY 会**把全部代码改动的 diff 落到 `evidence/phase6/`**(`full_diff.patch` +
+   DRY 会**把全部代码改动的 diff 落到 `evidence/phase8/`**(`full_diff.patch` +
    `full_diff.stat.txt`,相对 `base_commit`,**含 untracked 新文件**——新插件目录整目录是 untracked,
    脚本用 `git diff --no-index /dev/null <file>` 显式并入,确保人工看到的就是 `git add -A` 会提交的全集)
    并打印改动统计、**将建 PR 的 head(可能是 `<fork-owner>:<branch>`)**与"需两份零问题 review 报告"提示,
@@ -40,7 +41,7 @@ oh-gc issue create --repo <owner/repo> --title "<标题>" --body "<描述>"   # 
 2. **先跑 A 本地自检**,产出零问题报告;若有问题,改代码后 `advance.py reset --reason "<改了什么>"` 回 P1 重走。
 3. **人工同意**后记录一次性令牌:
    ```bash
-   python3 $S/advance.py --pipeline-dir "$PDIR" consent --phase 6 --token "<approver-or-ticket>"
+   python3 $S/advance.py --pipeline-dir "$PDIR" consent --phase 8 --token "<approver-or-ticket>"
    ```
 4. 正式上库(带 A 报告;push+建 PR 后编排器跑 B review 产出 `pr_review` 报告,再带 B 报告重跑本门控):
    ```bash
@@ -70,8 +71,8 @@ oh-gc issue create --repo <owner/repo> --title "<标题>" --body "<描述>"   # 
 > 修复途径是**改代码 → `advance.py reset` 回 P1 重走**(下次上库会 push 新提交、更新同一 PR)。
 > **`--issue` 必填**:缺 `--issue`(且非 `--pr` 复验)会在建 PR 前 fail-closed,避免建出"门禁永远不触发"的 PR。
 > **提交与代码指纹**:代码指纹相对 `base_commit` 计算(commit 无关),因此 A 通过后的 `git commit -s`
-> **不会**被判"代码漂移"。反之,**进入 P6 后若又改了代码内容**(含 review 后的修复),指纹相对 base 变化,
-> `advance --phase 6` 仍会拒绝并要求 `advance.py reset` 回 P1 重走。
+> **不会**被判"代码漂移"。反之,**进入 P8 后若又改了代码内容**(含 review 后的修复),指纹相对 base 变化,
+> `advance --phase 8` 仍会拒绝并要求 `advance.py reset` 回 P1 重走。
 
 ## 通过条件
 A 本地自检报告零问题 **且** B PR review 报告零问题 **且** PR 已创建 **且**
@@ -80,7 +81,7 @@ CI `overall_result ∈ {success,passed}` **且** PR head SHA == 本次 push 的 
 
 ## 通过后
 ```bash
-python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 6   # 同时再校验 consent 令牌
+python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 8   # 同时再校验 consent 令牌
 ```
 完成后给用户:PR 链接 + CI 状态 + 各阶段证据路径。
 
@@ -93,7 +94,7 @@ python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-workflow/scripts/render_report.py" \
 ```
 `reports/summary.html` 与 PR 描述均含五块:**背景介绍 / 设计思路 / 修改概要 /
 用例概要 / 用例结果总结**(背景取 ar.md,设计/用例取 AR_design.md,修改取 full_diff.stat,
-结果取 P3/P4/P5 verdict);全部经脱敏。
+结果取 P4/P5/P7 verdict);全部经脱敏。
 
 ## 沉淀 feature 专题回填知识库(可选)
 归档时加 `--sink-feature <subsystem>/<component>/<feature>`,把本次 run 的事实骨架自动沉淀成

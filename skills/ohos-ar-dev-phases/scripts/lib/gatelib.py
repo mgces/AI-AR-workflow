@@ -26,33 +26,41 @@ import time
 
 PHASES = [
     (0, "bootstrap"),
-    (1, "develop"),
-    (2, "build-verify"),
-    (3, "test-author"),
-    (4, "device-functional"),
-    (5, "quality-verify"),
-    (6, "upload-review"),
+    (1, "design-orchestrate"),
+    (2, "feature-develop"),
+    (3, "test-develop"),
+    (4, "build-verify"),
+    (5, "test-author"),
+    (6, "device-functional"),
+    (7, "quality-verify"),
+    (8, "upload-review"),
 ]
 PHASE_NAME = {i: n for i, n in PHASES}
 MAX_PHASE = max(i for i, _ in PHASES)
+# Path B1 physical phase scheme. Bumped from the implicit 7-phase layout to 9
+# when physical phase 1 was split into design_orchestrate / feature_develop /
+# test_develop. load_state() refuses any pipeline.json not stamped with this.
+PHASE_SCHEME = 9
 
 # --- canonical logical-phase vocabulary (spec §5 table + §5.x mapping) ------
-# The design speaks in logical phases P0..P8; the current scripts run 7 physical
-# phases 0..6 (physical phase 1 hosts three logical phases via substate). This
-# table is the ONE place the two vocabularies are reconciled so every layer
-# labels a phase the same way. Each row: (logical_label, logical_id,
-# logical_name, physical_phase). Purely descriptive — pass authority is
-# unaffected.
+# The design speaks in logical phases P0..P8; the physical state machine now runs
+# 9 physical phases 0..8, one per logical phase (Path B1 renumber, 2026-07-25).
+# The old 7-phase scheme collapsed P1/P2/P3 onto physical phase 1 via substates;
+# they are now three real signed phases. This table remains the ONE place the two
+# vocabularies are reconciled so every layer labels a phase the same way. Each
+# row: (logical_label, logical_id, logical_name, physical_phase). The physical
+# column is now 1:1 with the logical order. Purely descriptive — pass authority
+# is unaffected.
 LOGICAL_PHASES = [
     ("P0", "bootstrap", "bootstrap", 0),
     ("P1", "design_orchestrate", "design-orchestrate", 1),
-    ("P2", "feature_develop", "feature-develop", 1),
-    ("P3", "test_develop", "test-develop", 1),
-    ("P4", "build_verify", "build-verify", 2),
-    ("P5", "test_author", "test-author", 3),
-    ("P6", "device_functional", "device-functional", 4),
-    ("P7", "quality_verify", "quality-verify", 5),
-    ("P8", "upload_review", "upload-review", 6),
+    ("P2", "feature_develop", "feature-develop", 2),
+    ("P3", "test_develop", "test-develop", 3),
+    ("P4", "build_verify", "build-verify", 4),
+    ("P5", "test_author", "test-author", 5),
+    ("P6", "device_functional", "device-functional", 6),
+    ("P7", "quality_verify", "quality-verify", 7),
+    ("P8", "upload_review", "upload-review", 8),
 ]
 LOGICAL_LABEL = {row[1]: row[0] for row in LOGICAL_PHASES}
 LOGICAL_ID_BY_LABEL = {row[0]: row[1] for row in LOGICAL_PHASES}
@@ -72,8 +80,9 @@ def physical_for_logical(logical_phase_id):
 
 
 def logicals_for_physical(physical_phase):
-    """All logical phase ids projected onto a physical phase, in order (physical
-    phase 1 hosts design_orchestrate / feature_develop / test_develop)."""
+    """All logical phase ids mapped onto a physical phase, in order. Since the
+    Path B1 renumber the mapping is 1:1, so this returns a single-element list
+    for every real phase (kept as a list for API stability)."""
     return [row[1] for row in LOGICAL_PHASES if row[3] == physical_phase]
 
 
@@ -851,7 +860,7 @@ STAGE_PACKET_DEFS = {
     },
     "build_verify": {
         "goal_summary": "Prove the development bundle compiles and produces every build_artifact.",
-        "non_goals": ["add functional code outside the phase1 freeze"],
+        "non_goals": ["add functional code outside the feature-develop freeze"],
         "entry_preconditions": ["complete bundle present",
                                "no open repair packet"],
         "exit_conditions": ["build target succeeds", "build_artifacts complete",
@@ -1117,6 +1126,12 @@ def repair_round_metadata(prev, *, phase, bundle_revision_from, recommended_next
 # Ordered scopes, widest last, so callers can pick the max of several triggers.
 # P4_only is the narrowest (only the failing device gate must re-run; nothing
 # downstream was invalidated); all_downstream is the widest.
+# NOTE (Path B1): these scope tokens are SYMBOLIC ordered names, NOT physical
+# phase ids. They are persisted inside repair/handoff packets on disk, so they
+# are intentionally NOT renumbered when the physical phases changed 7->9. Read
+# them as an ordered enum (widest wins); the "P4"/"P6"/"P7" spelling refers to
+# the original logical numbering and is decoupled from the physical phase axis.
+# Any future re-spelling must be a separate migration with a packet-version bump.
 _REVALIDATE_SCOPES = ["P4_only", "P4_P5", "P4_to_P6", "P4_to_P7", "all_downstream"]
 
 # Map a failure_class to the minimal downstream scope a fix for it invalidates
@@ -1260,9 +1275,34 @@ def secret_path(run_id):
 # ----------------------------------------------------------------------------
 # state (pipeline.json) — read freely; only advance.py mutates phase status
 # ----------------------------------------------------------------------------
-def load_state(pdir):
+def load_state(pdir, allow_legacy=False):
+    """Load pipeline.json.
+
+    Path B1 fail-closed guard: a run stamped with the old 7-phase scheme (or an
+    unstamped legacy run whose ``phases`` array is not the 9-phase 0-8 layout) is
+    REFUSED here rather than silently reinterpreted under the new phase numbers —
+    reinterpreting phase 2 (old build_verify) as the new feature_develop would
+    corrupt the truth layer. ``allow_legacy=True`` (used only by ``advance.py
+    migrate``) bypasses the guard so the old state can be read and rewritten.
+    """
     with open(state_path(pdir), "r", encoding="utf-8") as f:
-        return json.load(f)
+        state = json.load(f)
+    if allow_legacy:
+        return state
+    scheme = state.get("phase_scheme")
+    n_phases = len(state.get("phases", []))
+    if scheme != PHASE_SCHEME or n_phases != len(PHASES):
+        sys.exit(
+            "ERROR: pipeline.json uses an incompatible phase scheme "
+            "(phase_scheme=%r, %d phases; this build expects phase_scheme=%d with "
+            "%d phases 0-%d).\n"
+            "  This run predates the Path B1 9-physical-phase renumber.\n"
+            "  If current_phase <= 1, migrate it:  advance.py --pipeline-dir %s migrate\n"
+            "  Otherwise it cannot be migrated safely (old phase 1 collapsed three\n"
+            "  logical phases into one signed entry); reset and rewalk from P1:\n"
+            "  advance.py --pipeline-dir %s reset --reason \"phase-scheme migration\""
+            % (scheme, n_phases, PHASE_SCHEME, len(PHASES), MAX_PHASE, pdir, pdir))
+    return state
 
 
 def save_state(pdir, state):
@@ -1901,6 +1941,39 @@ def check_contract_closure(contract):
                         "test_cases/device_cases" % rid)
 
     return (not problems), problems
+
+
+def test_target_from_gtest(gtest_id):
+    """Suite name from a "Suite.Case" gtest id (drops the '.Case' and any '/param')."""
+    if not gtest_id:
+        return None
+    suite = str(gtest_id).split(".", 1)[0].strip()
+    suite = suite.split("/", 1)[0].strip()
+    return suite or None
+
+
+def collect_test_intent_matrix(contract, changed_files):
+    """Derive the per-test-case intent matrix from a signed ar-contract. Shared by
+    prepare_test_bundle.py and gate_test_develop.py (moved here in Path B1 so the
+    signed phase-3 gate need not import a sibling gate)."""
+    matrix = []
+    for tc in contract.get("test_cases", []) or []:
+        gtest_id = tc.get("gtest")
+        matrix.append({
+            "test_case_id": tc.get("id") or gtest_id,
+            "covers_requirement_ids": tc.get("for_requirements") or [],
+            "expected_target": test_target_from_gtest(gtest_id),
+            "expected_suite": test_target_from_gtest(gtest_id),
+            "expected_gtest": gtest_id,
+            "depends_on_files": changed_files,
+            "negative_cases": [],
+            "device_followup_needed": bool(tc.get("for_requirements") and any(
+                set(tc.get("for_requirements") or []) &
+                set(dc.get("for_requirements") or [])
+                for dc in (contract.get("device_cases") or [])
+            )),
+        })
+    return matrix
 
 
 def load_signed_contract(pdir):
