@@ -92,7 +92,7 @@ python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 8   # 同时再校�
 python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-workflow/scripts/render_report.py" \
     --pipeline-dir "$PDIR" --kind summary
 ```
-`reports/summary.html` 与 PR 描述均含五块:**背景介绍 / 设计思路 / 修改概要 /
+`reports/summary.md` 与 PR 描述均含五块:**背景介绍 / 设计思路 / 修改概要 /
 用例概要 / 用例结果总结**(背景取 ar.md,设计/用例取 AR_design.md,修改取 full_diff.stat,
 结果取 P4/P5/P7 verdict);全部经脱敏。
 

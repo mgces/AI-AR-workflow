@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) 2026. Licensed under the Apache License, Version 2.0.
-"""Tests for render_report — HTML reports + PR description, with redaction."""
+"""Tests for render_report — Markdown reports + PR description, with redaction."""
 import json
 import os
 import sys
@@ -66,14 +66,14 @@ class TestRenderReport(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def test_device_html_redacts_serial(self):
+    def test_device_md_redacts_serial(self):
         state, entries = rr.load(self.pdir)
         out = rr.render_device(self.pdir, state, entries, phase=4)
         self.assertIn("真机功能测试报告", out)
         self.assertNotIn("7001005458323933328a01fce1fe3800", out)
-        self.assertIn("&lt;REDACTED-SERIAL&gt;", out)
+        self.assertIn("<REDACTED-SERIAL>", out)
 
-    def test_device_html_shows_new_p4_sections(self):
+    def test_device_md_shows_new_p4_sections(self):
         state, entries = rr.load(self.pdir)
         out = rr.render_device(self.pdir, state, entries, phase=4)
         for block in ("P4 抗伪造摘要", "device_cases 逐项结果", "基线窗口", "触发窗口"):
@@ -81,7 +81,7 @@ class TestRenderReport(unittest.TestCase):
         self.assertIn("foundation", out)
         self.assertIn("1234", out)
 
-    def test_device_html_shows_control_process_summary(self):
+    def test_device_md_shows_control_process_summary(self):
         # a FAIL run leaves a repair packet in the control layer; the report must
         # surface repair/retry rounds and the downstream re-validate scope so a
         # human (or weak model) sees how far a failure propagates — advisory only.
@@ -110,14 +110,14 @@ class TestRenderReport(unittest.TestCase):
         self.assertIn("2 / 3", out)   # repair rounds
         self.assertIn("P4_P5", out)   # downstream scope
 
-    def test_device_html_omits_process_summary_when_no_repair(self):
+    def test_device_md_omits_process_summary_when_no_repair(self):
         # a clean run (no repair packet, no scope) must not render an empty
         # control-layer section.
         state, entries = rr.load(self.pdir)
         out = rr.render_device(self.pdir, state, entries, phase=4)
         self.assertNotIn("控制层流程摘要", out)
 
-    def test_device_html_flags_circuit_breaker(self):
+    def test_device_md_flags_circuit_breaker(self):
         rpdir = os.path.join(self.pdir, "controls", "repairs")
         os.makedirs(rpdir)
         with open(os.path.join(rpdir, "current.json"), "w") as f:
@@ -155,8 +155,8 @@ class TestRenderReport(unittest.TestCase):
     def test_main_all_writes_files(self):
         sys.argv = ["render_report.py", "--pipeline-dir", self.pdir, "--kind", "all"]
         rr.main()
-        for fn in ("device_functional.html", "quality.html",
-                   "summary.html", "pr_description.md", "index.html"):
+        for fn in ("device_functional.md", "quality.md",
+                   "summary.md", "pr_description.md", "index.md"):
             self.assertTrue(os.path.isfile(os.path.join(self.pdir, "reports", fn)), fn)
 
 

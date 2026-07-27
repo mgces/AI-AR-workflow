@@ -53,8 +53,8 @@ controls/              # 控制层/导航层镜像(非真相源)
 evidence/              # 机器证据(签名,gitignore)——真相所在
   manifest.jsonl       # 追加式、HMAC 链式签名证据账本
   phase0/ … phase8/    # 各阶段真实产物 + phase_summary/failure_report
-reports/               # 人读 HTML 审计报告(脱敏,可归档)——与 evidence/ 并列分离
-  device_functional.html / quality.html / summary.html
+reports/               # 人读 Markdown 审计报告(脱敏,可归档)——与 evidence/ 并列分离
+  device_functional.md / quality.md / summary.md   # 各为单个聚合 md
   pr_description.md    # P8 汇总,gate_upload_ci 注入 PR 描述
 ```
 

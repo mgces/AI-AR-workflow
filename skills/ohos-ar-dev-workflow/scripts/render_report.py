@@ -1,27 +1,30 @@
 #!/usr/bin/env python3
 # Copyright (c) 2026. Licensed under the Apache License, Version 2.0.
 """
-render_report.py — human-readable HTML reports from a pipeline run.
+render_report.py — human-readable Markdown reports from a pipeline run.
 
 Machine evidence (evidence/, HMAC-signed, gitignored) and human audit reports
-(reports/, HTML) are kept in SEPARATE trees under the run dir. This renders the
-latter from the former. It never affects any gate verdict — it is a read/render
-step the orchestrator runs after a phase passes.
+(reports/, Markdown) are kept in SEPARATE trees under the run dir. This renders
+the latter from the former. It never affects any gate verdict — it is a
+read/render step the orchestrator runs after a phase passes.
+
+Each report is ONE self-contained .md file (no external CSS/assets, nothing
+split across files), so it reads cleanly in any Markdown viewer or on gitcode.
 
 Kinds:
   device   — P4/P5-B real-device functional report (nonce/markers/e2e, hilog
              tail, host==device artifact sha256).
-  quality  — P5 coverage / performance / power / stability + functional summary.
-  summary  — P6 rollup: background + design rationale + change summary + test
+  quality  — P7 coverage / performance / power / stability + functional summary
+             + code review, all aggregated into one quality.md.
+  summary  — P8 rollup: background + design rationale + change summary + test
              summary + result summary; also writes reports/pr_description.md
              (a plain-markdown block gate_upload_ci.py injects into the PR body).
-  all      — the three above + index.html.
+  all      — the three above + index.md.
 
-Every evidence string is passed through redact() (shared with archive_product)
-then HTML-escaped, so serials / personal paths never reach the rendered report.
+Every evidence string is passed through redact() (shared with archive_product),
+so serials / personal paths never reach the rendered report.
 """
 import argparse
-import html
 import json
 import os
 import sys
@@ -30,61 +33,42 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from archive_product import redact  # noqa: E402
 
-BASE_CSS = """
-:root{color-scheme:light dark}
-*{box-sizing:border-box}
-body{font:15px/1.6 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
-  margin:0;padding:0;background:#f6f7f9;color:#1c2128}
-.wrap{max-width:960px;margin:0 auto;padding:32px 24px}
-h1{font-size:26px;margin:0 0 4px}
-h2{font-size:19px;margin:28px 0 10px;padding-bottom:6px;border-bottom:1px solid #d6dae0}
-.sub{color:#59636e;margin:0 0 20px}
-.badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600}
-.pass{background:#dafbe1;color:#1a7f37}.fail{background:#ffebe9;color:#cf222e}
-.warn{background:#fff8c5;color:#9a6700}
-table{border-collapse:collapse;width:100%;margin:8px 0;font-size:14px}
-th,td{border:1px solid #d6dae0;padding:6px 10px;text-align:left;vertical-align:top}
-th{background:#eaeef2;width:220px;white-space:nowrap}
-pre{background:#0d1117;color:#c9d1d9;padding:12px;border-radius:8px;overflow:auto;
-  font:12px/1.5 SFMono-Regular,Consolas,monospace;max-height:340px}
-.card{background:#fff;border:1px solid #d6dae0;border-radius:10px;padding:18px 22px;margin:16px 0}
-a{color:#0969da}
-"""
-
-
-def html_escape(s):
-    return html.escape(str(s) if s is not None else "")
-
 
 def clean(s):
-    """redact then HTML-escape — the safe path for any evidence-derived text."""
-    return html_escape(redact(str(s) if s is not None else ""))
+    """redact — the safe path for any evidence-derived text (Markdown output,
+    so no HTML escaping; the single choke point is still redact())."""
+    return redact(str(s) if s is not None else "")
 
 
 def _page(title, body):
-    return ("<!doctype html><html><head><meta charset='utf-8'>"
-            "<meta name='viewport' content='width=device-width,initial-scale=1'>"
-            "<title>%s</title><style>%s</style></head><body><div class='wrap'>%s"
-            "</div></body></html>") % (html_escape(title), BASE_CSS, body)
+    """A report is one self-contained Markdown document; the h1 already lives in
+    body, so this is just a passthrough (kept so callers read intently)."""
+    return body.rstrip() + "\n"
 
 
-def _section(title, body_html):
-    return "<h2>%s</h2>%s" % (html_escape(title), body_html)
+def _section(title, body_md):
+    return "\n## %s\n\n%s\n" % (title, body_md)
 
 
 def _kv_table(pairs):
-    rows = "".join("<tr><th>%s</th><td>%s</td></tr>" % (html_escape(k), v)
-                   for k, v in pairs)
-    return "<table>%s</table>" % rows
+    """Two-column Markdown table (项/值). Values are already redacted strings."""
+    out = ["| 项 | 值 |", "| --- | --- |"]
+    for k, v in pairs:
+        # collapse newlines so a value never breaks the table row
+        val = str(v).replace("\n", " ").strip()
+        out.append("| %s | %s |" % (str(k).strip(), val))
+    return "\n".join(out)
 
 
 def _pre(text):
-    return "<pre>%s</pre>" % clean(text)
+    """Fenced code block for verbatim evidence (logs, metadata)."""
+    return "```\n%s\n```" % clean(text)
 
 
 def _badge(verdict):
-    cls = {"PASS": "pass", "FAIL": "fail"}.get(verdict, "warn")
-    return "<span class='badge %s'>%s</span>" % (cls, html_escape(verdict or "?"))
+    """Markdown verdict marker: **✅ PASS** / **❌ FAIL** / **⚠️ ?**."""
+    mark = {"PASS": "✅ PASS", "FAIL": "❌ FAIL"}.get(verdict, "⚠️ %s" % (verdict or "?"))
+    return "**%s**" % mark
 
 
 # ----------------------------------------------------------------------------
@@ -167,7 +151,7 @@ def _process_summary_pairs(summary, failure, repair):
             pairs.append(("建议下一步", clean(repair.get("recommended_next_action"))))
         if repair.get("human_escalation_needed"):
             note = repair.get("escalation_note") or "熔断:需人工介入"
-            pairs.append(("熔断状态", "<span class='badge fail'>%s</span>" % clean(note)))
+            pairs.append(("熔断状态", "**❌ %s**" % clean(note)))
         if repair.get("regen_required"):
             sigs = "; ".join(repair.get("regen_signals") or []) or "regen"
             pairs.append(("需重生成(regen)", clean(sigs)))
@@ -197,14 +181,16 @@ def render_device(pdir, state, entries, phase=6):
         pass
     tail = "\n".join((trigger if trigger and not trigger.startswith("(no ") else hilog).strip().splitlines()[-40:])
 
-    def _cases_html(raw_json):
+    def _cases_md(raw_json):
         if not raw_json:
-            return "<p class='sub'>未产出</p>"
+            return "_未产出_"
         try:
             data = json.loads(raw_json)
         except Exception:
             return _pre(raw_json)
-        rows = []
+        rows = ["| Verdict | Marker | PID | Expected process | Checks |",
+                "| --- | --- | --- | --- | --- |"]
+        n = 0
         for r in data.get("results", []):
             marker = clean(r.get("marker"))
             pid = clean(r.get("marker_pid") if r.get("marker_pid") is not None else "-")
@@ -218,12 +204,12 @@ def render_device(pdir, state, entries, phase=6):
             details.append("negative_control=%s" % clean(r.get("negative_control_ok")))
             if r.get("problems"):
                 details.append("problems=" + clean("; ".join(r.get("problems", []))))
-            rows.append("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (
-                verdict, marker, pid, proc, "<br>".join(details)))
-        if not rows:
-            return "<p class='sub'>未声明 device_cases</p>"
-        return ("<table><tr><th>Verdict</th><th>Marker</th><th>PID</th>"
-                "<th>Expected process</th><th>Checks</th></tr>%s</table>" % "".join(rows))
+            rows.append("| %s | %s | %s | %s | %s |" % (
+                verdict, marker, pid, proc, "; ".join(details)))
+            n += 1
+        if n == 0:
+            return "_未声明 device_cases_"
+        return "\n".join(rows)
 
     summary_pairs = []
     if summary:
@@ -235,13 +221,13 @@ def render_device(pdir, state, entries, phase=6):
             ("baseline window", clean(summary.get("baseline_window_found"))),
             ("trigger window", clean(summary.get("trigger_window_found"))),
         ])
-    body = "<h1>真机功能测试报告</h1><p class='sub'>run=%s target=%s</p>" % (
+    body = "# 真机功能测试报告\n\nrun=%s  target=%s\n" % (
         clean(state.get("run_id")), clean(state.get("build_target")))
-    body += "<div class='card'>%s %s</div>" % (
+    body += "\n%s %s\n" % (
         _badge(ev.get("verdict") if ev else None),
         clean(ev.get("reason") if ev else "(no verdict)"))
     if failure and failure.get("failure_class"):
-        body += "<div class='card'><strong>failure_class:</strong> %s</div>" % clean(failure.get("failure_class"))
+        body += "\n**failure_class:** %s\n" % clean(failure.get("failure_class"))
     if summary_pairs:
         body += _section("P4 抗伪造摘要", _kv_table(summary_pairs))
     process_pairs = _process_summary_pairs(summary, failure, repair)
@@ -250,7 +236,7 @@ def render_device(pdir, state, entries, phase=6):
                          _kv_table(process_pairs))
     body += _section("运行元数据(nonce / marker / uptime)", _pre(meta))
     body += _section("产物一致性(主机 sha256 == 设备 sha256)", _pre(proof))
-    body += _section("device_cases 逐项结果", _cases_html(case_results))
+    body += _section("device_cases 逐项结果", _cases_md(case_results))
     body += _section("基线窗口(触发前必须为空的 marker 看这里)", _pre(baseline))
     body += _section("触发窗口(真正用于判定的日志窗口)", _pre(trigger))
     body += _section("设备 hilog 抓取(末尾片段)", _pre(tail))
@@ -258,11 +244,15 @@ def render_device(pdir, state, entries, phase=6):
 
 
 def render_quality(pdir, state, entries):
-    ev = phase_verdict(entries, 5)
-    body = "<h1>质量验证报告</h1><p class='sub'>run=%s</p>" % clean(state.get("run_id"))
-    body += "<div class='card'>%s %s</div>" % (
+    """P7 质量验证报告 —— 覆盖率/性能/功耗/稳定性 + 功能 summary + 代码 review,
+    全部聚合进**一个** quality.md,不再分散多文件。"""
+    ev = phase_verdict(entries, 7) or phase_verdict(entries, 5)
+    body = "# 质量验证报告\n\nrun=%s  target=%s\n" % (
+        clean(state.get("run_id")), clean(state.get("build_target")))
+    body += "\n%s %s\n" % (
         _badge(ev.get("verdict") if ev else None),
         clean(ev.get("reason") if ev else "(no verdict)"))
+    # 覆盖率 / 性能 / 功耗 / 稳定性 —— 四类质量报告聚合
     for label, rel in (("覆盖率", "coverage_report"), ("性能", "performance_report"),
                        ("功耗", "power_report"), ("稳定性", "stability_report")):
         found = None
@@ -271,7 +261,16 @@ def render_quality(pdir, state, entries):
             if t:
                 found = t
                 break
-        body += _section("%s报告" % label, _pre(found) if found else "<p class='sub'>未产出</p>")
+        body += _section("%s报告" % label, _pre(found) if found else "_未产出_")
+    # 代码 review —— P7 硬门控项,一并聚合进本 md
+    review = None
+    for rel in ("code_review_report.txt", "code_review_report.json",
+                "code_review_report.md"):
+        t = read_ev(pdir, "evidence/phase7/%s" % rel)
+        if t:
+            review = t
+            break
+    body += _section("代码 review 报告", _pre(review) if review else "_未产出_")
     return _page("质量验证报告 — %s" % state.get("run_id"), body)
 
 
@@ -301,7 +300,7 @@ def build_pr_description(pdir):
 
 
 def render_summary(pdir, state, entries):
-    body = "<h1>上库汇总报告</h1><p class='sub'>run=%s target=%s</p>" % (
+    body = "# 上库汇总报告\n\nrun=%s  target=%s\n" % (
         clean(state.get("run_id")), clean(state.get("build_target")))
     body += _section("背景介绍", _pre(read_ev(pdir, "ar.md", 4000) or "(无)"))
     body += _section("设计思路", _pre(design_section(pdir, ["设计", "功能需求"]) or "(见 AR_design.md)"))
@@ -312,12 +311,11 @@ def render_summary(pdir, state, entries):
 
 
 def render_index(state):
-    links = "".join("<li><a href='%s'>%s</a></li>" % (f, t) for f, t in (
-        ("device_functional.html", "真机功能测试报告"),
-        ("quality.html", "质量验证报告"),
-        ("summary.html", "上库汇总报告")))
-    body = "<h1>报告目录</h1><p class='sub'>run=%s</p><ul>%s</ul>" % (
-        clean(state.get("run_id")), links)
+    links = "\n".join("- [%s](%s)" % (t, f) for f, t in (
+        ("device_functional.md", "真机功能测试报告"),
+        ("quality.md", "质量验证报告"),
+        ("summary.md", "上库汇总报告")))
+    body = "# 报告目录\n\nrun=%s\n\n%s\n" % (clean(state.get("run_id")), links)
     return _page("报告目录 — %s" % state.get("run_id"), body)
 
 
@@ -338,14 +336,14 @@ def main():
         print("wrote %s" % os.path.join(outdir, name))
 
     if args.kind in ("device", "all"):
-        write("device_functional.html", render_device(pdir, state, entries))
+        write("device_functional.md", render_device(pdir, state, entries))
     if args.kind in ("quality", "all"):
-        write("quality.html", render_quality(pdir, state, entries))
+        write("quality.md", render_quality(pdir, state, entries))
     if args.kind in ("summary", "all"):
-        write("summary.html", render_summary(pdir, state, entries))
+        write("summary.md", render_summary(pdir, state, entries))
         write("pr_description.md", build_pr_description(pdir))
     if args.kind == "all":
-        write("index.html", render_index(state))
+        write("index.md", render_index(state))
 
 
 if __name__ == "__main__":

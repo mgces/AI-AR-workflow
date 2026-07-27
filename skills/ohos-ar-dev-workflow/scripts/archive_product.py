@@ -262,7 +262,7 @@ def main():
                     help="output dir, e.g. products/<run> (created if absent)")
     ap.add_argument("--ar", help="path to the AR source md (default: <pipeline-dir>/ar.md)")
     ap.add_argument("--include-reports", action="store_true",
-                    help="also copy <pipeline-dir>/reports/*.html into the product, "
+                    help="also copy <pipeline-dir>/reports/*.md into the product, "
                          "redacted (human-readable audit reports)")
     ap.add_argument("--sink-feature", metavar="SUBSYS/COMPONENT/FEATURE",
                     help="also sink a knowledge-base feature spec (fact skeleton) for "

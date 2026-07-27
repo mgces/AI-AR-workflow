@@ -111,7 +111,7 @@ python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-workflow/scripts/archive_product.py" \
     --pipeline-dir "$PDIR" --product-dir products/<run> --include-reports
 ```
 它只产出脱敏摘要(`ar.md` + `manifest_summary.md` + `README.md`),`--include-reports` 额外把
-`reports/*.html` 脱敏后一并归档。原始可验签证据留在本地 run-state 目录(已 gitignore)。`.gitignore`
+`reports/*.md` 脱敏后一并归档。原始可验签证据留在本地 run-state 目录(已 gitignore)。`.gitignore`
 已封禁 `products/**/evidence/`、`pipeline.json`、`*_manifest.jsonl`、`*.log` 等原始产物。
 
 **沉淀 feature 专题回填知识库(按需,非每次)**:回填**不是**流水线常规完成步骤——只在你确实

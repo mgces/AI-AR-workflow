@@ -37,10 +37,10 @@ P8 upload ────┘    P1 设计门 gate_design(AR_design 6 章节 + ar-co
                    P3 测试开发门 gate_test_develop(编译前测试代码已写:契约 gtest suite 出现在新测试文件,签名 emit 3)
                    P3/P4/P5/P6-7 按签名契约做全量覆盖硬门控(test_cases gtest 编写 / build_artifacts / test_cases gtest 执行 / device_cases marker,缺一即 FAIL)
                    P3/P5/P6/P7 只允许新增独立测试文件(功能指纹漂移会被拒;check_code_drift 从 phase3 起生效)
-                   P1/P6/P7/P8 需 advance.py consent(签名绑定证据)后才推进;并渲染 reports/ 人读 HTML
+                   P1/P6/P7/P8 需 advance.py consent(签名绑定证据)后才推进;并渲染 reports/ 人读 Markdown
 ```
 
-证据两轨:`evidence/`(机器,HMAC 链签名,gitignore) ‖ `reports/`(人读 HTML,脱敏可归档)。
+证据两轨:`evidence/`(机器,HMAC 链签名,gitignore) ‖ `reports/`(人读 Markdown,脱敏可归档)。
 
 ## 逻辑阶段控制层(面向弱模型,导航非放行)
 

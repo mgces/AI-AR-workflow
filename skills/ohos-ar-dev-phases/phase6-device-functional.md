@@ -61,10 +61,10 @@ python3 $S/advance.py --pipeline-dir "$PDIR" advance  --phase 6
 有 consent 且证据 PASS 才推进到 P7。consent 也是 `pipeline.json` 状态、由 `advance.py` 写。
 
 ## 生成人读报告(证据/报告分离)
-门控证据(签名,机器验)落在 `evidence/`;**人读 HTML 报告**渲染到并列的 `reports/`:
+门控证据(签名,机器验)落在 `evidence/`;**人读 Markdown 报告**渲染到并列的 `reports/`:
 ```bash
 python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-workflow/scripts/render_report.py" \
     --pipeline-dir "$PDIR" --kind device
 ```
-产出 `reports/device_functional.html`(真机完整报告:nonce/marker/e2e、hilog 片段、
-产物 sha256 一致)。渲染文本经脱敏;渲染失败不影响门控 verdict。
+产出**单个** `reports/device_functional.md`(真机完整报告:nonce/marker/e2e、hilog 片段、
+产物 sha256 一致,全部聚合进这一个 md)。渲染文本经脱敏;渲染失败不影响门控 verdict。

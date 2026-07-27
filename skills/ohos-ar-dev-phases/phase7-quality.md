@@ -70,8 +70,9 @@ python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 7
 python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-workflow/scripts/render_report.py" \
     --pipeline-dir "$PDIR" --kind quality
 ```
-产出 `reports/quality.html`(覆盖率/性能/功耗/稳定性 + 功能 summary 聚合)。
-`--allow-missing-quality-reports` 降级时,签名 reason 会带 `QUALITY-GATE-DOWNGRADED` 留痕。
+产出**单个** `reports/quality.md`(Markdown):覆盖率/性能/功耗/稳定性 + 功能 summary +
+代码 review 全部聚合进这一个 md,不分散多文件。`--allow-missing-quality-reports` 降级时,
+签名 reason 会带 `QUALITY-GATE-DOWNGRADED` 留痕。
 
 > ⚠️ 若本阶段(或任何阶段)发现需要**改代码**,先 `advance.py reset` 回 P1 重走,见
 > phase1 / 编排器护栏。改了码再继续 P7 会被 `advance` 以"代码指纹漂移"拒绝。
