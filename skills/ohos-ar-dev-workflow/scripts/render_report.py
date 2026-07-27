@@ -174,7 +174,7 @@ def _process_summary_pairs(summary, failure, repair):
     return pairs
 
 
-def render_device(pdir, state, entries, phase=4):
+def render_device(pdir, state, entries, phase=6):
     ev = phase_verdict(entries, phase)
     meta = read_ev(pdir, "evidence/phase%d/run_meta.txt" % phase) or "(no run_meta)"
     proof = read_ev(pdir, "evidence/phase%d/artifact_runtime_proof.txt" % phase) or "(no artifact proof)"
@@ -267,7 +267,7 @@ def render_quality(pdir, state, entries):
                        ("功耗", "power_report"), ("稳定性", "stability_report")):
         found = None
         for ext in (".md", ".txt", ".html", ".json"):
-            t = read_ev(pdir, "evidence/phase5/%s%s" % (rel, ext))
+            t = read_ev(pdir, "evidence/phase7/%s%s" % (rel, ext))
             if t:
                 found = t
                 break
@@ -289,7 +289,7 @@ def build_pr_description(pdir):
     state, entries = load(pdir)
     bg = redact((read_ev(pdir, "ar.md", 4000) or "").strip()) or "(无背景描述)"
     design = redact(design_section(pdir, ["设计", "功能需求"]) or "(见 AR_design.md)")
-    stat = redact((read_ev(pdir, "evidence/phase6/full_diff.stat.txt", 4000) or "").strip()) or "(无统计)"
+    stat = redact((read_ev(pdir, "evidence/phase8/full_diff.stat.txt", 4000) or "").strip()) or "(无统计)"
     cases = redact(design_section(pdir, ["需测试", "功能点", "测试框架"]) or "(见 AR_design.md)")
     lines = ["## 背景介绍", bg, "", "## 设计思路", design, "", "## 修改概要", "```", stat, "```",
              "", "## 用例概要", cases, "", "## 用例结果总结"]
@@ -305,7 +305,7 @@ def render_summary(pdir, state, entries):
         clean(state.get("run_id")), clean(state.get("build_target")))
     body += _section("背景介绍", _pre(read_ev(pdir, "ar.md", 4000) or "(无)"))
     body += _section("设计思路", _pre(design_section(pdir, ["设计", "功能需求"]) or "(见 AR_design.md)"))
-    body += _section("修改概要", _pre(read_ev(pdir, "evidence/phase6/full_diff.stat.txt", 4000) or "(无)"))
+    body += _section("修改概要", _pre(read_ev(pdir, "evidence/phase8/full_diff.stat.txt", 4000) or "(无)"))
     body += _section("用例概要", _pre(design_section(pdir, ["需测试", "功能点"]) or "(见 AR_design.md)"))
     body += _section("用例结果总结", _kv_table(_test_result_rows(entries)))
     return _page("上库汇总报告 — %s" % state.get("run_id"), body)

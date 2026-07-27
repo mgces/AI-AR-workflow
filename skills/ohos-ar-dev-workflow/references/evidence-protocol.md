@@ -11,13 +11,13 @@
   "ts_utc": "...",
   "seq": 12,
   "prev": "<上一条 hmac>",
-  "phase": 4,
+  "phase": 6,
   "gate": "gate_device_func.py",
   "cmd": "...",
   "argv": ["..."],
   "exit_code": 0,
   "nonce": "...",
-  "artifacts": [{"path": "evidence/phase4/hilog_capture.txt", "sha256": "..."}],
+  "artifacts": [{"path": "evidence/phase6/hilog_capture.txt", "sha256": "..."}],
   "verdict": "PASS",
   "reason": "...",
   "hmac": "..."
@@ -53,7 +53,7 @@
 
 - 让弱模型 / 恢复流程快速获得“当前卡在哪、下一步是什么、最近失败是什么”；
 - 让 `advance.py status --json` / `advance.py next` / `refresh_todo.py` 可以直接聚合展示；
-- 把旧物理 phase 投影成 machine-readable 的 logical phase / action / handoff / receipt 视图。
+- 把物理 phase 表达成 machine-readable 的 logical phase / action / handoff / receipt 视图(物理与逻辑 1:1)。
 
 ### 2.1 packet schema 与校验（依赖可选）
 
@@ -91,22 +91,33 @@
 - schema 校验不通过同样不影响 verdict（仅作为导航质量提示）；
 - `advance.py` 推进前仍会回到 manifest 重新验签、验 artifact sha256、验 consent 绑定。
 
-## 3. 主机侧新鲜度锚（P1 / P2 / P3 / P5）
+## 3. 主机侧新鲜度锚(P1 / P2 / P3 / P4 / P5 / P7)
 
-### P1
+### P1(设计固化)
 
-- 设计固化依赖签名 `AR_design.md` 副本，而不是工作树草稿。
-- 开发阶段依赖 `base_commit`、`functional_fingerprint`、`locked_all_paths`：
-  - 改功能代码/配置 → 后续 phase 一律拒绝，要求 `reset` 回 P1
-  - P3/P4/P5 只能新增独立测试路径
+- 设计固化依赖签名 `AR_design.md` 副本,而不是工作树草稿。
 
-### P2
+### P2(代码开发)
 
-- 直接捕获本次 `build.sh` 的 stdout 作为权威 fresh build 证据；
-- 通过条件：`rc==0` + success banner present + error banner absent；
-- 额外硬门控：签名 contract 的 `build_artifacts[]` 必须全部产出。
+- 依赖 `base_commit`;**P2 闭合(`advance --phase 2`)时锁定** `functional_fingerprint`、`locked_all_paths`:
+  - 改功能代码/配置 → 后续 phase 一律拒绝,要求 `reset` 回 P1(`check_code_drift` 从 phase3 起生效)
+  - P3/P5/P6/P7 只能新增独立测试路径
 
-相关导航摘要：
+### P3(测试开发,★Finding 1)
+
+- 依赖 phase-2 冻结快照:自冻结以来只允许新增测试文件;
+- 额外硬门控:签名 contract 的 `test_cases[].gtest` 的 suite 必须逐个在**新测试文件**中出现(**编写**覆盖,非执行);
+- 新测试源快照落 `evidence/phase3/authored/` 并作为签名 artifact。
+
+相关摘要:`new_test_files` / `missing_suites` / `contract_status` / `failure_class`。
+
+### P4(编译)
+
+- 直接捕获本次 `build.sh` 的 stdout 作为权威 fresh build 证据;
+- 通过条件:`rc==0` + success banner present + error banner absent;
+- 额外硬门控:签名 contract 的 `build_artifacts[]` 必须全部产出。
+
+相关导航摘要:
 
 - `phase_summary.json.success_banner_seen`
 - `phase_summary.json.error_banner_seen`
@@ -114,36 +125,36 @@
 - `phase_summary.json.build_artifacts_missing`
 - `failure_report.json.failure_class`
 
-### P3
+### P5(单测执行)
 
-- 运行前后对 `developer_test/reports/20*` 做集合差，要求出现 **fresh** 报告目录；
-- 解析 `summary_report.xml` 的 `tests/failures/errors`；
-- 额外硬门控：签名 contract 的 `test_cases[].gtest` 必须逐个在 fresh result xml 中以 passed 形式出现。
+- 运行前后对 `developer_test/reports/20*` 做集合差,要求出现 **fresh** 报告目录;
+- 解析 `summary_report.xml` 的 `tests/failures/errors`;
+- 额外硬门控:签名 contract 的 `test_cases[].gtest` 必须逐个在 fresh result xml 中以 passed 形式出现(**执行**覆盖)。
 
-相关摘要：
+相关摘要:
 
 - `fresh_report_dir`
 - `missing_gtests`
 - `contract_status`
 - `failure_class`
 
-### P5
+### P7(功能与质量验证)
 
-- 同样要求 fresh integration report；
-- 功能 suite 必须通过；
-- quality reports（coverage/performance/power/stability）必须齐全，除非显式 downgrade；
+- 同样要求 fresh integration report;
+- 功能 suite 必须通过;
+- quality reports(coverage/performance/power/stability)必须齐全,除非显式 downgrade;
 - review 报告必须 machine-readable zero issues。
 
-相关摘要：
+相关摘要:
 
 - `quality_ok` / `quality_detail`
 - `review_ok` / `review_detail`
 - `quality_gate_downgraded`
 - `failure_class`
 
-## 4. 真机侧证据（P4 / 设备型 P5）
+## 4. 真机侧证据(P6 / 设备型 P7)
 
-旧模型只靠 marker 命中容易被伪造；当前 P4 已升级为“四锚联合证明”：
+旧模型只靠 marker 命中容易被伪造;当前 P6 已升级为"四锚联合证明":
 
 ### 4.1 per-run nonce
 
@@ -163,7 +174,7 @@
 
 ### 4.3 baseline / trigger 分窗
 
-P4 不再对整份 hilog 做模糊匹配，而是切成：
+P6 不再对整份 hilog 做模糊匹配,而是切成:
 
 - `hilog_baseline_window.txt`
 - `hilog_trigger_window.txt`
@@ -196,9 +207,9 @@ P4 不再对整份 hilog 做模糊匹配，而是切成：
     - `side_effect_assertion_failed`
     - `marker_present_before_trigger`
 
-## 5. code review 证据（P5 / P6）
+## 5. code review 证据(P7 / P8)
 
-P5 和 P6 都要求 **machine-readable zero-issue** 报告：
+P7 和 P8 都要求 **machine-readable zero-issue** 报告:
 
 - JSON 计数字段如 `issue_count/finding_count/problem_count/blocker_count == 0`
 - 或数组字段 `issues/findings/problems/blockers` 为空
@@ -206,20 +217,20 @@ P5 和 P6 都要求 **machine-readable zero-issue** 报告：
 
 任何非零 / 缺失 / 不可解析都 fail closed。
 
-P6 需要两道 review：
+P8 需要两道 review:
 
-1. **local self-review**（commit/push 前）
-2. **PR review**（PR 创建后、CI 检查前）
+1. **local self-review**(commit/push 前)
+2. **PR review**(PR 创建后、CI 检查前)
 
-相关导航信息会体现在 P6 `phase_summary.json` / `failure_report.json`：
+相关导航信息会体现在 P8 `phase_summary.json` / `failure_report.json`:
 
 - `local_review_detail`
 - `pr_review_detail`
 - `failure_class=review_gate_failed`
 
-## 6. 上库与 CI 证据（P6）
+## 6. 上库与 CI 证据(P8)
 
-P6 的真实不可逆动作是 push + create PR。
+P8 的真实不可逆动作是 push + create PR。
 
 ### DRY RUN
 
@@ -231,11 +242,11 @@ P6 的真实不可逆动作是 push + create PR。
 
 ### 真正 PASS 的条件
 
-- P1–P5 已 advance 完毕；
-- phase 6 consent 已记录；
-- review 双门都为零问题；
-- PR 存在；
-- CI overall 是 success；
+- P1–P7 已 advance 完毕;
+- phase 8 consent 已记录;
+- review 双门都为零问题;
+- PR 存在;
+- CI overall 是 success;
 - 远端 PR head SHA == 本次 pushed SHA。
 
 这最后一条是关键：
@@ -256,12 +267,12 @@ P6 的真实不可逆动作是 push + create PR。
 - `mode`
 - `failure_class`
 
-## 7. consent 绑定（P1 / P4 / P5 / P6）
+## 7. consent 绑定(P1 / P6 / P7 / P8)
 
-consent 不是普通字符串标记，而是 `advance.py` 写入的、绑定到某条 PASS 证据 entry 的签名对象：
+consent 不是普通字符串标记,而是 `advance.py` 写入的、绑定到某条 PASS 证据 entry 的签名对象:
 
-- P1：设计人工批准，供 `gate_develop.py` 校验
-- P4/P5/P6：结果人工批准，供 `advance.py advance` 校验
+- P1:设计人工批准,供 **P2 `gate_develop.py`** 校验(绑 phase1 设计条目)
+- P6/P7/P8:结果人工批准,供 `advance.py advance` 校验
 
 性质：
 

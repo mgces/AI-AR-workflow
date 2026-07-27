@@ -304,6 +304,7 @@ class TestDeviceContinuityHelpers(unittest.TestCase):
         gl.save_state(self.pdir, {
             "run_id": self.run_id,
             "consent_tokens": {},
+            "phase_scheme": gl.PHASE_SCHEME,
             "phases": [{"id": i, "name": n, "status": "pending"}
                        for i, n in gl.PHASES],
         })
@@ -361,8 +362,8 @@ class TestDeviceContinuityHelpers(unittest.TestCase):
             best_effort=False)
         gdf._write_completion_controls(
             self.pdir,
-            phase=4,
-            arts=["evidence/phase4/hilog_capture.txt"],
+            phase=6,
+            arts=["evidence/phase6/hilog_capture.txt"],
             device_case_count=2,
         )
         receipt = gl.read_control_json(self.pdir, "device_functional", "completion_receipt.json")
@@ -372,7 +373,7 @@ class TestDeviceContinuityHelpers(unittest.TestCase):
         self.assertTrue(receipt["human_gate_pending"])
         self.assertEqual(handoff["bundle_revision"], "rev-dev")
         self.assertEqual(handoff["downstream_revalidate_scope"], "P4_to_P6")
-        self.assertEqual(handoff["recommended_next_action"]["next_gate"], "advance.py advance --phase 4")
+        self.assertEqual(handoff["recommended_next_action"]["next_gate"], "advance.py advance --phase 6")
 
     def test_phase4_repair_packet_tracks_revision_and_scope(self):
         gl.write_control_json(
@@ -399,7 +400,7 @@ class TestDeviceContinuityHelpers(unittest.TestCase):
             best_effort=False)
         packet = gdf._write_repair_packet(
             self.pdir,
-            phase=4,
+            phase=6,
             failure_class="marker_missing",
             problems=["functional marker missing"],
             last_failure_reason="marker missing",

@@ -4,7 +4,7 @@
 gate_upload_ci.py — Phase 6 (code upload + review). The only outward, irreversible step.
 
 Hard prerequisites (read from pipeline.json / manifest):
-  * phases 1..5 all status==passed;
+  * phases 1..7 all status==passed;
   * consent for phase 6 recorded (human approved the push) — also re-checked by
     advance.py, so this cannot be bypassed.
 
@@ -55,7 +55,7 @@ MAX_REPAIR_ROUNDS = 2
 P8_SUBSTATE_META = {
     "precheck": {
         "name": "precheck",
-        "goal": "confirm phases 1..5 passed and phase-6 consent is recorded before any push",
+        "goal": "confirm phases 1..7 passed and phase-8 consent is recorded before any push",
         "next_id": "local_review",
         "next_name": "local-review",
     },
@@ -67,7 +67,7 @@ P8_SUBSTATE_META = {
     },
     "consent_await": {
         "name": "consent-await",
-        "goal": "wait for the human to inspect the diff and record phase-6 consent",
+        "goal": "wait for the human to inspect the diff and record phase-8 consent",
         "next_id": "push_pr",
         "next_name": "push-pr",
     },
@@ -264,10 +264,10 @@ def _p8_substate_payload(substate_id, *, mode=None, ci_ok=None, sha_ok=None,
                          escalation_reason=None):
     meta = P8_SUBSTATE_META[substate_id]
     entry_conditions = {
-        "precheck": ["phases 1..5 all passed", "phase-6 consent about to be verified"],
+        "precheck": ["phases 1..7 all passed", "phase-8 consent about to be verified"],
         "local_review": ["precheck passed", "a local self-review report is provided"],
         "consent_await": ["local review is a zero-issue report", "diff is ready for human inspection"],
-        "push_pr": ["phase-6 consent recorded", "--allow-push supplied"],
+        "push_pr": ["phase-8 consent recorded", "--allow-push supplied"],
         "pr_review": ["branch pushed and PR created", "a PR review report is provided"],
         "ci_green": ["PR review is a zero-issue report", "CI has been queried for the PR head SHA"],
         "finalize": ["CI is green for the pushed SHA", "PR head SHA equals the pushed SHA"],
@@ -275,7 +275,7 @@ def _p8_substate_payload(substate_id, *, mode=None, ci_ok=None, sha_ok=None,
     exit_conditions = {
         "precheck": ["all prerequisites satisfied"],
         "local_review": ["local review issue count is zero"],
-        "consent_await": ["phase-6 consent recorded for the current evidence"],
+        "consent_await": ["phase-8 consent recorded for the current evidence"],
         "push_pr": ["PR number, head SHA, and URL recorded"],
         "pr_review": ["PR review issue count is zero"],
         "ci_green": ["CI overall is success AND pr_head_sha == pushed_sha"],
@@ -293,7 +293,7 @@ def _p8_substate_payload(substate_id, *, mode=None, ci_ok=None, sha_ok=None,
     if human_escalation_needed:
         notes.append("human escalation required")
     return {
-        "phase": 6,
+        "phase": 8,
         "phase_name": "upload-review",
         "substate": substate_id,
         "substate_id": substate_id,
@@ -333,13 +333,13 @@ def _write_repair_packet(pdir, *, failure_class, problems, last_failure_reason,
         failure_class, repair_disallowed=repair_disallowed)
     rounds = _repair_round_metadata(
         pdir,
-        phase=6,
+        phase=8,
         bundle_revision_from=bundle.get("bundle_revision") or "",
         recommended_next_action=base_action,
         failure_class=failure_class,
     )
     packet = {
-        "phase": 6,
+        "phase": 8,
         "phase_name": "upload-review",
         "bundle_id": bundle.get("bundle_id") or "phase1-bundle",
         "bundle_revision_from": bundle.get("bundle_revision") or "",
@@ -386,7 +386,7 @@ def _write_completion_controls(pdir, *, arts, pr_number, overall, ci_ok, pushed_
     bundle = _test_bundle_context(pdir)
     bundle_revision = bundle.get("bundle_revision") or ""
     receipt = {
-        "phase": 6,
+        "phase": 8,
         "logical_phase_id": "upload_review",
         "bundle_id": bundle.get("bundle_id") or "phase1-bundle",
         "bundle_revision": bundle_revision,
@@ -591,7 +591,7 @@ def _record_result(pdir, verdict, reason, arts, *, cmd=None, repo_slug=None,
         verdict, mode=mode, failure_class=failure_class,
         ci_ok=ci_ok, sha_ok=sha_ok)
     gl.write_phase_summary(
-        pdir, 6, "gate_upload_ci.py", verdict, reason, checks=checks,
+        pdir, 8, "gate_upload_ci.py", verdict, reason, checks=checks,
         extra={
             "repo_slug": repo_slug,
             "branch": branch,
@@ -610,11 +610,11 @@ def _record_result(pdir, verdict, reason, arts, *, cmd=None, repo_slug=None,
             "logical_substate_goal": P8_SUBSTATE_META[summary_substate]["goal"],
         })
     if verdict == "PASS":
-        gl.clear_failure_report(pdir, 6)
+        gl.clear_failure_report(pdir, 8)
         gl.write_repair_packet(
             pdir, REPAIR_PACKET_PARTS,
             gl.build_cleared_repair_packet(
-                6, "upload-review", cleared_by="gate_upload_ci.py",
+                8, "upload-review", cleared_by="gate_upload_ci.py",
                 bundle_revision_from=_test_bundle_context(pdir).get(
                     "bundle_revision") or ""))
         _write_substate_snapshot(
@@ -649,7 +649,7 @@ def _record_result(pdir, verdict, reason, arts, *, cmd=None, repo_slug=None,
             human_escalation_needed=packet["human_escalation_needed"],
             escalation_reason=packet["escalation_note"])
         gl.write_failure_report(
-            pdir, 6, "gate_upload_ci.py", reason,
+            pdir, 8, "gate_upload_ci.py", reason,
             problems=problems or [], resume_hint=resume_hint,
             extra={
                 "repo_slug": repo_slug,
@@ -672,7 +672,7 @@ def _record_result(pdir, verdict, reason, arts, *, cmd=None, repo_slug=None,
             })
 
     gl.write_gate_phase_memory_card(
-        pdir, 6, "upload-review", verdict=verdict,
+        pdir, 8, "upload-review", verdict=verdict,
         bundle_revision=_test_bundle_context(pdir).get("bundle_revision"),
         current_blocker=None if verdict == "PASS" else reason,
         next_expected_action_class=(
@@ -685,10 +685,10 @@ def _record_result(pdir, verdict, reason, arts, *, cmd=None, repo_slug=None,
     # weak model resuming mid-P8 reads the same goal/entry/exit/failure_classes
     # whether it landed here via `advance.py next` or by running the gate.
     gl.write_gate_stage_packet_from_def(
-        pdir, "upload_review", "upload-review", physical_phase=6)
+        pdir, "upload_review", "upload-review", physical_phase=8)
 
     if emit_manifest:
-        gl.emit(pdir, 6, "gate_upload_ci.py", verdict=verdict, reason=reason,
+        gl.emit(pdir, 8, "gate_upload_ci.py", verdict=verdict, reason=reason,
                 cmd=cmd, artifacts_rel=arts)
 
 
@@ -724,10 +724,10 @@ def main():
     gdir = state.get("git_dir", repo)
     if not os.path.isabs(gdir):
         gdir = os.path.join(repo, gdir)
-    gl.evidence_dir(pdir, 6)
+    gl.evidence_dir(pdir, 8)
 
-    # prereq: phases 1..5 passed
-    not_done = [p["id"] for p in state["phases"] if p["id"] in (1, 2, 3, 4, 5)
+    # prereq: phases 1..7 passed
+    not_done = [p["id"] for p in state["phases"] if p["id"] in (1, 2, 3, 4, 5, 6, 7)
                 and p["status"] != "passed"]
     if not_done:
         reason = "phases not passed: %s" % not_done
@@ -736,9 +736,9 @@ def main():
             repo_slug=args.repo_slug, branch=args.branch, mode="precheck",
             failure_class="prerequisite_phase_missing",
             problems=["prerequisite phases not passed: %s" % not_done],
-            resume_hint="先完成并 advance P1-P5，再重跑 gate_upload_ci.py",
+            resume_hint="先完成并 advance P1-P7，再重跑 gate_upload_ci.py",
             emit_manifest=False)
-        sys.exit("PHASE 6 BLOCKED: phases not passed: %s" % not_done)
+        sys.exit("PHASE 8 BLOCKED: phases not passed: %s" % not_done)
 
     # Binding the PR to an issue is what makes OpenHarmony CI gates trigger.
     # Require --issue whenever we would create a PR (not when re-verifying an
@@ -754,7 +754,7 @@ def main():
             problems=["PR creation path requires --issue for CI binding"],
             resume_hint="先创建 issue 并带 --issue 重跑 gate_upload_ci.py",
             emit_manifest=False)
-        sys.exit("PHASE 6 BLOCKED: --issue is required to create a PR (OpenHarmony CI "
+        sys.exit("PHASE 8 BLOCKED: --issue is required to create a PR (OpenHarmony CI "
                  "gates only trigger on issue-bound PRs). Create one first:\n"
                  "  oh-gc issue create --repo %s --title <title> --body <desc>\n"
                  "then re-run with --issue <number>." % args.repo_slug)
@@ -794,23 +794,23 @@ def main():
         print("  B PR review(建 PR 后、CI 前):--pr-review-report <path>")
         print("  任一 review 有问题 → 改代码 → advance.py reset 回 P1 重走。")
         print("人工核对以上改动可上库后:")
-        print("  advance.py --pipeline-dir %s consent --phase 6 --token <审核人>" % pdir)
+        print("  advance.py --pipeline-dir %s consent --phase 8 --token <审核人>" % pdir)
         print("  再带 --allow-push 重跑本门控。")
         print("=" * 64)
         return  # no PASS emitted
 
-    if not state.get("consent_tokens", {}).get("6"):
-        reason = "no consent for phase 6"
+    if not state.get("consent_tokens", {}).get("8"):
+        reason = "no consent for phase 8"
         _record_result(
             pdir, "FAIL", reason, [diff_rel, stat_rel],
             repo_slug=args.repo_slug, branch=args.branch,
             pushed_sha=head_sha, mode="precheck",
             failure_class="consent_missing",
-            problems=["phase 6 consent token missing"],
-            resume_hint="人工审核后执行 advance.py consent --phase 6 --token <reviewer>，再重跑",
+            problems=["phase 8 consent token missing"],
+            resume_hint="人工审核后执行 advance.py consent --phase 8 --token <reviewer>，再重跑",
             emit_manifest=False)
-        sys.exit("PHASE 6 BLOCKED: no consent for phase 6. Record it with "
-                 "`advance.py consent --phase 6 --token <token>` after human approval.")
+        sys.exit("PHASE 8 BLOCKED: no consent for phase 8. Record it with "
+                 "`advance.py consent --phase 8 --token <token>` after human approval.")
 
     arts = [diff_rel, stat_rel]
 
@@ -951,19 +951,19 @@ def main():
         failure_class=failure_class, problems=problems,
         resume_hint="修复 PR review / CI / SHA 绑定问题后重跑 gate_upload_ci.py")
     if verdict == "PASS":
-        print("PHASE 6 PASS — advance.py advance --phase 6")
+        print("PHASE 8 PASS — advance.py advance --phase 8")
     else:
-        sys.exit("PHASE 6 FAIL: %s" % reason)
+        sys.exit("PHASE 8 FAIL: %s" % reason)
 
 
 def _fail(pdir, reason, extra_arts=None, failure_class="upload_ci_failed",
           problems=None, resume_hint=None):
     gl.write_phase_summary(
-        pdir, 6, "gate_upload_ci.py", "FAIL", reason,
+        pdir, 8, "gate_upload_ci.py", "FAIL", reason,
         checks=problems or [],
         extra={"failure_class": failure_class})
     gl.write_failure_report(
-        pdir, 6, "gate_upload_ci.py", reason,
+        pdir, 8, "gate_upload_ci.py", reason,
         problems=problems or [], resume_hint=resume_hint,
         extra={"failure_class": failure_class})
     _write_repair_packet(
@@ -973,15 +973,15 @@ def _fail(pdir, reason, extra_arts=None, failure_class="upload_ci_failed",
         last_failure_reason=reason,
     )
     gl.write_gate_phase_memory_card(
-        pdir, 6, "upload-review", verdict="FAIL",
+        pdir, 8, "upload-review", verdict="FAIL",
         bundle_revision=_test_bundle_context(pdir).get("bundle_revision"),
         current_blocker=reason,
         next_expected_action_class="repair_or_regenerate",
         last_failure_class=failure_class,
         primary_entry_doc=gl.controls_relpath("next_action.json"))
-    gl.emit(pdir, 6, "gate_upload_ci.py", verdict="FAIL", reason=reason,
+    gl.emit(pdir, 8, "gate_upload_ci.py", verdict="FAIL", reason=reason,
             artifacts_rel=extra_arts or [])
-    sys.exit("PHASE 6 FAIL: %s" % reason)
+    sys.exit("PHASE 8 FAIL: %s" % reason)
 
 
 if __name__ == "__main__":

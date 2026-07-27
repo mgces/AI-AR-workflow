@@ -24,6 +24,7 @@ class TestSignedConsent(unittest.TestCase):
         state = {
             "run_id": self.run_id,
             "consent_tokens": {},
+            "phase_scheme": gl.PHASE_SCHEME,
             "phases": [{"id": i, "name": n, "status": "pending"} for i, n in gl.PHASES],
         }
         gl.save_state(self.pdir, state)

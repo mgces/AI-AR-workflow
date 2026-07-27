@@ -17,7 +17,7 @@ evidence is bound to THIS run cryptographically and monotonically:
     signed manifest so the orchestrator cannot swap in a hand-written log.
 
 Deploy/scenario specifics differ per component, so this gate takes them as
-shell snippets (provided by the phase-4 skill), runs them verbatim, and records
+shell snippets (provided by the phase-6 skill), runs them verbatim, and records
 them. It owns the nonce + capture + verdict logic; it does not invent behavior.
 """
 import argparse
@@ -60,16 +60,16 @@ def _unique_ordered(items):
 
 
 def _phase_control_meta(phase):
-    if phase == 4:
+    if phase == 6:
         return {
             "logical_phase_id": "device_functional",
             "logical_phase_name": "device-functional",
             "phase_name": "device-functional",
             "completion_receipt_parts": DEVICE_RECEIPT_PARTS,
             "handoff_parts": DEVICE_HANDOFF_PARTS,
-            "next_phase": 5,
+            "next_phase": 7,
             "next_action": "quality-verify",
-            "next_gate": "advance.py advance --phase 4",
+            "next_gate": "advance.py advance --phase 6",
             "upstream_receipt_parts": TEST_AUTHOR_RECEIPT_PARTS,
             "upstream_handoff_parts": TEST_AUTHOR_HANDOFF_PARTS,
         }
@@ -79,9 +79,9 @@ def _phase_control_meta(phase):
         "phase_name": "quality-verify",
         "completion_receipt_parts": QUALITY_RECEIPT_PARTS,
         "handoff_parts": QUALITY_HANDOFF_PARTS,
-        "next_phase": 6,
+        "next_phase": 8,
         "next_action": "upload-review",
-        "next_gate": "advance.py advance --phase 5",
+        "next_gate": "advance.py advance --phase 7",
         "upstream_receipt_parts": DEVICE_RECEIPT_PARTS,
         "upstream_handoff_parts": DEVICE_HANDOFF_PARTS,
     }
@@ -95,7 +95,7 @@ def _test_bundle_context(pdir, phase):
     meta = _phase_control_meta(phase)
     receipt = gl.read_control_json(pdir, *meta["upstream_receipt_parts"]) or {}
     handoff = gl.read_control_json(pdir, *meta["upstream_handoff_parts"]) or {}
-    if phase == 5 and not (receipt or handoff):
+    if phase == 7 and not (receipt or handoff):
         receipt = gl.read_control_json(pdir, *TEST_AUTHOR_RECEIPT_PARTS) or {}
         handoff = gl.read_control_json(pdir, *TEST_AUTHOR_HANDOFF_PARTS) or {}
     items = matrix.get("items") or []
@@ -490,7 +490,7 @@ _EVIDENCE_SUMMARY_KEYS = {
 
 
 def summarize_device_cases(results):
-    # NOTE: this is a REPORTING summary, not the verdict — the phase-4 verdict is
+    # NOTE: this is a REPORTING summary, not the verdict — the phase-6 verdict is
     # computed from per-case `ok` + marker/nonce/uptime checks, never from these
     # booleans. With zero cases, all()/every dimension would be vacuously True and
     # phase_summary.json would claim "*_verified: true" when nothing was actually
@@ -608,27 +608,27 @@ def main():
                     help="functional success string that must appear in the hilog window")
     ap.add_argument("--host-artifact",
                     help="host-side build artifact that must match the deployed device artifact "
-                         "(required for phase 4)")
+                         "(required for phase 6)")
     ap.add_argument("--device-artifact",
                     help="absolute device path of the running/deployed artifact; sha256sum is "
-                         "captured after deploy (required for phase 4)")
+                         "captured after deploy (required for phase 6)")
     ap.add_argument("--runtime-marker",
                     help="string emitted only by the changed runtime code path, preferably with "
-                         "$GATE_NONCE in the same execution path (required for phase 4)")
+                         "$GATE_NONCE in the same execution path (required for phase 6)")
     ap.add_argument("--e2e-marker",
                     help="string emitted only after the real end-to-end use/injection scenario "
-                         "succeeds (required for phase 4)")
-    ap.add_argument("--phase", type=int, default=4, help="4 (device) or 5 (integration reuse)")
+                         "succeeds (required for phase 6)")
+    ap.add_argument("--phase", type=int, default=6, help="6 (device) or 7 (integration reuse)")
     args = ap.parse_args()
     phase = args.phase
-    if phase == 4:
+    if phase == 6:
         missing = missing_phase4_proof_args(args)
         if missing:
-            ap.error("phase 4 requires real-runtime/e2e proof args: %s"
+            ap.error("phase 6 requires real-runtime/e2e proof args: %s"
                      % ", ".join(missing))
     if bool(args.host_artifact) != bool(args.device_artifact):
         ap.error("--host-artifact and --device-artifact must be provided together")
-    if phase == 4:
+    if phase == 6:
         found = find_marker_literals(
             [args.deploy_script, args.scenario_script],
             [args.marker, args.runtime_marker, args.e2e_marker],
@@ -636,7 +636,7 @@ def main():
         if found:
             detail = ", ".join("%s in %s" % (marker, path)
                                for marker, path in sorted(found.items()))
-            ap.error("phase 4 success markers must be emitted by the runtime/e2e result, "
+            ap.error("phase 6 success markers must be emitted by the runtime/e2e result, "
                      "not embedded in driver scripts: %s" % detail)
 
     host_sha = None
@@ -651,25 +651,25 @@ def main():
 
     # CONTRACT COVERAGE (P4 hard gate): the signed ar-contract's device_cases[]
     # markers must ALL appear in the captured hilog window. Recovered from the
-    # HMAC-signed AR_design. Only enforced for phase 4 (phase-5 reuse of this gate
+    # HMAC-signed AR_design. Only enforced for phase 6 (phase-7 reuse of this gate
     # does not verify P4 device cases). absent/bypass -> no extra markers;
     # tampered -> FAIL.
     device_cases = []
     device_markers = []
-    if phase == 4:
+    if phase == 6:
         c_ok, contract, c_detail = gl.load_signed_contract(pdir)
         if c_ok:
             device_cases = contract["device_cases"]
             device_markers = [c["marker"] for c in device_cases]
         elif "absent" not in c_detail:
-            sys.exit("ERROR: ar-contract unrecoverable for phase 4: %s" % c_detail)
+            sys.exit("ERROR: ar-contract unrecoverable for phase 6: %s" % c_detail)
         # Contract device markers must also come from the real runtime/e2e result,
         # not be hard-coded into the driver scripts (else coverage is fakeable).
         found = find_marker_literals([args.deploy_script, args.scenario_script],
                                      device_markers)
         if found:
             detail = ", ".join("%s in %s" % (m, p) for m, p in sorted(found.items()))
-            sys.exit("ERROR: phase 4 contract device markers must be emitted by the "
+            sys.exit("ERROR: phase 6 contract device markers must be emitted by the "
                      "runtime/e2e result, not embedded in driver scripts: %s" % detail)
 
     nonce = secrets.token_hex(16)

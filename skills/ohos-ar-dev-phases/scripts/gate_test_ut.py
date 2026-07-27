@@ -93,13 +93,13 @@ def _write_repair_packet(pdir, *, failure_class, problems, last_failure_reason,
         failure_class, repair_disallowed=repair_disallowed)
     rounds = _repair_round_metadata(
         pdir,
-        phase=3,
+        phase=5,
         bundle_revision_from=bundle.get("bundle_revision") or "",
         recommended_next_action=base_action,
         failure_class=failure_class,
     )
     packet = {
-        "phase": 3,
+        "phase": 5,
         "phase_name": "test-author",
         "bundle_id": bundle.get("bundle_id") or "phase1-bundle",
         "bundle_revision_from": bundle.get("bundle_revision") or "",
@@ -140,7 +140,7 @@ def _write_completion_controls(pdir, *, tests, failures, errors, fresh_dir, cove
     bundle = _test_bundle_context(pdir)
     bundle_revision = bundle.get("bundle_revision") or ""
     receipt = {
-        "phase": 3,
+        "phase": 5,
         "logical_phase_id": "test_author",
         "bundle_id": bundle.get("bundle_id") or "phase1-bundle",
         "bundle_revision": bundle_revision,
@@ -148,7 +148,7 @@ def _write_completion_controls(pdir, *, tests, failures, errors, fresh_dir, cove
         "truth_layer_pass_known": True,
         "next_phase_ready": True,
         "human_gate_pending": False,
-        "next_phase": 4,
+        "next_phase": 6,
         "downstream_revalidate_scope": bundle.get("downstream_revalidate_scope") or "P4_P5",
         "tests": tests,
         "failures": failures,
@@ -159,9 +159,9 @@ def _write_completion_controls(pdir, *, tests, failures, errors, fresh_dir, cove
     handoff = {
         "bundle_id": bundle.get("bundle_id") or "phase1-bundle",
         "bundle_revision": bundle_revision,
-        "from_phase": 3,
+        "from_phase": 5,
         "from_phase_name": "test-author",
-        "to_phase": 4,
+        "to_phase": 6,
         "to_phase_name": "device-functional",
         "logical_phase_id": "test_author",
         "logical_phase_name": "test-author",
@@ -177,9 +177,9 @@ def _write_completion_controls(pdir, *, tests, failures, errors, fresh_dir, cove
         "risks": [],
         "open_questions": [],
         "recommended_next_action": {
-            "phase": 4,
+            "phase": 6,
             "action": "device-functional",
-            "next_gate": "advance.py advance --phase 3",
+            "next_gate": "advance.py advance --phase 5",
         },
         "requires_repair": False,
         "repair_scope_hint": bundle.get("suspect_files") or [],
@@ -214,7 +214,7 @@ def _record_result(pdir, verdict, reason, arts, *, cmd, exit_code, test_target,
     if coverage_missing:
         checks.append("missing_gtests=%d" % len(coverage_missing))
     gl.write_phase_summary(
-        pdir, 3, "gate_test_ut.py", verdict, reason, checks=checks,
+        pdir, 5, "gate_test_ut.py", verdict, reason, checks=checks,
         extra={
             "test_target": test_target,
             "suite": suite,
@@ -229,11 +229,11 @@ def _record_result(pdir, verdict, reason, arts, *, cmd, exit_code, test_target,
             "failure_class": failure_class,
         })
     if verdict == "PASS":
-        gl.clear_failure_report(pdir, 3)
+        gl.clear_failure_report(pdir, 5)
         gl.write_repair_packet(
             pdir, REPAIR_PACKET_PARTS,
             gl.build_cleared_repair_packet(
-                3, "test-author", cleared_by="gate_test_ut.py",
+                5, "test-author", cleared_by="gate_test_ut.py",
                 bundle_revision_from=_test_bundle_context(pdir).get(
                     "bundle_revision") or ""))
         _write_completion_controls(
@@ -246,7 +246,7 @@ def _record_result(pdir, verdict, reason, arts, *, cmd, exit_code, test_target,
         )
     else:
         gl.write_failure_report(
-            pdir, 3, "gate_test_ut.py", reason,
+            pdir, 5, "gate_test_ut.py", reason,
             problems=problems or [], resume_hint=resume_hint,
             extra={
                 "test_target": test_target,
@@ -268,7 +268,7 @@ def _record_result(pdir, verdict, reason, arts, *, cmd, exit_code, test_target,
             last_failure_reason=reason,
         )
     gl.write_gate_phase_memory_card(
-        pdir, 3, "test-author", verdict=verdict,
+        pdir, 5, "test-author", verdict=verdict,
         bundle_revision=_test_bundle_context(pdir).get("bundle_revision"),
         current_blocker=None if verdict == "PASS" else reason,
         forbidden_actions=["modify_functional_code_outside_test_scope"],
@@ -278,8 +278,8 @@ def _record_result(pdir, verdict, reason, arts, *, cmd, exit_code, test_target,
         primary_entry_doc=gl.controls_relpath("next_action.json"),
         primary_handoff_doc=gl.controls_relpath(*HANDOFF_PARTS))
     gl.write_gate_stage_packet_from_def(
-        pdir, "test_author", "test-author", physical_phase=3)
-    gl.emit(pdir, 3, "gate_test_ut.py", verdict=verdict, reason=reason,
+        pdir, "test_author", "test-author", physical_phase=5)
+    gl.emit(pdir, 5, "gate_test_ut.py", verdict=verdict, reason=reason,
             cmd=cmd, exit_code=exit_code, artifacts_rel=arts)
 
 
@@ -316,7 +316,7 @@ def build_target(repo, target, pdir):
     stdout as authoritative evidence (out/rk3568/build.log can rotate/stay empty)."""
     cmd = "./build.sh --product-name rk3568 --ccache --build-target %s" % target
     print("running: %s" % cmd)
-    tail_rel = "evidence/phase3/test_build_stdout.log"
+    tail_rel = "evidence/phase5/test_build_stdout.log"
     path = os.path.join(pdir, tail_rel)
     with open(path, "w", encoding="utf-8") as logf:
         proc = subprocess.Popen(cmd, shell=True, cwd=repo, text=True,
@@ -344,7 +344,7 @@ def main():
     part = args.part or state.get("test", {}).get("part")
     if not part:
         sys.exit("ERROR: no testpart (pass --part or set test.part)")
-    gl.evidence_dir(pdir, 3)
+    gl.evidence_dir(pdir, 5)
     dt = os.path.join(repo, "test/testfwk/developer_test")
     reports = os.path.join(dt, "reports")
 
@@ -362,7 +362,7 @@ def main():
             failure_class="test_target_build_failed",
             problems=["build failed for unit-test target %s" % args.test_target],
             resume_hint="修复单测构建问题后重跑 gate_test_ut.py")
-        sys.exit("PHASE 3 FAIL: test target build failed")
+        sys.exit("PHASE 5 FAIL: test target build failed")
 
     # 2. snapshot report dirs before the run
     before = set(glob.glob(os.path.join(reports, "20*")))
@@ -378,7 +378,7 @@ def main():
     run_cmd = "./start.sh run -t UT -tp %s -ts %s -p %s" % (part, args.suite, product)
     print("running: (cd %s && %s)" % (dt, run_cmd))
     proc = subprocess.run(run_cmd, shell=True, cwd=dt, text=True, capture_output=True)
-    stdout_rel = "evidence/phase3/start_sh_stdout.txt"
+    stdout_rel = "evidence/phase5/start_sh_stdout.txt"
     with open(os.path.join(pdir, stdout_rel), "w", encoding="utf-8") as f:
         f.write(proc.stdout + "\n----stderr----\n" + proc.stderr)
     arts.append(stdout_rel)
@@ -395,11 +395,11 @@ def main():
             failure_class="fresh_report_missing",
             problems=["developer_test produced no fresh reports/<timestamp> directory"],
             resume_hint="确认 developer_test 真正执行并产出新报告后重跑 gate_test_ut.py")
-        sys.exit("PHASE 3 FAIL: harness produced no fresh report dir")
+        sys.exit("PHASE 5 FAIL: harness produced no fresh report dir")
     fresh_dir = fresh[-1]
-    with open(os.path.join(pdir, "evidence/phase3/report_dir.txt"), "w") as f:
+    with open(os.path.join(pdir, "evidence/phase5/report_dir.txt"), "w") as f:
         f.write(os.path.basename(fresh_dir) + "\n")
-    arts.append("evidence/phase3/report_dir.txt")
+    arts.append("evidence/phase5/report_dir.txt")
 
     # 5. parse summary_report.xml (prefer the fresh dir; fall back to latest)
     summary = os.path.join(fresh_dir, "summary_report.xml")
@@ -415,14 +415,14 @@ def main():
             failure_class="summary_report_missing",
             problems=["summary_report.xml missing from fresh developer_test report"],
             resume_hint="确认 developer_test 产出 summary_report.xml 后重跑 gate_test_ut.py")
-        sys.exit("PHASE 3 FAIL: no summary_report.xml")
-    sum_rel = "evidence/phase3/summary_report.xml"
+        sys.exit("PHASE 5 FAIL: no summary_report.xml")
+    sum_rel = "evidence/phase5/summary_report.xml"
     shutil.copy(summary, os.path.join(pdir, sum_rel))
     arts.append(sum_rel)
     # also snapshot per-suite result xmls
     result_rels = []
     for rx in glob.glob(os.path.join(fresh_dir, "result", "*.xml")):
-        rrel = "evidence/phase3/result_%s" % os.path.basename(rx)
+        rrel = "evidence/phase5/result_%s" % os.path.basename(rx)
         shutil.copy(rx, os.path.join(pdir, rrel))
         arts.append(rrel)
         result_rels.append(rrel)
@@ -448,7 +448,7 @@ def main():
         result_paths = [os.path.join(pdir, r) for r in result_rels]
         passed = passed_gtests(result_paths)
         coverage_ok, missing = check_gtest_coverage(required, passed)
-        cov_rel = "evidence/phase3/gtest_coverage.txt"
+        cov_rel = "evidence/phase5/gtest_coverage.txt"
         with open(os.path.join(pdir, cov_rel), "w", encoding="utf-8") as f:
             f.write("required (from ar-contract): %d\npassed in report: %d\n\n"
                     % (len(required), len(passed)))
@@ -475,7 +475,7 @@ def main():
             failure_class="ar_contract_unrecoverable",
             problems=["signed ar-contract not recoverable: %s" % c_detail],
             resume_hint="修复/重新签名 AR_design 后重跑 gate_test_ut.py")
-        sys.exit("PHASE 3 FAIL: ar-contract unrecoverable: %s" % c_detail)
+        sys.exit("PHASE 5 FAIL: ar-contract unrecoverable: %s" % c_detail)
 
     print(reason)
     if numeric_ok and coverage_ok:
@@ -486,7 +486,7 @@ def main():
             tests=tests, failures=failures, errors=errors,
             fresh_dir=os.path.basename(fresh_dir),
             contract_status=contract_status, coverage_missing=missing)
-        print("PHASE 3 PASS — advance.py advance --phase 3")
+        print("PHASE 5 PASS — advance.py advance --phase 5")
         return
     problems = []
     if tests <= 0:
@@ -507,7 +507,7 @@ def main():
         contract_status=contract_status, coverage_missing=missing,
         failure_class=failure_class, problems=problems,
         resume_hint="修复单测失败/覆盖缺口后重跑 gate_test_ut.py")
-    sys.exit("PHASE 3 FAIL: %s" % reason)
+    sys.exit("PHASE 5 FAIL: %s" % reason)
 
 
 if __name__ == "__main__":

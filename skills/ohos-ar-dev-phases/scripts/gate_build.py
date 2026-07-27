@@ -100,13 +100,13 @@ def _write_repair_packet(pdir, *, target, failure_class, problems, last_failure_
         failure_class, repair_disallowed=repair_disallowed)
     rounds = _repair_round_metadata(
         pdir,
-        phase=2,
+        phase=4,
         bundle_revision_from=bundle.get("bundle_revision") or "",
         recommended_next_action=base_action,
         failure_class=failure_class,
     )
     packet = {
-        "phase": 2,
+        "phase": 4,
         "phase_name": "build-verify",
         "bundle_id": bundle.get("bundle_id") or "phase1-bundle",
         "bundle_revision_from": bundle.get("bundle_revision") or "",
@@ -151,7 +151,7 @@ def _write_completion_controls(pdir, *, target, artifacts_present, contract_stat
     bundle = _test_bundle_context(pdir)
     bundle_revision = bundle.get("bundle_revision") or ""
     receipt = {
-        "phase": 2,
+        "phase": 4,
         "logical_phase_id": "build_verify",
         "bundle_id": bundle.get("bundle_id") or "phase1-bundle",
         "bundle_revision": bundle_revision,
@@ -159,7 +159,7 @@ def _write_completion_controls(pdir, *, target, artifacts_present, contract_stat
         "truth_layer_pass_known": True,
         "next_phase_ready": True,
         "human_gate_pending": False,
-        "next_phase": 3,
+        "next_phase": 5,
         "downstream_revalidate_scope": bundle.get("downstream_revalidate_scope") or "P4_P5",
         "target": target,
         "build_artifacts_present": artifacts_present or [],
@@ -168,11 +168,11 @@ def _write_completion_controls(pdir, *, target, artifacts_present, contract_stat
     handoff = {
         "bundle_id": bundle.get("bundle_id") or "phase1-bundle",
         "bundle_revision": bundle_revision,
-        "from_phase": 2,
+        "from_phase": 4,
         "from_phase_name": "build-verify",
         "logical_phase_id": "build_verify",
         "logical_phase_name": "build-verify",
-        "to_phase": 3,
+        "to_phase": 5,
         "to_phase_name": "test-author",
         "objective_completed": True,
         "produced_artifacts": [
@@ -186,9 +186,9 @@ def _write_completion_controls(pdir, *, target, artifacts_present, contract_stat
         "risks": [],
         "open_questions": [],
         "recommended_next_action": {
-            "phase": 3,
+            "phase": 5,
             "action": "test-author",
-            "next_gate": "advance.py advance --phase 2",
+            "next_gate": "advance.py advance --phase 4",
         },
         "requires_repair": False,
         "repair_scope_hint": bundle.get("suspect_files") or [],
@@ -200,7 +200,7 @@ def _write_completion_controls(pdir, *, target, artifacts_present, contract_stat
         pdir, ARTIFACT_INDEX_PARTS,
         [{"path": rel, "role": "build_artifact"} for rel in (artifacts_present or [])],
         extra={
-            "phase": 2,
+            "phase": 4,
             "phase_name": "build-verify",
             "bundle_revision": bundle_revision,
             "target": target,
@@ -224,7 +224,7 @@ def _record_result(pdir, verdict, reason, arts, *, cmd, exit_code, target,
     if artifacts_missing:
         checks.append("missing_build_artifacts=%d" % len(artifacts_missing))
     gl.write_phase_summary(
-        pdir, 2, "gate_build.py", verdict, reason, checks=checks,
+        pdir, 4, "gate_build.py", verdict, reason, checks=checks,
         extra={
             "target": target,
             "exit_code": exit_code,
@@ -235,11 +235,11 @@ def _record_result(pdir, verdict, reason, arts, *, cmd, exit_code, target,
             "failure_class": failure_class,
         })
     if verdict == "PASS":
-        gl.clear_failure_report(pdir, 2)
+        gl.clear_failure_report(pdir, 4)
         gl.write_repair_packet(
             pdir, ("repairs", "current.json"),
             gl.build_cleared_repair_packet(
-                2, "build-verify", cleared_by="gate_build.py",
+                4, "build-verify", cleared_by="gate_build.py",
                 bundle_revision_from=_test_bundle_context(pdir).get(
                     "bundle_revision") or ""))
         _write_completion_controls(
@@ -247,7 +247,7 @@ def _record_result(pdir, verdict, reason, arts, *, cmd, exit_code, target,
             contract_status=contract_status)
     else:
         gl.write_failure_report(
-            pdir, 2, "gate_build.py", reason,
+            pdir, 4, "gate_build.py", reason,
             problems=problems or [], resume_hint=resume_hint,
             extra={
                 "target": target,
@@ -268,7 +268,7 @@ def _record_result(pdir, verdict, reason, arts, *, cmd, exit_code, target,
             contract_status=contract_status,
         )
     gl.write_gate_phase_memory_card(
-        pdir, 2, "build-verify", verdict=verdict,
+        pdir, 4, "build-verify", verdict=verdict,
         bundle_revision=_test_bundle_context(pdir).get("bundle_revision"),
         current_blocker=None if verdict == "PASS" else reason,
         next_expected_action_class=(
@@ -277,8 +277,8 @@ def _record_result(pdir, verdict, reason, arts, *, cmd, exit_code, target,
         primary_entry_doc=gl.controls_relpath("next_action.json"),
         primary_handoff_doc=gl.controls_relpath(*HANDOFF_PARTS))
     gl.write_gate_stage_packet_from_def(
-        pdir, "build_verify", "build-verify", physical_phase=2)
-    gl.emit(pdir, 2, "gate_build.py", verdict=verdict, reason=reason,
+        pdir, "build_verify", "build-verify", physical_phase=4)
+    gl.emit(pdir, 4, "gate_build.py", verdict=verdict, reason=reason,
             cmd=cmd, exit_code=exit_code, artifacts_rel=arts)
 
 
@@ -307,14 +307,14 @@ def main():
     target = args.target or state.get("build_target")
     if not target:
         sys.exit("ERROR: no build target (pass --target or set build_target)")
-    ev = gl.evidence_dir(pdir, 2)
+    ev = gl.evidence_dir(pdir, 4)
     build_log = os.path.join(repo, "out/rk3568/build.log")
 
     cmd = "./build.sh --product-name rk3568 --ccache --build-target %s" % target
     print("running: %s" % cmd)
     # Capture build.sh's OWN stdout/stderr as the authoritative, inherently-fresh
     # evidence (out/rk3568/build.log can rotate or stay empty on early GN failure).
-    stdout_rel = "evidence/phase2/build_stdout.log"
+    stdout_rel = "evidence/phase4/build_stdout.log"
     stdout_path = os.path.join(pdir, stdout_rel)
     with open(stdout_path, "w", encoding="utf-8") as logf:
         proc = subprocess.Popen(cmd, shell=True, cwd=repo, text=True,
@@ -331,7 +331,7 @@ def main():
     banner_err = bool(ERROR_RE.search(out_text))
 
     # banner evidence (exact matched line)
-    banner_rel = "evidence/phase2/build_banner.txt"
+    banner_rel = "evidence/phase4/build_banner.txt"
     m = SUCCESS_RE.search(out_text)
     matched = next((ln for ln in out_text.splitlines() if SUCCESS_RE.search(ln)), "")
     with open(os.path.join(pdir, banner_rel), "w", encoding="utf-8") as f:
@@ -351,7 +351,7 @@ def main():
     if c_ok:
         present, artifacts_missing, resolved = resolve_artifacts(
             repo, contract["build_artifacts"])
-        chk_rel = "evidence/phase2/artifact_check.txt"
+        chk_rel = "evidence/phase4/artifact_check.txt"
         with open(os.path.join(pdir, chk_rel), "w", encoding="utf-8") as f:
             f.write("contract build_artifacts: %d present, %d missing\n\n"
                     % (len(present), len(artifacts_missing)))
@@ -374,7 +374,7 @@ def main():
             contract_status="unrecoverable", failure_class="ar_contract_unrecoverable",
             problems=["signed ar-contract not recoverable: %s" % c_detail],
             resume_hint="修复/重新签名 AR_design 后重跑 gate_build.py")
-        sys.exit("PHASE 2 FAIL: ar-contract unrecoverable: %s" % c_detail)
+        sys.exit("PHASE 4 FAIL: ar-contract unrecoverable: %s" % c_detail)
 
     if rc == 0 and banner_ok and not banner_err and not artifacts_missing:
         _record_result(
@@ -384,12 +384,12 @@ def main():
             arts, cmd=cmd, exit_code=rc, target=target,
             banner_ok=banner_ok, banner_err=banner_err,
             artifacts_missing=artifacts_missing, contract_status=contract_status)
-        print("PHASE 2 PASS — advance.py advance --phase 2")
+        print("PHASE 4 PASS — advance.py advance --phase 4")
         return
 
     # failure: distill markers from the captured output
     hits = [ln for ln in out_text.splitlines() if any(mk in ln for mk in FAIL_MARKERS)]
-    distill_rel = "evidence/phase2/error_distill.txt"
+    distill_rel = "evidence/phase4/error_distill.txt"
     with open(os.path.join(pdir, distill_rel), "w", encoding="utf-8") as f:
         f.write("\n".join(hits[:200]) or "(no known marker matched)")
     arts.append(distill_rel)
@@ -413,7 +413,7 @@ def main():
         artifacts_missing=artifacts_missing, contract_status=contract_status,
         failure_class=failure_class, problems=problems,
         resume_hint="修复构建/产物问题后重跑 gate_build.py")
-    sys.exit("PHASE 2 FAIL: %s" % reason)
+    sys.exit("PHASE 4 FAIL: %s" % reason)
 
 
 if __name__ == "__main__":

@@ -8,17 +8,17 @@ next_action.json       # 兼容根路径导航快照(advance.py next 生成,非�
 todo.md                # 人读镜像(refresh_todo.py 生成)
 todo.json              # 机器待办镜像(refresh_todo.py 生成,非真相源)
 ar.md                  # 输入的已澄清 AR 原文
-AR_design.md           # 工作区设计草稿;P1a 签名副本在 evidence/phase1/
+AR_design.md           # 工作区设计草稿;P1 签名副本在 evidence/phase1/
 controls/              # 控制层/导航层镜像(非真相源)
   next_action.json     # 与根 next_action.json 同 payload 的镜像
   memory_cards/
     current.json       # advance.py 投影的当前阶段最小启动卡
     phase<N>.json      # 各 gate 在 PASS/FAIL 两侧写的本阶段记忆卡
   receipts/
-    phase0.json / phase1-design-orchestrate.json / ...
+    phase0.json / phase1.json / phase2.json / ...
   handoffs/
     current.json
-    phase0-next.json / phase1-feature-develop-next.json / ...
+    phase0-next.json / phase2-next.json / ...
   repairs/
     current.json       # 当前 repair packet;PASS 时置 active=false
   packets/
@@ -47,13 +47,15 @@ controls/              # 控制层/导航层镜像(非真相源)
     completion_receipt.json / handoff_to_upload_review.json
   upload_review/       # P8
     substate.json      # precheck/local_review/consent_await/push_pr/pr_review/ci_green/finalize
+                       #   (finalize 目前为占位子状态:CI 绿 + PR head SHA 校验通过后即视为完成,
+                       #    暂无独立收尾动作;真相仍由 gate_upload_ci 的签名 PASS 决定)
     completion_receipt.json
 evidence/              # 机器证据(签名,gitignore)——真相所在
   manifest.jsonl       # 追加式、HMAC 链式签名证据账本
-  phase0/ … phase6/    # 各阶段真实产物 + phase_summary/failure_report
+  phase0/ … phase8/    # 各阶段真实产物 + phase_summary/failure_report
 reports/               # 人读 HTML 审计报告(脱敏,可归档)——与 evidence/ 并列分离
   device_functional.html / quality.html / summary.html
-  pr_description.md    # P6 汇总,gate_upload_ci 注入 PR 描述
+  pr_description.md    # P8 汇总,gate_upload_ci 注入 PR 描述
 ```
 
 ## pipeline.json 字段
@@ -106,14 +108,15 @@ reports/               # 人读 HTML 审计报告(脱敏,可归档)——与 evi
 - `current_substate`
   - `awaiting_gate`：当前 phase 还没有可闭合 PASS 证据，应运行 gate
   - `awaiting_design_gate`：P1 还没有签名设计，应先跑 `gate_design.py`
-  - `awaiting_design_consent`：P1a 已 PASS，但还缺设计人工 consent
-  - `awaiting_develop_gate`：P1 设计已签名且 consent 到位，等待 `gate_develop.py`
-  - `awaiting_consent`：P4/P5/P6 已有 PASS 证据，但还缺人工审核令牌
+  - `awaiting_design_consent`：P1 设计已 PASS，但还缺设计人工 consent(在 P2 开发门校验)
+  - `awaiting_develop_gate`：P2 等待 `gate_develop.py`(需 P1 签名设计 + consent)
+  - `awaiting_test_develop_gate`：P3 等待 `gate_test_develop.py`
+  - `awaiting_consent`：P6/P7/P8 已有 PASS 证据，但还缺人工审核令牌
   - `ready_to_advance`：当前 phase 已有有效 PASS 证据，可执行 `advance.py advance`
   - `blocked`：上游签名设计被篡改/丢失等 fail-closed 状态
   - `complete`：全部阶段闭合完成
 - `next_gate`
-  - 下一条应执行的命令/门控，如 `gate_build.py`、`advance.py consent --phase 5 --token <reviewer>`、`advance.py advance --phase 3`
+  - 下一条应执行的命令/门控，如 `gate_build.py`、`advance.py consent --phase 7 --token <reviewer>`、`advance.py advance --phase 3`
 - `required_inputs`
   - 当前动作最小必要输入，例如 `AR_design.md`、`reviewer_token`、`quality_reports`
 - `resume_hint`
@@ -131,7 +134,7 @@ reports/               # 人读 HTML 审计报告(脱敏,可归档)——与 evi
   "git_dir": "...",
   "build_target": "...",
   "device_serial": "...",
-  "current_phase": 4,
+  "current_phase": 6,
   "current_phase_name": "device-functional",
   "control_protocol_version": 1,
   "logical_phase_id": "device_functional",
@@ -140,9 +143,9 @@ reports/               # 人读 HTML 审计报告(脱敏,可归档)——与 evi
   "control_refs": {
     "next_action": "controls/next_action.json",
     "memory_card": "controls/memory_cards/current.json",
-    "receipt": "controls/receipts/phase4.json",
+    "receipt": "controls/receipts/phase6.json",
     "handoff_in": "controls/handoffs/current.json",
-    "handoff_out": "controls/handoffs/phase4-next.json"
+    "handoff_out": "controls/handoffs/phase6-next.json"
   },
   "current_substate": "awaiting_consent",
   "legacy_mode": false,
@@ -155,18 +158,18 @@ reports/               # 人读 HTML 审计报告(脱敏,可归档)——与 evi
     "forbidden_starts": ["read_global_readme_first", "replay_full_chat_history_first"]
   },
   "last_failure": {
-    "phase": 3,
+    "phase": 5,
     "gate": "gate_test_ut.py",
     "reason": "tests=5 failures=1 errors=0 ...",
     "ts_utc": "2026-07-23T10:00:00Z",
     "entry_id": "..."
   },
   "resume_hint": "Inspect the real artifacts, record signed human consent, then rerun advance.py advance.",
-  "next_gate": "advance.py consent --phase 4 --token <reviewer>",
+  "next_gate": "advance.py consent --phase 6 --token <reviewer>",
   "required_inputs": ["reviewer_token"],
   "phases": [
     {
-      "id": 4,
+      "id": 6,
       "name": "device-functional",
       "status": "pending",
       "manifest_ref": null,
@@ -201,14 +204,14 @@ reports/               # 人读 HTML 审计报告(脱敏,可归档)——与 evi
 {
   "run_id": "...",
   "pipeline_dir": "...",
-  "current_phase": 5,
+  "current_phase": 7,
   "current_phase_name": "quality-verify",
   "legacy_mode": false,
   "last_failure": null,
-  "phase_summary": { "phase": 5, "gate": "gate_integration.py", "verdict": "PASS", "ok": true },
+  "phase_summary": { "phase": 7, "gate": "gate_integration.py", "verdict": "PASS", "ok": true },
   "failure_report": null,
   "current_substate": "awaiting_consent",
-  "next_gate": "advance.py consent --phase 5 --token <reviewer>",
+  "next_gate": "advance.py consent --phase 7 --token <reviewer>",
   "required_inputs": ["reviewer_token"],
   "resume_hint": "Inspect the real artifacts, record signed human consent, then rerun advance.py advance.",
   "control_protocol_version": 1,
@@ -218,9 +221,9 @@ reports/               # 人读 HTML 审计报告(脱敏,可归档)——与 evi
   "control_refs": {
     "next_action": "controls/next_action.json",
     "memory_card": "controls/memory_cards/current.json",
-    "receipt": "controls/receipts/phase5.json",
+    "receipt": "controls/receipts/phase7.json",
     "handoff_in": "controls/handoffs/current.json",
-    "handoff_out": "controls/handoffs/phase5-next.json"
+    "handoff_out": "controls/handoffs/phase7-next.json"
   },
   "generated_at_utc": "2026-07-23T10:00:00Z"
 }
@@ -229,9 +232,9 @@ reports/               # 人读 HTML 审计报告(脱敏,可归档)——与 evi
 注意：
 
 - `phase_summary` / `failure_report` 是把当前 phase 的 JSON 摘要内联进来，便于弱模型单次读取。
-- `logical_phase_*` / `action_kind` / `control_refs` 用于把旧物理 phase 投影成弱模型优先消费的控制层视图。
+- `logical_phase_*` / `action_kind` / `control_refs` 表达弱模型优先消费的控制层视图(物理与逻辑 1:1)。
 - `window_startup_order` 与 status 输出同源，供新窗口按固定顺序恢复。
-- `control_refs.receipt` 在 phase1 会按子流落到 `phase1-design-orchestrate.json` / `phase1-feature-develop.json`。
+- `control_refs.receipt` 落到当前物理阶段对应的 `phaseN.json`。
 - 它们都不是签名对象；真正推进前 `advance.py` 仍回到账本重新验签。
 
 ## phase summary / failure report 约定
@@ -242,7 +245,7 @@ reports/               # 人读 HTML 审计报告(脱敏,可归档)——与 evi
 
 ```json
 {
-  "phase": 4,
+  "phase": 6,
   "gate": "gate_device_func.py",
   "verdict": "FAIL",
   "reason": "...",
@@ -256,7 +259,7 @@ reports/               # 人读 HTML 审计报告(脱敏,可归档)——与 evi
 
 ```json
 {
-  "phase": 4,
+  "phase": 6,
   "gate": "gate_device_func.py",
   "reason": "...",
   "problems": ["marker emitted by non-target process"],
@@ -274,17 +277,17 @@ reports/               # 人读 HTML 审计报告(脱敏,可归档)——与 evi
 ## 指纹与 legacy 兼容
 
 - `code_fingerprint`：旧全量指纹，保留给 legacy run。
-- `functional_fingerprint`：P1 锁定的非测试路径内容指纹；P2–P6 推进前必须保持一致。
-- `locked_all_paths`：P1 锁定的全量变更路径基线；P3/P4/P5 只能新增独立测试路径。
+- `functional_fingerprint`：**P2(feature-develop)闭合时锁定**的非测试路径内容指纹；P3–P8 推进前必须保持一致(`check_code_drift` 从 phase3 起生效)。
+- `locked_all_paths`：**P2 闭合时锁定**的全量变更路径基线；P3/P5/P6/P7 只能新增独立测试路径。
 - `legacy_mode=true` 的典型来源：
   - manifest reason 中出现 `LEGACY-BYPASS`
-  - 进入 P2+ 后找不到签名设计 entry
+  - 进入 P2+ 后找不到签名设计 entry(设计条目在 phase1)
 
 ## consent_tokens
 
 `consent_tokens` 记录签名且绑定证据的人工审批：
 
-- `consent_tokens["1"]`：P1 设计固化后的人工审批，`gate_develop.py` 强制校验
-- `consent_tokens["4"|"5"|"6"]`：P4/P5/P6 的结果审核审批，`advance.py advance` 强制校验
+- `consent_tokens["1"]`：P1 设计固化后的人工审批，`gate_develop.py`(P2) 强制校验(绑 phase1 设计条目)
+- `consent_tokens["6"|"7"|"8"]`：P6/P7/P8 的结果审核审批，`advance.py advance` 强制校验
 
 旧 consent 只对**当时那条 PASS 证据**有效；重跑 gate 产生新的 PASS 记录后，旧 consent 自动失效。

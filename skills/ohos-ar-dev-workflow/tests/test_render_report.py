@@ -21,7 +21,7 @@ class TestRenderReport(unittest.TestCase):
         os.makedirs(os.path.join(self.pdir, "evidence", "phase6"))
         with open(os.path.join(self.pdir, "pipeline.json"), "w") as f:
             json.dump({"run_id": "r1", "build_target": "t",
-                       "phases": [{"id": i, "name": "p%d" % i} for i in range(7)]}, f)
+                       "phases": [{"id": i, "name": "p%d" % i} for i in range(9)]}, f)
         with open(os.path.join(self.pdir, "evidence", "manifest.jsonl"), "w") as f:
             f.write(json.dumps({"phase": 4, "verdict": "PASS",
                                 "reason": "serial=7001005458323933328a01fce1fe3800 marker ok"}) + "\n")

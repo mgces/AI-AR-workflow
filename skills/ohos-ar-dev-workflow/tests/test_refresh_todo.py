@@ -29,7 +29,7 @@ class TestRefreshTodo(unittest.TestCase):
         return {"run_id": "r1", "current_phase": current,
                 "phases": [{"id": i, "name": "p%d" % i,
                             "status": "passed" if i in passed else "pending"}
-                           for i in range(7)]}
+                           for i in range(9)]}
 
     def test_with_design_has_items(self):
         out = rt.build_todo(self._state(1), DESIGN, [])
@@ -41,7 +41,7 @@ class TestRefreshTodo(unittest.TestCase):
     def test_passed_phase_checked(self):
         out = rt.build_todo(self._state(2, passed=(0, 1)), DESIGN, [])
         self.assertIn("- [x] P1 设计固化", out)
-        self.assertIn("- [ ] P2 编译验证  ⬅ 当前", out)
+        self.assertIn("- [ ] P2 代码开发  ⬅ 当前", out)
 
     def test_no_design_degrades(self):
         out = rt.build_todo(self._state(0), None, [])

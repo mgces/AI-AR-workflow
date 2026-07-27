@@ -39,6 +39,7 @@ class SummaryFixture(unittest.TestCase):
         gl.save_state(self.pdir, {
             "run_id": self.run_id,
             "consent_tokens": {},
+            "phase_scheme": gl.PHASE_SCHEME,
             "phases": [{"id": i, "name": n, "status": "pending"}
                        for i, n in gl.PHASES],
         })
@@ -84,10 +85,10 @@ class SummaryFixture(unittest.TestCase):
 
 
 class TestBuildSummaryHelpers(SummaryFixture):
-    phase = 2
+    phase = 4
 
     def test_fail_writes_summary_failure_report_and_repair_packet(self):
-        self._touch_artifact("evidence/phase2/log.txt")
+        self._touch_artifact("evidence/phase4/log.txt")
         gl.write_control_json(
             self.pdir, "test_develop", "signed_test_scope.json",
             payload={
@@ -107,7 +108,7 @@ class TestBuildSummaryHelpers(SummaryFixture):
             payload={"downstream_revalidate_scope": "P4_P5", "bundle_revision": "rev-123"},
             best_effort=False)
         gate_build._record_result(
-            self.pdir, "FAIL", "build failed", ["evidence/phase2/log.txt"],
+            self.pdir, "FAIL", "build failed", ["evidence/phase4/log.txt"],
             cmd="./build.sh", exit_code=1, target="foo",
             banner_ok=False, banner_err=True,
             artifacts_missing=["out/rk3568/liba.z.so"],
@@ -133,7 +134,7 @@ class TestBuildSummaryHelpers(SummaryFixture):
         self.assertFalse(repair["human_escalation_needed"])
 
     def test_repeated_build_failures_trigger_human_escalation(self):
-        self._touch_artifact("evidence/phase2/log.txt")
+        self._touch_artifact("evidence/phase4/log.txt")
         gl.write_control_json(
             self.pdir, "test_develop", "signed_test_scope.json",
             payload={
@@ -154,7 +155,7 @@ class TestBuildSummaryHelpers(SummaryFixture):
             best_effort=False)
         for _ in range(3):
             gate_build._record_result(
-                self.pdir, "FAIL", "build failed", ["evidence/phase2/log.txt"],
+                self.pdir, "FAIL", "build failed", ["evidence/phase4/log.txt"],
                 cmd="./build.sh", exit_code=1, target="foo",
                 banner_ok=False, banner_err=True,
                 artifacts_missing=[],
@@ -175,7 +176,7 @@ class TestBuildSummaryHelpers(SummaryFixture):
         # a DIFFERENT failure_class on the same bundle revision is a §9.2 repair
         # window, not a §9.1 retry: repair_rounds increments and the retry
         # counter resets for the new failure.
-        self._touch_artifact("evidence/phase2/log.txt")
+        self._touch_artifact("evidence/phase4/log.txt")
         gl.write_control_json(
             self.pdir, "test_develop", "signed_test_scope.json",
             payload={"bundle_revision": "rev-win",
@@ -192,7 +193,7 @@ class TestBuildSummaryHelpers(SummaryFixture):
             best_effort=False)
         for fclass in ("build_artifact_missing", "build_verdict_failed"):
             gate_build._record_result(
-                self.pdir, "FAIL", "build failed", ["evidence/phase2/log.txt"],
+                self.pdir, "FAIL", "build failed", ["evidence/phase4/log.txt"],
                 cmd="./build.sh", exit_code=1, target="foo",
                 banner_ok=False, banner_err=True, artifacts_missing=[],
                 contract_status="ok", failure_class=fclass,
@@ -224,11 +225,11 @@ class TestBuildSummaryHelpers(SummaryFixture):
 
 
 class TestUnitTestSummaryHelpers(SummaryFixture):
-    phase = 3
+    phase = 5
 
     def test_pass_clears_stale_failure_report(self):
-        self._touch_artifact("evidence/phase3/x.xml")
-        gl.write_failure_report(self.pdir, 3, "gate_test_ut.py", "old fail")
+        self._touch_artifact("evidence/phase5/x.xml")
+        gl.write_failure_report(self.pdir, 5, "gate_test_ut.py", "old fail")
         gl.write_control_json(
             self.pdir, "test_develop", "signed_test_scope.json",
             payload={
@@ -248,7 +249,7 @@ class TestUnitTestSummaryHelpers(SummaryFixture):
             payload={"downstream_revalidate_scope": "P4_P5", "bundle_revision": "rev-ut"},
             best_effort=False)
         gate_test_ut._record_result(
-            self.pdir, "PASS", "tests=3 failures=0 errors=0", ["evidence/phase3/x.xml"],
+            self.pdir, "PASS", "tests=3 failures=0 errors=0", ["evidence/phase5/x.xml"],
             cmd="run ut", exit_code=0, test_target="ut_target", suite="Suite", part="part",
             tests=3, failures=0, errors=0, fresh_dir="20260723-100000",
             contract_status="ok", coverage_missing=[])
@@ -264,10 +265,10 @@ class TestUnitTestSummaryHelpers(SummaryFixture):
         self.assertEqual(receipt["bundle_revision"], "rev-ut")
         self.assertTrue(receipt["next_phase_ready"])
         self.assertEqual(handoff["bundle_revision"], "rev-ut")
-        self.assertEqual(handoff["recommended_next_action"]["next_gate"], "advance.py advance --phase 3")
+        self.assertEqual(handoff["recommended_next_action"]["next_gate"], "advance.py advance --phase 5")
 
     def test_fail_records_missing_gtests(self):
-        self._touch_artifact("evidence/phase3/x.xml")
+        self._touch_artifact("evidence/phase5/x.xml")
         gl.write_control_json(
             self.pdir, "test_develop", "signed_test_scope.json",
             payload={
@@ -287,7 +288,7 @@ class TestUnitTestSummaryHelpers(SummaryFixture):
             payload={"downstream_revalidate_scope": "P4_P5", "bundle_revision": "rev-ut"},
             best_effort=False)
         gate_test_ut._record_result(
-            self.pdir, "FAIL", "coverage missing", ["evidence/phase3/x.xml"],
+            self.pdir, "FAIL", "coverage missing", ["evidence/phase5/x.xml"],
             cmd="run ut", exit_code=1, test_target="ut_target", suite="Suite", part="part",
             tests=3, failures=0, errors=0, fresh_dir="20260723-100000",
             contract_status="ok", coverage_missing=["ATest.Case001"],
@@ -307,11 +308,11 @@ class TestUnitTestSummaryHelpers(SummaryFixture):
 
 
 class TestIntegrationSummaryHelpers(SummaryFixture):
-    phase = 5
+    phase = 7
 
     def test_pass_writes_completion_receipt_and_handoff(self):
-        self._touch_artifact("evidence/phase5/x.xml")
-        gl.write_failure_report(self.pdir, 5, "gate_integration.py", "old fail")
+        self._touch_artifact("evidence/phase7/x.xml")
+        gl.write_failure_report(self.pdir, 7, "gate_integration.py", "old fail")
         gl.write_control_json(
             self.pdir, "test_develop", "signed_test_scope.json",
             payload={
@@ -345,7 +346,7 @@ class TestIntegrationSummaryHelpers(SummaryFixture):
             },
             best_effort=False)
         gate_integration._record_result(
-            self.pdir, "PASS", "integration ok", ["evidence/phase5/x.xml"],
+            self.pdir, "PASS", "integration ok", ["evidence/phase7/x.xml"],
             cmd="run mst", exit_code=0, testtype="MST", part="part", suites=["SuiteA"],
             tests=2, failures=0, errors=0, fresh_dir="20260723-100000",
             quality_ok=True, quality_detail="all quality reports present",
@@ -363,7 +364,7 @@ class TestIntegrationSummaryHelpers(SummaryFixture):
         self.assertTrue(receipt["human_gate_pending"])
         self.assertEqual(handoff["bundle_revision"], "rev-it")
         self.assertEqual(handoff["downstream_revalidate_scope"], "P4_to_P6")
-        self.assertEqual(handoff["recommended_next_action"]["next_gate"], "advance.py advance --phase 5")
+        self.assertEqual(handoff["recommended_next_action"]["next_gate"], "advance.py advance --phase 7")
         substate = gl.read_control_json(self.pdir, "quality_verify", "substate.json")
         self.assertEqual(substate["substate_id"], "human_review_await")
         self.assertEqual(substate["substate_name"], "human-review-await")
@@ -376,10 +377,10 @@ class TestIntegrationSummaryHelpers(SummaryFixture):
         packet = gl.read_stage_packet(
             self.pdir, gl.stage_packet_parts("quality_verify"))
         self.assertEqual(packet["phase_identity"]["phase_id"], "quality_verify")
-        self.assertEqual(packet["phase_identity"]["physical_phase"], 5)
+        self.assertEqual(packet["phase_identity"]["physical_phase"], 7)
 
     def test_fail_records_quality_and_review_state(self):
-        self._touch_artifact("evidence/phase5/x.xml")
+        self._touch_artifact("evidence/phase7/x.xml")
         gl.write_control_json(
             self.pdir, "test_develop", "signed_test_scope.json",
             payload={
@@ -406,7 +407,7 @@ class TestIntegrationSummaryHelpers(SummaryFixture):
             },
             best_effort=False)
         gate_integration._record_result(
-            self.pdir, "FAIL", "quality missing", ["evidence/phase5/x.xml"],
+            self.pdir, "FAIL", "quality missing", ["evidence/phase7/x.xml"],
             cmd="run mst", exit_code=1, testtype="MST", part="part", suites=["SuiteA"],
             tests=1, failures=0, errors=0, fresh_dir="20260723-100000",
             quality_ok=False, quality_detail="missing quality reports: --coverage-report",
@@ -434,10 +435,10 @@ class TestIntegrationSummaryHelpers(SummaryFixture):
 
 class TestUploadSummaryHelpers(SummaryFixture):
 
-    phase = 6
+    phase = 8
 
     def test_pass_writes_completion_receipt_and_clears_repair(self):
-        self._touch_artifact("evidence/phase6/full_diff.patch")
+        self._touch_artifact("evidence/phase8/full_diff.patch")
         gl.write_control_json(
             self.pdir, "test_develop", "signed_test_scope.json",
             payload={
@@ -471,7 +472,7 @@ class TestUploadSummaryHelpers(SummaryFixture):
             },
             best_effort=False)
         gate_upload_ci._record_result(
-            self.pdir, "PASS", "upload ok", ["evidence/phase6/full_diff.patch"],
+            self.pdir, "PASS", "upload ok", ["evidence/phase8/full_diff.patch"],
             repo_slug="openharmony/repo", branch="feat/x", pr_number=123,
             overall="success", ci_ok=True, pushed_sha="abc123", pr_head="abc123",
             sha_ok=True, local_review_detail="review_issue_count=0",
@@ -500,10 +501,10 @@ class TestUploadSummaryHelpers(SummaryFixture):
         packet = gl.read_stage_packet(
             self.pdir, gl.stage_packet_parts("upload_review"))
         self.assertEqual(packet["phase_identity"]["phase_id"], "upload_review")
-        self.assertEqual(packet["phase_identity"]["physical_phase"], 6)
+        self.assertEqual(packet["phase_identity"]["physical_phase"], 8)
 
     def test_fail_writes_repair_packet_with_bundle_context(self):
-        self._touch_artifact("evidence/phase6/full_diff.patch")
+        self._touch_artifact("evidence/phase8/full_diff.patch")
         gl.write_control_json(
             self.pdir, "test_develop", "signed_test_scope.json",
             payload={
@@ -530,7 +531,7 @@ class TestUploadSummaryHelpers(SummaryFixture):
             },
             best_effort=False)
         gate_upload_ci._record_result(
-            self.pdir, "FAIL", "ci red", ["evidence/phase6/full_diff.patch"],
+            self.pdir, "FAIL", "ci red", ["evidence/phase8/full_diff.patch"],
             repo_slug="openharmony/repo", branch="feat/x", pr_number=123,
             overall="failed", ci_ok=False, pushed_sha="abc123", pr_head="abc123",
             sha_ok=True, local_review_detail="review_issue_count=0",
@@ -560,7 +561,7 @@ class TestUploadSummaryHelpers(SummaryFixture):
 
     def test_precheck_fail_writes_navigation_only_files(self):
         gate_upload_ci._record_result(
-            self.pdir, "FAIL", "no consent for phase 6", ["evidence/phase6/full_diff.patch"],
+            self.pdir, "FAIL", "no consent for phase 6", ["evidence/phase8/full_diff.patch"],
             repo_slug="openharmony/repo", branch="feat/x", pushed_sha="abc123",
             mode="precheck", failure_class="consent_missing",
             problems=["phase 6 consent token missing"],
@@ -575,7 +576,7 @@ class TestUploadSummaryHelpers(SummaryFixture):
         self.assertEqual(manifest, [])
 
     def test_repeated_sha_conflict_triggers_human_escalation(self):
-        self._touch_artifact("evidence/phase6/full_diff.patch")
+        self._touch_artifact("evidence/phase8/full_diff.patch")
         gl.write_control_json(
             self.pdir, "test_develop", "signed_test_scope.json",
             payload={
@@ -596,7 +597,7 @@ class TestUploadSummaryHelpers(SummaryFixture):
             best_effort=False)
         for _ in range(2):
             gate_upload_ci._record_result(
-                self.pdir, "FAIL", "sha mismatch", ["evidence/phase6/full_diff.patch"],
+                self.pdir, "FAIL", "sha mismatch", ["evidence/phase8/full_diff.patch"],
                 repo_slug="openharmony/repo", branch="feat/x", pr_number=123,
                 overall="success", ci_ok=True, pushed_sha="abc123", pr_head="def456",
                 sha_ok=False, local_review_detail="review_issue_count=0",
@@ -640,7 +641,7 @@ class TestUploadSummaryHelpers(SummaryFixture):
         # A transient CI/PR endpoint outage recurring on the SAME bundle
         # revision is external instability, not a code defect: it must route to
         # human escalation (§7.5) rather than looping the local repair budget.
-        self._touch_artifact("evidence/phase6/full_diff.patch")
+        self._touch_artifact("evidence/phase8/full_diff.patch")
         gl.write_control_json(
             self.pdir, "test_develop", "signed_test_scope.json",
             payload={"bundle_revision": "rev-flaky",
@@ -654,7 +655,7 @@ class TestUploadSummaryHelpers(SummaryFixture):
         for _ in range(2):
             gate_upload_ci._record_result(
                 self.pdir, "FAIL", "ci endpoint unreachable",
-                ["evidence/phase6/full_diff.patch"],
+                ["evidence/phase8/full_diff.patch"],
                 repo_slug="openharmony/repo", branch="feat/x", pr_number=123,
                 overall="", ci_ok=False, pushed_sha="abc123", pr_head="abc123",
                 sha_ok=True, local_review_detail="review_issue_count=0",
