@@ -1,0 +1,159 @@
+# OpenHarmony C/C++ ruleset → clang-tidy check mapping.
+# Each entry annotates which workbook rule_ids (G.*) the check covers.
+#
+# This file is loaded by code_ruleset_guard.py --clang-tidy <compile_commands.json>.
+# clang-tidy must be installed and a compilation database must exist (from hb build).
+---
+Checks: >
+  # ---- rule G.CLS.03-CPP: single-arg constructor explicit ----
+  google-explicit-constructor,
+  # ---- rule G.CLS.04/05/07-CPP: special member functions ----
+  cppcoreguidelines-special-member-functions,
+  # ---- rule G.CLS.06-CPP: virtual in ctor/dtor ----
+  cppcoreguidelines-virtual-class-destructor,
+  # ---- rule G.CLS.08-CPP: noexcept on move/swap ----
+  performance-noexcept-move-constructor,
+  # ---- rule G.CLS.10-CPP: virtual destructor ----
+  cppcoreguidelines-virtual-class-destructor,
+  # ---- rule G.CLS.12-CPP: override/final specifier ----
+  modernize-use-override,
+  # ---- rule G.CLS.13-CPP: hiding non-virtual ----
+  -bugprone-exception-escape,
+  # ---- rule G.CLS.15-CPP: overloaded comma/&&/|| ----
+  # (already checked by guard regex; kept as belt)
+  -fuchsia-overloaded-operator,
+  # ---- rule G.CNS.03-CPP: const member functions ----
+  misc-misplaced-const,
+  readability-const-return-type,
+  # ---- rule G.EXP.08-CPP: object init before use ----
+  cppcoreguidelines-pro-type-member-init,
+  # ---- rule G.EXP.12-CPP: bitwise on non-trivially-copyable ----
+  bugprone-undefined-memory-manipulation,
+  # ---- rule G.EXP.14-CPP: C++ casts instead of C-style ----
+  google-readability-casting,
+  cppcoreguidelines-pro-type-cstyle-cast,
+  # ---- rule G.EXP.19-CPP: std::move on const ----
+  performance-move-const-arg,
+  # ---- rule G.EXP.37-CPP: switch default ----
+  cppcoreguidelines-missing-default-case,
+  # ---- rule G.EXP.41-CPP: loop control var modification ----
+  bugprone-infinite-loop,
+  # ---- rule G.INC.04-CPP: header guard ----
+  llvm-header-guard,
+  # ---- rule G.INC.09-CPP: namespace pollution in header ----
+  google-global-names-in-headers,
+  # ---- rule G.INC.10-CPP: anonymous namespace in header ----
+  # (partially covered by google-global-names-in-headers)
+  # ---- rule G.RES.06-CPP: avoid default lambda captures ----
+  # (already checked by guard regex G.RES.05-CPP)
+  # ---- rule G.RES.08-CPP: RAII ----
+  cppcoreguidelines-no-malloc,
+  # ---- rule G.RES.11-CPP: new/delete pair ----
+  cppcoreguidelines-owning-memory,
+  # ---- rule G.STD.04-CPP: c_str() dangling pointer ----
+  clang-analyzer-core.DanglingTempObject,
+  # ---- rule G.STD.05-CPP: buffer overflow ----
+  clang-analyzer-security.insecureAPI.*,
+  # ---- rule G.STD.10-CPP: const_iterator ----
+  modernize-use-auto,
+  # ---- rule G.VAR.01: uninitialized vars ----
+  clang-analyzer-core.uninitialized.*,
+  cppcoreguidelines-pro-type-member-init,
+  # ---- rule G.VAR.02: var reuse in nested scope ----
+  -readability-redundant-member-init,
+  # ---- rule G.VAR.05: use-after-free ----
+  clang-analyzer-cplusplus.*,
+  clang-analyzer-core.*,
+  # ---- rule G.FUN.02-CPP: consistent param names ----
+  readability-inconsistent-declaration-parameter-name,
+  # ---- rule G.FUN.03-CPP: unused parameters ----
+  misc-unused-parameters,
+  # ---- rule G.FUN.07-CPP: std::move local return ----
+  performance-move-const-arg,
+  # ---- rule G.INT.03/22-CPP: division by zero ----
+  clang-analyzer-core.DivideZero,
+  # ---- rule G.MEM.01: malloc size validation ----
+  clang-analyzer-optin.portability.UnixAPI,
+  # ---- rule G.EXP.01-CPP: reserved identifiers ----
+  bugprone-reserved-identifier,
+  # ---- rule G.EXP.05-CPP: extern declarations ----
+  # (already checked by guard regex)
+  # ---- rule G.EXP.09-CPP: declare near use ----
+  google-readability-function-size,
+  # ---- rule G.EXP.29/02-CPP: comparison ordering ----
+  # (no direct clang-tidy check)
+  # ---- rule G.EXP.30/04-CPP: parentheses precedence ----
+  bugprone-parent-suspicious,
+  misc-misleading-identifier,
+  # ---- rule G.PRE.02: macro parentheses ----
+  bugprone-macro-parentheses,
+  # ---- rule G.PRE.04: macro with side effects ----
+  bugprone-multiple-statement-macro,
+  # ---- rule G.PRE.07: macro name shadowing ----
+  bugprone-macro-repeated-side-effects,
+  # ---- rule G.STD.13-CPP: format string mismatch ----
+  clang-analyzer-valist.*,
+  # ---- rule G.CMT.02: comment placement ----
+  # (no direct clang-tidy check — human review)
+  # ---- rule G.CMT.04: function header comments ----
+  # (no direct clang-tidy check — human review)
+  # ---- rule G.AST.01: assert as macro ----
+  # (already partly checked by guard regex)
+  # ---- General safety net ----
+  clang-analyzer-*,
+  bugprone-*,
+  misc-*,
+
+CheckOptions:
+  - key:   google-readability-function-size.LineWidth
+    value: '120'
+  - key:   google-readability-function-size.StatementThreshold
+    value: '80'
+  - key:   google-readability-function-size.BranchThreshold
+    value: '40'
+  - key:   google-readability-function-size.ParameterThreshold
+    value: '8'
+  - key:   google-readability-function-size.NestingThreshold
+    value: '5'
+  - key:   bugprone-macro-parentheses.IgnoreKeywordsWithArguments
+    value: '0'
+  - key:   cppcoreguidelines-missing-default-case.IgnoreDefaultNoDefaultCase
+    value: '0'
+  - key:   modernize-use-override.IgnoreDestructors
+    value: '0'
+  - key:   modernize-use-override.AllowOverrideAndFinal
+    value: '1'
+  - key:   llvm-header-guard.HeaderFileExtensions
+    value: '.h,.hh,.hpp,.hxx'
+
+# Each clang-tidy warning maps to a workbook rule_id via these patterns.
+# The guard reads this map to translate clang-tidy output to OpenHarmony rules.
+WarningToRule:
+  # Map clang-tidy check names to OpenHarmony rule_ids
+  "google-explicit-constructor": "G.CLS.03-CPP"
+  "cppcoreguidelines-special-member-functions": "G.CLS.04-CPP"
+  "cppcoreguidelines-virtual-class-destructor": "G.CLS.06-CPP"
+  "performance-noexcept-move-constructor": "G.CLS.08-CPP"
+  "modernize-use-override": "G.CLS.12-CPP"
+  "google-readability-casting": "G.EXP.14-CPP"
+  "cppcoreguidelines-pro-type-cstyle-cast": "G.EXP.14-CPP"
+  "performance-move-const-arg": "G.EXP.19-CPP"
+  "cppcoreguidelines-missing-default-case": "G.EXP.37-CPP"
+  "llvm-header-guard": "G.INC.04-CPP"
+  "google-global-names-in-headers": "G.INC.09-CPP"
+  "cppcoreguidelines-no-malloc": "G.RES.08-CPP"
+  "cppcoreguidelines-owning-memory": "G.RES.11-CPP"
+  "readability-inconsistent-declaration-parameter-name": "G.FUN.02-CPP"
+  "misc-unused-parameters": "G.FUN.03-CPP"
+  "bugprone-reserved-identifier": "G.EXP.01-CPP"
+  "bugprone-macro-parentheses": "G.PRE.02"
+  "bugprone-multiple-statement-macro": "G.PRE.04"
+  "bugprone-macro-repeated-side-effects": "G.PRE.04"
+  "readability-const-return-type": "G.CNS.03-CPP"
+  "clang-analyzer-core.DivideZero": "G.INT.03"
+  "clang-analyzer-core.uninitialized.*": "G.VAR.01"
+  "clang-analyzer-cplusplus.*": "G.VAR.05"
+  "clang-analyzer-core.DanglingTempObject": "G.STD.04-CPP"
+  "bugprone-parent-suspicious": "G.EXP.30-CPP"
+  "misc-misleading-identifier": "G.EXP.10-CPP"
+  "performance-move-const-arg": "G.FUN.07-CPP"

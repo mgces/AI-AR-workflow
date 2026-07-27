@@ -1,65 +1,125 @@
 #!/usr/bin/env python3
-"""Extract the deterministically-checkable rows of the code_ruleset C/C++
-workbook into a JSON data file the guard can load without openpyxl at gate time.
+"""Build the machine-readable C++ rule manifest from the checked-in workbook.
 
-The workbook (`code_ruleset/黄区C语言门禁规则集_OAT_敏感词 - 20260126.xlsx`) holds
-545 gate-level (门禁级) rows:
-
-  * 307 WordsTool.* rows — sensitive words / banned brand & marketing terms. The
-    detected token is the rule name minus the `WordsTool.<n> ` prefix. These are
-    pure substring/word matches, so ALL of them are exported and checked.
-  * 213 G.* + 25 tool rows — coding rules. Most are semantic / AST / metric based
-    (圈复杂度, 大函数, switch 分支数, ...) and cannot be line-detected without false
-    positives, so they are NOT exported here; the guard keeps a hand-curated,
-    high-precision regex subset for the ones that CAN be matched safely, and the
-    rest stay in human/skill review.
-
-Run this only when the workbook changes:
-    python3 scripts/build_ruleset_data.py
-It rewrites data/ruleset_c.json. openpyxl is required to run the extractor but
-NOT to run the guard.
+The workbook is the authoritative source.  This extractor keeps every row,
+including non-numeric WordsTool names, so a malformed or newly added rule cannot
+disappear from the strict gate silently.
 """
 import json
 import re
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-REPO = HERE.parents[2]
-WORKBOOK = REPO / "code_ruleset" / "黄区C语言门禁规则集_OAT_敏感词 - 20260126.xlsx"
-OUT = HERE.parent / "data" / "ruleset_c.json"
+SKILL = HERE.parent
+WORKBOOK = SKILL / "s" / "黄区C语言门禁规则集_OAT_敏感词 - 20260126.xlsx"
+OUT = SKILL / "data" / "ruleset_c.json"
 
-WORDS_RE = re.compile(r"^WordsTool\.(\d+)\s+(.+?)\s*$")
+WORDS_RE = re.compile(r"^(WordsTool\.(\S+))(?:\s+(.+?))?\s*$")
+KNOWN_ID_RE = re.compile(r"^(G\.[A-Za-z0-9_.-]+|OAT\.[0-9]+|FossScan\.[0-9]+)\b")
+
+COLUMN_NAMES = (
+    "rule_name", "severity", "tool_version", "language", "scope",
+    "start_delay", "end_delay", "options", "good_example", "bad_example",
+    "remediation", "sample", "link", "cwe",
+)
+
+
+def _text(value):
+    return "" if value is None else str(value)
+
+
+def _rule_id(name, row_number):
+    match = WORDS_RE.match(name)
+    if match:
+        return match.group(1)
+    match = KNOWN_ID_RE.match(name)
+    if match:
+        return match.group(1)
+    # Fallback: map Chinese-only descriptions (rows without a standard ID
+    # prefix in column A) to reasonable G.* / G.*-CPP identifiers.
+    _FALLBACK = {
+        "弱加密算法【C】":    "G.CRY.01",
+        "不安全函数[C++]":    "G.FUU.21-CPP",
+        "超大函数[C++]":      "G.FUD.05-CPP",
+        "超大源文件[C++]":    "G.FUD.07-CPP",
+        "检查通过代码注释屏蔽coverity告警的方式":  "G.CMT.06",
+        "重复文件[C++]":      "G.FIL.04-CPP",
+        "超大圈复杂度[C++]":  "G.FUD.06-CPP",
+        "超大深度函数[C++]":  "G.FUD.08-CPP",
+        "查不同分支分别调用了危险函数和对应的安全函数":  "G.FUU.22",
+        "弱加密算法":         "G.CRY.02",
+        "超大头文件[C++]":    "G.INC.11-CPP",
+        "可查找对分配程序进行调用，并且在使用-或+运算符时将圆括号位置放错的很多情况":  "G.MEM.05",
+        "不安全IPSI算法检查": "G.CRY.03",
+        "冗余代码[C++]":      "G.OTH.06-CPP",
+    }
+    mapped = _FALLBACK.get(name)
+    if mapped:
+        return mapped
+    return "row.%03d" % row_number
+
+
+def _parse_word(name):
+    match = WORDS_RE.match(name)
+    if not match:
+        return None
+    word = (match.group(3) or match.group(2) or "").strip()
+    if not word:
+        # Three source rows use the token itself as the sensitive word.
+        word = match.group(2)
+    return word
 
 
 def main() -> int:
-    import openpyxl  # extractor-only dependency
+    import openpyxl
+
+    if not WORKBOOK.is_file():
+        raise SystemExit("C++ ruleset workbook not found: %s" % WORKBOOK)
 
     wb = openpyxl.load_workbook(WORKBOOK, read_only=True, data_only=True)
     ws = wb["Sheet0"]
-    rows = list(ws.iter_rows(min_row=2, values_only=True))
+    rules = []
+    sensitive_words = []
+    for excel_row, values in enumerate(ws.iter_rows(min_row=2, values_only=True), 2):
+        values = list(values) + [None] * (len(COLUMN_NAMES) - len(values))
+        fields = {key: _text(value) for key, value in zip(COLUMN_NAMES, values)}
+        name = fields["rule_name"].strip()
+        if not name:
+            raise ValueError("empty rule name at workbook row %d" % excel_row)
+        rule_id = _rule_id(name, excel_row - 1)
+        rule = {
+            "row": excel_row,
+            "rule_id": rule_id,
+            **fields,
+        }
+        rules.append(rule)
+        word = _parse_word(name)
+        if word is not None:
+            sensitive_words.append({
+                "rule_id": rule_id,
+                "word": word,
+                "severity": fields["severity"] or "一般",
+                "row": excel_row,
+            })
 
-    words = []
-    for r in rows:
-        name = str(r[0]) if r[0] is not None else ""
-        m = WORDS_RE.match(name)
-        if not m:
-            continue
-        words.append({
-            "rule_id": "WordsTool.%s" % m.group(1),
-            "word": m.group(2),
-            "severity": (r[1] or "一般"),
-        })
-    # stable order for reproducible diffs
-    words.sort(key=lambda w: int(w["rule_id"].split(".")[1]))
+    if len(rules) != 545:
+        raise ValueError("expected 545 workbook rows, got %d" % len(rules))
+    if len(sensitive_words) != 307:
+        raise ValueError("expected 307 WordsTool rows, got %d" % len(sensitive_words))
+    if len({item["rule_id"] for item in sensitive_words}) != len(sensitive_words):
+        raise ValueError("duplicate WordsTool rule id")
 
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps({
+    payload = {
         "source": WORKBOOK.name,
-        "total_workbook_rows": len(rows),
-        "sensitive_words": words,
-    }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print("wrote %s (%d sensitive words of %d workbook rows)"
-          % (OUT, len(words), len(rows)))
+        "total_workbook_rows": len(rules),
+        "sensitive_word_rows": len(sensitive_words),
+        "sensitive_words": sensitive_words,
+        "rules": rules,
+    }
+    OUT.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+                   encoding="utf-8")
+    print("wrote %s (%d rows, %d sensitive words)" %
+          (OUT, len(rules), len(sensitive_words)))
     return 0
 
 

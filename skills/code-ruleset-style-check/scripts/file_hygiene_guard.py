@@ -85,6 +85,14 @@ SENSITIVE_EXTS = TEXT_EXTS - _CXX_EXTS
 # All extensions this guard has any check for.
 EXTS = LICENSE_EXTS | BYTE_EXTS | JSON_EXTS | GN_EXTS | SENSITIVE_EXTS
 
+# OAT.1: binary artefact extensions that must never appear in a source tree.
+# A changed file with one of these triggers OAT.1 (binary contamination).
+_BINARY_EXTS = {
+    ".o", ".obj", ".lib", ".a", ".so", ".dll", ".dylib", ".exe", ".bin",
+    ".ko", ".mod", ".class", ".jar", ".war", ".pyc", ".pyo", ".pyd",
+    ".elf", ".deb", ".rpm", ".AppImage", ".snap",
+}
+
 # How many leading lines of a file may precede the copyright header. Real files
 # open with a shebang and/or a comment-block opener before the copyright line,
 # so we scan a small window rather than requiring line 1 exactly. Kept tight so
@@ -275,6 +283,31 @@ def _gn_findings(path):
     return out
 
 
+def _binary_finding(path):
+    """OAT.1: return a finding if `path` is a binary artefact committed to the
+    source tree (compiled object, library, executable, archive, bytecode, …).
+    Binary files in source repos are a licence / supply-chain risk because their
+    provenance cannot be audited via git diff.
+    """
+    return _finding(path, 1, "OAT.1",
+                    "binary artefact detected; do not commit compiled/binary "
+                    "files to the source tree")
+
+
+def _oat6_finding(path):
+    """OAT.6: return a finding if a LICENCE / LICENSE / COPYING file appears in
+    a subdirectory (not the repo root).  The repo SHOULD have exactly one
+    top-level LICENCE file; extra copies in subdirectories are redundant and
+    often indicate stale third-party code whose license must be tracked via
+    README.OpenSource instead.
+    """
+    if path.parent == Path("."):
+        return None  # top-level LICENCE is correct
+    return _finding(path, 1, "OAT.6",
+                    "redundant LICENSE file in subdirectory; remove or "
+                    "document via README.OpenSource instead")
+
+
 def _findings(files):
     out = []
     for path in files:
@@ -293,6 +326,66 @@ def _findings(files):
             out.extend(_sensitive_findings(path))
         if ext in GN_EXTS:
             out.extend(_gn_findings(path))
+        # OAT.1: any file with a binary extension is contamination.
+        if ext in _BINARY_EXTS:
+            out.append(_binary_finding(path))
+        # OAT.6: a LICENCE/LICENSE/COPYING file in a subdirectory is redundant.
+        name = path.name.upper()
+        if name in ("LICENCE", "LICENSE", "COPYING"):
+            f = _oat6_finding(path)
+            if f:
+                out.append(f)
+        # G.INC.02: non-.h header extension (e.g. .inc) is banned
+        if ext not in _CXX_EXTS and path.suffix.lower() == ".inc":
+            out.append(_finding(path, 1, "G.INC.02",
+                                "use .h extension for headers, not .inc"))
+        # G.NAM.01-CPP: C++ source must be .cpp, header must be .h
+        if ext in (".cc", ".cxx", ".hh", ".hxx", ".hpp"):
+            out.append(_finding(path, 1, "G.NAM.01-CPP",
+                                "C++ source files must use .cpp, headers must use .h"))
+        # G.FIL.04-CPP: duplicate file detection (same basename, different ext)
+        # G.PRE.05-CPP / G.PRE.13: #if/#endif mismatch (check #endif count vs #if count)
+    return out
+
+
+def _cross_file_findings(files):
+    """Cross-file checks that need to see multiple files at once.
+
+    G.FIL.04-CPP — same basename with different extensions (suspected duplicate).
+    G.PRE.05-CPP / G.PRE.13 — unmatched #if/#endif across files (check each
+    file individually for balanced preprocessor conditionals).
+    """
+    out = []
+    seen_basenames = {}
+    for path in files:
+        ext = path.suffix.lower()
+        if ext not in _CXX_EXTS:
+            continue
+        stem = path.stem
+        if stem in seen_basenames:
+            out.append({
+                "file": str(path), "line": 1, "rule_id": "G.FIL.04-CPP",
+                "severity": "一般",
+                "remediation": "duplicate file: %s already exists (same basename %r)"
+                % (seen_basenames[stem], stem),
+            })
+        else:
+            seen_basenames[stem] = str(path)
+
+        # G.PRE.05-CPP / G.PRE.13: check #if / #endif balance in each file
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if_count = len(re.findall(r'#\s*if(?:n?def)?\b', text))
+        endif_count = len(re.findall(r'#\s*endif\b', text))
+        if if_count != endif_count:
+            out.append({
+                "file": str(path), "line": 1, "rule_id": "G.PRE.05-CPP",
+                "severity": "严重",
+                "remediation": "unbalanced #if/#endif: %d #if vs %d #endif"
+                % (if_count, endif_count),
+            })
     return out
 
 
@@ -306,6 +399,7 @@ def main():
     # files the caller passed. Out-of-scope / unchanged files drop here.
     files = [Path(x) for x in args.files if Path(x).suffix.lower() in EXTS]
     findings = _findings(files)
+    findings.extend(_cross_file_findings(files))
 
     if args.json:
         Path(args.json).write_text(json.dumps({

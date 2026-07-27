@@ -45,5 +45,24 @@ or P3 — is a defect in this integration, not expected behavior.
 | (default) | clang-format + rules | P2 feature-develop, P7 quality re-check |
 | `--rules-only` | rules only | P3 test-develop (layout must not block) |
 | `--format-only` | clang-format only | ad-hoc formatting checks |
+| `--clang-tidy BUILD_DIR` | + clang-tidy AST checks | P7/P8 when compile_commands.json exists |
 
 `--json PATH` writes the machine-readable finding list a gate attaches as evidence.
+
+### Repository-level OAT rules (external tooling required)
+
+The following workbook rows cannot be checked at the individual-file level and require
+a full-repository OAT (Open Source Audit Tool) scan.  They are acknowledged here so the
+manifest maps every rule to a backend:
+
+| Rule ID | Severity | Rule Name | Required Tool |
+|---------|----------|-----------|---------------|
+| OAT.2   | 致命     | 许可证兼容性 | FossScan / scancode |
+| OAT.5   | 致命     | 无LICENSE文件 | Repo-level file existence check |
+| OAT.7   | 严重     | 无README.OpenSource | Repo-level file existence check |
+| OAT.8   | 一般     | 无README | Repo-level file existence check |
+| OAT.9   | 一般     | 三方软件版本 | OAT / SW360 |
+| FossScan.1 | 致命  | OpenSource Software | FossScan |
+
+These rules are **not** enforced by `code_ruleset_guard.py` or `file_hygiene_guard.py`;
+they must be checked by the CI OAT pipeline before upload.

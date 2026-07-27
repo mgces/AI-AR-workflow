@@ -8,6 +8,10 @@ remaining-work checklist.
 | File | Purpose |
 |---|---|
 | `design_spec.md` | Design of the three fixes + rationale + verification |
+| `solution_design.md` | Control-layer S1–S5 / file-hygiene H1–H6 solution design |
+| `remaining_tasks.md` | 弱模型自治剩余任务盘点(A–E,自评 ~89%) |
+| `status_review.md` | 落地情况复核(对照计划,带 file:line) |
+| `weak_model_residual_audit.md` | 第三轮独立复核:被低估/漏记的协议缺口(G1–G5 / H1–H2) |
 | `todo.md` | Remaining / future task backlog with status |
 
 ## The three fixes (this batch — DONE)
