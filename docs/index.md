@@ -73,7 +73,7 @@ features:
 
 <div class="vp-doc">
 
-  <a href="/getting-started/quick-start" class="vp-home-quick-card">
+  <a href="/AI-AR-workflow/getting-started/quick-start" class="vp-home-quick-card">
     <div class="vp-home-quick-head">
       <span class="vp-home-quick-icon">🚀</span>
       <h3 class="vp-home-quick-title">5 分钟快速开始</h3>
@@ -95,7 +95,7 @@ features:
 
 <div class="vp-doc" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin: 0 0 24px;">
 
-  <a href="/getting-started/environment-init" style="border: 1px solid var(--vp-c-border); border-radius: 12px; padding: 16px 20px; display: block; transition: border-color 0.25s; text-decoration: none;">
+  <a href="/AI-AR-workflow/getting-started/environment-init" style="border: 1px solid var(--vp-c-border); border-radius: 12px; padding: 16px 20px; display: block; transition: border-color 0.25s; text-decoration: none;">
     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 6px;">
       <span style="font-size: 22px;">🔧</span>
       <h3 style="margin: 0; font-size: 17px;">环境没就绪？</h3>
@@ -103,7 +103,7 @@ features:
     <p style="opacity: 0.8; margin: 4px 0 0; font-size: 14px;">build.sh / hdc / 真机 / oh-gc 不会配？看环境初始化详解。</p>
   </a>
 
-  <a href="/examples/new-feature-end-to-end" style="border: 1px solid var(--vp-c-border); border-radius: 12px; padding: 16px 20px; display: block; transition: border-color 0.25s; text-decoration: none;">
+  <a href="/AI-AR-workflow/examples/new-feature-end-to-end" style="border: 1px solid var(--vp-c-border); border-radius: 12px; padding: 16px 20px; display: block; transition: border-color 0.25s; text-decoration: none;">
     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 6px;">
       <span style="font-size: 22px;">📖</span>
       <h3 style="margin: 0; font-size: 17px;">想看完整示例？</h3>
@@ -116,15 +116,15 @@ features:
 ## 三条推荐路径
 
 <div class="vp-doc" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin: 24px 0;">
-  <a href="/getting-started/quick-start" style="border: 1px solid var(--vp-c-border); border-radius: 8px; padding: 16px; display: block; transition: border-color 0.25s;">
+  <a href="/AI-AR-workflow/getting-started/quick-start" style="border: 1px solid var(--vp-c-border); border-radius: 8px; padding: 16px; display: block; transition: border-color 0.25s;">
     <h3 style="margin-top: 0;">路径 A：第一次使用 workflow</h3>
     <p style="opacity: 0.8; margin-bottom: 0;">5 分钟快速开始 → 初始化环境 → 跑第一次 AR</p>
   </a>
-  <a href="/workflow/phase-1-design-and-develop" style="border: 1px solid var(--vp-c-border); border-radius: 8px; padding: 16px; display: block; transition: border-color 0.25s;">
+  <a href="/AI-AR-workflow/workflow/phase-1-design-and-develop" style="border: 1px solid var(--vp-c-border); border-radius: 8px; padding: 16px; display: block; transition: border-color 0.25s;">
     <h3 style="margin-top: 0;">路径 B：已经在做代码开发</h3>
     <p style="opacity: 0.8; margin-bottom: 0;">进入 P1 设计与开发 → 编译与测试 → 真机验证</p>
   </a>
-  <a href="/skill-playbooks/" style="border: 1px solid var(--vp-c-border); border-radius: 8px; padding: 16px; display: block; transition: border-color 0.25s;">
+  <a href="/AI-AR-workflow/skill-playbooks/" style="border: 1px solid var(--vp-c-border); border-radius: 8px; padding: 16px; display: block; transition: border-color 0.25s;">
     <h3 style="margin-top: 0;">路径 C：想单独复用某个 skill</h3>
     <p style="opacity: 0.8; margin-bottom: 0;">查 build skill → test skill → hdc / flash / PR review skill</p>
   </a>

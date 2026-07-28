@@ -11,6 +11,10 @@ export default defineConfig({
   lang: 'zh-CN',
   lastUpdated: true,
   cleanUrls: true,
+  // GitHub Pages 项目站点部署在 https://<user>.github.io/AI-AR-workflow/ 子路径下。
+  // 改仓库名或换成用户/组织站点(<user>.github.io，根路径)时，把这里改成 '/' 并同步
+  // 更新 docs/index.md 里几处裸 <a href="/AI-AR-workflow/..."> 的前缀。
+  base: '/AI-AR-workflow/',
 
   head: [
     ['meta', { name: 'theme-color', content: '#3aa676' }],
