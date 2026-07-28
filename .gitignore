@@ -20,3 +20,8 @@ skills/code-ruleset-style-check/s/
 # knowledge-base BM25 lexical search index — derived output, rebuild locally
 # with openharmony-knowledge-base/tools/search/build_index.py (never commit).
 openharmony-knowledge-base/generated/search-index/
+
+# docs site (VitePress) — commit source only; deps + build output are derived.
+node_modules/
+docs/.vitepress/dist/
+docs/.vitepress/cache/
