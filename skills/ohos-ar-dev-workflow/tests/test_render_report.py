@@ -155,9 +155,46 @@ class TestRenderReport(unittest.TestCase):
     def test_main_all_writes_files(self):
         sys.argv = ["render_report.py", "--pipeline-dir", self.pdir, "--kind", "all"]
         rr.main()
-        for fn in ("device_functional.md", "quality.md",
+        for fn in ("test_report.md", "device_functional.md", "quality.md",
                    "summary.md", "pr_description.md", "index.md"):
             self.assertTrue(os.path.isfile(os.path.join(self.pdir, "reports", fn)), fn)
+
+    def test_test_report_degrades_without_p5_evidence(self):
+        # No phase5 evidence and no P5/P6 verdict in the manifest fixture: the
+        # report must render its degraded placeholders, never traceback.
+        state, entries = rr.load(self.pdir)
+        out = rr.render_test(self.pdir, state, entries)
+        self.assertIn("测试用例报告", out)
+        self.assertIn("P5 单元测试", out)
+        self.assertIn("summary_report.xml 未产出", out)
+        self.assertIn("result_*.xml 缺失", out)
+        self.assertIn("P6 真机证据未产出", out)
+
+    def test_test_report_shows_p5_counts_and_cases(self):
+        # Give it real P5 evidence: summary_report.xml (totals) + one result xml
+        # (a passed and a failed case) + a P5 PASS verdict in the manifest.
+        p5 = os.path.join(self.pdir, "evidence", "phase5")
+        os.makedirs(p5)
+        with open(os.path.join(p5, "summary_report.xml"), "w") as f:
+            f.write('<testsuites name="summary_report" tests="2" failures="1" errors="0"/>')
+        with open(os.path.join(p5, "result_FooTest.xml"), "w") as f:
+            f.write('<testsuite name="FooTest">'
+                    '<testcase classname="FooTest" name="Ok"/>'
+                    '<testcase classname="FooTest" name="Bad">'
+                    '<failure message="expected 1 got 2"/></testcase>'
+                    '</testsuite>')
+        with open(os.path.join(p5, "gtest_coverage.txt"), "w") as f:
+            f.write("required (from ar-contract): 1\npassed in report: 1\n\n[OK ] FooTest.Ok\n")
+        with open(os.path.join(self.pdir, "evidence", "manifest.jsonl"), "a") as f:
+            f.write(json.dumps({"phase": 5, "verdict": "PASS",
+                                "reason": "tests=2 failures=1"}) + "\n")
+        state, entries = rr.load(self.pdir)
+        out = rr.render_test(self.pdir, state, entries)
+        self.assertIn("单测计数", out)
+        self.assertIn("FooTest.Bad", out)          # failed case listed
+        self.assertIn("expected 1 got 2", out)     # failure message surfaced
+        self.assertIn("通过用例合计", out)
+        self.assertIn("FooTest.Ok", out)           # from gtest_coverage block
 
 
 if __name__ == "__main__":

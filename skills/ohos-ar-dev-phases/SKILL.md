@@ -46,7 +46,8 @@ description: >
   新增独立测试文件**(`TEST_ONLY_PHASES=(3,5,6,7)`;build_verify(4) 不在此列);出现非测试新增路径或改功能
   代码/配置会被拒绝,须 `reset` 回 P1 重走。
 - **证据/报告分离**:`evidence/`(机器,HMAC 链签名,gitignore)‖ `reports/`(人读 Markdown,脱敏可归档)。
-  P6/P7/P8 PASS 后编排器跑 `render_report.py --kind device|quality|summary` 渲染,各产**单个**
-  聚合 `.md`(`device_functional.md`/`quality.md`/`summary.md`);P8 的 `pr_description.md`
+  P6/P7/P8 PASS 后编排器跑 `render_report.py --kind test|device|quality|summary` 渲染,各产**单个**
+  聚合 `.md`(`test_report.md`/`device_functional.md`/`quality.md`/`summary.md`);P8 的 `pr_description.md`
   由 `gate_upload_ci` 注入 PR。渲染是编排器动作,不影响门控 verdict。
+  (`test_report.md`:P6 通过后渲染,聚合 P5 单测执行结果 + P6 真机关键证据点。)
 - **todo 刷新**:每轮循环开头 `refresh_todo.py` 依 AR_design 重写 `todo.md`,再与 `TodoWrite` 对齐。
