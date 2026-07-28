@@ -434,7 +434,7 @@ def main():
     arts.append(sum_rel)
     # also snapshot per-suite result xmls
     result_rels = []
-    for rx in glob.glob(os.path.join(fresh_dir, "result", "*.xml")):
+    for rx in glob.glob(os.path.join(fresh_dir, "result", "**", "*.xml"), recursive=True):
         rrel = "evidence/phase5/result_%s" % os.path.basename(rx)
         shutil.copy(rx, os.path.join(pdir, rrel))
         arts.append(rrel)
