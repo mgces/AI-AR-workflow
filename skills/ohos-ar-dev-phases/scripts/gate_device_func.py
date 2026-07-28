@@ -3,11 +3,19 @@
 """
 gate_device_func.py — Phase 4 (real-device functional test). Strongest gate.
 
-The device RTC is wrong, so timestamps are worthless for freshness. Instead the
-evidence is bound to THIS run cryptographically and monotonically:
+The device RTC may be wrong in absolute terms, so timestamps are worthless as a
+freshness *anchor*. Instead the evidence is bound to THIS run cryptographically
+and monotonically:
 
-  * a fresh per-run nonce is generated host-side and injected into the device
-    hilog timeline (log -t LIFECYCLE_GATE NONCE=<nonce> START/END);
+  * a fresh per-run nonce is generated host-side; the captured hilog window must
+    contain it (proves the component echoed this run's marker, not a stale one);
+  * the trigger window is bracketed by host-observed reads of the device
+    wall-clock (the same CLOCK_REALTIME hilog stamps its lines with): the gate
+    reads the clock right before and after driving the scenario, then keeps only
+    hilog lines whose own timestamp falls inside [start, end]. Stale/pre-seeded
+    lines fall outside the window. This needs no device `log` command (OHOS ships
+    hilog, not the Android `log`), and hdc's rc=0-on-remote-failure is defeated
+    by validating the clock read's SHAPE rather than its exit code;
   * /proc/uptime is sampled before deploy and after capture and must increase
     (proves same boot session, after deploy) — no wall clock involved;
   * the captured hilog window must contain BOTH the nonce AND the caller-supplied
@@ -309,42 +317,70 @@ def find_marker_line(text, marker):
     return None
 
 
-def split_capture_windows(cap_text, nonce):
-    """Split a full hilog capture into the baseline and trigger windows.
+_TS_RE = re.compile(r"(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?")
 
-    We inject three host-controlled fence lines:
-      NONCE=<n> BASELINE_START
-      NONCE=<n> START
-      NONCE=<n> END
 
-    The baseline window is between BASELINE_START and START; the trigger window is
-    between START and END. If a window is unavailable, its *_found flag is False
-    and its text is empty.
+def _parse_ts(s):
+    """Parse a hilog / `date` timestamp 'MM-DD HH:MM:SS.mmm' into a comparable
+    tuple (mo, da, hh, mm, ss, ms), or None if the shape is unrecognizable.
+
+    hdc shell returns rc=0 even when the remote `date` is missing, so the ONLY
+    reliable failure signal for a device-clock read is the output shape. Callers
+    reading a boundary treat None as a hard clock-read failure. When the device
+    `date` lacks sub-second support (%N left literal), the millisecond group is
+    absent and we fall back to second granularity rather than misparsing.
+    """
+    if not s:
+        return None
+    m = _TS_RE.search(s)
+    if not m:
+        return None
+    mo, da, hh, mm, ss = (int(m.group(i)) for i in range(1, 6))
+    frac = m.group(6) or ""
+    ms = int((frac + "000")[:3]) if frac.isdigit() else 0
+    return (mo, da, hh, mm, ss, ms)
+
+
+def fmt_ts(t):
+    """Render a parsed timestamp tuple back to 'MM-DD HH:MM:SS.mmm' for evidence."""
+    return "%02d-%02d %02d:%02d:%02d.%03d" % t
+
+
+def split_capture_windows(cap_text, t_baseline_start, t_start, t_end):
+    """Split a full hilog capture into the baseline and trigger windows using
+    host-observed device wall-clock boundaries (timestamp bracketing).
+
+    The three boundaries are host-controlled reads of the device clock — the same
+    CLOCK_REALTIME hilog stamps every line with. The baseline window is
+    [t_baseline_start, t_start); the trigger window is [t_start, t_end]. A line
+    counts only if its OWN parsed timestamp falls inside the window, so stale,
+    pre-seeded, or forged lines emitted before t_start (or after t_end) can never
+    be counted. This preserves the anti-forgery trigger-window guarantee of the
+    old injected-fence design without depending on a device `log` command that
+    OHOS does not ship. Boundaries must be non-decreasing; if the caller passed a
+    None boundary (unreadable clock) the corresponding window is not found.
     """
     lines = (cap_text or "").splitlines()
-    base_tok = "NONCE=%s BASELINE_START" % nonce
-    start_tok = "NONCE=%s START" % nonce
-    end_tok = "NONCE=%s END" % nonce
-    base_i = start_i = end_i = None
-    for i, line in enumerate(lines):
-        if base_i is None and base_tok in line:
-            base_i = i
-        if start_i is None and start_tok in line:
-            start_i = i
-        if end_i is None and end_tok in line:
-            end_i = i
-    baseline_found = base_i is not None and start_i is not None and base_i < start_i
-    trigger_found = start_i is not None and end_i is not None and start_i < end_i
-    baseline_text = "\n".join(lines[base_i + 1:start_i]) if baseline_found else ""
-    trigger_text = "\n".join(lines[start_i + 1:end_i]) if trigger_found else ""
+    baseline_found = (t_baseline_start is not None and t_start is not None
+                      and t_baseline_start <= t_start)
+    trigger_found = (t_start is not None and t_end is not None and t_start <= t_end)
+    base_lines, trig_lines = [], []
+    for line in lines:
+        ts = _parse_ts(line)
+        if ts is None:
+            continue
+        if baseline_found and t_baseline_start <= ts < t_start:
+            base_lines.append(line)
+        if trigger_found and t_start <= ts <= t_end:
+            trig_lines.append(line)
     return {
-        "baseline_start_found": base_i is not None,
-        "start_found": start_i is not None,
-        "end_found": end_i is not None,
+        "baseline_start_found": t_baseline_start is not None,
+        "start_found": t_start is not None,
+        "end_found": t_end is not None,
         "baseline_found": baseline_found,
         "trigger_found": trigger_found,
-        "baseline_text": baseline_text,
-        "trigger_text": trigger_text,
+        "baseline_text": "\n".join(base_lines),
+        "trigger_text": "\n".join(trig_lines),
     }
 
 
@@ -766,11 +802,28 @@ def main():
             f.write("host_artifact=%s\nhost_sha256=%s\n" % (args.host_artifact, host_sha))
             f.write("device_artifact=%s\ndevice_sha256=%s\n" % (args.device_artifact, device_sha))
 
-    # 2. baseline marker + START marker. The baseline window is intentionally the
-    # small pre-trigger region controlled by these host-emitted fences.
-    record("mark_baseline_start",
-           sh('dev_shell "log -t LIFECYCLE_GATE NONCE=%s BASELINE_START"' % nonce))
-    record("mark_start", sh('dev_shell "log -t LIFECYCLE_GATE NONCE=%s START"' % nonce))
+    # 2. baseline + START boundaries. Instead of injecting fence log lines (OHOS
+    # has no `log` command, and hdc shell would swallow its failure with rc=0), we
+    # bracket the windows with host-observed reads of the device wall-clock. The
+    # baseline window is the small pre-trigger region between these two reads.
+    def device_now(label):
+        cp = sh("dev_now")
+        record(label, cp)
+        ts = _parse_ts(cp.stdout)
+        if ts is None:
+            _fail(pdir, phase, nonce, cmds_log,
+                  "device clock unreadable at %s (got %r)"
+                  % (label, (cp.stdout + cp.stderr).strip()[:200]),
+                  failure_class="device_clock_unreadable",
+                  problems=["device wall-clock read returned no MM-DD HH:MM:SS timestamp; "
+                            "hdc shell masks the remote failure with rc=0, so this is "
+                            "detected by output shape, not exit code"],
+                  resume_hint="确认设备 shell 有可用 date(date +'%m-%d %H:%M:%S.%N')后重跑 "
+                              "gate_device_func.py")
+        return ts
+
+    t_baseline_start = device_now("mark_baseline_start")
+    t_start = device_now("mark_start")
 
     # 3. drive the functional scenario (nonce exported for the component to echo)
     with open(args.scenario_script) as f:
@@ -783,15 +836,24 @@ def main():
               problems=["scenario script exited %d" % cp.returncode],
               resume_hint="修复 scenario 脚本或触发条件后重跑 gate_device_func.py")
 
-    # 4. mark END + capture hilog
-    record("mark_end", sh('dev_shell "log -t LIFECYCLE_GATE NONCE=%s END"' % nonce))
+    # 4. END boundary + capture hilog
+    t_end = device_now("mark_end")
+    if not (t_baseline_start <= t_start <= t_end):
+        _fail(pdir, phase, nonce, cmds_log,
+              "device clock not monotonic across the run window "
+              "(baseline_start=%s start=%s end=%s)"
+              % (fmt_ts(t_baseline_start), fmt_ts(t_start), fmt_ts(t_end)),
+              failure_class="device_clock_nonmonotonic",
+              problems=["device wall-clock moved backward during the run; timestamp "
+                        "bracketing cannot define a trustworthy trigger window"],
+              resume_hint="等设备时钟稳定(勿在 NTP 校时/跨日切换瞬间跑)后重跑 gate_device_func.py")
     cap = record("hilog", sh('dev_shell "hilog -x"'))
     cap_text = cap.stdout
     cap_rel = "evidence/phase%d/hilog_capture.txt" % phase
     with open(os.path.join(pdir, cap_rel), "w", encoding="utf-8") as f:
         f.write(cap_text)
 
-    windows = split_capture_windows(cap_text, nonce)
+    windows = split_capture_windows(cap_text, t_baseline_start, t_start, t_end)
     baseline_text = windows["baseline_text"]
     trigger_text = windows["trigger_text"]
     base_rel = "evidence/phase%d/hilog_baseline_window.txt" % phase
@@ -816,6 +878,8 @@ def main():
             args.runtime_marker or "", args.e2e_marker or ""))
         f.write("baseline_window_found=%s\ntrigger_window_found=%s\n"
                 % (windows["baseline_found"], windows["trigger_found"]))
+        f.write("window_baseline_start=%s\nwindow_start=%s\nwindow_end=%s\n"
+                % (fmt_ts(t_baseline_start), fmt_ts(t_start), fmt_ts(t_end)))
 
     arts = [cap_rel, base_rel, trig_rel, cmds_rel, meta_rel]
     if proof_rel:

@@ -27,11 +27,11 @@ BASE = dict(nonce="NONCE1", marker="FUNC_OK", runtime_marker="RT_OK",
             host_sha="abc", device_sha="abc")
 
 
-FULL_CAPTURE = """noise
-07-24 10:00:00.000  999  999 I LIFECYCLE_GATE: NONCE=NONCE1 BASELINE_START
-07-24 10:00:01.000  999  999 I LIFECYCLE_GATE: NONCE=NONCE1 START
+FULL_CAPTURE = """noise line with no timestamp
+07-24 09:59:59.000  999  999 I StaleTag: NONCE1 FUNC_OK stale pre-window line
+07-24 10:00:00.500  111  111 I BaseTag: baseline region line
 07-24 10:00:02.000  1234  1234 I DemoTag: NONCE1 FUNC_OK RT_OK E2E_OK D1 D2
-07-24 10:00:03.000  999  999 I LIFECYCLE_GATE: NONCE=NONCE1 END
+07-24 10:00:09.000  999  999 I LateTag: NONCE1 FUNC_OK forged post-window line
 """
 
 
@@ -118,13 +118,42 @@ class TestDeviceMarkerCoverage(unittest.TestCase):
 
 
 class TestHilogWindowing(unittest.TestCase):
-    def test_split_capture_windows(self):
-        windows = gdf.split_capture_windows(FULL_CAPTURE, "NONCE1")
+    def test_split_capture_windows_by_time(self):
+        # timestamp bracketing: only lines whose own hilog timestamp falls inside
+        # the host-observed window count. Stale pre-window and forged post-window
+        # lines are excluded even though they carry the nonce + markers — this is
+        # the anti-forgery guarantee that replaces the old injected fence lines.
+        t_bs = gdf._parse_ts("07-24 10:00:00.000")
+        t_s = gdf._parse_ts("07-24 10:00:01.000")
+        t_e = gdf._parse_ts("07-24 10:00:03.000")
+        windows = gdf.split_capture_windows(FULL_CAPTURE, t_bs, t_s, t_e)
         self.assertTrue(windows["baseline_found"])
         self.assertTrue(windows["trigger_found"])
-        self.assertEqual("", windows["baseline_text"].strip())
+        self.assertIn("baseline region", windows["baseline_text"])
+        self.assertNotIn("FUNC_OK", windows["baseline_text"])
         self.assertIn("FUNC_OK", windows["trigger_text"])
         self.assertIn("D1", windows["trigger_text"])
+        self.assertNotIn("stale pre-window", windows["trigger_text"])
+        self.assertNotIn("post-window", windows["trigger_text"])
+
+    def test_split_capture_windows_unreadable_clock(self):
+        # a None boundary (unreadable device clock) leaves that window not-found
+        # rather than silently spanning the whole capture.
+        t_s = gdf._parse_ts("07-24 10:00:01.000")
+        t_e = gdf._parse_ts("07-24 10:00:03.000")
+        windows = gdf.split_capture_windows(FULL_CAPTURE, None, t_s, t_e)
+        self.assertFalse(windows["baseline_found"])
+        self.assertTrue(windows["trigger_found"])
+
+    def test_parse_ts_shape(self):
+        # the silent-swallow fix keys off output SHAPE (hdc returns rc=0 even when
+        # the remote `date` is missing), so parsing must be exact and fail closed.
+        self.assertEqual((7, 24, 10, 0, 1, 500), gdf._parse_ts("07-24 10:00:01.500"))
+        # no sub-second support (%N left literal) -> second granularity, not misparse
+        self.assertEqual((7, 24, 10, 0, 1, 0), gdf._parse_ts("07-24 10:00:01.%N"))
+        # garbage / missing date -> None (the hard clock-read failure signal)
+        self.assertIsNone(gdf._parse_ts("date: command not found"))
+        self.assertIsNone(gdf._parse_ts(""))
 
     def test_parse_hilog_pid(self):
         line = "07-24 10:00:02.000  1234  4321 I DemoTag: NONCE1 FUNC_OK"

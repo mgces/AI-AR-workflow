@@ -182,7 +182,8 @@ P6 在旧有 `nonce + uptime + artifact sha + runtime/e2e marker + contract mark
 3. **real side-effect assertion**
    - 当前最小支持 `shell_assert`;记录命令/期望/stdout/stderr/rc/pass-fail。
 4. **negative-control differential**
-   - `BASELINE_START/START/END` 分窗;
+   - 时间戳分窗:baseline 窗口 `[baseline_start, start)`、trigger 窗口 `[start, end]`
+     均由主机读设备墙钟(`dev_now`)界定,按行时间戳切分;
    - `absent_before_trigger=true` 时,marker 触发前已出现直接 FAIL。
 
 新增证据:

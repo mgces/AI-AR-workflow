@@ -87,5 +87,15 @@ dev_assert_online() {
 # Monotonic boot anchor (device RTC is unreliable; uptime is not).
 dev_uptime() { dev_shell 'cat /proc/uptime' | tr -d '\r' | awk '{print $1}'; }
 
+# Host-observed device wall-clock in hilog's "MM-DD HH:MM:SS.mmm" shape. hilog
+# stamps its lines from CLOCK_REALTIME and so does `date`, so three host-controlled
+# reads of this clock bracket exactly the lines hilog emitted between them — the
+# same trigger-window guarantee the old injected fence lines gave, but without a
+# device `log` command (OHOS ships hilog, not the Android `log`). The RTC may be
+# wrong in absolute terms; we only require it be internally consistent during the
+# run. hdc shell returns rc=0 even when `date` is absent, so the caller validates
+# the OUTPUT SHAPE (a real timestamp) rather than the exit code.
+dev_now() { dev_shell 'date +"%m-%d %H:%M:%S.%N"' | tr -d '\r'; }
+
 # Remount / as rw for /system writes (rooted board).
 dev_remount_rw() { dev_shell 'mount -o remount,rw /'; }

@@ -156,15 +156,16 @@
 
 旧模型只靠 marker 命中容易被伪造;当前 P6 已升级为"四锚联合证明":
 
-### 4.1 per-run nonce
+### 4.1 per-run nonce + 时间戳分窗
 
-- 主机生成随机 nonce；
-- 注入 hilog fence：
-  - `NONCE=<n> BASELINE_START`
-  - `NONCE=<n> START`
-  - `NONCE=<n> END`
-- 场景脚本通过 `$GATE_NONCE` 使用同一个 nonce；
-- 本次抓取文本必须包含本次 nonce，旧日志不能冒充。
+- 主机生成随机 nonce；场景脚本通过 `$GATE_NONCE` 使用同一个 nonce；
+- 本次抓取文本必须包含本次 nonce，旧日志不能冒充；
+- **触发窗口由时间戳分窗界定**(不再注入 `log` fence 行——OHOS 无 `log` 命令,且 hdc
+  远端失败仍返回 rc=0 会被静默吞掉)。gate 在驱动场景**前后**各读一次设备墙钟
+  (`dev_now` → `date +'%m-%d %H:%M:%S.%N'`,与 hilog 同源 CLOCK_REALTIME),只保留
+  自身时间戳落在 `[start, end]` 窗口内的 hilog 行;窗口外的陈旧/预置/伪造行一律不计。
+  设备 RTC 绝对值可错,只需在本次 run 内自洽;时钟读不出(shape 不合法)或非单调 → FAIL-closed
+  (`device_clock_unreadable` / `device_clock_nonmonotonic`),靠**输出形状**而非退出码判定。
 
 ### 4.2 `/proc/uptime` 单调锚
 
