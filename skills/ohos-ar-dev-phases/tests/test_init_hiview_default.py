@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 # Copyright (c) 2026. Licensed under the Apache License, Version 2.0.
-"""C3 regression: a bare `advance.py init` (no component flags) must land the
-hiview defaults AND print an explicit NOTE that the component was defaulted, so
-a weak model running init for a NON-hiview AR is told, at author time, to re-init
-with --git-dir/--build-target/--part instead of silently compiling the wrong
-component. The NOTE must NOT appear when the caller pins a different component.
+"""C3 regression: the compiled component is user-determined per AR, so a fully
+bare `advance.py init` (no component flags) must HARD-FAIL and tell the caller to
+confirm with the user — either pin the AR's real --git-dir/--build-target/--part,
+or explicitly accept the hiview default with --confirm-defaults. Confirming the
+default lands the hiview values plus a human-confirmed NOTE; pinning a different
+component skips the NOTE. This stops a weak model from silently compiling hiview
+for a non-hiview AR.
 """
 import json
 import os
@@ -46,8 +48,15 @@ class TestInitHiviewDefault(unittest.TestCase):
         with open(gl.state_path(self.pdir), encoding="utf-8") as f:
             return json.load(f)
 
-    def test_bare_init_defaults_to_hiview_and_prints_note(self):
+    def test_bare_init_hard_fails_without_confirmation(self):
         cp = self._init()
+        self.assertNotEqual(cp.returncode, 0)
+        self.assertIn("compiled component not confirmed", cp.stdout + cp.stderr)
+        # nothing persisted when the gate blocks
+        self.assertFalse(os.path.exists(gl.state_path(self.pdir)))
+
+    def test_confirm_defaults_lands_hiview_and_prints_note(self):
+        cp = self._init("--confirm-defaults")
         self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
         self.assertIn("NOTE: compiled component defaulted to hiview", cp.stdout)
         st = self._state()

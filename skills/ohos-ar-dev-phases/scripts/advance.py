@@ -977,6 +977,28 @@ def cmd_init(args):
     os.makedirs(os.path.join(pdir, "evidence"), exist_ok=True)
     if os.path.exists(gl.state_path(pdir)) and not args.force:
         sys.exit("ERROR: pipeline.json already exists (use --force to recreate)")
+    # Compile-component confirmation gate. The compiled component (git_dir /
+    # build_target / part) is user-determined per AR. A bare `init` that pins
+    # NONE of the three would silently compile hiview — so we HARD-BLOCK it and
+    # force the caller to stop and confirm with the user. Two ways past the gate:
+    #   * pass the AR's real component: --git-dir/--build-target/--part, or
+    #   * explicitly accept the hiview default: --confirm-defaults.
+    # This turns the old advisory NOTE into a deterministic human checkpoint so a
+    # weak model can't drift into compiling the wrong component.
+    _all_defaulted = (args.git_dir in (None, DEFAULT_GIT_DIR)
+                      and args.build_target == DEFAULT_BUILD_TARGET
+                      and args.part == DEFAULT_TEST_PART)
+    if _all_defaulted and not args.confirm_defaults:
+        sys.exit(
+            "ERROR: compiled component not confirmed. The component to compile is "
+            "user-determined per AR and must be confirmed by a human before init.\n"
+            "  * Ask the user which component this AR touches, then re-run init with\n"
+            "      --git-dir <component> --build-target <gn_target> --part <testpart>\n"
+            "  * OR, if the user confirms the hiview default (git_dir=%s "
+            "build_target=%s part=%s),\n"
+            "      re-run init with --confirm-defaults."
+            % (DEFAULT_GIT_DIR, DEFAULT_BUILD_TARGET, DEFAULT_TEST_PART))
+    _defaults_confirmed = _all_defaulted and args.confirm_defaults
     run_id = args.run_id or os.path.basename(pdir.rstrip("/"))
     gl.create_secret(run_id)
     state = {
@@ -1013,11 +1035,12 @@ def cmd_init(args):
     gl.save_state(pdir, state)
     print("initialized pipeline at %s (run_id=%s)" % (pdir, run_id))
     print("secret: %s (mode 600)" % gl.secret_path(run_id))
-    if args.build_target == DEFAULT_BUILD_TARGET and args.git_dir in (None, DEFAULT_GIT_DIR):
-        print("NOTE: compiled component defaulted to hiview "
-              "(git_dir=%s build_target=%s part=%s). If this AR touches a "
-              "different component, re-init with --git-dir/--build-target/--part."
-              % (state["git_dir"], state["build_target"], state["test"]["part"]))
+    print("compiled component: git_dir=%s build_target=%s part=%s"
+          % (state["git_dir"], state["build_target"], state["test"]["part"]))
+    if _defaults_confirmed:
+        print("NOTE: compiled component defaulted to hiview (human-confirmed via "
+              "--confirm-defaults). If this AR touches a different component, "
+              "re-init --force with --git-dir/--build-target/--part.")
 
 
 def cmd_advance(args):
@@ -1356,6 +1379,11 @@ def main():
     p.add_argument("--part", default=DEFAULT_TEST_PART,
                    help="developer_test part. Defaults to the hiview part (%s)."
                         % DEFAULT_TEST_PART)
+    p.add_argument("--confirm-defaults", action="store_true",
+                   help="explicitly accept the hiview default component when NONE "
+                        "of --git-dir/--build-target/--part is given. Without this "
+                        "flag a fully-defaulted init HARD-FAILS, forcing a human to "
+                        "confirm the compiled component per AR.")
     p.add_argument("--base-commit", default="")
     p.add_argument("--force", action="store_true")
     p.set_defaults(func=cmd_init)

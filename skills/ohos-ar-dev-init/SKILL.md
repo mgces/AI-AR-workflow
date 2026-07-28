@@ -44,17 +44,23 @@ ls "$S/gate_env_init.py" "$S/lib/device.sh"     # 确认存在
 `pipeline.json` 与 `evidence/phase0/env.json`。先 `advance.py init` 建好运行态再跑校验:
 
 ```bash
-# 三个部件参数均有默认值(hiview 部件),缺省即可跑;换部件时再显式覆盖:
-#   --git-dir      默认 base/hiviewdfx/hiview   (被编译组件子仓)
-#   --build-target 默认 hiview_package          (GN 目标)
-#   --part         默认 hiviewdfx               (developer_test part)
-python3 $S/advance.py --pipeline-dir "$PDIR" init [--git-dir <组件路径>] [--build-target <gn目标>] [--part <testpart>]
+# 编译部件由用户按 AR 确定,init 不再静默默认为 hiview:裸 init(三个参数都不给)会硬失败,
+# 逼你停下来跟用户确认要编译哪个部件。确认后二选一放行:
+#   A. 本 AR 改的组件:显式传 --git-dir/--build-target/--part
+#        --git-dir      被编译组件子仓,如 base/hiviewdfx/hiview
+#        --build-target GN 目标,如 hiview_package
+#        --part         developer_test part,如 hiviewdfx
+#   B. 用户确认沿用 hiview 默认部件:加 --confirm-defaults(不传任何组件参数时才需要)
+python3 $S/advance.py --pipeline-dir "$PDIR" init \
+    [--git-dir <组件路径> --build-target <gn目标> --part <testpart> | --confirm-defaults]
 python3 $S/gate_env_init.py --pipeline-dir "$PDIR"            # 逐项能力校验,产证据
 python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 0
 ```
 
-> 💡 编译部件由用户按 AR 确定,但缺省为 hiview 部件,使裸 `init`(不带三个参数)即可运行。
-> 缺省时 `init` 会打印一条 `NOTE:` 提示所用默认部件;若本 AR 改的是别的组件,请用上述三个参数覆盖后重新 init。
+> 💡 **编译部件是人工确认点。** 跑 init 前先用 `AskUserQuestion` 问清用户本 AR 要编译的部件
+> (默认候选:hiview 部件 git_dir=`base/hiviewdfx/hiview` / build_target=`hiview_package` /
+> part=`hiviewdfx`)。用户答别的组件 → 传三个参数;用户确认沿用 hiview → 加 `--confirm-defaults`。
+> 裸 `init`(三者皆缺又不带 `--confirm-defaults`)会**硬失败并打印确认指引**,绝不静默编译 hiview。
 
 
 | 能力 | 级别 | 校验内容 | 服务阶段 |

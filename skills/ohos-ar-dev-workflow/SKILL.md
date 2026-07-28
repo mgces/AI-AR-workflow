@@ -51,7 +51,10 @@ GN 构建目标(`build_target`)、测试 `testpart` 与套件名、目标二进�
 ## 步骤 0:初始化检查
 
 - 若 `specs/initialized.flag` 不存在或环境未就绪 → 先跑技能 `ohos-ar-dev-init`。
-- 为本次 AR 建运行态目录并初始化状态机:
+- 为本次 AR 建运行态目录并初始化状态机。**编译部件是人工确认点**:init 前先用
+  `AskUserQuestion` 跟用户确认本 AR 要编译的部件(默认候选 hiview:
+  git_dir=`base/hiviewdfx/hiview` / build_target=`hiview_package` / part=`hiviewdfx`)。
+  裸 init(三者皆缺又不带 `--confirm-defaults`)会**硬失败**,绝不静默编译 hiview。
   ```bash
   OHOS_ROOT="${OHOS_ROOT:-$HOME/ohos/master}"   # OHOS 仓根(按需修改)
   RUN=$(date +%Y%m%d)-<ar-slug>
@@ -59,8 +62,9 @@ GN 构建目标(`build_target`)、测试 `testpart` 与套件名、目标二进�
   mkdir -p "$PDIR"; printf '%s\n' "<AR 原文>" > "$PDIR/ar.md"
   AGENT_SKILLS_DIR="${AGENT_SKILLS_DIR:-$HOME/.claude/skills}"
   S="$AGENT_SKILLS_DIR/ohos-ar-dev-phases/scripts"
+  # 用户答别的组件 → 传 --git-dir/--build-target/--part;用户确认沿用 hiview → 加 --confirm-defaults
   python3 $S/advance.py --pipeline-dir "$PDIR" init \
-      --build-target <gn_target> --part <testpart> \
+      --git-dir <组件路径> --build-target <gn_target> --part <testpart> \
       --base-commit "$(git -C $OHOS_ROOT rev-parse HEAD)"
   ```
 - 跑 P0 预检并推进:
