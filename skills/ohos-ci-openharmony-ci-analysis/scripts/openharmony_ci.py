@@ -230,8 +230,23 @@ def extract_event_id_from_text(text: str) -> Optional[str]:
 
 
 def latest_event_id_from_pr(pr_number: int, repo: str) -> Tuple[str, Dict[str, Any]]:
+    # oh-gc pr:comments defaults to only the first 30 comments, OLDEST first
+    # (per `oh-gc pr comments --help`). The openharmony_ci bot re-comments on every
+    # CI re-trigger, so on an active PR its *latest* verdict comment (the one
+    # carrying the current DCP event id) is among the newest, not the oldest —
+    # the default page would silently read a stale event id or none at all.
+    #
+    # The guarantee that we see the latest bot comment comes from `--latest`
+    # (newest-first), NOT from `--limit`. `--limit 100` is only a generous window
+    # size: with newest-first ordering, the current CI verdict is in the first few
+    # results, so 100 is far more than enough for any real PR. Raising --limit alone
+    # (without --latest) would still return oldest-first and miss the newest comment.
+    # (`oh-gc pr:comments` exposes no --page/--per-page, so true pagination isn't
+    # available; --latest + a wide --limit is the strongest guarantee this CLI gives.)
+    # We still pick the newest openharmony_ci comment by created timestamp below.
     comments = run_oh_gc(
-        ["pr:comments", str(pr_number), "--repo", repo, "--comment-type", "pr_comment", "--json"]
+        ["pr:comments", str(pr_number), "--repo", repo, "--comment-type", "pr_comment",
+         "--limit", "100", "--latest", "--json"]
     )
     if not isinstance(comments, list):
         raise ToolError("unexpected oh-gc pr:comments response")

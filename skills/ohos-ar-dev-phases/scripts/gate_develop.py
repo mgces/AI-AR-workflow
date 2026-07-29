@@ -40,6 +40,14 @@ HYGIENE_GUARD = gl.resolve_dep("code-ruleset-style-check/scripts/file_hygiene_gu
 FORMAT_EXTENSIONS = (".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx")
 HEADER_EXTENSIONS = (".h", ".hh", ".hpp", ".hxx")
 DISALLOWED_CPP_EXTENSIONS = (".cc", ".cxx", ".hh", ".hpp", ".hxx")
+# Filename-only blockers keyed off the extension of ANY changed path — these
+# files never reach source_files()/static_rule_checks() (they are filtered out
+# by FORMAT_EXTENSIONS), so a .inc header would otherwise slip past P2 into CI.
+# code_ruleset G.INC.02: a header must use .h, not .inc (an .inc that is not
+# self-contained is exactly the CI defect this pulls to author time).
+DISALLOWED_FILENAME_EXTENSIONS = {
+    ".inc": "G.INC.02: header must use .h, not .inc (headers must be self-contained)",
+}
 
 # P2 feature-develop -> P3 test-develop handoff (control layer, non-authoritative).
 P2_HANDOFF_PARTS = ("feature_develop", "handoff_p2_to_p3.json")
@@ -144,6 +152,19 @@ def source_files(gdir, changed):
         if rel.lower().endswith(FORMAT_EXTENSIONS) and os.path.isfile(os.path.join(gdir, rel)):
             files.append(rel)
     return files
+
+
+def disallowed_extension_checks(changed):
+    """Filename-extension blockers over ALL changed paths (not just the
+    FORMAT_EXTENSIONS-filtered C/C++ set). A .inc header is filtered out of
+    source_files(), so this is the only place it can be caught before CI."""
+    issues = []
+    for rel in changed:
+        ext = os.path.splitext(rel)[1].lower()
+        msg = DISALLOWED_FILENAME_EXTENSIONS.get(ext)
+        if msg:
+            issues.append("%s: %s" % (rel, msg))
+    return issues
 
 
 def static_rule_checks(gdir, source_relpaths):
@@ -365,6 +386,9 @@ def main():
     style_rel = "evidence/phase2/style_report.txt"
     strict_rel = "evidence/phase2/strict_cpp_report.txt"
     strict_checked, strict_issues = static_rule_checks(gdir, cxx)
+    # Filename-extension blockers over the full changed set (.inc etc. bypass the
+    # C/C++ content filter above, so they must be checked against all changes).
+    strict_issues += disallowed_extension_checks(changed)
     dependency_issues = []
     if cxx and not os.path.exists(STYLE_GUARD):
         dependency_issues.append("code-ruleset-style-check guard missing: %s" % STYLE_GUARD)

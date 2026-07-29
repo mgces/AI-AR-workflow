@@ -35,8 +35,15 @@ before code reaches the CI gate rather than leaking into it:
 
 Both invocations resolve the guard via `gatelib.resolve_dep(...)` so they share one
 source, and both fail closed if the guard is missing. Both are scoped to the
-**changed** code files only. A finding surfacing only at the CI/OAT gate — not at P2
-or P3 — is a defect in this integration, not expected behavior.
+**changed** code files only. A regex/format finding surfacing only at the CI/OAT gate
+— not at P2 or P3 — is a defect in this integration, not expected behavior.
+
+The **clang-tidy AST rules** (`_CLANG_TIDY_RULE_MAP`) need a `compile_commands.json`,
+which does not exist until code compiles, so they cannot run at P2/P3. They are pulled
+in at **P4 build** (`gate_build.py`), immediately after the build success banner, once
+the compile database is available — see "clang-tidy at P4" below. Any AST-class finding
+that first surfaces at CI when a compile database *was* available at P4 is likewise an
+integration defect.
 
 ### Guard modes
 
@@ -45,9 +52,29 @@ or P3 — is a defect in this integration, not expected behavior.
 | (default) | clang-format + rules | P2 feature-develop, P7 quality re-check |
 | `--rules-only` | rules only | P3 test-develop (layout must not block) |
 | `--format-only` | clang-format only | ad-hoc formatting checks |
-| `--clang-tidy BUILD_DIR` | + clang-tidy AST checks | P7/P8 when compile_commands.json exists |
+| `--clang-tidy BUILD_DIR` | + clang-tidy AST checks | P4 build (after compile), when `compile_commands.json` exists |
 
 `--json PATH` writes the machine-readable finding list a gate attaches as evidence.
+
+### clang-tidy at P4 (compile-database-gated, hard-block-or-degrade)
+
+`_CLANG_TIDY_RULE_MAP` covers ~50 AST-level `G.*` rules (override, member init,
+lifetime, type-safety, ...) that a single-line regex cannot judge. They need
+`compile_commands.json`, so they are wired into **P4** (`gate_build.py`), not P2:
+
+- After the build success banner, `gate_build.py` generates a compile database
+  (`ninja -C out/<product> -t compdb cc cxx > out/<product>/compile_commands.json`,
+  host prebuilt ninja preferred) and runs the guard with
+  `--clang-tidy out/<product> --json evidence/phase4/clang_tidy_findings.json`
+  over the P2-locked changed C/C++ files.
+- **Compile database generated + clang-tidy on PATH → findings non-empty ⇒ P4 FAIL**
+  (hard block, same tier as a build failure — fix the code and re-run from P2).
+- **compdb generation fails / clang-tidy not on PATH ⇒ degrade to advisory**: an
+  `evidence/phase4/clang_tidy_note.txt` note is written, P4 still PASSes (fail-open),
+  and the note states plainly that clang-tidy did not run so CI may still flag these.
+
+This is best-effort by design: compdb generation can be expensive, so a missing tool
+must not stall the pipeline. When it *does* run, it is a real gate.
 
 ### Repository-level OAT rules (external tooling required)
 

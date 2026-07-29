@@ -25,6 +25,17 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 import gatelib as gl  # noqa: E402
 
+# clang-tidy runs here (P4) because it needs a compile database, which only
+# exists after a successful build. Resolving the SAME guard the P2/P3 style gate
+# uses keeps one rule source; a missing guard degrades to advisory (never a hard
+# fail) so the pipeline is not held hostage to an optional AST backend.
+STYLE_GUARD = gl.resolve_dep("code-ruleset-style-check/scripts/code_ruleset_guard.py",
+                             env_var="CODE_RULESET_GUARD")
+CXX_EXTS = {".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx"}
+# Host prebuilt ninja is preferred; a non-OHOS host ninja under ohos/ may be an
+# ARM binary. Fall back to PATH ninja when the prebuilt is absent.
+NINJA_CANDIDATES = ["prebuilts/build-tools/linux-x86/bin/ninja"]
+
 # build.sh prints these banners to STDOUT. The product name may be absent when
 # the build fails very early (e.g. unknown target), so match loosely.
 SUCCESS_RE = re.compile(r"=====build.*successful=====")
@@ -302,6 +313,102 @@ def resolve_artifacts(repo, artifacts):
     return present, missing, resolved
 
 
+def _resolve_ninja(repo):
+    """Return the ninja to drive compdb generation: the host prebuilt if present,
+    else 'ninja' from PATH, else None."""
+    for rel in NINJA_CANDIDATES:
+        cand = os.path.join(repo, rel)
+        if os.path.isfile(cand) and os.access(cand, os.X_OK):
+            return cand
+    import shutil
+    return shutil.which("ninja")
+
+
+def clang_tidy_substep(pdir, repo, changed_cxx):
+    """P4 post-build clang-tidy over the changed C/C++ files.
+
+    Contract (per user decision): when a compile database can be produced AND
+    clang-tidy is available, any finding is a HARD fail (caught here, before P5
+    test work and P6 device runs waste effort re-doing everything). When the
+    compdb cannot be produced or clang-tidy is missing, degrade to an advisory
+    note and let the phase pass — the note states plainly that CI will still scan
+    this class. Returns (hard_findings, evidence_rels, note).
+    """
+    out_dir = os.path.join(repo, "out/rk3568")
+    ct_json_rel = "evidence/phase4/clang_tidy_findings.json"
+    note_rel = "evidence/phase4/clang_tidy_note.txt"
+    rels = [note_rel]
+    note = ""
+
+    def _note(msg, degraded):
+        with open(os.path.join(pdir, note_rel), "w", encoding="utf-8") as f:
+            f.write("degraded=%s\n%s\n" % (degraded, msg))
+        return msg
+
+    abs_cxx = [os.path.join(repo, f) for f in changed_cxx
+               if os.path.isfile(os.path.join(repo, f))]
+    if not abs_cxx:
+        return [], rels, _note("no changed C/C++ files to tidy", degraded=False)
+    if not STYLE_GUARD or not os.path.exists(STYLE_GUARD):
+        return [], rels, _note(
+            "code_ruleset guard missing (%s); clang-tidy skipped, CI will still scan"
+            % STYLE_GUARD, degraded=True)
+
+    # 1) produce the compile database (advisory: failure degrades, never blocks).
+    ninja = _resolve_ninja(repo)
+    compdb_path = os.path.join(out_dir, "compile_commands.json")
+    if not ninja:
+        return [], rels, _note(
+            "no ninja (host prebuilt or PATH) to generate compile_commands.json; "
+            "clang-tidy skipped, CI will still scan", degraded=True)
+    try:
+        with open(compdb_path, "w", encoding="utf-8") as db:
+            cp = subprocess.run([ninja, "-C", out_dir, "-w", "dupbuild=warn",
+                                 "-t", "compdb", "cc", "cxx"],
+                                cwd=repo, stdout=db, stderr=subprocess.PIPE,
+                                text=True, timeout=600)
+        if cp.returncode != 0 or not os.path.isfile(compdb_path) \
+                or os.path.getsize(compdb_path) == 0:
+            return [], rels, _note(
+                "compile_commands.json generation failed (rc=%d); clang-tidy "
+                "skipped, CI will still scan. stderr: %s"
+                % (cp.returncode, (cp.stderr or "")[:500]), degraded=True)
+    except Exception as exc:  # noqa: BLE001 — any compdb error degrades, not blocks
+        return [], rels, _note(
+            "compile_commands.json generation error: %s; clang-tidy skipped, "
+            "CI will still scan" % exc, degraded=True)
+
+    # 2) run the guard's clang-tidy pass. The guard itself returns an empty
+    #    finding list + a note when clang-tidy is not on PATH, so we detect that
+    #    from its JSON (clang_tidy_note) and degrade rather than hard-fail.
+    cp = subprocess.run(
+        [sys.executable, STYLE_GUARD, "--clang-tidy", out_dir,
+         "--json", os.path.join(pdir, ct_json_rel), *abs_cxx],
+        text=True, capture_output=True, timeout=600)
+    rels.append(ct_json_rel)
+    ct_note = ""
+    findings = []
+    try:
+        import json
+        data = json.loads(open(os.path.join(pdir, ct_json_rel),
+                               encoding="utf-8").read())
+        findings = data.get("clang_tidy_findings") or []
+        ct_note = data.get("clang_tidy_note") or ""
+    except Exception:
+        ct_note = "clang-tidy findings JSON unreadable"
+    if ct_note:
+        # clang-tidy unavailable / compile_commands.json unusable per the guard.
+        return [], rels, _note(
+            "clang-tidy not executed by guard (%s); CI will still scan" % ct_note,
+            degraded=True)
+    if findings:
+        return findings, rels, _note(
+            "clang-tidy found %d issue(s) — HARD block; fix and re-run P2→P4"
+            % len(findings), degraded=False)
+    return [], rels, _note("clang-tidy PASS: 0 findings over %d file(s)"
+                           % len(abs_cxx), degraded=False)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--pipeline-dir")
@@ -383,10 +490,31 @@ def main():
         sys.exit("PHASE 4 FAIL: ar-contract unrecoverable: %s" % c_detail)
 
     if rc == 0 and banner_ok and not banner_err and not artifacts_missing:
+        # Post-build clang-tidy substep (user decision: run it at P4, right after
+        # the build succeeds, so AST-level defects are caught before P5/P6 waste
+        # work). Hard-fails when a compdb + clang-tidy are available; degrades to
+        # advisory otherwise. changed_files come from the signed contract.
+        changed_cxx = [p for p in (contract.get("changed_files") or [])
+                       if os.path.splitext(p)[1].lower() in CXX_EXTS] if c_ok else []
+        ct_findings, ct_rels, ct_note = clang_tidy_substep(pdir, repo, changed_cxx)
+        arts += ct_rels
+        if ct_findings:
+            reason = ("build ok but clang-tidy found %d issue(s) (target=%s); %s"
+                      % (len(ct_findings), target, ct_note))
+            _record_result(
+                pdir, "FAIL", reason, arts, cmd=cmd, exit_code=rc, target=target,
+                banner_ok=banner_ok, banner_err=banner_err,
+                artifacts_missing=artifacts_missing, contract_status=contract_status,
+                failure_class="build_verdict_failed",
+                problems=["clang-tidy: %s:%s %s" % (f.get("file"), f.get("line"),
+                                                    f.get("rule_id"))
+                          for f in ct_findings[:100]],
+                resume_hint="修复 clang-tidy 报告的 AST 级问题后回 P2 重走并重跑 gate_build.py")
+            sys.exit("PHASE 4 FAIL: %s" % reason)
         _record_result(
             pdir, "PASS",
-            "exit=0 and success banner in build output (target=%s)%s"
-            % (target, contract_note),
+            "exit=0 and success banner in build output (target=%s)%s [clang-tidy: %s]"
+            % (target, contract_note, ct_note),
             arts, cmd=cmd, exit_code=rc, target=target,
             banner_ok=banner_ok, banner_err=banner_err,
             artifacts_missing=artifacts_missing, contract_status=contract_status)

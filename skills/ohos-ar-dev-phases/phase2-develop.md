@@ -6,6 +6,14 @@
 ## 做事(调用现有技能)
 - 系统能力/SA:`ohos-dev-sa-codegen`。NAPI 模块:`ohos-dev-napi-module`。
 - 编码规范:`code-ruleset-style-check`（规则来源为 `code_ruleset` C++ 门禁表）。门控会强制执行可机器判断的硬规则。
+- **就近一致**(advisory,写码时遵循,不硬门控):新增/改动代码的风格尽量与**同级目录既有代码**保持一致——
+  命名约定、缩进/大括号、头文件包含顺序、错误处理与日志习惯、注释密度,优先随该目录现有代码,而非全局理想化风格。
+  改一个既有文件时沿用该文件的既有约定;新建文件时对齐同目录邻近文件。门控只判 `code_ruleset` 硬规则,
+  「就近一致」靠写码时自觉 + P8 review 兜底。
+- **安全左移**(advisory,写码时同步做,不硬门控):涉及 IPC Stub/`OnRemoteRequest`、`MessageParcel`/fd/回调解析、
+  `AccessTokenKit` 权限校验、跨 SA/跨用户/跨设备访问、HILOG 隐私输出、共享状态并发时,用
+  `ohos-dev-security-code-review` 边写边审,把攻击者可控入口→敏感 sink 的校验/权限/并发缺口在开发期就消除。
+  P2 门控**不**解析安全报告(完整调用链在 P7/P8 才齐,安全零问题由 P7/P8 硬门控兜底);此处目的是安全左移、减少返工。
 - 若该 AR 有可测行为,优先 `tdd-enforcer`:先写失败测试,再写实现(真机在 P6 验证)。
 - 依据 `$PDIR/AR_design.md` 的"完整代码框架"落实代码改动到 `$OHOS_ROOT` 下相应组件。
 - **写码脚手架**:hiview 插件 / 单测 / 模块测试 / 模糊测试可用 `ohos-code-skeletons` 取占位符骨架
@@ -23,7 +31,8 @@ python3 $S/gate_develop.py --pipeline-dir "$PDIR"
 **P1 设计 consent**(缺失/因重跑 gate_design 而 stale 都 FAIL);首跑把当前 HEAD 记为 `base_commit`;之后取
 `git diff base..工作树` 并额外纳入 `git ls-files --others --exclude-standard` 的 untracked 文件,要求变更非空;对改动的 C/C++ 文件强制跑
 `code_ruleset_guard.py`;同时执行来自 `code_ruleset` C++ 门禁表的可机器判断硬规则
-(如禁用 `#pragma once`、头文件 `using namespace`、`.hpp/.cc/.cxx`、`NULL`、`system()/popen()`、默认 lambda 捕获)。
+(如禁用 `#pragma once`、头文件 `using namespace`、`.hpp/.cc/.cxx`、`NULL`、`system()/popen()`、默认 lambda 捕获);
+另按**文件扩展名**对全部改动路径查禁用后缀(G.INC.02:头文件必须用 `.h` 不用 `.inc`——`.inc` 会绕过 C/C++ 内容过滤)。
 依赖脚本或 skill 缺失、手动传 `--no-style` 绕过、任一硬规则命中都会 FAIL。
 证据:`diff.patch`、`changed_files.txt`、`style_report.txt`、`strict_cpp_report.txt`。
 
