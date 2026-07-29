@@ -121,6 +121,7 @@ export default defineConfig({
             { text: '关键命令', link: '/reference/key-commands' },
             { text: 'Skill 映射', link: '/reference/skill-map' },
             { text: 'FAQ', link: '/reference/faq' },
+            { text: '文档站部署与双仓库同步', link: '/reference/docs-deployment' },
           ],
         },
       ],

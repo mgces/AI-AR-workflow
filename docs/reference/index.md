@@ -10,6 +10,7 @@
 - [关键命令](/reference/key-commands) — 按场景列关键命令
 - [Skill 映射](/reference/skill-map) — 阶段→技能 / 任务→技能 / 输入类型→技能 查表
 - [FAQ](/reference/faq) — 高频误解速查
+- [文档站部署与双仓库同步](/reference/docs-deployment) — GitCode/GitHub 双仓、双推、Pages 自动部署
 
 ## 与其他栏目的关系
 
