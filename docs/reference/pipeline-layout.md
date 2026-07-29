@@ -29,10 +29,13 @@ $REPO/specs/pipeline/{YYYYMMDD}-{slug}/
 规范状态,**只有 `advance.py` 能写**。关键字段:
 
 - `current_phase` — 当前物理阶段(0–8)
+- `environment` — 环境形态(`openharmony` | `harmonyos`),init 时确定,决定编译/上库后端
+- `component_type` — HarmonyOS 组件类型(`system` | `chip`;openharmony 为 `null`)
 - `consent` — 人工确认令牌(签名 + 绑定 PASS 条目)
 - `functional_fingerprint` — P2 闭合时锁定的功能指纹
 - `locked_all_paths` — 冻结路径快照
 - 组件信息:`git_dir` / `build_target` / `testpart` / `base_commit`
+- `product` — 由环境 profile 派生(openharmony 为 rk3568;HarmonyOS 占位未填为 `null`)
 
 字段结构详见 `skills/ohos-ar-dev-workflow/references/pipeline-schema.md`。
 

@@ -18,12 +18,12 @@ design promised were actually compiled in. Missing any one is a FAIL.
 """
 import argparse
 import os
-import re
 import subprocess
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 import gatelib as gl  # noqa: E402
+import environments as envs  # noqa: E402
 
 # clang-tidy runs here (P4) because it needs a compile database, which only
 # exists after a successful build. Resolving the SAME guard the P2/P3 style gate
@@ -36,10 +36,8 @@ CXX_EXTS = {".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx"}
 # ARM binary. Fall back to PATH ninja when the prebuilt is absent.
 NINJA_CANDIDATES = ["prebuilts/build-tools/linux-x86/bin/ninja"]
 
-# build.sh prints these banners to STDOUT. The product name may be absent when
-# the build fails very early (e.g. unknown target), so match loosely.
-SUCCESS_RE = re.compile(r"=====build.*successful=====")
-ERROR_RE = re.compile(r"=====build.*error=====")
+# Compile banners / build command / out dir are resolved per-environment via
+# environments.py (openharmony keeps the historical rk3568 values verbatim).
 FAIL_MARKERS = ["ninja: build stopped", "FAILED:", "ERROR at ", "[OHOS ERROR]"]
 TEST_DEVELOP_STATUS_PARTS = ("test_develop", "phase1_test_develop.json")
 TEST_DEVELOP_SCOPE_PARTS = ("test_develop", "signed_test_scope.json")
@@ -299,14 +297,15 @@ def _record_result(pdir, verdict, reason, arts, *, cmd, exit_code, target,
             cmd=cmd, exit_code=exit_code, artifacts_rel=arts)
 
 
-def resolve_artifacts(repo, artifacts):
+def resolve_artifacts(repo, artifacts, out_dir_rel):
     """For each contract build_artifact, report whether the build produced it.
-    A path is looked up relative to the repo root, then relative to
-    out/rk3568/ (so a contract may write either 'out/rk3568/foo.so' or 'foo.so').
+    A path is looked up relative to the repo root, then relative to the
+    environment's out dir (e.g. out/rk3568/) so a contract may write either
+    'out/rk3568/foo.so' or 'foo.so'.
     Returns (present, missing, resolved) where resolved maps path -> abspath|None."""
     present, missing, resolved = [], [], {}
     for rel in artifacts:
-        cands = [os.path.join(repo, rel), os.path.join(repo, "out/rk3568", rel)]
+        cands = [os.path.join(repo, rel), os.path.join(repo, out_dir_rel, rel)]
         hit = next((c for c in cands if os.path.isfile(c)), None)
         resolved[rel] = hit
         (present if hit else missing).append(rel)
@@ -324,7 +323,7 @@ def _resolve_ninja(repo):
     return shutil.which("ninja")
 
 
-def clang_tidy_substep(pdir, repo, changed_cxx):
+def clang_tidy_substep(pdir, repo, changed_cxx, out_dir_rel):
     """P4 post-build clang-tidy over the changed C/C++ files.
 
     Contract (per user decision): when a compile database can be produced AND
@@ -334,7 +333,7 @@ def clang_tidy_substep(pdir, repo, changed_cxx):
     note and let the phase pass — the note states plainly that CI will still scan
     this class. Returns (hard_findings, evidence_rels, note).
     """
-    out_dir = os.path.join(repo, "out/rk3568")
+    out_dir = os.path.join(repo, out_dir_rel)
     ct_json_rel = "evidence/phase4/clang_tidy_findings.json"
     note_rel = "evidence/phase4/clang_tidy_note.txt"
     rels = [note_rel]
@@ -421,9 +420,20 @@ def main():
     if not target:
         sys.exit("ERROR: no build target (pass --target or set build_target)")
     ev = gl.evidence_dir(pdir, 4)
-    build_log = os.path.join(repo, "out/rk3568/build.log")
 
-    cmd = "./build.sh --product-name rk3568 --ccache --build-target %s" % target
+    # Build command, compile banners, and out dir all come from the environment
+    # profile. A HarmonyOS environment whose build command is still a placeholder
+    # hard-fails here with an actionable "configure environments.py" message
+    # rather than running the wrong command.
+    try:
+        cmd = envs.build_command(state, target)
+    except envs.EnvironmentNotConfigured as e:
+        sys.exit("PHASE 4 FAIL — %s" % e)
+    success_re = envs.success_re(state)
+    error_re = envs.error_re(state)
+    out_dir_rel = envs.out_dir(state)
+    build_log = os.path.join(repo, out_dir_rel, "build.log")
+
     print("running: %s" % cmd)
     # Capture build.sh's OWN stdout/stderr as the authoritative, inherently-fresh
     # evidence (out/rk3568/build.log can rotate or stay empty on early GN failure).
@@ -440,13 +450,12 @@ def main():
     with open(stdout_path, "r", encoding="utf-8", errors="replace") as f:
         out_text = f.read()
 
-    banner_ok = bool(SUCCESS_RE.search(out_text))
-    banner_err = bool(ERROR_RE.search(out_text))
+    banner_ok = bool(success_re.search(out_text))
+    banner_err = bool(error_re.search(out_text))
 
     # banner evidence (exact matched line)
     banner_rel = "evidence/phase4/build_banner.txt"
-    m = SUCCESS_RE.search(out_text)
-    matched = next((ln for ln in out_text.splitlines() if SUCCESS_RE.search(ln)), "")
+    matched = next((ln for ln in out_text.splitlines() if success_re.search(ln)), "")
     with open(os.path.join(pdir, banner_rel), "w", encoding="utf-8") as f:
         f.write("exit_code=%d\nsuccess_banner=%s\nerror_banner=%s\nmatched=%s\n"
                 % (rc, banner_ok, banner_err, matched))
@@ -463,7 +472,7 @@ def main():
     contract_status = "ok" if c_ok else ""
     if c_ok:
         present, artifacts_missing, resolved = resolve_artifacts(
-            repo, contract["build_artifacts"])
+            repo, contract["build_artifacts"], out_dir_rel)
         chk_rel = "evidence/phase4/artifact_check.txt"
         with open(os.path.join(pdir, chk_rel), "w", encoding="utf-8") as f:
             f.write("contract build_artifacts: %d present, %d missing\n\n"
@@ -496,7 +505,7 @@ def main():
         # advisory otherwise. changed_files come from the signed contract.
         changed_cxx = [p for p in (contract.get("changed_files") or [])
                        if os.path.splitext(p)[1].lower() in CXX_EXTS] if c_ok else []
-        ct_findings, ct_rels, ct_note = clang_tidy_substep(pdir, repo, changed_cxx)
+        ct_findings, ct_rels, ct_note = clang_tidy_substep(pdir, repo, changed_cxx, out_dir_rel)
         arts += ct_rels
         if ct_findings:
             reason = ("build ok but clang-tidy found %d issue(s) (target=%s); %s"

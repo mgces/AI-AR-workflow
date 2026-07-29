@@ -39,20 +39,21 @@ class TestResolveArtifacts(unittest.TestCase):
 
     def test_all_present_out_relative(self):
         self._touch("out/rk3568/liba.z.so")
-        present, missing, _ = gate_build.resolve_artifacts(self.repo, ["liba.z.so"])
+        present, missing, _ = gate_build.resolve_artifacts(
+            self.repo, ["liba.z.so"], "out/rk3568")
         self.assertEqual(missing, [])
         self.assertEqual(present, ["liba.z.so"])
 
     def test_all_present_repo_relative(self):
         self._touch("out/rk3568/sub/libb.z.so")
         present, missing, _ = gate_build.resolve_artifacts(
-            self.repo, ["out/rk3568/sub/libb.z.so"])
+            self.repo, ["out/rk3568/sub/libb.z.so"], "out/rk3568")
         self.assertEqual(missing, [])
 
     def test_one_missing(self):
         self._touch("out/rk3568/liba.z.so")
         present, missing, _ = gate_build.resolve_artifacts(
-            self.repo, ["liba.z.so", "libmissing.z.so"])
+            self.repo, ["liba.z.so", "libmissing.z.so"], "out/rk3568")
         self.assertEqual(present, ["liba.z.so"])
         self.assertEqual(missing, ["libmissing.z.so"])
 

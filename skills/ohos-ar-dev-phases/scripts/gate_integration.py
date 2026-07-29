@@ -27,6 +27,7 @@ import xml.etree.ElementTree as ET
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 import gatelib as gl  # noqa: E402
+import environments as envs  # noqa: E402
 
 STYLE_GUARD = gl.resolve_dep("code-ruleset-style-check/scripts/code_ruleset_guard.py",
                              env_var="CODE_RULESET_GUARD")
@@ -645,8 +646,9 @@ def main():
     before = set(glob.glob(os.path.join(reports, "20*")))
     ts_args = " ".join("-ts %s" % s for s in args.suites)
     # Pass the product form explicitly; developer_test otherwise defaults it to
-    # "phone" and fails to locate the rk3568 testcase output ("tests is not exist").
-    product = state.get("product") or "rk3568"
+    # "phone" and fails to locate the testcase output ("tests is not exist").
+    # Resolved from the environment profile (openharmony -> rk3568).
+    product = envs.product_form(state)
     run_cmd = "./start.sh run -t %s -tp %s %s -p %s" % (args.testtype, part, ts_args, product)
     print("running: (cd %s && %s)" % (dt, run_cmd))
     proc = subprocess.run(run_cmd, shell=True, cwd=dt, text=True, capture_output=True)

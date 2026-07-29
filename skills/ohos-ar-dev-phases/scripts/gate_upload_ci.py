@@ -25,6 +25,14 @@ Pass evidence (RTC-independent; keyed to an immutable commit SHA):
   * a PR is created on gitcode (oh-gc), PR number + URL + head SHA recorded;
   * openharmony_ci.py reports overall==success for that PR AND the PR head SHA
     equals the SHA we pushed (defeats an old green from an earlier commit).
+
+UPLOAD BACKEND: which upload path runs is resolved from the environment profile
+(environments.upload_backend). 'gitcode' is the OpenHarmony flow described above
+(oh-gc PR + OpenHarmony CI). 'harmonyos' uses 'gerrit' (git push refs/for + Gerrit
+review labels as the CI-green equivalent); its internal push/query commands are
+placeholders and the gate hard-fails with an actionable "configure environments.py"
+message until they are filled — the same fail-closed stance as the build gates.
+The two review gates + consent + SHA binding are backend-agnostic and always run.
 """
 import argparse
 import json
@@ -36,6 +44,7 @@ import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 import gatelib as gl  # noqa: E402
+import environments as envs  # noqa: E402
 
 CI_SCRIPT = gl.resolve_dep("ohos-ci-openharmony-ci-analysis/scripts/openharmony_ci.py",
                            env_var="OHOS_CI_SCRIPT")
@@ -105,6 +114,7 @@ P8_FAILURE_TO_SUBSTATE = {
     "consent_missing": "precheck",
     "consent_stale": "precheck",
     "issue_binding_missing": "precheck",
+    "upload_backend_unconfigured": "precheck",
     "review_gate_failed": "local_review",
     "local_review_blocked": "local_review",
     "dry_run_no_pass": "consent_await",
@@ -765,8 +775,9 @@ def _record_result(pdir, verdict, reason, arts, *, cmd=None, repo_slug=None,
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--pipeline-dir")
-    ap.add_argument("--repo-slug", required=True, help="gitcode owner/repo the PR is opened AGAINST "
-                    "(the base repo, e.g. openharmony/hiviewdfx_hiview)")
+    ap.add_argument("--repo-slug", help="gitcode owner/repo the PR is opened AGAINST "
+                    "(the base repo, e.g. openharmony/hiviewdfx_hiview). REQUIRED for the "
+                    "gitcode upload backend; ignored for gerrit.")
     ap.add_argument("--branch", required=True, help="local branch to push")
     ap.add_argument("--head-owner", default="", help="owner/namespace of the fork the branch is "
                     "pushed to (the PR head repo). Defaults to the owner of the `origin` remote. "
@@ -804,7 +815,12 @@ def main():
         gdir = os.path.join(repo, gdir)
     gl.evidence_dir(pdir, 8)
 
-    # prereq: phases 1..7 passed
+    # Resolve the upload backend from the environment profile. gitcode = the
+    # OpenHarmony oh-gc PR + OpenHarmony CI flow (default / existing behavior);
+    # gerrit = the HarmonyOS git-push-refs/for + Gerrit review flow.
+    backend = envs.upload_backend(state)
+
+    # prereq: phases 1..7 passed  (backend-agnostic)
     not_done = [p["id"] for p in state["phases"] if p["id"] in (1, 2, 3, 4, 5, 6, 7)
                 and p["status"] != "passed"]
     if not_done:
@@ -817,6 +833,40 @@ def main():
             resume_hint="先完成并 advance P1-P7，再重跑 gate_upload_ci.py",
             emit_manifest=False)
         sys.exit("PHASE 8 BLOCKED: phases not passed: %s" % not_done)
+
+    # Gerrit backend (HarmonyOS): placeholder. The push target,
+    # `git push HEAD:refs/for/<base>` invocation, Change-Id parsing, and Gerrit
+    # review-label query are environment-specific and not yet wired. Fail closed
+    # with an actionable message rather than silently doing the wrong thing —
+    # same stance as an unconfigured build command. The backend-agnostic scaffold
+    # (two review gates, consent, SHA binding, P8 substate machine) is ready to
+    # host it once the commands are filled.
+    if backend == "gerrit":
+        reason = ("HarmonyOS 上库后端（gerrit）尚未配置：push refs/for 与 "
+                  "Gerrit review 查询命令为占位。")
+        _record_result(
+            pdir, "FAIL", reason, [],
+            repo_slug=args.repo_slug, branch=args.branch, mode="precheck",
+            failure_class="upload_backend_unconfigured",
+            problems=["gerrit upload backend not implemented (placeholder)"],
+            resume_hint="在 lib/environments.py / gate_upload_ci.py 填充 gerrit "
+                        "push+review 命令后重跑 gate_upload_ci.py",
+            emit_manifest=False)
+        sys.exit(
+            "PHASE 8 BLOCKED — HarmonyOS(gerrit) 上库后端未实现（占位）。\n"
+            "  需要填充：\n"
+            "    * git push HEAD:refs/for/%s 的远端与命令\n"
+            "    * 从 push 输出解析 change 号/URL\n"
+            "    * 查询 Gerrit review 标签（Verified/Code-Review）作 CI 绿等价\n"
+            "  这些命令是 HarmonyOS 环境相关，请在 gate_upload_ci.py 的 gerrit 分支填入。"
+            % args.base)
+
+    # From here down is the gitcode backend (OpenHarmony). --repo-slug is required
+    # to open the PR against the base repo.
+    if not args.repo_slug:
+        sys.exit("ERROR: --repo-slug is required for the gitcode upload backend "
+                 "(the base repo the PR is opened against, e.g. "
+                 "openharmony/hiviewdfx_hiview).")
 
     # Binding the PR to an issue is what makes OpenHarmony CI gates trigger.
     # Require --issue whenever we would create a PR (not when re-verifying an

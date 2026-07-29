@@ -16,6 +16,7 @@ S=$AGENT_SKILLS_DIR/ohos-ar-dev-phases/scripts
 
 ```bash
 python3 $S/advance.py --pipeline-dir "$PDIR" init \
+    --environment openharmony|harmonyos [--component-type system|chip] \
     --git-dir <组件> --build-target <t> --part <p> [--base-commit <sha>]
 python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase N
 python3 $S/advance.py --pipeline-dir "$PDIR" consent --phase N --token <s>
@@ -25,6 +26,8 @@ python3 $S/advance.py --pipeline-dir "$PDIR" migrate
 python3 $S/advance.py --pipeline-dir "$PDIR" status [--json]
 python3 $S/advance.py --pipeline-dir "$PDIR" next
 ```
+
+> `--environment` 必填(缺失硬失败);`harmonyos` 时 `--component-type system|chip` 必填。组件参数三缺又不带 `--confirm-defaults` 也会硬失败。
 
 ## 各 gate 调用
 
@@ -76,10 +79,12 @@ python3 $S/gate_integration.py --pipeline-dir "$PDIR" [--testtype MST] --suites 
 
 ### P8 上库
 ```bash
+# gitcode(openharmony)后端:--repo-slug / --issue 必填
 python3 $S/gate_upload_ci.py --pipeline-dir "$PDIR" --repo-slug owner/repo --branch B [--base master] [--title T] \
     --issue N \
     --local-review-report F --pr-review-report F \
     [--pr N] [--allow-push]
+# gerrit(harmonyos)后端:不需要 --repo-slug/--issue,push refs/for/<base>(命令占位待填)
 ```
 
 ## 编排器脚本（ohos-ar-dev-workflow/scripts/）

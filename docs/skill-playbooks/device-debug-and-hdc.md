@@ -17,7 +17,7 @@
 |---|---|
 | hdc 二进制 | `$HDC_BIN` → PATH 的 `hdc` → `~/.local/hdc/hdc` |
 | hdc server | `$HDC_HOST_OVERRIDE` → `$HDC_WIN_PORT`(WSL 默认网关 IP:端口) → 原生 hdc |
-| 设备序列号 | `$DEVICE_SERIAL` → `hdc list targets` 唑一目标 |
+| 设备序列号 | `$DEVICE_SERIAL` → `hdc list targets` 唯一目标 |
 
 三种典型场景:
 

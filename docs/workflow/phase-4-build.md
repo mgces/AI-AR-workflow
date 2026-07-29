@@ -6,6 +6,8 @@
 
 P4 是真实编译验证阶段——真跑 `build.sh`,捕获真实输出,校验成功横幅与契约 `build_artifacts` 全覆盖。门控脚本 `gate_build.py`(emit 4)。
 
+> **编译命令 / 成功横幅 / 产物目录按环境 profile 解析**(`lib/environments.py`,取自 `pipeline.json` 的 `environment`):openharmony 为 `./build.sh --product-name rk3568 …` + `out/rk3568/`;HarmonyOS 系统/芯片组件命令不同且**目前为占位**,占位未填时 P4 **硬失败并打印"待填"提示**,绝不静默跑错。门控不再写死 rk3568。
+
 ## 成功横幅和 artifact 检查
 
 `gate_build.py` 通过条件:
@@ -24,7 +26,7 @@ P4 是真实编译验证阶段——真跑 `build.sh`,捕获真实输出,校验�
 
 ## 失败如何诊断
 
-门控已改为捕获 build.sh stdout 并用正则判定横幅——因为 build.sh 横幅打在 stdout,而 `out/rk3568/build.log` 可能轮转或为空。
+门控已改为捕获 build.sh stdout 并用正则判定横幅——因为 build.sh 横幅打在 stdout,而环境产物目录下的 `build.log`(openharmony 为 `out/rk3568/build.log`)可能轮转或为空。
 
 读 `$PDIR/evidence/phase4/build_tail.log` 与 `error_distill.txt` 真实日志定位,修复后重跑门控(≤3 次),仍失败停下报告。
 

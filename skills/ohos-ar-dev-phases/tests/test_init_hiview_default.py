@@ -37,11 +37,13 @@ class TestInitHiviewDefault(unittest.TestCase):
             pass
         self.tmp.cleanup()
 
-    def _init(self, *extra):
+    def _init(self, *extra, environment="openharmony"):
+        env_flags = ["--environment", environment] if environment else []
         return subprocess.run(
             [sys.executable, os.path.join(SCRIPTS, "advance.py"),
              "--pipeline-dir", self.pdir, "init",
-             "--run-id", self.run_id, "--repo", self.repo, *extra],
+             "--run-id", self.run_id, "--repo", self.repo,
+             *env_flags, *extra],
             text=True, capture_output=True)
 
     def _state(self):
@@ -72,6 +74,68 @@ class TestInitHiviewDefault(unittest.TestCase):
         st = self._state()
         self.assertEqual(st["git_dir"], "foundation/other/comp")
         self.assertEqual(st["build_target"], "other_package")
+
+
+class TestInitEnvironment(unittest.TestCase):
+    """The environment (openharmony | harmonyos) is a per-AR human decision that
+    changes build + upload behavior, so a bare init (no --environment) hard-fails,
+    and --environment harmonyos requires --component-type system|chip."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.repo = self.tmp.name
+        self.pdir = os.path.join(self.repo, "pdir")
+        self.run_id = "env-init"
+
+    def tearDown(self):
+        try:
+            os.remove(gl.secret_path(self.run_id))
+        except OSError:
+            pass
+        self.tmp.cleanup()
+
+    def _init(self, *extra):
+        # confirm the component so we get past the (earlier) component gate and
+        # exercise the environment gate specifically.
+        return subprocess.run(
+            [sys.executable, os.path.join(SCRIPTS, "advance.py"),
+             "--pipeline-dir", self.pdir, "init",
+             "--run-id", self.run_id, "--repo", self.repo,
+             "--confirm-defaults", *extra],
+            text=True, capture_output=True)
+
+    def _state(self):
+        with open(gl.state_path(self.pdir), encoding="utf-8") as f:
+            return json.load(f)
+
+    def test_missing_environment_hard_fails(self):
+        cp = self._init()  # no --environment
+        self.assertNotEqual(cp.returncode, 0)
+        self.assertIn("environment not confirmed", cp.stdout + cp.stderr)
+        self.assertFalse(os.path.exists(gl.state_path(self.pdir)))
+
+    def test_openharmony_lands_rk3568_and_gitcode(self):
+        cp = self._init("--environment", "openharmony")
+        self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+        st = self._state()
+        self.assertEqual(st["environment"], "openharmony")
+        self.assertIsNone(st["component_type"])
+        self.assertEqual(st["product"], "rk3568")
+
+    def test_harmonyos_requires_component_type(self):
+        cp = self._init("--environment", "harmonyos")  # no --component-type
+        self.assertNotEqual(cp.returncode, 0)
+        self.assertIn("--component-type is required", cp.stdout + cp.stderr)
+        self.assertFalse(os.path.exists(gl.state_path(self.pdir)))
+
+    def test_harmonyos_system_persists_component_type(self):
+        cp = self._init("--environment", "harmonyos", "--component-type", "system")
+        self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+        st = self._state()
+        self.assertEqual(st["environment"], "harmonyos")
+        self.assertEqual(st["component_type"], "system")
+        # product form is still a placeholder for harmonyos -> persisted as None
+        self.assertIsNone(st["product"])
 
 
 if __name__ == "__main__":

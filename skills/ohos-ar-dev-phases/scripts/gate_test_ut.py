@@ -22,7 +22,6 @@ PASSED case in the fresh result xmls (full coverage of the AR_design test points
 import argparse
 import glob
 import os
-import re
 import shutil
 import subprocess
 import sys
@@ -30,8 +29,8 @@ import xml.etree.ElementTree as ET
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 import gatelib as gl  # noqa: E402
+import environments as envs  # noqa: E402
 
-SUCCESS_RE = re.compile(r"=====build.*successful=====")
 TEST_DEVELOP_STATUS_PARTS = ("test_develop", "phase1_test_develop.json")
 TEST_DEVELOP_SCOPE_PARTS = ("test_develop", "signed_test_scope.json")
 TEST_DEVELOP_MATRIX_PARTS = ("test_develop", "test_intent_matrix.json")
@@ -324,10 +323,12 @@ def check_gtest_coverage(required, passed):
     return (not missing), missing
 
 
-def build_target(repo, target, pdir):
+def build_target(repo, target, pdir, state):
     """Build the test target; return (ok, tail_rel). Captures build.sh's own
-    stdout as authoritative evidence (out/rk3568/build.log can rotate/stay empty)."""
-    cmd = "./build.sh --product-name rk3568 --ccache --build-target %s" % target
+    stdout as authoritative evidence (out/<product>/build.log can rotate/stay
+    empty). Build command + success banner come from the environment profile."""
+    cmd = envs.build_command(state, target)
+    success_re = envs.success_re(state)
     print("running: %s" % cmd)
     tail_rel = "evidence/phase5/test_build_stdout.log"
     path = os.path.join(pdir, tail_rel)
@@ -340,7 +341,7 @@ def build_target(repo, target, pdir):
         rc = proc.wait()
     with open(path, "r", encoding="utf-8", errors="replace") as f:
         text = f.read()
-    ok = rc == 0 and bool(SUCCESS_RE.search(text))
+    ok = rc == 0 and bool(success_re.search(text))
     return ok, tail_rel
 
 
@@ -364,7 +365,7 @@ def main():
     arts = []
 
     # 1. build the test target
-    bok, tail_rel = build_target(repo, args.test_target, pdir)
+    bok, tail_rel = build_target(repo, args.test_target, pdir, state)
     arts.append(tail_rel)
     if not bok:
         reason = "test target build failed: %s" % args.test_target
@@ -381,13 +382,13 @@ def main():
     before = set(glob.glob(os.path.join(reports, "20*")))
 
     # Pin the product form explicitly and consistently with gate_integration
-    # (rk3568, NOT the harness default "phone"). developer_test defaults
+    # (e.g. rk3568, NOT the harness default "phone"). developer_test defaults
     # productform to "phone", which collapses the testcase path to a
-    # non-existent ./tests on rk3568 (harness then finds 0 cases). The product is
-    # already pinned in pipeline.json; forward it as -p so out/<product>/tests
+    # non-existent ./tests (harness then finds 0 cases). The product is resolved
+    # from the environment profile; forward it as -p so out/<product>/tests
     # resolves. This only selects where the harness looks — verdict still comes
     # solely from the freshly-produced summary_report.xml below.
-    product = state.get("product") or "rk3568"
+    product = envs.product_form(state)
     run_cmd = "./start.sh run -t UT -tp %s -ts %s -p %s" % (part, args.suite, product)
     print("running: (cd %s && %s)" % (dt, run_cmd))
     proc = subprocess.run(run_cmd, shell=True, cwd=dt, text=True, capture_output=True)

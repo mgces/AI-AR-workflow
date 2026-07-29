@@ -91,9 +91,9 @@ bash <skill_dir>/scripts/ohos_env_bootstrap.sh --help     # 全部用法
 
 | 你做 | workflow 做 | 预计 |
 |---|---|---|
-| 在 Agent 里说 `/ohos-ar-dev-init`，确认要编译的部件（默认候选 hiview 部件） | 逐项校验 build/compile/git/testfwk/hdc/真机，设备序列号回填，写 `specs/initialized.flag` | 2 分钟（首次含编译探针更久） |
+| 在 Agent 里说 `/ohos-ar-dev-init`,先确认**环境形态**(openharmony / harmonyos-系统 / harmonyos-芯片)与要编译的部件(默认候选 hiview 部件) | 逐项校验 build/compile/git/testfwk/hdc/真机,设备序列号回填,写 `specs/initialized.flag` | 2 分钟（首次含编译探针更久） |
 
-> 💡 **编译部件是人工确认点**。跑 init 前先跟用户确认本 AR 要编译的部件。裸 init（三者皆缺又不带 `--confirm-defaults`）会硬失败，让用户输入，默认路径是 hiview 仓。详见 [环境初始化](/getting-started/environment-init)。
+> 💡 **环境形态 + 编译部件都是人工确认点**。跑 init 前先跟用户确认本 AR 属于哪种环境(`--environment` 缺失硬失败;harmonyos 时 `--component-type system|chip` 必填)、要编译哪个部件。裸 init 会硬失败,让用户输入,默认路径是 openharmony + hiview 仓。详见 [环境初始化](/getting-started/environment-init)。
 
 ### 步骤 2：准备一个 AR
 

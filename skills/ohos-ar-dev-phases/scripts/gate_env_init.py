@@ -18,28 +18,31 @@ Capabilities checked (HARD = blocks; SOFT = warns only):
   testfwk     HARD  test/testfwk/developer_test/start.sh        -> P3/P5
   hdc_bin     HARD  an hdc binary is resolvable                 -> P0/P4/P5
   device      HARD  a unique device is online (records serial)  -> P4/P5
-  oh_gc       SOFT  oh-gc CLI installed                         -> P6
-  gitcode_auth SOFT gitcode token configured (oh-gc auth status)-> P6
+  --- upload prereqs (SOFT; probed per environment upload backend) ---
+  gitcode env: oh_gc (CLI) + gitcode_auth (token)              -> P8
+  gerrit  env: git_remote (push target) + gerrit_hook          -> P8
 
-oh-gc / gitcode auth are P6-only (upload); they warn but never block P0.
+Upload prereqs are P8-only; they warn with actionable guidance but never block P0.
+The compile probe's build command + banners come from the environment profile
+(environments.py); a HarmonyOS environment whose build command is still a
+placeholder hard-fails the probe with a "configure environments.py" message.
 """
 import argparse
 import json
 import os
-import re
 import subprocess
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 import gatelib as gl  # noqa: E402
+import environments as envs  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEVICE_SH = os.path.join(HERE, "lib", "device.sh")
 
-# build.sh prints these banners to stdout (product name may be absent on early
-# failure), so match loosely — same convention as gate_build.py.
-SUCCESS_RE = re.compile(r"=====build.*successful=====")
-ERROR_RE = re.compile(r"=====build.*error=====")
+# Compile banners and the probe target are resolved per-environment via
+# environments.py (openharmony keeps the historical rk3568 banners/target;
+# harmonyos supplies its own). DEFAULT_PROBE_TARGET is the CLI fallback only.
 DEFAULT_PROBE_TARGET = "hiview_package"
 
 
@@ -140,7 +143,28 @@ def main():
     already_ok = os.path.exists(probe_marker)
     do_probe = bs_ok and not args.skip_build_probe and (args.force_build_probe or not already_ok)
     if do_probe:
-        cmd = "./build.sh --product-name rk3568 --ccache --build-target %s" % args.probe_target
+        # Build command + success/error banners come from the environment profile.
+        # If this environment's build template is still a placeholder (e.g. a
+        # HarmonyOS 系统/芯片 command the user hasn't filled), hard-fail with an
+        # actionable "configure environments.py" message instead of running the
+        # wrong command — the same fail-closed stance as the rest of the pipeline.
+        try:
+            cmd = envs.build_command(state, args.probe_target)
+        except envs.EnvironmentNotConfigured as e:
+            rel = "evidence/phase0/env.json"
+            with open(os.path.join(pdir, rel), "w", encoding="utf-8") as f:
+                json.dump({"repo": repo, "environment": envs.env_id(state),
+                           "error": "build_command_unconfigured",
+                           "detail": str(e)}, f, indent=2, ensure_ascii=False)
+            gl.emit(pdir, 0, "gate_env_init.py", verdict="FAIL",
+                    reason="build command not configured for environment %s"
+                    % envs.env_id(state), artifacts_rel=[rel])
+            _write_bootstrap_controls(
+                pdir, "FAIL", blocker="build_command_unconfigured",
+                failure_class="bootstrap_input_missing")
+            sys.exit("PHASE 0 FAIL — %s" % e)
+        success_re = envs.success_re(state)
+        error_re = envs.error_re(state)
         print("compile probe: %s" % cmd)
         path = os.path.join(pdir, probe_rel)
         with open(path, "w", encoding="utf-8") as logf:
@@ -152,9 +176,9 @@ def main():
             rc = proc.wait()
         with open(path, "r", encoding="utf-8", errors="replace") as f:
             out = f.read()
-        compile_ok = rc == 0 and bool(SUCCESS_RE.search(out)) and not ERROR_RE.search(out)
+        compile_ok = rc == 0 and bool(success_re.search(out)) and not error_re.search(out)
         add("compile", "HARD", compile_ok,
-            "target=%s rc=%d banner=%s" % (args.probe_target, rc, bool(SUCCESS_RE.search(out))),
+            "target=%s rc=%d banner=%s" % (args.probe_target, rc, bool(success_re.search(out))),
             "P2")
         if compile_ok:  # record stability so subsequent inits skip the rebuild
             os.makedirs(os.path.dirname(probe_marker), exist_ok=True)
@@ -189,31 +213,54 @@ def main():
     add("device", "HARD", don.returncode == 0 and bool(serial),
         "serial=%s" % (serial or (don.stderr.strip() or "no unique device")), "P4/P5")
 
-    # oh-gc (gitcode CLI) + gitcode token — needed only at P6 (upload). SOFT:
-    # warn with actionable guidance, never block P0. Two levels: CLI present,
-    # and token configured (oh-gc auth status exit 0 == logged in).
-    ohv = run("oh-gc --version")
-    oh_gc_ok = ohv.returncode == 0
-    add("oh_gc", "SOFT", oh_gc_ok,
-        (ohv.stdout or ohv.stderr).strip()[:80] if oh_gc_ok
-        else "not installed — `npm i -g @oh-gc/cli@latest` (needed at P6)", "P6")
+    # Upload prerequisites — needed only at P8 (upload). SOFT: warn with
+    # actionable guidance, never block P0. Which prereqs to probe depends on the
+    # environment's upload backend:
+    #   gitcode -> oh-gc CLI present + gitcode token configured (OpenHarmony)
+    #   gerrit  -> git remote + commit-msg Change-Id hook (HarmonyOS internal)
+    backend = envs.upload_backend(state)
+    upload_soft = []  # names of SOFT upload checks that failed (for the P8 hint)
+    if backend == "gitcode":
+        ohv = run("oh-gc --version")
+        oh_gc_ok = ohv.returncode == 0
+        add("oh_gc", "SOFT", oh_gc_ok,
+            (ohv.stdout or ohv.stderr).strip()[:80] if oh_gc_ok
+            else "not installed — `npm i -g @oh-gc/cli@latest` (needed at P8)", "P8")
 
-    gitcode_user = ""
-    if oh_gc_ok:
-        aenv = dict(env)
-        aenv.setdefault("XDG_CACHE_HOME", "/tmp/oh-gc-cache")
-        auth = subprocess.run("oh-gc auth status", shell=True, text=True,
-                              capture_output=True, env=aenv)
-        auth_ok = auth.returncode == 0
-        first = (auth.stdout or auth.stderr).strip().splitlines()
-        gitcode_user = first[0][:80] if first else ""
-        add("gitcode_auth", "SOFT", auth_ok,
-            gitcode_user if auth_ok
-            else "gitcode token NOT configured — run `oh-gc auth login` "
-                 "(token stored at ~/.config/gitcode-cli/config.json)", "P6")
-    else:
-        add("gitcode_auth", "SOFT", False,
-            "skipped (oh-gc not installed); after install run `oh-gc auth login`", "P6")
+        gitcode_user = ""
+        if oh_gc_ok:
+            aenv = dict(env)
+            aenv.setdefault("XDG_CACHE_HOME", "/tmp/oh-gc-cache")
+            auth = subprocess.run("oh-gc auth status", shell=True, text=True,
+                                  capture_output=True, env=aenv)
+            auth_ok = auth.returncode == 0
+            first = (auth.stdout or auth.stderr).strip().splitlines()
+            gitcode_user = first[0][:80] if first else ""
+            add("gitcode_auth", "SOFT", auth_ok,
+                gitcode_user if auth_ok
+                else "gitcode token NOT configured — run `oh-gc auth login` "
+                     "(token stored at ~/.config/gitcode-cli/config.json)", "P8")
+        else:
+            add("gitcode_auth", "SOFT", False,
+                "skipped (oh-gc not installed); after install run `oh-gc auth login`", "P8")
+        upload_soft = ["oh_gc", "gitcode_auth"]
+    else:  # gerrit (HarmonyOS)
+        # A push target: git_dir must have a remote to push refs/for/<base> to.
+        rem = run("git -C %s remote" % gdir)
+        has_remote = rem.returncode == 0 and bool(rem.stdout.strip())
+        add("git_remote", "SOFT", has_remote,
+            ("remotes: %s" % ",".join(rem.stdout.split())) if has_remote
+            else "no git remote in %s — Gerrit push target must be configured "
+                 "(needed at P8)" % gdir, "P8")
+        # Gerrit's commit-msg hook injects the Change-Id trailer refs/for review
+        # needs. Its absence is a warn, not a block (installed at push time).
+        hook = os.path.join(gdir, ".git", "hooks", "commit-msg")
+        hook_ok = os.path.exists(hook)
+        add("gerrit_hook", "SOFT", hook_ok,
+            hook if hook_ok
+            else "commit-msg Change-Id hook not installed at %s — Gerrit review "
+                 "needs it (installed at P8 push time)" % hook, "P8")
+        upload_soft = ["git_remote", "gerrit_hook"]
 
     # persist detected serial into state if not already pinned (config, not status)
     if serial and not state.get("device_serial"):
@@ -250,14 +297,20 @@ def main():
         sys.exit("PHASE 0 FAIL — missing: %s" % ",".join(hard_fail))
 
     soft_warn = [n for (n, k, ok, d, ph) in checks if k == "SOFT" and not ok]
-    # surface actionable guidance for any failed SOFT check (P6 upload prereqs)
-    if any(n in soft_warn for n in ("oh_gc", "gitcode_auth")):
-        print("\n--- P6 上库前需手动配置(现在不阻塞) ---")
-        if "oh_gc" in soft_warn:
-            print("  * 安装 gitcode CLI: npm i -g @oh-gc/cli@latest")
-        if "gitcode_auth" in soft_warn:
-            print("  * 配置 gitcode token(手动登录): oh-gc auth login")
-            print("    token 存于 ~/.config/gitcode-cli/config.json;`oh-gc auth status` 验证")
+    # surface actionable guidance for any failed SOFT upload check (P8 prereqs)
+    if any(n in soft_warn for n in upload_soft):
+        print("\n--- P8 上库前需手动配置(现在不阻塞) ---")
+        if backend == "gitcode":
+            if "oh_gc" in soft_warn:
+                print("  * 安装 gitcode CLI: npm i -g @oh-gc/cli@latest")
+            if "gitcode_auth" in soft_warn:
+                print("  * 配置 gitcode token(手动登录): oh-gc auth login")
+                print("    token 存于 ~/.config/gitcode-cli/config.json;`oh-gc auth status` 验证")
+        else:  # gerrit
+            if "git_remote" in soft_warn:
+                print("  * 配置 Gerrit push 远端: git -C <git_dir> remote add ...")
+            if "gerrit_hook" in soft_warn:
+                print("  * 安装 commit-msg Change-Id 钩子(Gerrit review 需要)")
         print("-" * 42)
     reason = "all capabilities present; serial=%s%s" % (
         serial, (" (warn: %s)" % ",".join(soft_warn)) if soft_warn else "")

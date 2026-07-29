@@ -24,6 +24,7 @@ import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 import gatelib as gl  # noqa: E402
+import environments as envs  # noqa: E402
 
 # Phases whose evidence gate must be followed by an explicit human sign-off
 # before advancing (the pipeline stops and shows real results/artifacts first).
@@ -999,6 +1000,45 @@ def cmd_init(args):
             "      re-run init with --confirm-defaults."
             % (DEFAULT_GIT_DIR, DEFAULT_BUILD_TARGET, DEFAULT_TEST_PART))
     _defaults_confirmed = _all_defaulted and args.confirm_defaults
+
+    # Environment confirmation gate. The pipeline now supports two environments —
+    # openharmony (gitcode/rk3568) and harmonyos (HarmonyOS, Gerrit, with a
+    # system|chip component kind whose build command differs). The environment is
+    # a per-AR human decision that changes build + upload behavior, so a bare
+    # `init` (no --environment) HARD-BLOCKS and forces the caller to stop and ask
+    # the user. Mirrors the compiled-component gate above. Past the gate:
+    #   * --environment openharmony  -> the original flow (default, zero change), or
+    #   * --environment harmonyos --component-type system|chip.
+    if not args.environment:
+        sys.exit(
+            "ERROR: environment not confirmed. The pipeline supports two "
+            "environments and the choice changes build + upload behavior, so it "
+            "must be confirmed by a human before init.\n"
+            "  * openharmony (gitcode / rk3568):\n"
+            "      re-run init with --environment openharmony\n"
+            "  * harmonyos (HarmonyOS / Gerrit; two component kinds):\n"
+            "      re-run init with --environment harmonyos --component-type system|chip\n"
+            "  Ask the user which environment this AR targets, then re-run init.")
+    if args.environment not in envs.ENVIRONMENTS:
+        sys.exit("ERROR: unknown --environment %r (expected one of %s)"
+                 % (args.environment, ", ".join(envs.ENVIRONMENTS)))
+    component_type = args.component_type
+    if args.environment == "harmonyos":
+        if component_type not in envs.COMPONENT_TYPES:
+            sys.exit(
+                "ERROR: --component-type is required for --environment harmonyos "
+                "(HarmonyOS 系统组件/芯片组件 have different build commands).\n"
+                "  Ask the user which kind this AR is, then re-run init with\n"
+                "      --component-type system   (系统组件)   or\n"
+                "      --component-type chip      (芯片组件)")
+    else:
+        # component_type is meaningful only for harmonyos; drop any stray value.
+        component_type = None
+    # Product form is derived from the environment profile (openharmony -> rk3568;
+    # harmonyos -> from the component profile, or None while it is still a
+    # placeholder — later gates resolve/hard-fail via environments.product_form).
+    product = envs.derive_product(args.environment, component_type)
+
     run_id = args.run_id or os.path.basename(pdir.rstrip("/"))
     gl.create_secret(run_id)
     state = {
@@ -1006,7 +1046,9 @@ def cmd_init(args):
         "ar": run_id,
         "repo": args.repo,
         "git_dir": args.git_dir or args.repo,
-        "product": "rk3568",
+        "environment": args.environment,
+        "component_type": component_type,
+        "product": product,
         "device_serial": args.device_serial,
         "build_target": args.build_target,
         "test": {"part": args.part, "ut_suites": [], "mst_suites": []},
@@ -1035,6 +1077,11 @@ def cmd_init(args):
     gl.save_state(pdir, state)
     print("initialized pipeline at %s (run_id=%s)" % (pdir, run_id))
     print("secret: %s (mode 600)" % gl.secret_path(run_id))
+    print("environment: %s%s (upload=%s, product=%s)"
+          % (state["environment"],
+             "/%s" % component_type if component_type else "",
+             envs.upload_backend(state),
+             state["product"] if state["product"] is not None else "<unset>"))
     print("compiled component: git_dir=%s build_target=%s part=%s"
           % (state["git_dir"], state["build_target"], state["test"]["part"]))
     if _defaults_confirmed:
@@ -1384,6 +1431,16 @@ def main():
                         "of --git-dir/--build-target/--part is given. Without this "
                         "flag a fully-defaulted init HARD-FAILS, forcing a human to "
                         "confirm the compiled component per AR.")
+    p.add_argument("--environment", choices=list(envs.ENVIRONMENTS),
+                   help="target environment; REQUIRED (a bare init hard-fails). "
+                        "'openharmony' = the original gitcode/rk3568 flow; "
+                        "'harmonyos' = HarmonyOS flow (Gerrit upload, no "
+                        "gitcode/download). Ask the user which environment this AR "
+                        "targets before init.")
+    p.add_argument("--component-type", choices=list(envs.COMPONENT_TYPES),
+                   help="HarmonyOS component kind: 'system' (系统组件) or 'chip' "
+                        "(芯片组件); REQUIRED when --environment harmonyos (their "
+                        "build commands differ). Ignored for openharmony.")
     p.add_argument("--base-commit", default="")
     p.add_argument("--force", action="store_true")
     p.set_defaults(func=cmd_init)

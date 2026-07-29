@@ -2,6 +2,19 @@
 
 > 本页拆解 P8(物理 phase 8)的本地 review / PR review / issue / PR / CI / consent、不可逆动作的边界、GitCode skill 组合方式。
 
+## 上库后端按环境分支
+
+P8 的上库后端取自 `pipeline.json` 的 `environment`(由 `lib/environments.py` 解析):
+
+| 环境 | 后端 | 上库方式 | `--repo-slug` / `--issue` |
+|---|---|---|---|
+| `openharmony`(默认) | gitcode | `oh-gc` 建 PR + OpenHarmony CI 绿 | 必填 |
+| `harmonyos` | gerrit | `git push refs/for/<base>` + Gerrit review 标签作 CI 绿等价 | 不适用 |
+
+**两道 review 门 + 人工 consent + head-SHA 绑定在两种后端下照旧复用**——只是「push+建 PR」「查 CI 绿」这两步换成对应后端的命令。**Gerrit 后端目前为占位**:内部 push/review 查询命令未填时门控**硬失败并打印"待填"提示**(与编译命令占位同风格),须在 `gate_upload_ci.py` 的 gerrit 分支填入真实命令后才能上库。
+
+> 本页以下步骤以 **gitcode(openharmony)** 后端为例;gerrit 后端的 P8 子状态机、两道 review 门、consent、SHA 绑定完全一致,仅 push/PR/CI 三步的底层命令不同。
+
 ## P8 两道 review 门
 
 P8 是上库阶段,含两道硬控 review 门:
@@ -22,11 +35,13 @@ P8 是上库阶段,含两道硬控 review 门:
 
 ```bash
 gate_upload_ci.py --pipeline-dir P --repo-slug owner/repo --branch B [--base master] [--title T]
-    --issue N                         # 建 PR 必填(CI 门禁只对绑定 Issue 的 PR 触发)
+    --issue N                         # 建 PR 必填(CI 门禁只对绑定 Issue 的 PR 触发;仅 gitcode)
     --local-review-report F           # A 本地自检零问题报告(commit 前硬控)
     --pr-review-report F              # B PR review 零问题报告(建 PR 后、CI 前硬控)
     [--pr N] [--allow-push]           # push+commit -s(DCO)只在 --allow-push 时发生
 ```
+
+> `--repo-slug` / `--issue` 仅 **gitcode(openharmony)** 后端适用且必填;gerrit(harmonyos)后端不需要,改用 `--base` 指定 refs/for 目标分支。
 
 流程:
 

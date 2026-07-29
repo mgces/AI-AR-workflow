@@ -3,6 +3,13 @@
 **唯一对外不可逆动作。** 即使全自动,push 前必须有人工一次性同意。
 `gate_upload_ci.py` 签名 `emit(phase 8)`。
 
+> **上库后端按环境分支**(取自 `pipeline.json` 的 `environment`,由 `lib/environments.py` 解析):
+> - `openharmony`(默认):走本页描述的 **gitcode** 流程(`oh-gc` 建 PR + OpenHarmony CI 绿)。`--repo-slug`/`--issue` 必填。
+> - `harmonyos`:走 **Gerrit**(`git push refs/for/<base>` + Gerrit review 标签作 CI 绿等价物)。
+>   两道 review 门 + 人工 consent + head-SHA 绑定**照旧复用**;`--repo-slug`/`--issue` 不适用。
+>   **Gerrit 后端目前为占位**:push/review 查询命令未填时门控**硬失败并打印"待填"提示**
+>   (与编译命令占位同风格),须在 `gate_upload_ci.py` 的 gerrit 分支填入真实命令后才能上库。
+
 ## 做事(调用现有技能)
 两道 code review 夹住上库,均要求**机器可读的零问题报告**(与 P7 同一 review 报告契约:
 JSON `issue_count/finding_count/...==0` 或 `issues/findings/...` 空数组,或文本 `review_issue_count=0`):

@@ -27,7 +27,20 @@
 
 ## 为什么需要 issue 才建 PR？
 
-`gate_upload_ci.py` 的 `--issue N` 必填——CI 门禁只对绑定 Issue 的 PR 触发。这是为了确保每个 PR 都有对应的需求追溯（issue），避免凭空上库。
+`gate_upload_ci.py` 的 `--issue N` 必填(**仅 gitcode/openharmony 后端**)——CI 门禁只对绑定 Issue 的 PR 触发。这是为了确保每个 PR 都有对应的需求追溯（issue），避免凭空上库。gerrit/HarmonyOS 后端走 refs/for 评审,不需要 issue。
+
+## openharmony 和 HarmonyOS 环境有什么区别？
+
+两种形态在同一套流水线里共存,从 `init` 就用 `--environment` 强制区分:
+
+| | openharmony(默认) | harmonyos |
+|---|---|---|
+| 代码来源 | gitcode 下载 | 不下载(内部已有) |
+| 编译命令 | `./build.sh --product-name rk3568 …` | 系统/芯片组件各不同(**占位待填**) |
+| 上库后端 | gitcode(`oh-gc` PR + OpenHarmony CI) | gerrit(`git push refs/for` + review 标签) |
+| 真机测试 | hdc/hilog(一致,复用) | hdc/hilog(一致,复用) |
+
+环境相关取值全部由 `lib/environments.py` 单点解析,门控不写死。HarmonyOS 编译命令/上库命令**目前为占位**,未填时门控硬失败并打印"待填"提示,绝不静默跑错。`--environment harmonyos` 时 `--component-type system|chip` 必填。
 
 ## 为什么知识库不是源码真理？
 

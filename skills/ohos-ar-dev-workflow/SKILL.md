@@ -51,7 +51,14 @@ GN 构建目标(`build_target`)、测试 `testpart` 与套件名、目标二进�
 ## 步骤 0:初始化检查
 
 - 若 `specs/initialized.flag` 不存在或环境未就绪 → 先跑技能 `ohos-ar-dev-init`。
-- 为本次 AR 建运行态目录并初始化状态机。**编译部件是人工确认点**:init 前先用
+- **环境形态是人工强确认点**(与编译部件确认并列):init **必须**用 `--environment` 指定环境,
+  裸 init 缺 `--environment` 会**硬失败**。先用 `AskUserQuestion` 问用户本 AR 属于哪种环境:
+  - `openharmony`(默认):gitcode + rk3568,上库走 oh-gc PR + OpenHarmony CI。
+  - `harmonyos-系统组件`:HarmonyOS,上库走 Gerrit;`--environment harmonyos --component-type system`。
+  - `harmonyos-芯片组件`:HarmonyOS,上库走 Gerrit;`--environment harmonyos --component-type chip`。
+  HarmonyOS 两种组件编译命令不同且**目前为占位**(在 `scripts/lib/environments.py` 未填时,P0/P4 编译门与
+  P8 上库门会硬失败并打印"待填"提示,绝不静默跑错)。
+- 为本次 AR 建运行态目录并初始化状态机。**编译部件也是人工确认点**:init 前先用
   `AskUserQuestion` 跟用户确认本 AR 要编译的部件(默认候选 hiview:
   git_dir=`base/hiviewdfx/hiview` / build_target=`hiview_package` / part=`hiviewdfx`)。
   裸 init(三者皆缺又不带 `--confirm-defaults`)会**硬失败**,绝不静默编译 hiview。
@@ -63,7 +70,9 @@ GN 构建目标(`build_target`)、测试 `testpart` 与套件名、目标二进�
   AGENT_SKILLS_DIR="${AGENT_SKILLS_DIR:-$HOME/.claude/skills}"
   S="$AGENT_SKILLS_DIR/ohos-ar-dev-phases/scripts"
   # 用户答别的组件 → 传 --git-dir/--build-target/--part;用户确认沿用 hiview → 加 --confirm-defaults
+  # 环境:openharmony 传 --environment openharmony;HarmonyOS 传 --environment harmonyos --component-type system|chip
   python3 $S/advance.py --pipeline-dir "$PDIR" init \
+      --environment openharmony \
       --git-dir <组件路径> --build-target <gn_target> --part <testpart> \
       --base-commit "$(git -C $OHOS_ROOT rev-parse HEAD)"
   ```
