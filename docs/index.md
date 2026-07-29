@@ -139,3 +139,12 @@ features:
 ## 关于知识库
 
 OpenHarmony 知识库为 workflow 提供代码定位、依赖分析、构建目标和验证边界支撑，但不替代当前源码与真实运行证据。知识库作为辅助能力与二级入口展示，不与主线并列争夺首页重心——详见 [知识库栏目](/knowledge-base/)。
+
+## 仓库地址
+
+本项目在两个平台同步托管，内容一致：
+
+- **GitCode**（主仓）：[gitcode.com/mgce1/AI-AR-workflow](https://gitcode.com/mgce1/AI-AR-workflow)
+- **GitHub**（镜像 + 文档站部署源）：[github.com/mgces/AI-AR-workflow](https://github.com/mgces/AI-AR-workflow)
+
+本文档站由 GitHub Actions 从 GitHub 仓库构建部署：<https://mgces.github.io/AI-AR-workflow/>。

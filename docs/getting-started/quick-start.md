@@ -6,6 +6,22 @@
 **不需要先读完整生命周期**。跑通后再回头看 [生命周期总览](/workflow/lifecycle-overview) 理解全局。
 :::
 
+## 获取代码
+
+本项目在两个平台同步托管，内容一致，任选其一 clone：
+
+```bash
+# GitCode（主仓）
+git clone https://gitcode.com/mgce1/AI-AR-workflow.git
+
+# GitHub（镜像 + 文档站部署源）
+git clone https://github.com/mgces/AI-AR-workflow.git
+```
+
+- GitCode：<https://gitcode.com/mgce1/AI-AR-workflow>
+- GitHub：<https://github.com/mgces/AI-AR-workflow>
+- 在线文档站：<https://mgces.github.io/AI-AR-workflow/>
+
 ## 前置条件
 
 按顺序确认就绪，**第一项最优先**：
