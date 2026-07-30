@@ -49,7 +49,7 @@ gate_device_func.py --pipeline-dir P \
     --runtime-marker <运行时标记> --e2e-marker <端到端标记>
 ```
 
-**契约的 `device_cases[]` �驱抗伪造三层**:
+**契约的 `device_cases[]` 抗伪造三层**:
 
 1. **进程溯源**:`process` 命中行绑定 PID,校验进程名一致且 `/proc/<pid>/exe\|maps` 真加载了 `artifact_loaded`
 2. **副作用断言**:`side_effect` 的 `shell_assert` 命令实跑并比对期望

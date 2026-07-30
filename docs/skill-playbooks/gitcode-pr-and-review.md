@@ -36,7 +36,7 @@ oh-gc pr create --repo <owner/repo> --head <分支> --base master --issue <N> --
 
 ## PR URL / head / repo 的常见坑
 
-| �坑 | 处理 |
+| 常见坑 | 处理 |
 |---|---|
 | PR URL 格不规范 | 用 `oh-gc pr view --pr <N>` 拉取,不手解析 URL |
 | head SHA 与 push SHA 不一致 | `gate_upload_ci.py` 校验 SHA 绑定,不一致即 FAIL |

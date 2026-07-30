@@ -13,7 +13,7 @@ P1 在物理层面是两个独立签名阶段(phase1 设计 + phase2 开发),逻
 跑 `gate_design.py`(emit 1)校验:
 - 6 必含章节齐全
 - ar-contract 三非空数组(`build_artifacts` / `test_cases` / `device_cases`)
-- v2 �契约拒 TODO/TBD 占位 + 需求/文件/测试/设备引用闭环
+- v2 契约拒收 TODO/TBD 占位 + 需求/文件/测试/设备引用闭环
 - 并签名
 
 通过后**不自动写码**——停下等人工 consent。

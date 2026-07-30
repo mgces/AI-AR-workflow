@@ -42,7 +42,7 @@ python3 $S/advance.py --pipeline-dir "$PDIR" reset --reason "P5 发现功能 bug
 |---|---|
 | 改功能代码/配置内容 | 必须 reset 回 P1,否则 advance 因指纹漂移被拒 |
 | P3/P5/P6/P7 新增非测试路径 | 拒绝(`TEST_ONLY_PHASES`),必须 reset |
-| 新增独立测试文件(test 跽径) | **不触发**漂移,可继续当前阶段 |
+| 新增独立测试文件(test 路径) | **不触发**漂移,可继续当前阶段 |
 | 只改测试不改功能 | 不必 reset,可继续(见 [只补测试](/examples/test-only-follow-up)) |
 
 ## 常见误区

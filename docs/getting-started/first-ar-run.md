@@ -51,9 +51,8 @@ $REPO/specs/pipeline/{YYYYMMDD}-{slug}/
 7. **P4 编译**:真跑 `build.sh`,捕获成功横幅
 8. **P5 单测执行**:developer_test 跑通,tests>0 且 fail==0 err==0
 9. **P6 真机**:部署 + hilog 抗伪造三层证明,**停下等你核对真机结果并 consent**
-10. **P6 真机**:部署 + hilog 抗伪造三层证明,**停下等你核对真机结果并 consent**
-11. **P7 质量**:覆盖率/性能/功耗/稳定性报告,**停下等你核对质量并 consent**
-12. **P8 上库**:本地自检零问题 → commit → push → 建 PR → PR review 零问题 → CI 绿,**停下等你确认上库并 consent**
+10. **P7 质量**:覆盖率/性能/功耗/稳定性报告,**停下等你核对质量并 consent**
+11. **P8 上库**:本地自检零问题 → commit → push → 建 PR → PR review 零问题 → CI 绿,**停下等你确认上库并 consent**
 
 ## 常见误区
 

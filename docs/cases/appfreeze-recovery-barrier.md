@@ -1,4 +1,4 @@
-# 案例：AppFreeze �恢复屏障
+# 案例：AppFreeze 恢复屏障
 
 > 应用冻结恢复屏障管线执行分析——来自 `products/20260715-appfreeze-recovery-barrier/`。
 
@@ -8,7 +8,7 @@
 
 ## 目标
 
-分析 AppFreeze 恢复屏障的管线执行分析，产出：
+分析 AppFreeze 恢复屏障的管线执行机制，产出：
 
 - 管线执行分析报告（`appfreeze_recovery_barrier_pipeline_execution_analysis.md`）
 - AR 设计文档（`ar.md`）

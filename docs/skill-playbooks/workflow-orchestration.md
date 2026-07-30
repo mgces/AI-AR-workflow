@@ -46,7 +46,7 @@
 /ohos-ar-dev-workflow <已澄清的 AR 文本>
 ```
 
-编排器会为这个 AR 在 `specs/pipeline/{date}-{slug}/` 庺独立流水线,开始按阶段推进。
+编排器会为这个 AR 在 `specs/pipeline/{date}-{slug}/` 建独立流水线,开始按阶段推进。
 
 ### 续跑("继续流水线")
 

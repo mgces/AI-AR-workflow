@@ -15,12 +15,8 @@ $REPO/specs/pipeline/{YYYYMMDD}-{slug}/
 ├── next_action.json     # 导航层:当前逻辑阶段/物理 phase/substate/下一步
 ├── evidence/            # ← 机器证据(签名,gitignore),真相所在
 │   ├── manifest.jsonl   #   追加式 HMAC 链式签名证据账本
-│   └
-│   └
-│   └
-│   └
-│   ┕
-│   └
+│   ├── phase0/ … phase8/  # 各阶段真实产物
+├── controls/            # ← 弱模型控制/导航层(best-effort,非放行依据,可缺失容忍)
 └── reports/             # ← 人读 Markdown 审计报告(脱敏,可归档)
 ```
 

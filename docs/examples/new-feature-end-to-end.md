@@ -54,7 +54,7 @@
 2. 同意后 `advance.py consent --phase 1 --token <你的确认令牌>`
 
 ### workflow 做什么
-记录绑定签名设计条目的 consent令牌(重跑 gate_design 即作废)。
+记录绑定签名设计条目的 consent 令牌(重跑 gate_design 即作废)。
 
 ### gate 检查什么
 此时不校验,consent 将在 P2 `gate_develop.py` 内强校验(没签字 P2 直接 FAIL)。
@@ -86,7 +86,7 @@
 ### 用户做什么
 无,编排器自动调度。
 
-### workflow 哈什么
+### workflow 做什么
 1. 调用 `ohos-test-ut-generation` 按契约 `test_cases[].gtest` 生成新增独立测试文件
 2. 调用 `tdd-enforcer` 约束测试质量
 3. 跑 `gate_test_develop.py`(emit 3)

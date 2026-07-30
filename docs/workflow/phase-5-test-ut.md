@@ -51,7 +51,7 @@ P5 要求 developer_test 产**本次新建**报告——新鲜度靠新报告目
 
 产物落 `$PDIR/evidence/phase5/`:`summary_report.xml`、`result_*.xml`、`gtest_coverage.txt`、`start_sh_stdout.txt`、`report_dir.txt`。
 
-## 常见 skill 参与P5
+## 常见 skill 参与 P5
 
 - [`ohos-test-ut-generation`](/skill-playbooks/unit-test-generation) — 生成测试
 - `tdd-enforcer` — TDD 约束(**只增独立测试**)

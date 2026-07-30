@@ -7,7 +7,7 @@
 | 案例 | 主题 | 产物 |
 |---|---|---|
 | [线程泄漏检测](/cases/thread-leak-detector) | hiview 插件新增线程阈值检测 | `products/20260707-thread-leak-detector/` |
-| [AppFreeze �恢复屏障](/cases/appfreeze-recovery-barrier) | 应用冻结恢复屏障管线执行分析 | `products/20260715-appfreeze-recovery-barrier/` |
+| [AppFreeze 恢复屏障](/cases/appfreeze-recovery-barrier) | 应用冻结恢复屏障管线执行分析 | `products/20260715-appfreeze-recovery-barrier/` |
 | [弱模型优化](/cases/weak-model-optimization) | 面向弱模型的控制层与失败三分回路 | `products/20260723-weak-model-optimization/` |
 
 ## 案例页面结构
