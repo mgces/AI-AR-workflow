@@ -6,6 +6,7 @@ an executable backend before the guard can return PASS.  Deterministic rules are
 implemented locally; AST/tool rows require an explicitly available executor.
 """
 import argparse
+import hashlib
 import json
 import re
 import shutil
@@ -15,9 +16,22 @@ from pathlib import Path
 
 EXTS = {".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx"}
 HEADER_EXTS = {".h", ".hh", ".hpp", ".hxx"}
+C_SOURCE_EXTS = {".c"}
+CPP_RULE_EXTS = EXTS - C_SOURCE_EXTS
 
 DATA_FILE = Path(__file__).resolve().parent.parent / "data" / "ruleset_c.json"
+COVERAGE_FILE = Path(__file__).resolve().parent.parent / "data" / "ruleset_coverage.json"
+WORKBOOK_FILE = (Path(__file__).resolve().parent.parent / "s" /
+                 "黄区C语言门禁规则集_OAT_敏感词 - 20260126.xlsx")
 CLANG_TIDY_CFG = Path(__file__).resolve().parent.parent / "data" / ".clang-tidy"
+
+
+def _sha256(path):
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 # (check_name_glob, rule_id) — maps clang-tidy warnings to workbook rule_ids.
 # Loaded from the WarningToRule section of .clang-tidy at init time if the file
@@ -109,29 +123,21 @@ _CLANG_FORMAT_RULES = frozenset({
 # positive would wrongly stop P2/P3. Semantic rules (ownership, lifetime,
 # validation, complexity) stay with the skill's human review and are NOT here.
 _RAW_RULES = [
-    ("G.INC.06", "严重", r"^\s*#\s*pragma\s+once\b", "use a #define header guard", None),
-    ("G.EXP.35-CPP", "严重", r"\bNULL\b", "use nullptr", None),
-    ("G.INC.05-CPP", "严重", r"extern\s+\"C\"\s*\{[\s\S]*?#\s*include",
-     "move includes outside extern \"C\"", None),
+    ("G.INC.06", "严重", r"^\s*#\s*pragma\s+once\b", "use a #define header guard", HEADER_EXTS),
+    ("G.EXP.35-CPP", "严重", r"\bNULL\b", "use nullptr", CPP_RULE_EXTS),
     ("G.FUU.09", "严重", r"\brealloc\s*\(", "avoid realloc; use a checked replacement", None),
     ("G.FUU.10", "严重", r"\balloca\s*\(", "do not allocate stack memory with alloca", None),
     ("G.FUU.08", "严重", r"\babort\s*\(", "use structured error handling instead of abort", None),
-    ("G.STD.17-CPP", "严重", r"\bkill\s*\(", "do not directly terminate another process", None),
-    ("G.RES.05-CPP", "严重", r"\[(=|&)\s*\]", "avoid default lambda captures", None),
+    ("G.STD.17-CPP", "严重", r"\bkill\s*\(", "do not directly terminate another process", CPP_RULE_EXTS),
+    ("G.RES.06-CPP", "一般", r"\[(=|&)\s*\]", "avoid default lambda captures", CPP_RULE_EXTS),
     ("G.STD.07-CPP", "严重", r"std::string[^\n]*(password|passwd|pwd|psw)",
-     "do not store sensitive data in std::string", None),
-    # --- banned process/shell APIs (fatal at the yellow-zone OAT gate) ---
-    ("G.SEC.03", "致命", r"\bsystem\s*\(", "do not use system(); use a checked exec wrapper", None),
-    ("G.SEC.04", "致命", r"\bpopen\s*\(", "do not use popen(); use a checked exec wrapper", None),
-    ("G.SEC.05", "致命", r"\bgets\s*\(", "gets() is banned; use a bounded read (fgets)", None),
-    # --- unbounded C string / format APIs ---
-    ("G.SEC.06", "严重", r"\b(strcpy|strcat|sprintf|vsprintf|stpcpy)\s*\(",
-     "use the bounded variant (strcpy_s / snprintf / ...)", None),
-    # --- control flow ---
-    ("G.CTL.01", "严重", r"^\s*goto\s+\w", "avoid goto", None),
-    # --- header hygiene: 'using namespace' at header scope pollutes every TU ---
-    ("G.NAM.02", "严重", r"^\s*using\s+namespace\b",
-     "do not put 'using namespace' at header scope", HEADER_EXTS),
+     "do not store sensitive data in std::string", CPP_RULE_EXTS),
+    # These APIs are covered by the workbook's unsafe-function rows. Keep the
+    # author-time blocker, but report a real workbook rule id.
+    ("G.FUU.21", "一般", r"\b(system|popen|gets|strcpy|strcat|sprintf|vsprintf|stpcpy)\s*\(",
+     "replace the unsafe API with an approved bounded or structured alternative", C_SOURCE_EXTS),
+    ("G.FUU.21-CPP", "一般", r"\b(system|popen|gets|strcpy|strcat|sprintf|vsprintf|stpcpy)\s*\(",
+     "replace the unsafe API with an approved bounded or structured alternative", CPP_RULE_EXTS),
     # ------------------------------------------------------------------
     # Phase A additions — high-precision regex-detectable rules from the
     # remaining workbook rows (G.*, OAT.*, row.*).  Each pattern matches
@@ -170,7 +176,7 @@ _RAW_RULES = [
      r'ctype\.h|assert\.h|stdarg\.h|locale\.h|signal\.h|setjmp\.h|'
      r'errno\.h|float\.h|limits\.h|inttypes\.h|stdint\.h|stdbool\.h|'
      r'stddef\.h|uchar\.h|wchar\.h|wctype\.h|complex\.h|fenv\.h|tgmath\.h)>',
-     "use the C++ wrapper header (<cstdio>, <cstdlib>, ...) instead", None),
+     "use the C++ wrapper header (<cstdio>, <cstdlib>, ...) instead", CPP_RULE_EXTS),
     # --- rand() not suitable for security-sensitive randomness ---
     ("G.OTH.03", "一般", r"\brand\s*\(",
      "do not use rand() for security-sensitive random numbers; use a CSPRNG instead", None),
@@ -191,17 +197,24 @@ _RAW_RULES = [
     # --- commented-out code (not plain comments — starts with // + keyword) ---
     ("G.EXP.43-CPP", "严重", r"^\s*//\s+(if|for|while|switch|int\s+\w+|char\s+\w+|void\s+\w+|return\s+)\s*[\(;{]",
      "remove commented-out code instead of leaving it in", None),
-    # --- using namespace before first #include (pollutes translation unit) ---
-    ("G.INC.08-CPP", "严重", r"using\s+namespace\s+\w+",
-     "move 'using namespace' after all #include directives", None),
+    # NOTE: G.INC.08 ("no #include inside extern \"C\"") is a *multiline* pairing
+    # rule, handled in _multiline_findings via G.INC.05-CPP's extern-C scan.
+    # A former "G.INC.08-CPP" single-line regex here matched every `using
+    # namespace` in .cpp files (a mislabel + duplicate of G.NAM.02) and was a
+    # hard-blocker false positive on all normal source; removed on purpose.
     # --- public IP address hardcoded in string literals ---
     ("G.OTH.05", "严重",
      r'"(12[0-5]|1[0-1]\d|1\d\d|[2-9]\d|\d)\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d)\.'
      r'(25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d)\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d)"',
      "do not hardcode public IP addresses; read from config instead", None),
-    # --- goto upward jump (the line contains both a label and goto) ---
-    ("G.CTL.06", "严重", r"^\s*\w+:\s*$",
-     "goto must only jump forward (downward); upward jumps are banned", None),
+    # --- goto upward jump: G.CTL.06 was DROPPED, not moved. A former single-line
+    # r"^\s*\w+:\s*$" here matched every access specifier (public:/private:) and
+    # label, hard-blocking all normal C++. A multiline reimplementation was also
+    # tried and removed: labels are function-scoped but any line scan is
+    # file-scoped, so a forward goto to a reused cleanup label (error:/out:)
+    # defined in another function/method is a verified false positive. Reliable
+    # detection needs real control-flow analysis — defer to P4 clang-tidy
+    # (cppcoreguidelines-avoid-goto). See _multiline_findings docstring.
     # --- macro ending with semicolon (changes control flow) ---
     ("G.PRE.09", "一般", r"#\s*define\s+\w+\([^)]*\)\s+[^;]*;\s*(\\\s*)?$",
      "do not end macro definitions with a semicolon", None),
@@ -314,11 +327,11 @@ _RAW_RULES = [
     # --- GCL.05-CPP: move ctor without move assignment ---
     ("G.CLS.05-CPP", "一般", r"\w+\(\w+\s*&&",
      "if you declare a move constructor also declare a move assignment operator", None),
-    # --- unreachable code after return / goto ---
-    ("G.OTH.01", "严重", r"^\s+return\s+\w+.*;\s*$",
-     "remove code after return/goto that can never execute", None),
-    ("G.OTH.01", "严重", r"^(\s*)goto\s+\w+;\s*\n\1\S",
-     "remove code after goto that can never execute", None),
+    # --- unreachable code after return / goto: G.OTH.01 is a multiline rule
+    # (needs to see whether *another statement follows* in the same block) and
+    # lives in _multiline_findings. Former single-line regexes here matched the
+    # return line itself (flagging every `return x;`) and a `\n`-bearing pattern
+    # that the per-line engine could never fire; both removed on purpose.
     # --- G.PRE.02-CPP: prefer function over function-like macro ---
     ("G.PRE.02-CPP", "一般", r"#\s*define\s+\w+\([^)]*\)\s*\\",
      "prefer a function over a multi-line function-like macro", None),
@@ -402,6 +415,49 @@ _RAW_RULES = [
      "do not access base class or member variables in a constructor try-catch handler", None),
 ]
 RULES = [(rid, sev, re.compile(pat), fix, exts) for rid, sev, pat, fix, exts in _RAW_RULES]
+_TEXT_RULE_IDS = frozenset({
+    "G.CMT.02", "G.CMT.02-CPP", "G.CMT.04", "G.CMT.04-CPP",
+    "G.CMT.05-CPP", "G.CMT.06", "G.EXP.43-CPP", "G.OTH.05",
+    "G.OTH.06-CPP",
+})
+
+
+def _validate_backend_manifest():
+    """Fail closed if generated data/coverage is stale or incomplete."""
+    coverage = json.loads(COVERAGE_FILE.read_text(encoding="utf-8"))
+    rows = coverage.get("rows")
+    if not isinstance(rows, list) or len(rows) != 545:
+        raise ValueError("ruleset coverage manifest must contain 545 rows")
+    source = json.loads(DATA_FILE.read_text(encoding="utf-8"))
+    if source.get("total_workbook_rows") != 545 or len(source.get("rules", [])) != 545:
+        raise ValueError("ruleset data must contain 545 workbook rows")
+    if coverage.get("ruleset_data_sha256") != _sha256(DATA_FILE):
+        raise ValueError("ruleset coverage is stale; rebuild it from ruleset_c.json")
+    expected_workbook_sha = source.get("source_sha256")
+    if not expected_workbook_sha:
+        raise ValueError("ruleset data has no workbook source hash")
+    # The workbook is intentionally kept out of some runtime bundles. When it
+    # is present, verify it; otherwise the generated source hash remains the
+    # provenance check and build_ruleset_data.py is the required regeneration
+    # path for a workbook update.
+    if WORKBOOK_FILE.is_file() and expected_workbook_sha != _sha256(WORKBOOK_FILE):
+        raise ValueError("ruleset data is stale; rebuild it from the workbook")
+    if coverage.get("source_sha256") != expected_workbook_sha:
+        raise ValueError("ruleset coverage source does not match ruleset data")
+    expected_rows = {(item.get("row"), item.get("rule_id")) for item in source["rules"]}
+    actual_rows = {(item.get("row"), item.get("rule_id")) for item in rows}
+    if actual_rows != expected_rows:
+        raise ValueError("ruleset coverage rows do not match ruleset data")
+    workbook_ids = {item.get("rule_id") for item in rows}
+    local_ids = {item[0] for item in _RAW_RULES}
+    local_ids.update(item[1] for item in _CLANG_TIDY_RULE_MAP)
+    local_ids.update(_CLANG_FORMAT_RULES)
+    unknown = sorted(local_ids - workbook_ids)
+    if unknown:
+        raise ValueError("executable rule IDs absent from workbook: %s" % ", ".join(unknown))
+
+
+_validate_backend_manifest()
 
 
 def _load_sensitive_words():
@@ -430,28 +486,254 @@ def _load_sensitive_words():
 SENSITIVE_WORDS = _load_sensitive_words()
 
 
+# A line whose control flow cannot fall through to the next statement. The
+# terminator keyword must lead the line, so a conditional one-liner like
+# `if (x) return;` is deliberately NOT a terminator (its next line is reachable).
+_TERMINATOR = re.compile(r"^(\s*)(return\b[^;]*;|goto\s+\w+\s*;|break\s*;|continue\s*;)\s*$")
+# Lines that are legitimately allowed to follow a terminator (they do not mean
+# "dead code"): block/scope enders, switch arms, labels, preprocessor lines.
+_ALLOWED_AFTER_TERM = re.compile(
+    r"^\s*(\}|#|case\b|default\s*:|else\b|catch\b|while\s*\(|"
+    r"[A-Za-z_]\w*\s*:(?!:)|//|/\*|\*)")
+_LABEL = re.compile(r"^\s*([A-Za-z_]\w*)\s*:(?!:)")
+_GOTO = re.compile(r"\bgoto\s+([A-Za-z_]\w*)\s*;")
+
+
+def _strip_comments_and_literals(lines):
+    """Mask comments and literals while preserving line and column positions."""
+    no_comments = []
+    code_lines = []
+    in_block_comment = False
+    for line in lines:
+        comment_view = list(line)
+        code_view = list(line)
+        quote = None
+        i = 0
+        while i < len(line):
+            if in_block_comment:
+                end = line.find("*/", i)
+                stop = len(line) if end < 0 else end + 2
+                for j in range(i, stop):
+                    comment_view[j] = code_view[j] = " "
+                if end < 0:
+                    i = len(line)
+                    continue
+                in_block_comment = False
+                i = stop
+                continue
+            if quote:
+                code_view[i] = " "
+                if line[i] == "\\" and i + 1 < len(line):
+                    code_view[i + 1] = " "
+                    i += 2
+                    continue
+                if line[i] == quote:
+                    quote = None
+                i += 1
+                continue
+            if line.startswith("//", i):
+                for j in range(i, len(line)):
+                    comment_view[j] = code_view[j] = " "
+                break
+            if line.startswith("/*", i):
+                in_block_comment = True
+                comment_view[i] = comment_view[i + 1] = " "
+                code_view[i] = code_view[i + 1] = " "
+                i += 2
+                continue
+            if line[i] in ('"', "'"):
+                quote = line[i]
+                code_view[i] = " "
+            i += 1
+        no_comments.append("".join(comment_view))
+        code_lines.append("".join(code_view))
+    return no_comments, code_lines
+
+
+def _looks_like_function(prefix):
+    if "(" not in prefix or ")" not in prefix:
+        return False
+    if re.match(r"^\s*(?:if|for|while|switch|catch|else|do)\b", prefix):
+        return False
+    if re.match(r"^\s*(?:class|struct|union|enum|namespace)\b", prefix):
+        return False
+    before_paren = prefix[:prefix.rfind("(")].rstrip()
+    if before_paren.endswith("]"):
+        return False
+    return bool(re.search(r"(?:~?[A-Za-z_]\w*(?:::\w+)*)\s*$", before_paren))
+
+
+def _function_by_line(code_lines):
+    """Map each line to a brace-delimited function body, if any."""
+    stack = []
+    statement = []
+    line_functions = []
+    next_function = 1
+    for line in code_lines:
+        active = next((item for item in reversed(stack) if item is not None), None)
+        line_function = active
+        for char in line:
+            if char == "{":
+                function_id = active
+                if function_id is None and _looks_like_function("".join(statement)):
+                    function_id = next_function
+                    next_function += 1
+                stack.append(function_id)
+                active = function_id
+                line_function = line_function or function_id
+                statement = []
+            elif char == "}":
+                if stack:
+                    stack.pop()
+                active = next((item for item in reversed(stack) if item is not None), None)
+                statement = []
+            elif char == ";":
+                statement = []
+            else:
+                statement.append(char)
+        statement.append("\n")
+        line_functions.append(line_function)
+    return line_functions
+
+
+def _multiline_findings(path, ext, lines):
+    """Cross-line rules that the per-line regex engine cannot express.
+
+    High precision by construction: a rule only fires when it can point at a
+    concrete violation. False negatives are preferred over false positives —
+    these are hard blockers that run on non-local / weak-model executions with
+    no human to catch a misfire, so a rule that cannot be made reliably
+    false-positive-free is dropped rather than shipped.
+
+    Function-scoped rules use a lightweight brace parser, so labels reused in
+    separate functions cannot be mistaken for an upward jump."""
+    findings = []
+    no_comments, code_lines = _strip_comments_and_literals(lines)
+
+    # G.INC.08-CPP — importing a namespace is allowed after all includes.
+    includes = [n for n, line in enumerate(code_lines, 1)
+                if re.match(r"^\s*#\s*include\b", line)]
+    if ext in CPP_RULE_EXTS and includes:
+        last_include = max(includes)
+        for n, line in enumerate(code_lines, 1):
+            if n < last_include and re.match(r"^\s*using\s+namespace\b", line):
+                findings.append({
+                    "file": str(path), "line": n, "rule_id": "G.INC.08-CPP",
+                    "severity": "严重",
+                    "remediation": "move namespace imports after all #include directives",
+                })
+
+    # G.INC.09-CPP — only imports at header global scope are forbidden.
+    if ext in HEADER_EXTS:
+        depth = 0
+        for n, line in enumerate(code_lines, 1):
+            if depth == 0 and re.match(r"^\s*using\s+(?:namespace\s+)?[A-Za-z_]", line):
+                findings.append({
+                    "file": str(path), "line": n, "rule_id": "G.INC.09-CPP",
+                    "severity": "严重",
+                    "remediation": "do not import namespaces or symbols at header global scope",
+                })
+            depth += line.count("{") - line.count("}")
+
+    # G.INC.05-CPP / G.INC.08 — includes inside extern "C" need cross-line state.
+    extern_depths = []
+    depth = 0
+    for n, line in enumerate(code_lines, 1):
+        if re.search(r"\bextern\s+\"C\"\s*\{", line):
+            extern_depths.append(depth + 1)
+        if extern_depths and depth >= extern_depths[-1] and re.match(r"^\s*#\s*include\b", line):
+            rid = "G.INC.08" if ext in C_SOURCE_EXTS else "G.INC.05-CPP"
+            findings.append({
+                "file": str(path), "line": n, "rule_id": rid,
+                "severity": "严重",
+                "remediation": "move #include directives outside extern \"C\"",
+            })
+        depth += line.count("{") - line.count("}")
+        while extern_depths and depth < extern_depths[-1]:
+            extern_depths.pop()
+
+    # G.CTL.06 — only a target earlier in the same function is an upward goto.
+    functions = _function_by_line(code_lines)
+    labels = {}
+    gotos = []
+    for n, (line, function_id) in enumerate(zip(code_lines, functions), 1):
+        if function_id is None:
+            continue
+        label = _LABEL.match(line)
+        if label and label.group(1) not in {"public", "private", "protected", "case", "default"}:
+            labels[(function_id, label.group(1))] = n
+        gotos.extend((n, function_id, match.group(1)) for match in _GOTO.finditer(line))
+    for n, function_id, target in gotos:
+        target_line = labels.get((function_id, target))
+        if target_line is not None and target_line < n:
+            findings.append({
+                "file": str(path), "line": n, "rule_id": "G.CTL.06",
+                "severity": "严重", "remediation": "goto may only jump downward",
+            })
+
+    # G.OTH.01 — remove code that can never execute. After a terminator
+    # (return/goto/break/continue) at indent I, the next non-blank line is
+    # unreachable if it is another statement in the same block: same-or-deeper
+    # indent and not a block ender / case / label / preprocessor / comment.
+    for n, line in enumerate(code_lines, 1):
+        m = _TERMINATOR.match(line)
+        if not m:
+            continue
+        indent = len(m.group(1))
+        j = n  # 0-based index of the next line
+        while j < len(lines) and not lines[j].strip():
+            j += 1
+        if j >= len(lines):
+            continue
+        nxt = lines[j]
+        if _ALLOWED_AFTER_TERM.match(nxt):
+            continue
+        if len(nxt) - len(nxt.lstrip()) < indent:
+            continue  # dedent means we left the block; not dead code
+        findings.append({
+            "file": str(path), "line": j + 1, "rule_id": "G.OTH.01",
+            "severity": "严重",
+            "remediation": "remove code after return/goto/break/continue that "
+                           "can never execute",
+        })
+
+    return findings
+
+
 def _rule_findings(files):
     findings = []
     for path in files:
         ext = path.suffix.lower()
         text = path.read_text(encoding="utf-8", errors="replace")
         lines = text.splitlines()
+        _no_comments, code_lines = _strip_comments_and_literals(lines)
         for rid, sev, pat, fix, exts in RULES:
             if exts is not None and ext not in exts:
                 continue
-            for n, line in enumerate(lines, 1):
+            # A -CPP workbook rule never applies to a C translation unit even
+            # when an older hand-authored backend omitted an explicit extension.
+            if rid.endswith("-CPP") and ext in C_SOURCE_EXTS:
+                continue
+            scan_lines = lines if rid in _TEXT_RULE_IDS else code_lines
+            for n, line in enumerate(scan_lines, 1):
                 if pat.search(line):
                     findings.append({
                         "file": str(path), "line": n, "rule_id": rid,
                         "severity": sev, "remediation": fix,
                     })
-        for rid, sev, pat, word in SENSITIVE_WORDS:
-            for n, line in enumerate(lines, 1):
+        findings.extend(_multiline_findings(path, ext, lines))
+        # NOTE: never echo the matched word text into findings — the raw term
+        # would flow into evidence logs and back into model context, tripping
+        # upstream sensitive-word detection. Report the rule_id only; use
+        # file:line to locate it. See SECURITY-ISOLATION-PLAN.md (C1).
+        for rid, sev, pat, _word in SENSITIVE_WORDS:
+            scan_lines = lines if rid in _TEXT_RULE_IDS else code_lines
+            for n, line in enumerate(scan_lines, 1):
                 if pat.search(line):
                     findings.append({
                         "file": str(path), "line": n, "rule_id": rid,
                         "severity": sev,
-                        "remediation": "remove sensitive/banned word %r" % word,
+                        "remediation": "remove banned/sensitive term flagged by %s" % rid,
                     })
     return findings
 
@@ -482,18 +764,17 @@ def _clang_tidy_findings(files, compile_commands_dir):
     findings = []
     for line in cp.stdout.splitlines():
         # clang-tidy output: /path/file.cpp:42:5: warning: check-name [check-name]
-        m = re.match(r'^[^:]+:\d+:\d+:\s*(?:warning|error):\s+.*?\[([^\]]+)\]$', line)
+        m = re.match(r'^(.*?):(\d+):(\d+):\s*(?:warning|error):\s+.*?\[([^\]]+)\]$', line)
         if not m:
             continue
-        check = m.group(1)
+        file_name, line_number, _column, check = m.groups()
         # Map check name to rule_id
         for pattern, rule_id in _CLANG_TIDY_RULE_MAP:
             if re.match(pattern.replace("*", ".*") + "$", check):
                 # Extract line number
-                lm = re.match(r'^[^:]+:(\d+):', line)
-                lineno = int(lm.group(1)) if lm else 1
+                lineno = int(line_number)
                 findings.append({
-                    "file": str(cp.stdout),
+                    "file": file_name,
                     "line": lineno,
                     "rule_id": rule_id,
                     "severity": "严重",

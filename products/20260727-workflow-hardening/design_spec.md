@@ -31,10 +31,10 @@ without re-running the whole tail of the pipeline.
      word boundaries (case-insensitive, so `aar` doesn't fire inside `aardvark`),
      space/punct tokens as case-insensitive substrings, CJK tokens as plain
      substrings.
-   - **Regex coding rules: 15 high-precision `G.*` blockers** kept in-code (added
-     `G.SEC.03` `system(`, `G.SEC.04` `popen(`, `G.SEC.05` `gets(`, `G.SEC.06`
-     unbounded `strcpy|strcat|sprintf|vsprintf|stpcpy`, `G.CTL.01` `goto`,
-     `G.NAM.02` header-scope `using namespace`, ...). The remaining semantic /
+   - **Regex coding rules: high-precision workbook-backed blockers** kept in-code
+     (unsafe-function rows cover `system(`, `popen(`, `gets(` and unbounded
+     `strcpy|strcat|sprintf|vsprintf|stpcpy`; `G.CTL.06` and namespace/include
+     rules use function/file-aware checks). The remaining semantic /
      metric `G.*` + tool rows (圈复杂度, 大函数, switch 分支数, FossScan, ...) are
      deliberately NOT encoded — as line regex they would false-positive — and stay
      in human/skill review.
@@ -73,9 +73,9 @@ one-line `TEST(ATest, Case001){...}` fixture). `--rules-only` blocks banned
 APIs/strings without touching layout.
 
 ### Verification
-- Guard smoke-tested: clean file → pass (`15 regex rule(s) + 304 sensitive word(s)
-  checked`); bad file flags `G.EXP.35-CPP` / `G.SEC.06` plus sensitive words
-  `WordsTool.8 (aidl)` / `WordsTool.10 (Android)`; a non-code `.txt` is ignored.
+- Guard smoke-tested: clean file → pass; bad file flags workbook-backed
+  `G.EXP.35-CPP` / unsafe-function findings plus sensitive words; a non-code
+  `.txt` is ignored.
 - P2/P3 gate unit tests green (full suite 264 + 24 + 4 OK).
 - Resolution shared: both P2 and P3 resolve the guard via
   `gatelib.resolve_dep("code-ruleset-style-check/scripts/code_ruleset_guard.py",

@@ -5,7 +5,10 @@
 
 ## 做事(调用现有技能)
 - 系统能力/SA:`ohos-dev-sa-codegen`。NAPI 模块:`ohos-dev-napi-module`。
-- 编码规范:`code-ruleset-style-check`（规则来源为 `code_ruleset` C++ 门禁表）。门控会强制执行可机器判断的硬规则。
+- 编码规范先加载 `ohos-dev-cpp-coding-style` 的 OpenHarmony 指导和
+  `code-ruleset-style-check/references/pre-write-contract.md` 的写码前契约，再开始第一处编辑。
+  规则集仍以 `code_ruleset` C++ 门禁表为唯一来源；写码前契约用于减少返工，不能代替门控。
+- 写完后必须由共享 `code-ruleset-style-check` guard 执行可机器判断的硬规则；门控是唯一 PASS 来源。
 - **就近一致**(advisory,写码时遵循,不硬门控):新增/改动代码的风格尽量与**同级目录既有代码**保持一致——
   命名约定、缩进/大括号、头文件包含顺序、错误处理与日志习惯、注释密度,优先随该目录现有代码,而非全局理想化风格。
   改一个既有文件时沿用该文件的既有约定;新建文件时对齐同目录邻近文件。门控只判 `code_ruleset` 硬规则,
@@ -16,6 +19,7 @@
   P2 门控**不**解析安全报告(完整调用链在 P7/P8 才齐,安全零问题由 P7/P8 硬门控兜底);此处目的是安全左移、减少返工。
 - 若该 AR 有可测行为,优先 `tdd-enforcer`:先写失败测试,再写实现(真机在 P6 验证)。
 - 依据 `$PDIR/AR_design.md` 的"完整代码框架"落实代码改动到 `$OHOS_ROOT` 下相应组件。
+- 写码顺序固定为：读取写码前契约 → 读取 OpenHarmony C++ 规则 → 检查邻近文件约定 → 编码 → 对改动文件运行门控。
 - **写码脚手架**:hiview 插件 / 单测 / 模块测试 / 模糊测试可用 `ohos-code-skeletons` 取占位符骨架
   (替换后进 P4 编译);SA/NAPI 用 `ohos-dev-sa-codegen` / `ohos-dev-napi-module`。写 AR_design
   「完整代码框架/完整测试框架」时也可直接用这些骨架的文件清单与片段填充。
@@ -33,7 +37,7 @@ python3 $S/gate_develop.py --pipeline-dir "$PDIR"
 `code_ruleset_guard.py`;同时执行来自 `code_ruleset` C++ 门禁表的可机器判断硬规则
 (如禁用 `#pragma once`、头文件 `using namespace`、`.hpp/.cc/.cxx`、`NULL`、`system()/popen()`、默认 lambda 捕获);
 另按**文件扩展名**对全部改动路径查禁用后缀(G.INC.02:头文件必须用 `.h` 不用 `.inc`——`.inc` 会绕过 C/C++ 内容过滤)。
-依赖脚本或 skill 缺失、手动传 `--no-style` 绕过、任一硬规则命中都会 FAIL。
+依赖脚本、规则集 skill 或写码前契约缺失、手动传 `--no-style` 绕过、任一硬规则命中都会 FAIL。
 证据:`diff.patch`、`changed_files.txt`、`style_report.txt`、`strict_cpp_report.txt`。
 
 ## 通过条件

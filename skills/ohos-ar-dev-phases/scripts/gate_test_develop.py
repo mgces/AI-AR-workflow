@@ -50,6 +50,9 @@ FREEZE_PARTS = ("test_develop", "development_freeze_snapshot.json")
 # the CI gate. resolve_dep mirrors gate_develop so both phases share one source.
 STYLE_GUARD = gl.resolve_dep("code-ruleset-style-check/scripts/code_ruleset_guard.py",
                              env_var="CODE_RULESET_GUARD")
+PREWRITE_CONTRACT = gl.resolve_dep(
+    "code-ruleset-style-check/references/pre-write-contract.md",
+    env_var="CODE_RULESET_PREWRITE_CONTRACT")
 # H1: same author-time file-hygiene guard P2 uses (license header). Test files
 # were never header-gated before P4/CI either, so run it here over the newly
 # authored tests so a missing header is caught at author time, not at CI.
@@ -73,6 +76,10 @@ def _rule_check_new_tests(pdir, gdir, new_tests):
         with open(out, "w", encoding="utf-8") as f:
             f.write("BLOCKER: code_ruleset guard not found at %s\n" % STYLE_GUARD)
         return ["code-ruleset-style-check guard missing: %s" % STYLE_GUARD], rel
+    if not os.path.exists(PREWRITE_CONTRACT):
+        with open(out, "w", encoding="utf-8") as f:
+            f.write("BLOCKER: code-ruleset pre-write contract not found at %s\n" % PREWRITE_CONTRACT)
+        return ["code-ruleset pre-write contract missing: %s" % PREWRITE_CONTRACT], rel
     abs_cxx = [os.path.join(gdir, t) for t in cxx if os.path.isfile(os.path.join(gdir, t))]
     json_rel = "evidence/phase3/test_style_findings.json"
     cp = subprocess.run(

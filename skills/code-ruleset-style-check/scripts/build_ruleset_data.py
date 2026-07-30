@@ -6,6 +6,7 @@ including non-numeric WordsTool names, so a malformed or newly added rule cannot
 disappear from the strict gate silently.
 """
 import json
+import hashlib
 import re
 from pathlib import Path
 
@@ -26,6 +27,14 @@ COLUMN_NAMES = (
 
 def _text(value):
     return "" if value is None else str(value)
+
+
+def _sha256(path):
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _rule_id(name, row_number):
@@ -111,6 +120,7 @@ def main() -> int:
 
     payload = {
         "source": WORKBOOK.name,
+        "source_sha256": _sha256(WORKBOOK),
         "total_workbook_rows": len(rules),
         "sensitive_word_rows": len(sensitive_words),
         "sensitive_words": sensitive_words,

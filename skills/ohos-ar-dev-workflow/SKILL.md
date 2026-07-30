@@ -95,8 +95,8 @@ python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-workflow/scripts/refresh_todo.py" --pipel
 | 阶段 | 做事(调用技能) | 门控脚本 | 结束证据 |
 |---|---|---|---|
 | P1 设计 | **(设计前)** `kb_search.py` 检索知识库生成 `design_refs.md`(advisory,失败不阻断)→ 写 AR_design.md(6 章节 + ```ar-contract``` 契约块)→ **人工 consent**(P2 门内校验) | `gate_design.py`(`emit 1`) | 签名 AR_design(6 章节 + 契约)+ **P1 设计 consent**(绑签名条目) |
-| P2 开发 | sa-codegen / napi-module / code-ruleset-style-check / cpp-coding-style(OHOS C++ 约定) / security-code-review(安全左移,advisory) / tdd-enforcer / code-skeletons | `gate_develop.py`(`emit 2`,强制依赖签名 AR_design + P1 consent) | git/untracked diff 非空 + C++ 强门控报告;**闭合时锁定功能指纹** |
-| P3 测试开发 | test-ut-generation / tdd-enforcer / code-ruleset-style-check(**只增独立测试**,编译前写完测试代码) | `gate_test_develop.py`(`emit 3`,对新增测试源强制 `--rules-only` 规则门控) | 契约每个 `test_cases[].gtest` 的 suite 出现在新测试文件中(**编写**覆盖)+ 测试源签名快照 + 测试代码规则检测报告 |
+| P2 开发 | **先加载** `code-ruleset-style-check` 写码前契约 + `cpp-coding-style`，再用 sa-codegen / napi-module / security-code-review(安全左移,advisory) / tdd-enforcer / code-skeletons 写码 | `gate_develop.py`(`emit 2`,强制依赖签名 AR_design + P1 consent；共享 guard 是唯一 PASS 来源) | git/untracked diff 非空 + C++ 强门控报告;**闭合时锁定功能指纹** |
+| P3 测试开发 | **先加载**同一写码前契约 + `cpp-coding-style`，再用 test-ut-generation / tdd-enforcer / code-ruleset-style-check(**只增独立测试**,编译前写完测试代码) | `gate_test_develop.py`(`emit 3`,对新增测试源强制 `--rules-only` 规则门控) | 契约每个 `test_cases[].gtest` 的 suite 出现在新测试文件中(**编写**覆盖)+ 测试源签名快照 + 测试代码规则检测报告 |
 | P4 编译 | build-execution-diagnosis / build-flash / code-ruleset-style-check(编译后 clang-tidy) | `gate_build.py`(`emit 4`) | build.log 成功横幅 + 契约 `build_artifacts` 全部编译出 + clang-tidy 子步(有 compdb 硬控/缺失降级) |
 | P5 单测执行 | test-ut-generation / tdd-enforcer(**只增独立测试**) | `gate_test_ut.py`(`emit 5`) | developer_test summary_report.xml + 契约每个 `test_cases[].gtest` 通过(**执行**覆盖) |
 | P6 真机 | build-flash / hdc-command-usage | `gate_device_func.py`(`emit 6`) | 主机/设备产物 sha256 一致 + 含 nonce/功能 marker/运行时 marker/端到端 marker 的真机 hilog + 契约每个 `device_cases[].marker` 命中 **+ 人工确认(consent --phase 6)**;渲染 `reports/device_functional.md` + `reports/test_report.md`(P5 单测 + P6 真机关键证据聚合) |

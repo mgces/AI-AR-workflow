@@ -33,6 +33,15 @@ def run_git(repo: Path, *args: str) -> None:
 
 
 class GateDevelopStrongControlTest(unittest.TestCase):
+    def test_shared_prewrite_contract_is_required_by_author_time_gates(self) -> None:
+        phases = Path(__file__).resolve().parents[1]
+        p2 = (phases / "scripts" / "gate_develop.py").read_text(encoding="utf-8")
+        p3 = (phases / "scripts" / "gate_test_develop.py").read_text(encoding="utf-8")
+        contract = phases.parent / "code-ruleset-style-check" / "references" / "pre-write-contract.md"
+        self.assertTrue(contract.is_file())
+        self.assertIn("code-ruleset-style-check/references/pre-write-contract.md", p2)
+        self.assertIn("code-ruleset-style-check/references/pre-write-contract.md", p3)
+
     def init_repo(self, repo: Path) -> None:
         subprocess.run(["git", "init", str(repo)], check=True, text=True, capture_output=True)
         run_git(repo, "config", "user.email", "codex@example.com")
@@ -62,7 +71,7 @@ class GateDevelopStrongControlTest(unittest.TestCase):
         self.assertEqual(["tracked.cpp"], tracked)
         self.assertEqual(["new_header.h"], untracked)
 
-    def test_static_rule_checks_reject_both_skill_blockers(self) -> None:
+    def test_static_rule_checks_does_not_duplicate_shared_guard(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             repo = Path(temp_dir)
             (repo / "bad.hpp").write_text(
@@ -79,14 +88,8 @@ class GateDevelopStrongControlTest(unittest.TestCase):
 
             checked, issues = gate_develop.static_rule_checks(str(repo), ["bad.hpp"])
 
-        report = "\n".join(issues)
         self.assertEqual(["bad.hpp"], checked)
-        self.assertIn("not .hpp", report)
-        self.assertIn("#pragma once is forbidden", report)
-        self.assertIn("using namespace is forbidden", report)
-        self.assertIn("use nullptr instead of NULL", report)
-        self.assertIn("system()/popen() are forbidden", report)
-        self.assertIn("avoid default lambda captures", report)
+        self.assertEqual([], issues)
 
     def test_code_fingerprint_changes_when_untracked_content_changes(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

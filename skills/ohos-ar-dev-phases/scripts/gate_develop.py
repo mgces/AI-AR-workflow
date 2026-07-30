@@ -8,7 +8,7 @@ which the host controls and which is RTC-independent (SHAs, not timestamps):
 
   * tracked diff or untracked files against base_commit must be non-empty;
   * every changed C/C++ file must pass the packaged formatting guard;
-  * machine-checkable hard rules from both C++ skills must pass.
+  * the shared code-ruleset guard and deterministic file-hygiene checks must pass.
 
 If pipeline.json has no base_commit yet, the first run records the current HEAD
 as the base (so the diff is measured from where development started).
@@ -26,11 +26,14 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 import gatelib as gl  # noqa: E402
 
-# OpenHarmony C++ style guard shipped with the cpp-coding-style skill.
+# Shared workbook-derived style guard used by P2, P3, P4, and P7.
 STYLE_GUARD = gl.resolve_dep("code-ruleset-style-check/scripts/code_ruleset_guard.py",
                              env_var="CODE_RULESET_GUARD")
 CODE_RULESET_SKILL = gl.resolve_dep("code-ruleset-style-check/SKILL.md",
                                     env_var="CODE_RULESET_STYLE_SKILL")
+PREWRITE_CONTRACT = gl.resolve_dep(
+    "code-ruleset-style-check/references/pre-write-contract.md",
+    env_var="CODE_RULESET_PREWRITE_CONTRACT")
 # H1: author-time mirror of the deterministic, no-false-positive CI file-hygiene
 # checks (license header today). Shares the code-ruleset skill so it ships and
 # resolves the same way as the content guard above.
@@ -38,13 +41,10 @@ HYGIENE_GUARD = gl.resolve_dep("code-ruleset-style-check/scripts/file_hygiene_gu
                                env_var="FILE_HYGIENE_GUARD")
 
 FORMAT_EXTENSIONS = (".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx")
-HEADER_EXTENSIONS = (".h", ".hh", ".hpp", ".hxx")
-DISALLOWED_CPP_EXTENSIONS = (".cc", ".cxx", ".hh", ".hpp", ".hxx")
-# Filename-only blockers keyed off the extension of ANY changed path — these
-# files never reach source_files()/static_rule_checks() (they are filtered out
-# by FORMAT_EXTENSIONS), so a .inc header would otherwise slip past P2 into CI.
-# code_ruleset G.INC.02: a header must use .h, not .inc (an .inc that is not
-# self-contained is exactly the CI defect this pulls to author time).
+# Filename-only blockers keyed off the extension of ANY changed path — .inc
+# headers never reach source_files()/static_rule_checks() and would otherwise
+# slip past P2 into CI.  Existing .cc/.hpp/.hh/.hxx files remain allowed per
+# G.NAM.01-CPP's compatibility note in the workbook.
 DISALLOWED_FILENAME_EXTENSIONS = {
     ".inc": "G.INC.02: header must use .h, not .inc (headers must be self-contained)",
 }
@@ -168,15 +168,18 @@ def disallowed_extension_checks(changed):
 
 
 def static_rule_checks(gdir, source_relpaths):
-    """Machine-checkable P1 blockers derived from code_ruleset."""
+    """Keep only non-content P2 checks; the shared guard owns code rules.
+
+    A second text-regex engine can disagree about comments, strings, and
+    function scope.  Keeping content rules in one guard prevents regressions
+    such as public:/private: or ordinary return statements being misclassified.
+    """
     issues = []
     checked = []
     for rel in source_relpaths:
         path = os.path.join(gdir, rel)
         ext = os.path.splitext(rel)[1].lower()
         checked.append(rel)
-        if ext in DISALLOWED_CPP_EXTENSIONS:
-            issues.append("%s: code_ruleset file naming: use .cpp/.h, not %s" % (rel, ext))
         try:
             with open(path, "r", encoding="utf-8", errors="replace") as f:
                 text = f.read()
@@ -184,18 +187,6 @@ def static_rule_checks(gdir, source_relpaths):
             issues.append("%s: cannot read source file: %s" % (rel, exc))
             continue
 
-        if ext in HEADER_EXTENSIONS and re.search(r"^\s*#\s*pragma\s+once\b", text, re.MULTILINE):
-            issues.append("%s: G.INC.06: #pragma once is forbidden" % rel)
-        if ext in HEADER_EXTENSIONS and re.search(r"^\s*using\s+namespace\s+", text, re.MULTILINE):
-            issues.append("%s: ohos/openharmony header rule: using namespace is forbidden in headers" % rel)
-        if re.search(r"^\s*#\s*include\b", text, re.MULTILINE) and include_inside_extern_c(text):
-            issues.append("%s: G.INC.05-CPP: do not place #include inside extern \"C\"" % rel)
-        if re.search(r"\bNULL\b", text):
-            issues.append("%s: G.EXP.35-CPP: use nullptr instead of NULL" % rel)
-        if re.search(r"\b(system|popen)\s*\(", text):
-            issues.append("%s: code_ruleset secure coding: system()/popen() are forbidden in changed code" % rel)
-        if re.search(r"\[(=|&)(\]|\s*,)", text):
-            issues.append("%s: G.RES.05-CPP: avoid default lambda captures" % rel)
     return checked, issues
 
 
@@ -226,20 +217,6 @@ def file_hygiene_checks(pdir, gdir, changed, phase, guard_path):
             "file-hygiene finding (fix at author time so it does not surface at "
             "the CI gate): %s" % (cp.stderr or cp.stdout).strip()[:600])
     return problems, rel
-
-
-def include_inside_extern_c(text):
-    inside = False
-    for line in text.splitlines():
-        stripped = line.strip()
-        if re.search(r'extern\s+"C"\s*\{', stripped):
-            inside = True
-            continue
-        if inside and stripped.startswith("#include"):
-            return True
-        if inside and stripped.startswith("}"):
-            inside = False
-    return False
 
 
 def _norm(p):
@@ -394,6 +371,8 @@ def main():
         dependency_issues.append("code-ruleset-style-check guard missing: %s" % STYLE_GUARD)
     if cxx and not os.path.exists(CODE_RULESET_SKILL):
         dependency_issues.append("code-ruleset-style-check skill missing: %s" % CODE_RULESET_SKILL)
+    if cxx and not os.path.exists(PREWRITE_CONTRACT):
+        dependency_issues.append("code-ruleset pre-write contract missing: %s" % PREWRITE_CONTRACT)
     if cxx and args.no_style:
         dependency_issues.append("--no-style is not allowed when C/C++ files changed")
 
@@ -422,6 +401,7 @@ def main():
     with open(os.path.join(pdir, strict_rel), "w", encoding="utf-8") as f:
         f.write("rule_sources:\n")
         f.write("  - code-ruleset-style-check/SKILL.md\n")
+        f.write("  - code-ruleset-style-check/references/pre-write-contract.md\n")
         f.write("  - code_ruleset/黄区C语言门禁规则集_OAT_敏感词 - 20260126.xlsx\n\n")
         f.write("checked_files:\n%s\n\n" % ("\n".join(strict_checked) or "(none)"))
         f.write("blocking_issues:\n%s\n\n" % ("\n".join(strict_issues + dependency_issues) or "(none)"))

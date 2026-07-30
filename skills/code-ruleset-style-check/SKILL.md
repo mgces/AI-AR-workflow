@@ -9,18 +9,31 @@ metadata:
 
 # code_ruleset C++ style gate
 
-The workbook in `code_ruleset/黄区C语言门禁规则集_OAT_敏感词 - 20260126.xlsx` is the source of truth (545 C++ rules: 421 general, 112 severe, 9 fatal, 3 advisory). Apply rules by severity: fatal/severe block a gate; general and advisory are reported unless the workflow explicitly promotes them.
+The workbook in `code_ruleset/黄区C语言门禁规则集_OAT_敏感词 - 20260126.xlsx` is the source of truth (545 rows). `data/ruleset_coverage.json` is the required audit map: every workbook row has a backend and lifecycle owner. Do not equate row coverage with P2/P3 execution coverage: deterministic author-time checks run there, while AST, metrics, repository OAT, and semantic checks run in P4/P7/CI or human review.
+
+Before writing code in P2 or P3, load [references/pre-write-contract.md](references/pre-write-contract.md). It is a concise authoring contract derived from the same manifest; it prepares the model to avoid violations before they are typed. It does not replace the guard, does not create a second rule source, and cannot be used as PASS evidence.
 
 ## Required workflow
 
 1. Identify **changed** `.c/.cpp/.h` files (only the workflow's changed code — never the whole tree, never non-code files) and preserve existing project conventions.
-2. Run `scripts/code_ruleset_guard.py` on those files. It runs the bundled formatter guard and two rule sources: **(a)** every sensitive word (敏感词 / banned brand & marketing terms) exported from the workbook into `data/ruleset_c.json` — 300+ gate-level rows, all checked; **(b)** a hand-curated set of regex-detectable `G.*` coding rules (header guards, `#pragma once`, `NULL`, unsafe process/memory/string APIs, lambda default captures, `goto`, header-scope `using namespace`, ...).
+2. Run `scripts/code_ruleset_guard.py` on those files. It runs the bundled formatter, all exported sensitive-word rows, and the executable regex/multiline subset. Use `scripts/build_ruleset_coverage.py` whenever the workbook or backend map changes; it must continue to report 545/545 mapped rows.
 3. Every workbook row is 门禁级 (gate-level), so the guard does **not** filter by severity — ANY finding blocks. Severity (一般/严重/致命) is still reported per finding for triage. Do not claim a pass when the guard or rule source is missing.
-4. Keep semantic review for ownership, API contracts, concurrency, validation, and metric rules (圈复杂度, 大函数, switch 分支数); the script cannot prove those and they are deliberately NOT encoded (would false-positive as line regex).
+4. Keep semantic review for ownership, API contracts, concurrency, validation, and rows owned by P4/P7/CI. The coverage map must name that owner; never delete a row merely because a line regex cannot prove it.
+
+## Pre-write versus gate-time responsibilities
+
+- **Before editing**: apply the pre-write contract, load the OpenHarmony-specific
+  guidance from `ohos-dev-cpp-coding-style`, and inspect nearby files.
+- **After editing**: run this skill's shared guard on changed files. The guard is
+  the only hard PASS source for code-style rules; a model's self-check or a
+  contract-loaded note is never a gate result.
+- **Later owners**: honor the coverage manifest for clang-tidy, metrics,
+  repository OAT, and semantic review. Full workbook coverage means every row is
+  owned and accounted for, not that every backend can run before the first edit.
 
 The rule data is regenerated from the workbook by `scripts/build_ruleset_data.py` (requires openpyxl; the guard itself does **not**). Re-run it only when the workbook changes.
 
-The lifecycle workflow must use this skill as its sole code-style dependency. Do not substitute the legacy `ohos-dev-cpp-coding-style` or `openharmony-cpp` skills for gate decisions.
+The lifecycle workflow must use this skill as its sole code-style gate dependency. `ohos-dev-cpp-coding-style` remains the OpenHarmony domain guidance and must be loaded for authoring, but it does not make an independent gate decision and must not be substituted for this guard.
 
 ## Mandatory phases: run at author time, not at CI
 
@@ -44,6 +57,10 @@ in at **P4 build** (`gate_build.py`), immediately after the build success banner
 the compile database is available — see "clang-tidy at P4" below. Any AST-class finding
 that first surfaces at CI when a compile database *was* available at P4 is likewise an
 integration defect.
+
+Metric rows (`G.FUD.*`, `G.FUN.*`, `G.INC.11-CPP`) run after a successful P4
+build through `scripts/code_ruleset_metric.py` as hard blockers. P7 re-runs the
+same backend during changed-file code review.
 
 ### Guard modes
 
@@ -84,12 +101,20 @@ manifest maps every rule to a backend:
 
 | Rule ID | Severity | Rule Name | Required Tool |
 |---------|----------|-----------|---------------|
+| OAT.1   | 严重     | 二进制文件 | Repository scan |
 | OAT.2   | 致命     | 许可证兼容性 | FossScan / scancode |
+| OAT.3   | 严重     | 许可证头 | Repository scan |
+| OAT.4   | 严重     | 版权头 | Repository scan |
 | OAT.5   | 致命     | 无LICENSE文件 | Repo-level file existence check |
+| OAT.6   | 严重     | 冗余或未定义的LICENSE文件 | Repository scan |
 | OAT.7   | 严重     | 无README.OpenSource | Repo-level file existence check |
 | OAT.8   | 一般     | 无README | Repo-level file existence check |
 | OAT.9   | 一般     | 三方软件版本 | OAT / SW360 |
+| OAT.10  | 一般     | 特殊词汇 | Repository scan |
 | FossScan.1 | 致命  | OpenSource Software | FossScan |
 
-These rules are **not** enforced by `code_ruleset_guard.py` or `file_hygiene_guard.py`;
-they must be checked by the CI OAT pipeline before upload.
+These repository-level rules are **not** enforced by `code_ruleset_guard.py` or
+`file_hygiene_guard.py`; they must be checked by the CI OAT pipeline before upload.
+`OAT.1` is the one local exception in the coverage map: changed binary artifacts
+are rejected by `file_hygiene_guard.py` at author time, while the repository scan
+still remains responsible for the complete tree.

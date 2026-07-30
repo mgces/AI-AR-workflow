@@ -1,0 +1,7017 @@
+{
+  "source": "黄区C语言门禁规则集_OAT_敏感词 - 20260126.xlsx",
+  "source_sha256": "82180cd3c566141a183df0dac2f3d41c9d5f5208f79d28504e9e3d0f9fbd585a",
+  "ruleset_data_sha256": "61f372ed94bc95e5b21c20b7b34b1b8f830ac31a677a58377f60bbb827bf63e5",
+  "rows": [
+    {
+      "row": 2,
+      "rule_id": "WordsTool.52",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 3,
+      "rule_id": "WordsTool.282",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 4,
+      "rule_id": "WordsTool.8",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 5,
+      "rule_id": "G.STD.07-CPP",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 6,
+      "rule_id": "G.PRE.13",
+      "severity": "严重",
+      "backends": [
+        "file-hygiene"
+      ],
+      "phases": [
+        "P2",
+        "P3",
+        "P7"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 7,
+      "rule_id": "G.FMT.03",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 8,
+      "rule_id": "WordsTool.252",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 9,
+      "rule_id": "G.MEM.04",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 10,
+      "rule_id": "G.FUU.13",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 11,
+      "rule_id": "G.FMT.11",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 12,
+      "rule_id": "WordsTool.231",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 13,
+      "rule_id": "G.EXP.38-CPP",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 14,
+      "rule_id": "WordsTool.190",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 15,
+      "rule_id": "WordsTool.222",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 16,
+      "rule_id": "WordsTool.109",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 17,
+      "rule_id": "WordsTool.130",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 18,
+      "rule_id": "G.EXP.35-CPP",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 19,
+      "rule_id": "WordsTool.220",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 20,
+      "rule_id": "WordsTool.38",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 21,
+      "rule_id": "G.CRY.01",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 22,
+      "rule_id": "WordsTool.303",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 23,
+      "rule_id": "WordsTool.10",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 24,
+      "rule_id": "WordsTool.6",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 25,
+      "rule_id": "WordsTool.117",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 26,
+      "rule_id": "G.EXP.29-CPP",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 27,
+      "rule_id": "G.RES.05-CPP",
+      "severity": "严重",
+      "backends": [
+        "semantic-review"
+      ],
+      "phases": [
+        "P2",
+        "P3",
+        "P7"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 28,
+      "rule_id": "WordsTool.79",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 29,
+      "rule_id": "WordsTool.75",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 30,
+      "rule_id": "WordsTool.210",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 31,
+      "rule_id": "G.PRE.02",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 32,
+      "rule_id": "WordsTool.83",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 33,
+      "rule_id": "G.EXP.03",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 34,
+      "rule_id": "WordsTool.173",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 35,
+      "rule_id": "G.FMT.10",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 36,
+      "rule_id": "G.ERR.08-CPP",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 37,
+      "rule_id": "G.FUD.05",
+      "severity": "一般",
+      "backends": [
+        "metric"
+      ],
+      "phases": [
+        "P4",
+        "P7"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 38,
+      "rule_id": "G.EXP.30-CPP",
+      "severity": "一般",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 39,
+      "rule_id": "G.FUU.21-CPP",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 40,
+      "rule_id": "G.ERR.06-CPP",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 41,
+      "rule_id": "WordsTool.262",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 42,
+      "rule_id": "G.FUU.12",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 43,
+      "rule_id": "G.STD.17-CPP",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 44,
+      "rule_id": "WordsTool.27",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 45,
+      "rule_id": "G.STD.01-CPP",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 46,
+      "rule_id": "WordsTool.119",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 47,
+      "rule_id": "WordsTool.113",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 48,
+      "rule_id": "G.CTL.03",
+      "severity": "提示",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 49,
+      "rule_id": "G.INT.04",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 50,
+      "rule_id": "WordsTool.136",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 51,
+      "rule_id": "G.FUU.15",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 52,
+      "rule_id": "WordsTool.258",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 53,
+      "rule_id": "G.FUU.09",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 54,
+      "rule_id": "WordsTool.30",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 55,
+      "rule_id": "WordsTool.176",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 56,
+      "rule_id": "G.FMT.14-CPP",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 57,
+      "rule_id": "WordsTool.277",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 58,
+      "rule_id": "G.ERR.02-CPP",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 59,
+      "rule_id": "WordsTool.115",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 60,
+      "rule_id": "WordsTool.51",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 61,
+      "rule_id": "G.FUU.13",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 62,
+      "rule_id": "G.FUU.21",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 63,
+      "rule_id": "G.FMT.13-CPP",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 64,
+      "rule_id": "WordsTool.264",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 65,
+      "rule_id": "WordsTool.306",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 66,
+      "rule_id": "WordsTool.227",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 67,
+      "rule_id": "G.INT.09",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 68,
+      "rule_id": "G.FMT.14-CPP",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 69,
+      "rule_id": "WordsTool.152",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 70,
+      "rule_id": "WordsTool.232",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 71,
+      "rule_id": "G.PRE.02",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 72,
+      "rule_id": "WordsTool.249",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 73,
+      "rule_id": "WordsTool.141",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 74,
+      "rule_id": "G.VAR.05",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 75,
+      "rule_id": "WordsTool.224",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 76,
+      "rule_id": "WordsTool.185",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 77,
+      "rule_id": "G.CLS.05-CPP",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 78,
+      "rule_id": "WordsTool.165",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 79,
+      "rule_id": "WordsTool.139",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 80,
+      "rule_id": "WordsTool.261",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 81,
+      "rule_id": "G.PRE.04",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 82,
+      "rule_id": "WordsTool.256",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 83,
+      "rule_id": "WordsTool.195",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 84,
+      "rule_id": "WordsTool.4",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 85,
+      "rule_id": "G.FMT.05-CPP",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 86,
+      "rule_id": "WordsTool.217",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 87,
+      "rule_id": "G.FUU.15",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 88,
+      "rule_id": "G.AST.01",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 89,
+      "rule_id": "WordsTool.279",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 90,
+      "rule_id": "WordsTool.33",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 91,
+      "rule_id": "WordsTool.291",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 92,
+      "rule_id": "WordsTool.312",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 93,
+      "rule_id": "WordsTool.21",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 94,
+      "rule_id": "WordsTool.24",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 95,
+      "rule_id": "G.FMT.06-CPP",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 96,
+      "rule_id": "WordsTool.140",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 97,
+      "rule_id": "WordsTool.101",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 98,
+      "rule_id": "WordsTool.205",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 99,
+      "rule_id": "WordsTool.99",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 100,
+      "rule_id": "WordsTool.153",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 101,
+      "rule_id": "G.AST.03",
+      "severity": "一般",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 102,
+      "rule_id": "WordsTool.171",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 103,
+      "rule_id": "WordsTool.110",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 104,
+      "rule_id": "WordsTool.63",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 105,
+      "rule_id": "WordsTool.254",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 106,
+      "rule_id": "WordsTool.7",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 107,
+      "rule_id": "G.FMT.11",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 108,
+      "rule_id": "G.ERR.07-CPP",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 109,
+      "rule_id": "WordsTool.230",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 110,
+      "rule_id": "WordsTool.146",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 111,
+      "rule_id": "G.EXP.26-CPP",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 112,
+      "rule_id": "G.INC.02",
+      "severity": "一般",
+      "backends": [
+        "static-gate"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 113,
+      "rule_id": "WordsTool.238",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 114,
+      "rule_id": "WordsTool.188",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 115,
+      "rule_id": "G.RES.10-CPP",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 116,
+      "rule_id": "WordsTool.54",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 117,
+      "rule_id": "WordsTool.105",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 118,
+      "rule_id": "WordsTool.124",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 119,
+      "rule_id": "OAT.5",
+      "severity": "致命",
+      "backends": [
+        "repository-oat"
+      ],
+      "phases": [
+        "P7",
+        "CI"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 120,
+      "rule_id": "G.FUU.11",
+      "severity": "一般",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 121,
+      "rule_id": "G.CNS.01-CPP",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 122,
+      "rule_id": "WordsTool.214",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 123,
+      "rule_id": "WordsTool.73",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 124,
+      "rule_id": "G.RES.11-CPP",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 125,
+      "rule_id": "WordsTool.207",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 126,
+      "rule_id": "WordsTool.125",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 127,
+      "rule_id": "G.CMT.04-CPP",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 128,
+      "rule_id": "G.NAM.03-CPP",
+      "severity": "提示",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 129,
+      "rule_id": "WordsTool.138",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 130,
+      "rule_id": "G.CTL.06",
+      "severity": "严重",
+      "backends": [
+        "multiline"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 131,
+      "rule_id": "WordsTool.90",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 132,
+      "rule_id": "G.CNS.03-CPP",
+      "severity": "一般",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 133,
+      "rule_id": "WordsTool.200",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 134,
+      "rule_id": "WordsTool.180",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 135,
+      "rule_id": "WordsTool.179",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 136,
+      "rule_id": "WordsTool.88",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 137,
+      "rule_id": "WordsTool.257",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 138,
+      "rule_id": "G.FMT.09",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 139,
+      "rule_id": "WordsTool.91",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 140,
+      "rule_id": "WordsTool.42",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 141,
+      "rule_id": "WordsTool.60",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 142,
+      "rule_id": "G.CMT.02",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 143,
+      "rule_id": "WordsTool.122",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 144,
+      "rule_id": "G.FMT.11",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 145,
+      "rule_id": "WordsTool.236",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 146,
+      "rule_id": "G.FUN.07-CPP",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 147,
+      "rule_id": "WordsTool.215",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 148,
+      "rule_id": "WordsTool.196",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 149,
+      "rule_id": "WordsTool.112",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 150,
+      "rule_id": "WordsTool.97",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 151,
+      "rule_id": "G.EXP.08-CPP",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 152,
+      "rule_id": "WordsTool.147",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 153,
+      "rule_id": "G.CLS.04-CPP",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 154,
+      "rule_id": "G.PRE.07",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 155,
+      "rule_id": "G.STD.05-CPP",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 156,
+      "rule_id": "G.EXP.05",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 157,
+      "rule_id": "WordsTool.276",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 158,
+      "rule_id": "WordsTool.87",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 159,
+      "rule_id": "WordsTool.55",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 160,
+      "rule_id": "G.INT.03",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 161,
+      "rule_id": "G.FMT.01",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 162,
+      "rule_id": "WordsTool.172",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 163,
+      "rule_id": "G.PRE.06",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 164,
+      "rule_id": "G.FUU.11",
+      "severity": "一般",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 165,
+      "rule_id": "WordsTool.48",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 166,
+      "rule_id": "WordsTool.11",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 167,
+      "rule_id": "WordsTool.96",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 168,
+      "rule_id": "WordsTool.142",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 169,
+      "rule_id": "WordsTool.85",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 170,
+      "rule_id": "G.FUU.01",
+      "severity": "一般",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 171,
+      "rule_id": "WordsTool.289",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 172,
+      "rule_id": "WordsTool.202",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 173,
+      "rule_id": "WordsTool.18",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 174,
+      "rule_id": "WordsTool.233",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 175,
+      "rule_id": "G.FUN.02-CPP",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 176,
+      "rule_id": "WordsTool.120",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 177,
+      "rule_id": "G.VAR.01",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 178,
+      "rule_id": "WordsTool.104",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 179,
+      "rule_id": "OAT.2",
+      "severity": "致命",
+      "backends": [
+        "repository-oat"
+      ],
+      "phases": [
+        "P7",
+        "CI"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 180,
+      "rule_id": "WordsTool.154",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 181,
+      "rule_id": "G.STR.01",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 182,
+      "rule_id": "WordsTool.35",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 183,
+      "rule_id": "G.OTH.03",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 184,
+      "rule_id": "G.EXP.12-CPP",
+      "severity": "一般",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 185,
+      "rule_id": "G.FMT.11",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 186,
+      "rule_id": "WordsTool.221",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 187,
+      "rule_id": "G.EXP.22-CPP",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 188,
+      "rule_id": "G.VAR.02",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 189,
+      "rule_id": "G.STD.13-CPP",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 190,
+      "rule_id": "G.RES.06-CPP",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 191,
+      "rule_id": "WordsTool.250",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 192,
+      "rule_id": "WordsTool.74",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 193,
+      "rule_id": "G.CTL.03",
+      "severity": "提示",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 194,
+      "rule_id": "WordsTool.150",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 195,
+      "rule_id": "WordsTool.199",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 196,
+      "rule_id": "WordsTool.118",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 197,
+      "rule_id": "WordsTool.206",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 198,
+      "rule_id": "WordsTool.114",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 199,
+      "rule_id": "WordsTool.244",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 200,
+      "rule_id": "WordsTool.156",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 201,
+      "rule_id": "WordsTool.32",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 202,
+      "rule_id": "WordsTool.80",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 203,
+      "rule_id": "G.CLS.11-CPP",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 204,
+      "rule_id": "WordsTool.201",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 205,
+      "rule_id": "WordsTool.155",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 206,
+      "rule_id": "G.FMT.16-CPP",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 207,
+      "rule_id": "WordsTool.226",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 208,
+      "rule_id": "G.INC.06",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 209,
+      "rule_id": "G.INC.05-CPP",
+      "severity": "严重",
+      "backends": [
+        "multiline"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 210,
+      "rule_id": "G.FUU.06",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 211,
+      "rule_id": "G.FUD.06",
+      "severity": "一般",
+      "backends": [
+        "metric"
+      ],
+      "phases": [
+        "P4",
+        "P7"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 212,
+      "rule_id": "G.EXP.43-CPP",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 213,
+      "rule_id": "WordsTool.285",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 214,
+      "rule_id": "WordsTool.248",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 215,
+      "rule_id": "WordsTool.149",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 216,
+      "rule_id": "G.FMT.16-CPP",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 217,
+      "rule_id": "WordsTool.67",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 218,
+      "rule_id": "WordsTool.17",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 219,
+      "rule_id": "G.CMT.04",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 220,
+      "rule_id": "G.PRE.04",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 221,
+      "rule_id": "G.FUU.05",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 222,
+      "rule_id": "WordsTool.302",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 223,
+      "rule_id": "WordsTool.66",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 224,
+      "rule_id": "WordsTool.181",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 225,
+      "rule_id": "G.CNS.04-CPP",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 226,
+      "rule_id": "WordsTool.36",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 227,
+      "rule_id": "WordsTool.143",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 228,
+      "rule_id": "G.NAM.01-CPP",
+      "severity": "一般",
+      "backends": [
+        "semantic-review"
+      ],
+      "phases": [
+        "P2",
+        "P3",
+        "P7"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 229,
+      "rule_id": "WordsTool.57",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 230,
+      "rule_id": "WordsTool.19",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 231,
+      "rule_id": "G.FUU.14",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 232,
+      "rule_id": "WordsTool.3",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 233,
+      "rule_id": "WordsTool.270",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 234,
+      "rule_id": "WordsTool.301",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 235,
+      "rule_id": "WordsTool.160",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 236,
+      "rule_id": "G.CLS.03-CPP",
+      "severity": "一般",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 237,
+      "rule_id": "WordsTool.208",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 238,
+      "rule_id": "WordsTool.72",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 239,
+      "rule_id": "WordsTool.164",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 240,
+      "rule_id": "G.CMT.02-CPP",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 241,
+      "rule_id": "G.CTL.07",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 242,
+      "rule_id": "WordsTool.274",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 243,
+      "rule_id": "WordsTool.65",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 244,
+      "rule_id": "G.RES.02-CPP",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 245,
+      "rule_id": "WordsTool.20",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 246,
+      "rule_id": "G.PRE.04-CPP",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 247,
+      "rule_id": "WordsTool.28",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 248,
+      "rule_id": "WordsTool.304",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 249,
+      "rule_id": "G.CLS.13-CPP",
+      "severity": "一般",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 250,
+      "rule_id": "WordsTool.204",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 251,
+      "rule_id": "G.PRE.05-CPP",
+      "severity": "严重",
+      "backends": [
+        "file-hygiene"
+      ],
+      "phases": [
+        "P2",
+        "P3",
+        "P7"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 252,
+      "rule_id": "WordsTool.308",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 253,
+      "rule_id": "G.FUD.05-CPP",
+      "severity": "一般",
+      "backends": [
+        "metric"
+      ],
+      "phases": [
+        "P4",
+        "P7"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 254,
+      "rule_id": "G.FUU.14",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 255,
+      "rule_id": "WordsTool.189",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 256,
+      "rule_id": "G.PRE.05",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 257,
+      "rule_id": "G.EXP.09-CPP",
+      "severity": "一般",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 258,
+      "rule_id": "WordsTool.284",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 259,
+      "rule_id": "G.FMT.12",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 260,
+      "rule_id": "G.FUU.12",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 261,
+      "rule_id": "G.FMT.16-CPP",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 262,
+      "rule_id": "WordsTool.184",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 263,
+      "rule_id": "G.CLS.07-CPP",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 264,
+      "rule_id": "G.AST.02",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 265,
+      "rule_id": "WordsTool.192",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 266,
+      "rule_id": "G.INT.09",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 267,
+      "rule_id": "G.CNS.01",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 268,
+      "rule_id": "G.AST.04",
+      "severity": "一般",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 269,
+      "rule_id": "WordsTool.128",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 270,
+      "rule_id": "WordsTool.1",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 271,
+      "rule_id": "G.FUD.07-CPP",
+      "severity": "一般",
+      "backends": [
+        "metric"
+      ],
+      "phases": [
+        "P4",
+        "P7"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 272,
+      "rule_id": "G.FUU.10",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 273,
+      "rule_id": "WordsTool.229",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 274,
+      "rule_id": "WordsTool.280",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 275,
+      "rule_id": "G.CMT.06",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 276,
+      "rule_id": "G.FUD.05",
+      "severity": "一般",
+      "backends": [
+        "metric"
+      ],
+      "phases": [
+        "P4",
+        "P7"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 277,
+      "rule_id": "G.RES.08-CPP",
+      "severity": "一般",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 278,
+      "rule_id": "WordsTool.157",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 279,
+      "rule_id": "WordsTool.121",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 280,
+      "rule_id": "G.EXP.19-CPP",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 281,
+      "rule_id": "G.FUN.01-CPP",
+      "severity": "一般",
+      "backends": [
+        "metric"
+      ],
+      "phases": [
+        "P4",
+        "P7"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 282,
+      "rule_id": "G.PRE.07",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 283,
+      "rule_id": "G.PRE.08",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 284,
+      "rule_id": "G.STD.04-CPP",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 285,
+      "rule_id": "WordsTool.148",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 286,
+      "rule_id": "G.FMT.01-CPP",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 287,
+      "rule_id": "WordsTool.278",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 288,
+      "rule_id": "WordsTool.15",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 289,
+      "rule_id": "WordsTool.151",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 290,
+      "rule_id": "WordsTool.281",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 291,
+      "rule_id": "G.EXP.10-CPP",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 292,
+      "rule_id": "WordsTool.260",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 293,
+      "rule_id": "WordsTool.213",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 294,
+      "rule_id": "OAT.4",
+      "severity": "致命",
+      "backends": [
+        "repository-oat"
+      ],
+      "phases": [
+        "P7",
+        "CI"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 295,
+      "rule_id": "G.FIL.04-CPP",
+      "severity": "一般",
+      "backends": [
+        "file-hygiene"
+      ],
+      "phases": [
+        "P2",
+        "P3",
+        "P7"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 296,
+      "rule_id": "G.FMT.12-CPP",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 297,
+      "rule_id": "G.INC.07",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 298,
+      "rule_id": "WordsTool.29",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 299,
+      "rule_id": "WordsTool.9",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 300,
+      "rule_id": "G.FUN.03-CPP",
+      "severity": "一般",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 301,
+      "rule_id": "G.EXP.05-CPP",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 302,
+      "rule_id": "WordsTool.161",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 303,
+      "rule_id": "G.ARR.03",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 304,
+      "rule_id": "WordsTool.288",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 305,
+      "rule_id": "WordsTool.247",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 306,
+      "rule_id": "WordsTool.92",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 307,
+      "rule_id": "G.FMT.10-CPP",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 308,
+      "rule_id": "WordsTool.41",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 309,
+      "rule_id": "WordsTool.37",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 310,
+      "rule_id": "G.FUD.06-CPP",
+      "severity": "一般",
+      "backends": [
+        "metric"
+      ],
+      "phases": [
+        "P4",
+        "P7"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 311,
+      "rule_id": "WordsTool.315",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 312,
+      "rule_id": "WordsTool.292",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 313,
+      "rule_id": "WordsTool.294",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 314,
+      "rule_id": "WordsTool.144",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 315,
+      "rule_id": "WordsTool.259",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 316,
+      "rule_id": "G.CLS.10-CPP",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 317,
+      "rule_id": "G.STD.15-CPP",
+      "severity": "致命",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 318,
+      "rule_id": "WordsTool.126",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 319,
+      "rule_id": "G.FUU.21",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 320,
+      "rule_id": "WordsTool.197",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 321,
+      "rule_id": "WordsTool.2",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 322,
+      "rule_id": "WordsTool.299",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 323,
+      "rule_id": "G.ARR.07",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 324,
+      "rule_id": "G.FUU.03",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 325,
+      "rule_id": "G.EXP.04",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 326,
+      "rule_id": "WordsTool.84",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 327,
+      "rule_id": "WordsTool.183",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 328,
+      "rule_id": "WordsTool.223",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 329,
+      "rule_id": "G.AST.05",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 330,
+      "rule_id": "WordsTool.314",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 331,
+      "rule_id": "WordsTool.309",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 332,
+      "rule_id": "WordsTool.298",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 333,
+      "rule_id": "G.DCL.01",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 334,
+      "rule_id": "WordsTool.194",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 335,
+      "rule_id": "G.OTH.01",
+      "severity": "严重",
+      "backends": [
+        "multiline"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 336,
+      "rule_id": "G.FUU.10",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 337,
+      "rule_id": "WordsTool.94",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 338,
+      "rule_id": "G.FUU.15",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 339,
+      "rule_id": "G.PRE.10",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 340,
+      "rule_id": "WordsTool.234",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 341,
+      "rule_id": "G.FMT.04",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 342,
+      "rule_id": "WordsTool.76",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 343,
+      "rule_id": "WordsTool.311",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 344,
+      "rule_id": "G.PRE.08",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 345,
+      "rule_id": "WordsTool.25",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 346,
+      "rule_id": "WordsTool.268",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 347,
+      "rule_id": "WordsTool.5",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 348,
+      "rule_id": "WordsTool.44",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 349,
+      "rule_id": "WordsTool.78",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 350,
+      "rule_id": "WordsTool.219",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 351,
+      "rule_id": "WordsTool.266",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 352,
+      "rule_id": "WordsTool.174",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 353,
+      "rule_id": "G.FMT.15-CPP",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 354,
+      "rule_id": "WordsTool.300",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 355,
+      "rule_id": "OAT.10",
+      "severity": "严重",
+      "backends": [
+        "repository-oat"
+      ],
+      "phases": [
+        "P7",
+        "CI"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 356,
+      "rule_id": "G.FMT.06-CPP",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 357,
+      "rule_id": "OAT.1",
+      "severity": "严重",
+      "backends": [
+        "file-hygiene"
+      ],
+      "phases": [
+        "P2",
+        "P3",
+        "P7"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 358,
+      "rule_id": "G.RES.12-CPP",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 359,
+      "rule_id": "WordsTool.198",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 360,
+      "rule_id": "G.FUU.12",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 361,
+      "rule_id": "G.EXP.14-CPP",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 362,
+      "rule_id": "G.FMT.16-CPP",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 363,
+      "rule_id": "WordsTool.166",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 364,
+      "rule_id": "G.FUD.08-CPP",
+      "severity": "一般",
+      "backends": [
+        "metric"
+      ],
+      "phases": [
+        "P4",
+        "P7"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 365,
+      "rule_id": "G.FMT.02-CPP",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 366,
+      "rule_id": "G.CLS.08-CPP",
+      "severity": "一般",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 367,
+      "rule_id": "WordsTool.263",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 368,
+      "rule_id": "WordsTool.69",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 369,
+      "rule_id": "WordsTool.271",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 370,
+      "rule_id": "WordsTool.61",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 371,
+      "rule_id": "WordsTool.240",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 372,
+      "rule_id": "G.ERR.03-CPP",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 373,
+      "rule_id": "WordsTool.123",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 374,
+      "rule_id": "G.FMT.11",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 375,
+      "rule_id": "WordsTool.225",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 376,
+      "rule_id": "G.STD.10-CPP",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 377,
+      "rule_id": "WordsTool.212",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 378,
+      "rule_id": "WordsTool.58",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 379,
+      "rule_id": "G.FIL.03",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 380,
+      "rule_id": "G.OTH.03",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 381,
+      "rule_id": "WordsTool.255",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 382,
+      "rule_id": "WordsTool.89",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 383,
+      "rule_id": "FossScan.1",
+      "severity": "致命",
+      "backends": [
+        "repository-oat"
+      ],
+      "phases": [
+        "P7",
+        "CI"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 384,
+      "rule_id": "WordsTool.111",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 385,
+      "rule_id": "G.FMT.11",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 386,
+      "rule_id": "G.FMT.05",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 387,
+      "rule_id": "G.NAM.01",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 388,
+      "rule_id": "G.CLS.15-CPP",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 389,
+      "rule_id": "WordsTool.290",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 390,
+      "rule_id": "G.MEM.04",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 391,
+      "rule_id": "WordsTool.31",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 392,
+      "rule_id": "WordsTool.22",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 393,
+      "rule_id": "G.AST.03",
+      "severity": "一般",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 394,
+      "rule_id": "WordsTool.211",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 395,
+      "rule_id": "G.FUU.22",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 396,
+      "rule_id": "WordsTool.237",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 397,
+      "rule_id": "WordsTool.175",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 398,
+      "rule_id": "G.CRY.02",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 399,
+      "rule_id": "WordsTool.98",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 400,
+      "rule_id": "WordsTool.178",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 401,
+      "rule_id": "WordsTool.218",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 402,
+      "rule_id": "WordsTool.93",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 403,
+      "rule_id": "WordsTool.13",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 404,
+      "rule_id": "WordsTool.267",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 405,
+      "rule_id": "WordsTool.242",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 406,
+      "rule_id": "WordsTool.245",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 407,
+      "rule_id": "WordsTool.235",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 408,
+      "rule_id": "G.FIL.03",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 409,
+      "rule_id": "WordsTool.doc1",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 410,
+      "rule_id": "WordsTool.246",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 411,
+      "rule_id": "WordsTool.106",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 412,
+      "rule_id": "WordsTool.307",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 413,
+      "rule_id": "OAT.8",
+      "severity": "一般",
+      "backends": [
+        "repository-oat"
+      ],
+      "phases": [
+        "P7",
+        "CI"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 414,
+      "rule_id": "WordsTool.56",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 415,
+      "rule_id": "WordsTool.102IIccPhoneBook",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 416,
+      "rule_id": "G.ERR.04-CPP",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 417,
+      "rule_id": "G.INC.09-CPP",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 418,
+      "rule_id": "WordsTool.159",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 419,
+      "rule_id": "WordsTool.86",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 420,
+      "rule_id": "G.FMT.06-CPP",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 421,
+      "rule_id": "G.FUU.12",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 422,
+      "rule_id": "G.PRE.03-CPP",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 423,
+      "rule_id": "WordsTool.305",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 424,
+      "rule_id": "WordsTool.137",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 425,
+      "rule_id": "G.PRE.09",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 426,
+      "rule_id": "WordsTool.216",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 427,
+      "rule_id": "G.FMT.11-CPP",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 428,
+      "rule_id": "WordsTool.100",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 429,
+      "rule_id": "WordsTool.283",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 430,
+      "rule_id": "WordsTool.296",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 431,
+      "rule_id": "WordsTool.269",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 432,
+      "rule_id": "OAT.9",
+      "severity": "一般",
+      "backends": [
+        "repository-oat"
+      ],
+      "phases": [
+        "P7",
+        "CI"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 433,
+      "rule_id": "G.FUU.17",
+      "severity": "致命",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 434,
+      "rule_id": "WordsTool.code1",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 435,
+      "rule_id": "G.FMT.03-CPP",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 436,
+      "rule_id": "WordsTool.64",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 437,
+      "rule_id": "G.FMT.09-CPP",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 438,
+      "rule_id": "G.FUU.04",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 439,
+      "rule_id": "G.CTL.08",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 440,
+      "rule_id": "G.STD.13-CPP",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 441,
+      "rule_id": "WordsTool.16",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 442,
+      "rule_id": "WordsTool.286",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 443,
+      "rule_id": "WordsTool.209",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 444,
+      "rule_id": "WordsTool.47",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 445,
+      "rule_id": "WordsTool.265",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 446,
+      "rule_id": "WordsTool.313",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 447,
+      "rule_id": "G.FMT.06-CPP",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 448,
+      "rule_id": "G.FUU.15",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 449,
+      "rule_id": "G.INC.08",
+      "severity": "严重",
+      "backends": [
+        "multiline"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 450,
+      "rule_id": "G.FUU.08",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 451,
+      "rule_id": "WordsTool.12",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 452,
+      "rule_id": "WordsTool.40",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 453,
+      "rule_id": "G.EXP.37-CPP",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 454,
+      "rule_id": "WordsTool.168",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 455,
+      "rule_id": "G.STD.16-CPP",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 456,
+      "rule_id": "G.INC.08-CPP",
+      "severity": "严重",
+      "backends": [
+        "multiline"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 457,
+      "rule_id": "G.FUD.05",
+      "severity": "一般",
+      "backends": [
+        "metric"
+      ],
+      "phases": [
+        "P4",
+        "P7"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 458,
+      "rule_id": "WordsTool.162",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 459,
+      "rule_id": "WordsTool.163",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 460,
+      "rule_id": "WordsTool.145",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 461,
+      "rule_id": "WordsTool.39",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 462,
+      "rule_id": "WordsTool.49",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 463,
+      "rule_id": "WordsTool.133",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 464,
+      "rule_id": "WordsTool.295",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 465,
+      "rule_id": "G.PRE.02-CPP",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 466,
+      "rule_id": "WordsTool.287",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 467,
+      "rule_id": "G.RES.09-CPP",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 468,
+      "rule_id": "G.PRE.10",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 469,
+      "rule_id": "WordsTool.167",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 470,
+      "rule_id": "WordsTool.243",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 471,
+      "rule_id": "WordsTool.116",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 472,
+      "rule_id": "G.CNS.02",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 473,
+      "rule_id": "G.FMT.07",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 474,
+      "rule_id": "WordsTool.186",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 475,
+      "rule_id": "WordsTool.293",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 476,
+      "rule_id": "G.CNS.02-CPP",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 477,
+      "rule_id": "G.FMT.16-CPP",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 478,
+      "rule_id": "G.RES.07-CPP",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 479,
+      "rule_id": "WordsTool.71",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 480,
+      "rule_id": "G.OTH.05",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 481,
+      "rule_id": "WordsTool.103",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 482,
+      "rule_id": "WordsTool.34",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 483,
+      "rule_id": "G.FMT.17-CPP",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 484,
+      "rule_id": "OAT.7",
+      "severity": "严重",
+      "backends": [
+        "repository-oat"
+      ],
+      "phases": [
+        "P7",
+        "CI"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 485,
+      "rule_id": "G.EXP.02",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 486,
+      "rule_id": "G.INC.04-CPP",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 487,
+      "rule_id": "WordsTool.134",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 488,
+      "rule_id": "G.FMT.02",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 489,
+      "rule_id": "G.FMT.16-CPP",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 490,
+      "rule_id": "WordsTool.187",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 491,
+      "rule_id": "WordsTool.182",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 492,
+      "rule_id": "WordsTool.45",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 493,
+      "rule_id": "WordsTool.70",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 494,
+      "rule_id": "WordsTool.82",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 495,
+      "rule_id": "WordsTool.23",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 496,
+      "rule_id": "WordsTool.191",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 497,
+      "rule_id": "WordsTool.131",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 498,
+      "rule_id": "G.FUN.01-CPP",
+      "severity": "一般",
+      "backends": [
+        "metric"
+      ],
+      "phases": [
+        "P4",
+        "P7"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 499,
+      "rule_id": "G.EXP.01-CPP",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 500,
+      "rule_id": "G.FMT.08",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 501,
+      "rule_id": "WordsTool.251",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 502,
+      "rule_id": "WordsTool.193",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 503,
+      "rule_id": "WordsTool.241",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 504,
+      "rule_id": "WordsTool.62",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 505,
+      "rule_id": "G.EXP.33-CPP",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 506,
+      "rule_id": "WordsTool.272",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 507,
+      "rule_id": "G.OTH.01",
+      "severity": "严重",
+      "backends": [
+        "multiline"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 508,
+      "rule_id": "WordsTool.53",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 509,
+      "rule_id": "G.CMT.05-CPP",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 510,
+      "rule_id": "WordsTool.107",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 511,
+      "rule_id": "G.INC.11-CPP",
+      "severity": "一般",
+      "backends": [
+        "metric"
+      ],
+      "phases": [
+        "P4",
+        "P7"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 512,
+      "rule_id": "WordsTool.127",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 513,
+      "rule_id": "WordsTool.297",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 514,
+      "rule_id": "G.FUU.09",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 515,
+      "rule_id": "WordsTool.59",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 516,
+      "rule_id": "WordsTool.43",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 517,
+      "rule_id": "WordsTool.239",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 518,
+      "rule_id": "WordsTool.46",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 519,
+      "rule_id": "G.MEM.05",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 520,
+      "rule_id": "G.FUN.01-CPP",
+      "severity": "一般",
+      "backends": [
+        "metric"
+      ],
+      "phases": [
+        "P4",
+        "P7"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 521,
+      "rule_id": "WordsTool.108",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 522,
+      "rule_id": "G.ARR.03",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 523,
+      "rule_id": "G.CRY.03",
+      "severity": "致命",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 524,
+      "rule_id": "G.FMT.04-CPP",
+      "severity": "一般",
+      "backends": [
+        "clang-format"
+      ],
+      "phases": [
+        "P2"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 525,
+      "rule_id": "OAT.3",
+      "severity": "致命",
+      "backends": [
+        "repository-oat"
+      ],
+      "phases": [
+        "P7",
+        "CI"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 526,
+      "rule_id": "G.MEM.01",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 527,
+      "rule_id": "G.CLS.06-CPP",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 528,
+      "rule_id": "WordsTool.14",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 529,
+      "rule_id": "OAT.6",
+      "severity": "致命",
+      "backends": [
+        "repository-oat"
+      ],
+      "phases": [
+        "P7",
+        "CI"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 530,
+      "rule_id": "WordsTool.273",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 531,
+      "rule_id": "WordsTool.310",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 532,
+      "rule_id": "G.EXP.36-CPP",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 533,
+      "rule_id": "WordsTool.81",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 534,
+      "rule_id": "WordsTool.275",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 535,
+      "rule_id": "G.OTH.06-CPP",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 536,
+      "rule_id": "G.EXP.37-CPP",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 537,
+      "rule_id": "G.INC.10-CPP",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 538,
+      "rule_id": "G.EXP.41-CPP",
+      "severity": "一般",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 539,
+      "rule_id": "WordsTool.77",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 540,
+      "rule_id": "G.OTH.05",
+      "severity": "严重",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 541,
+      "rule_id": "WordsTool.135",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 542,
+      "rule_id": "G.CLS.12-CPP",
+      "severity": "严重",
+      "backends": [
+        "clang-tidy"
+      ],
+      "phases": [
+        "P4"
+      ],
+      "author_time": false
+    },
+    {
+      "row": 543,
+      "rule_id": "WordsTool.253",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 544,
+      "rule_id": "WordsTool.95",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 545,
+      "rule_id": "WordsTool.50",
+      "severity": "一般",
+      "backends": [
+        "sensitive-word"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    },
+    {
+      "row": 546,
+      "rule_id": "G.PRE.06",
+      "severity": "一般",
+      "backends": [
+        "regex"
+      ],
+      "phases": [
+        "P2",
+        "P3"
+      ],
+      "author_time": true
+    }
+  ],
+  "summary": {
+    "workbook_rows": 545,
+    "mapped_rows": 545,
+    "author_time_rows": 423,
+    "later_stage_rows": 122,
+    "backend_counts": {
+      "sensitive-word": 307,
+      "regex": 105,
+      "multiline": 6,
+      "clang-format": 40,
+      "clang-tidy": 58,
+      "metric": 12,
+      "file-hygiene": 4,
+      "static-gate": 1,
+      "repository-oat": 10,
+      "semantic-review": 2
+    }
+  }
+}

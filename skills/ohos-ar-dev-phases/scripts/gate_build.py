@@ -17,6 +17,7 @@ signed ar-contract to have been produced by this build — proving the files the
 design promised were actually compiled in. Missing any one is a FAIL.
 """
 import argparse
+import json
 import os
 import subprocess
 import sys
@@ -31,6 +32,8 @@ import environments as envs  # noqa: E402
 # fail) so the pipeline is not held hostage to an optional AST backend.
 STYLE_GUARD = gl.resolve_dep("code-ruleset-style-check/scripts/code_ruleset_guard.py",
                              env_var="CODE_RULESET_GUARD")
+METRIC_GUARD = gl.resolve_dep("code-ruleset-style-check/scripts/code_ruleset_metric.py",
+                              env_var="CODE_RULESET_METRIC")
 CXX_EXTS = {".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx"}
 # Host prebuilt ninja is preferred; a non-OHOS host ninja under ohos/ may be an
 # ARM binary. Fall back to PATH ninja when the prebuilt is absent.
@@ -408,6 +411,37 @@ def clang_tidy_substep(pdir, repo, changed_cxx, out_dir_rel):
                            % len(abs_cxx), degraded=False)
 
 
+def metric_substep(pdir, repo, changed_cxx):
+    """Run workbook metric/size rules over the locked changed files.
+
+    Unlike clang-tidy, this backend has a deterministic fallback and is a hard
+    gate. A missing script or unreadable JSON is therefore a dependency failure,
+    never an implicit PASS.
+    """
+    rel = "evidence/phase4/metric_findings.json"
+    abs_cxx = [os.path.join(repo, f) for f in changed_cxx
+               if os.path.isfile(os.path.join(repo, f))]
+    if not METRIC_GUARD or not os.path.isfile(METRIC_GUARD):
+        return [{"file": "", "line": 1, "rule_id": "metric-backend",
+                 "severity": "严重", "remediation":
+                 "code_ruleset_metric.py missing"}], rel
+    cp = subprocess.run(
+        [sys.executable, METRIC_GUARD, "--json", os.path.join(pdir, rel), *abs_cxx],
+        text=True, capture_output=True, timeout=600)
+    try:
+        with open(os.path.join(pdir, rel), encoding="utf-8") as stream:
+            findings = json.load(stream).get("findings") or []
+    except (OSError, ValueError, TypeError):
+        findings = [{"file": "", "line": 1, "rule_id": "metric-backend",
+                     "severity": "严重", "remediation":
+                     "metric findings JSON missing or invalid (rc=%d)" % cp.returncode}]
+    if cp.returncode != 0 and not findings:
+        findings = [{"file": "", "line": 1, "rule_id": "metric-backend",
+                     "severity": "严重", "remediation":
+                     "metric backend exited with rc=%d" % cp.returncode}]
+    return findings, rel
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--pipeline-dir")
@@ -505,6 +539,21 @@ def main():
         # advisory otherwise. changed_files come from the signed contract.
         changed_cxx = [p for p in (contract.get("changed_files") or [])
                        if os.path.splitext(p)[1].lower() in CXX_EXTS] if c_ok else []
+        metric_findings, metric_rel = metric_substep(pdir, repo, changed_cxx)
+        arts.append(metric_rel)
+        if metric_findings:
+            reason = ("build ok but code_ruleset metrics found %d issue(s) (target=%s)"
+                      % (len(metric_findings), target))
+            _record_result(
+                pdir, "FAIL", reason, arts, cmd=cmd, exit_code=rc, target=target,
+                banner_ok=banner_ok, banner_err=banner_err,
+                artifacts_missing=artifacts_missing, contract_status=contract_status,
+                failure_class="build_verdict_failed",
+                problems=["metric: %s:%s %s" % (f.get("file"), f.get("line"),
+                                                    f.get("rule_id"))
+                          for f in metric_findings[:100]],
+                resume_hint="修复 metric 报告的函数/文件规模问题后回 P2 重走并重跑 gate_build.py")
+            sys.exit("PHASE 4 FAIL: %s" % reason)
         ct_findings, ct_rels, ct_note = clang_tidy_substep(pdir, repo, changed_cxx, out_dir_rel)
         arts += ct_rels
         if ct_findings:
@@ -522,7 +571,7 @@ def main():
             sys.exit("PHASE 4 FAIL: %s" % reason)
         _record_result(
             pdir, "PASS",
-            "exit=0 and success banner in build output (target=%s)%s [clang-tidy: %s]"
+            "exit=0 and success banner in build output (target=%s)%s [metric: PASS; clang-tidy: %s]"
             % (target, contract_note, ct_note),
             arts, cmd=cmd, exit_code=rc, target=target,
             banner_ok=banner_ok, banner_err=banner_err,

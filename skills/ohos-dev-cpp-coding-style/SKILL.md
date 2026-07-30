@@ -15,6 +15,23 @@ metadata:
 
 You are an expert in OpenHarmony C++ conventions. Apply the project's OpenHarmony-specific rules to the user's code or question without turning the response into a generic C++ tutorial.
 
+## Shared gate contract
+
+For lifecycle P2/P3 work, load
+[`../code-ruleset-style-check/references/pre-write-contract.md`](../code-ruleset-style-check/references/pre-write-contract.md)
+before the first edit. This skill supplies the OpenHarmony design guidance
+(ownership, API shape, inheritance, naming, comments, and local conventions);
+`code-ruleset-style-check` supplies the workbook-derived gate rules and the only
+hard style verdict. Use both together while writing code, but do not copy the
+545-row workbook or implement a second regex guard here.
+
+The contract is deliberately advisory before the edit: a self-check or a
+statement that the contract was loaded is not gate evidence. After editing,
+P2/P3 must still invoke the shared guard through their phase gate. If this skill's
+bundled `oh_cpp_guard.py` or clang configuration disagrees with the workbook
+guard, report the discrepancy and defer the lifecycle PASS decision to the
+shared `code-ruleset-style-check` backend.
+
 ## Core Conventions
 
 Treat [references/rules.md](references/rules.md) as the source of truth for concrete OpenHarmony C++ convention details. Keep those details there instead of duplicating them in this file, so future rule changes have one place to land.
@@ -23,17 +40,21 @@ Treat [references/rules.md](references/rules.md) as the source of truth for conc
 
 - Bundles `scripts/oh_cpp_guard.py`, `scripts/.clang-format`, and `scripts/.clang-tidy` for repeatable validation.
 - Safe to use without those tools; fall back to manual review and explicit reasoning.
+- In the lifecycle workflow, these bundled tools are supplemental. P2/P3/P4/P7
+  gate decisions come from the shared `code-ruleset-style-check` backend, not
+  from this skill's private configuration.
 - Evaluation assets for this skill live in [`evals/evals.json`](evals/evals.json) and [`references/evaluation-framework.md`](references/evaluation-framework.md).
 
 ## Workflow
 
 1. Detect the task mode first: `implement`, `scaffold`, `document`, or `review`.
 2. Load [references/rules.md](references/rules.md) once before making OpenHarmony-specific decisions.
-3. For `review`, also load [references/review-checklist.md](references/review-checklist.md).
-4. Do NOT load [references/tooling.md](references/tooling.md) for ordinary implementation, scaffolding, documentation, or review. The rules and checklist are enough for human judgment.
-5. Load [references/tooling.md](references/tooling.md) only when the user explicitly asks for validation, cleanup, formatting, strict checks, clang-tidy, full checks, or CI readiness.
-6. Follow existing project style when editing third-party or imported code; this skill does not override upstream style there.
-7. After code generation or edits, do a lightweight rules-based self-check against [references/rules.md](references/rules.md).
+3. For lifecycle P2/P3 work, load the shared [pre-write contract](../code-ruleset-style-check/references/pre-write-contract.md) before making the first edit.
+4. For `review`, also load [references/review-checklist.md](references/review-checklist.md).
+5. Do NOT load [references/tooling.md](references/tooling.md) for ordinary implementation, scaffolding, documentation, or review. The rules, contract, and checklist are enough for human judgment.
+6. Load [references/tooling.md](references/tooling.md) only when the user explicitly asks for validation, cleanup, formatting, strict checks, clang-tidy, full checks, or CI readiness.
+7. Follow existing project style when editing third-party or imported code; this skill does not override upstream style there.
+8. After code generation or edits, do a lightweight rules-based self-check against [references/rules.md](references/rules.md) and the shared pre-write contract.
 
 ## When Writing Code
 
@@ -42,6 +63,9 @@ Use for writing or modifying production code.
 - Apply the concrete conventions while shaping file layout, names, API boundaries, ownership, and inheritance semantics.
 - Prefer direct, concrete interfaces over generic abstractions.
 - Keep comments, macros, lambdas, templates, and ownership choices aligned with the rule file and the surrounding subsystem.
+- Before typing each new interface or implementation, choose the contract-safe
+  form (approved API, explicit capture, checked bounds, explicit lifetime) so the
+  later guard is confirmation rather than the first time the issue is discovered.
 
 ## When Scaffolding Files
 
@@ -80,7 +104,7 @@ Use validation as a tiered flow so normal generation stays fast:
 
 ## Rule Boundaries
 
-Do not bloat responses with general C++ advice. Concentrate on the OpenHarmony-specific constraints in [references/rules.md](references/rules.md).
+Do not bloat responses with general C++ advice. Concentrate on the OpenHarmony-specific constraints in [references/rules.md](references/rules.md), and use the shared pre-write contract for workbook gate families. The two sources have different jobs: this skill explains why an OpenHarmony choice is appropriate; the ruleset skill defines deterministic gate ownership and phase timing.
 
 ## Response Shapes
 

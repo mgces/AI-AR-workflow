@@ -35,6 +35,10 @@ description: >
   该 consent 不在 `advance --phase 1` 处校验,而是在 **P2 `gate_develop.py` 内**强校验(绑 phase1 设计条目):
   没有签名 AR_design 或缺 P1 consent,P2 开发门直接 FAIL。写码可用 `ohos-code-skeletons` 取插件/测试骨架
   填充 AR_design「完整代码框架」。
+- **写码前规则契约(P2/P3)**:开始新增或修改代码前，先加载
+  `code-ruleset-style-check/references/pre-write-contract.md` 和
+  `ohos-dev-cpp-coding-style`。这是共享规则的作者时指导层，不产生 PASS 证据；写完后仍必须运行
+  P2/P3 的共享 guard，且 guard 是唯一硬门禁来源。
 - **Finding 1:编译前测试代码已写(phase3)**:`gate_test_develop.py`(`emit(phase 3)`)是"先写完功能+测试
   代码再编译"的**真签名门**——不闭合 phase3 就到不了 phase4(build)。它证明测试**编写**(契约每个
   `test_cases[].gtest` 的 suite 出现在**新测试文件**里),测试**执行**留到 phase5(`gate_test_ut.py`)。

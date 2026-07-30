@@ -33,8 +33,9 @@ P5 test-exec  │    3) PASS → advance.py advance --phase N(校验签名+链+�
 P6 device     │    4) FAIL → 读 evidence/phaseN/ 真实日志,修复重跑(≤3 次)
 P7 quality    │
 P8 upload ────┘    P1 设计门 gate_design(AR_design 6 章节 + ar-contract 契约块,签名 emit 1)→ 人工 consent --phase 1
-                   P2 开发门 gate_develop(依赖签名设计 + P1 consent,闭合时锁功能指纹)
-                   P3 测试开发门 gate_test_develop(编译前测试代码已写:契约 gtest suite 出现在新测试文件,签名 emit 3)
+                   P2 写码前先加载 code-ruleset-style-check/pre-write-contract + ohos-dev-cpp-coding-style；
+                      开发门 gate_develop(依赖签名设计 + P1 consent,闭合时锁功能指纹)
+                   P3 写码前加载同一契约；测试开发门 gate_test_develop(编译前测试代码已写:契约 gtest suite 出现在新测试文件,签名 emit 3)
                    P3/P4/P5/P6-7 按签名契约做全量覆盖硬门控(test_cases gtest 编写 / build_artifacts / test_cases gtest 执行 / device_cases marker,缺一即 FAIL)
                    P3/P5/P6/P7 只允许新增独立测试文件(功能指纹漂移会被拒;check_code_drift 从 phase3 起生效)
                    P1/P6/P7/P8 需 advance.py consent(签名绑定证据)后才推进;并渲染 reports/ 人读 Markdown

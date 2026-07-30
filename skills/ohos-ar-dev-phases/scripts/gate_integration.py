@@ -31,6 +31,8 @@ import environments as envs  # noqa: E402
 
 STYLE_GUARD = gl.resolve_dep("code-ruleset-style-check/scripts/code_ruleset_guard.py",
                              env_var="CODE_RULESET_GUARD")
+METRIC_GUARD = gl.resolve_dep("code-ruleset-style-check/scripts/code_ruleset_metric.py",
+                              env_var="CODE_RULESET_METRIC")
 QUALITY_REPORTS = (
     ("coverage", "coverage_report"),
     ("performance", "performance_report"),
@@ -545,9 +547,11 @@ def code_review(state, pdir, arts):
     Returns (ok, detail). Writes evidence/phase7/code_review_report.txt."""
     gdir = gl.resolve_git_dir(state)
     base = state.get("base_commit") or "HEAD"
-    names = subprocess.run(["git", "-C", gdir, "diff", "--name-only", base],
-                           text=True, capture_output=True).stdout.split()
-    cxx = [f for f in names if f.endswith((".c", ".cc", ".cpp", ".cxx", ".h", ".hpp"))]
+    # Reuse the lifecycle's commit-independent changed-path set so newly
+    # authored/untracked files are reviewed just like tracked diffs.
+    names = gl._changed_paths(state)
+    cxx_exts = (".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx")
+    cxx = [f for f in names if f.lower().endswith(cxx_exts)]
     rel = "evidence/phase7/code_review_report.txt"
     out_path = os.path.join(pdir, rel)
     if not cxx:
@@ -566,14 +570,29 @@ def code_review(state, pdir, arts):
     abs_cxx = [os.path.join(gdir, f) for f in cxx if os.path.exists(os.path.join(gdir, f))]
     cp = subprocess.run([sys.executable, STYLE_GUARD, *abs_cxx],
                         text=True, capture_output=True)
-    issue_count = 0 if cp.returncode == 0 else 1
+    metric_rel = "evidence/phase7/metric_findings.json"
+    metric_cp = subprocess.run(
+        [sys.executable, METRIC_GUARD, "--json", os.path.join(pdir, metric_rel), *abs_cxx],
+        text=True, capture_output=True) if os.path.isfile(METRIC_GUARD) else None
+    try:
+        with open(os.path.join(pdir, metric_rel), encoding="utf-8") as stream:
+            metric_findings = json.load(stream).get("findings") or []
+    except (OSError, ValueError, TypeError):
+        metric_findings = [{"rule_id": "metric-backend"}]
+    if metric_cp is None:
+        metric_findings = [{"rule_id": "metric-backend"}]
+    elif metric_cp.returncode != 0 and not metric_findings:
+        metric_findings = [{"rule_id": "metric-backend"}]
+    arts.append(metric_rel)
+    issue_count = (0 if cp.returncode == 0 else 1) + (1 if metric_findings else 0)
     with open(out_path, "w", encoding="utf-8") as f:
         f.write("review_issue_count=%d\n" % issue_count)
         f.write("changed C/C++ (%d):\n%s\n\n--- code_ruleset_guard (format+rules) ---\nrc=%d\n%s\n%s"
                 % (len(cxx), "\n".join(cxx), cp.returncode, cp.stdout, cp.stderr))
     arts.append(rel)
-    return cp.returncode == 0, "auto_review_issues=%d guard rc=%d on %d file(s)" % (
-        issue_count, cp.returncode, len(cxx))
+    return cp.returncode == 0 and not metric_findings, (
+        "auto_review_issues=%d guard rc=%d metric_findings=%d on %d file(s)" %
+        (issue_count, cp.returncode, len(metric_findings), len(cxx)))
 
 
 def copy_external_review_report(args, pdir, arts):

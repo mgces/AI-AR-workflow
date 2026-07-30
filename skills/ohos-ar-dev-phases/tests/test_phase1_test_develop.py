@@ -341,7 +341,7 @@ class TestB1DevelopSequence(unittest.TestCase):
     # ---- C2: banned-API (rules-only) blocking on authored test code -----------
     def test_p3_disabled_api_in_test_fails_rules_only(self):
         # C2 regression: a properly-headered test that COVERS the contract's
-        # suite but calls a banned API (system(), G.SEC.03) must still FAIL P3 via
+        # suite but calls a banned API (system(), G.FUU.21-CPP) must still FAIL P3 via
         # the --rules-only guard — locking the Fix-1 P3 rule wiring so a future
         # edit cannot silently drop it. Also asserts S3 backfills the finding as a
         # line-level suspect_location the weak model can act on.
@@ -361,9 +361,10 @@ class TestB1DevelopSequence(unittest.TestCase):
         self.assertEqual(card["last_failure_class"], "test_style_finding")
         self.assertEqual(card["next_expected_action_class"], "repair")
         self.assertIsNotNone(repair)
-        # S3: the G.SEC.03 finding is backfilled as a structured suspect location.
+        # S3: the workbook-backed unsafe-function finding is backfilled as a
+        # structured suspect location.
         locs = repair.get("suspect_locations") or []
-        self.assertTrue(any(l.get("rule") == "G.SEC.03" for l in locs), locs)
+        self.assertTrue(any(l.get("rule") == "G.FUU.21-CPP" for l in locs), locs)
         self.assertTrue(any(l.get("file", "").endswith("a_test.cpp") for l in locs), locs)
 
 

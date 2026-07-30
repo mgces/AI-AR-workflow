@@ -92,6 +92,10 @@ _BINARY_EXTS = {
     ".ko", ".mod", ".class", ".jar", ".war", ".pyc", ".pyo", ".pyd",
     ".elf", ".deb", ".rpm", ".AppImage", ".snap",
 }
+_BINARY_EXTS = {ext.lower() for ext in _BINARY_EXTS}
+# Binary extensions are in scope only for the OAT.1 contamination check; they
+# are not text/license inputs and therefore must not be decoded.
+EXTS |= _BINARY_EXTS
 
 # How many leading lines of a file may precede the copyright header. Real files
 # open with a shebang and/or a comment-block opener before the copyright line,
@@ -244,11 +248,13 @@ def _sensitive_findings(path):
                          "cannot read file for sensitive-word check: %s" % exc)]
     out = []
     lines = text.splitlines()
-    for rid, sev, pat, word in SENSITIVE_WORDS:
+    # Never echo the matched word text (see code_ruleset_guard C1 note): report
+    # rule_id only so the raw term never reaches evidence logs / model context.
+    for rid, sev, pat, _word in SENSITIVE_WORDS:
         for n, line in enumerate(lines, 1):
             if pat.search(line):
                 out.append(_finding(path, n, rid,
-                                    "remove sensitive/banned word %r" % word,
+                                    "remove banned/sensitive term flagged by %s" % rid,
                                     severity=sev))
     return out
 
@@ -329,20 +335,13 @@ def _findings(files):
         # OAT.1: any file with a binary extension is contamination.
         if ext in _BINARY_EXTS:
             out.append(_binary_finding(path))
-        # OAT.6: a LICENCE/LICENSE/COPYING file in a subdirectory is redundant.
-        name = path.name.upper()
-        if name in ("LICENCE", "LICENSE", "COPYING"):
-            f = _oat6_finding(path)
-            if f:
-                out.append(f)
+        # OAT.6 is repository-scoped (root LICENSE policy), so it is owned by
+        # the repository OAT/CI backend. A changed-file guard cannot reliably
+        # infer the repository root from an absolute path and must not guess.
         # G.INC.02: non-.h header extension (e.g. .inc) is banned
         if ext not in _CXX_EXTS and path.suffix.lower() == ".inc":
             out.append(_finding(path, 1, "G.INC.02",
                                 "use .h extension for headers, not .inc"))
-        # G.NAM.01-CPP: C++ source must be .cpp, header must be .h
-        if ext in (".cc", ".cxx", ".hh", ".hxx", ".hpp"):
-            out.append(_finding(path, 1, "G.NAM.01-CPP",
-                                "C++ source files must use .cpp, headers must use .h"))
         # G.FIL.04-CPP: duplicate file detection (same basename, different ext)
         # G.PRE.05-CPP / G.PRE.13: #if/#endif mismatch (check #endif count vs #if count)
     return out

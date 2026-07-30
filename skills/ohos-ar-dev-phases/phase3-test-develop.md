@@ -20,8 +20,15 @@ phase 2 闭合已锁定功能指纹。本阶段起**只允许新增独立测试�
 ## 做事(调用现有技能)
 - 生成 OpenHarmony C/C++ 单测(HWTEST/HWTEST_F + `ohos_unittest` + BUILD.gn):`ohos-test-ut-generation`。
 - TDD 闭环:`tdd-enforcer`。确认测试 GN 目标名(`<Test>`)、`testpart`、套件二进制名(`-ts`)。
+- 在新增测试文件或测试 BUILD 输入前，先加载
+  `ohos-dev-cpp-coding-style` 和
+  `code-ruleset-style-check/references/pre-write-contract.md`；测试代码、测试名、
+  fixture、字符串和构建输入都受同一套门禁规则约束。
 - 依据 `AR_design.md` 的"完整测试框架/需测试的功能点"补测试,让每个契约 `test_cases[].gtest` 的
   suite 出现在新测试文件里。
+
+写码顺序固定为：读取写码前契约 → 生成/补测试 → 对新增测试源运行共享 guard。
+契约和自检只能指导写法，不能替代 `gate_test_develop.py` 的签名 PASS。
 
 ## 门控
 ```bash
