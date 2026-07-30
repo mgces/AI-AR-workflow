@@ -131,7 +131,7 @@ export default defineConfig({
           items: [
             { text: '概览', link: '/cases/' },
             { text: '线程泄漏检测', link: '/cases/thread-leak-detector' },
-            { text: 'AppFreeze �恢复屏障', link: '/cases/appfreeze-recovery-barrier' },
+            { text: 'AppFreeze 恢复屏障', link: '/cases/appfreeze-recovery-barrier' },
             { text: '弱模型优化', link: '/cases/weak-model-optimization' },
           ],
         },
