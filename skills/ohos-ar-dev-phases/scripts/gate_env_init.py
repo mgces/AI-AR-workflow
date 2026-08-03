@@ -95,25 +95,51 @@ def main():
         gdir = os.path.join(repo, gdir)
     gl.evidence_dir(pdir, 0)
 
-    # --- OHOS root sanity: repo defaults to the directory Claude was opened in
-    # ($OHOS_ROOT or cwd, set at `advance.py init`). If it doesn't look like an
-    # OHOS source root, fail fast with an actionable message instead of a vague
+    # --- source-root sanity: repo defaults to the directory Claude was opened in
+    # ($OHOS_ROOT or cwd, set at `advance.py init`). The markers that make a
+    # directory "look like a source root" are environment-specific and come from
+    # the profile (openharmony -> build.sh + test/testfwk/developer_test;
+    # harmonyos -> whatever that environment's profile declares). A HarmonyOS
+    # environment whose root_markers are still a placeholder hard-fails here with
+    # a "configure environments.py" message rather than falling back to the OHOS
+    # layout — the same fail-closed stance as the build command. If the directory
+    # doesn't match, fail fast with an actionable message instead of a vague
     # capability error further down.
-    looks_ohos = (os.path.exists(os.path.join(repo, "build.sh"))
-                  and os.path.isdir(os.path.join(repo, "test/testfwk/developer_test")))
-    if not looks_ohos:
-        msg = ("'%s' does not look like an OHOS source root (missing build.sh / "
-               "test/testfwk/developer_test).\n"
-               "Fix it one of these ways:\n"
-               "  * reopen your Agent in the OHOS repo root, or\n"
-               "  * re-run `advance.py init` with --repo <ohos_root>, or\n"
-               "  * export OHOS_ROOT=<ohos_root> before init." % repo)
+    try:
+        markers = envs.root_markers(state)
+    except envs.EnvironmentNotConfigured as e:
         rel = "evidence/phase0/env.json"
         with open(os.path.join(pdir, rel), "w", encoding="utf-8") as f:
-            json.dump({"repo": repo, "error": "not_an_ohos_root"}, f, indent=2)
+            json.dump({"repo": repo, "environment": envs.env_id(state),
+                       "error": "root_markers_unconfigured",
+                       "detail": str(e)}, f, indent=2, ensure_ascii=False)
         gl.emit(pdir, 0, "gate_env_init.py", verdict="FAIL",
-                reason="repo is not an OHOS root: %s" % repo, artifacts_rel=[rel])
-        _write_bootstrap_controls(pdir, "FAIL", blocker="not_an_ohos_root",
+                reason="source-root markers not configured for environment %s"
+                % envs.env_id(state), artifacts_rel=[rel])
+        _write_bootstrap_controls(
+            pdir, "FAIL", blocker="root_markers_unconfigured",
+            failure_class="bootstrap_input_missing")
+        sys.exit("PHASE 0 FAIL — %s" % e)
+    missing_markers = [m for m in markers
+                       if not os.path.exists(os.path.join(repo, m))]
+    looks_ok = not missing_markers
+    if not looks_ok:
+        msg = ("'%s' does not look like a %s source root (missing: %s).\n"
+               "Fix it one of these ways:\n"
+               "  * reopen your Agent in the source repo root, or\n"
+               "  * re-run `advance.py init` with --repo <source_root>, or\n"
+               "  * export OHOS_ROOT=<source_root> before init."
+               % (repo, envs.env_id(state), ", ".join(missing_markers)))
+        rel = "evidence/phase0/env.json"
+        with open(os.path.join(pdir, rel), "w", encoding="utf-8") as f:
+            json.dump({"repo": repo, "environment": envs.env_id(state),
+                       "error": "not_a_source_root",
+                       "missing_markers": missing_markers}, f, indent=2,
+                      ensure_ascii=False)
+        gl.emit(pdir, 0, "gate_env_init.py", verdict="FAIL",
+                reason="repo is not a %s source root: %s"
+                % (envs.env_id(state), repo), artifacts_rel=[rel])
+        _write_bootstrap_controls(pdir, "FAIL", blocker="not_a_source_root",
                                   failure_class="bootstrap_input_missing")
         sys.exit("PHASE 0 FAIL — %s" % msg)
 
@@ -287,6 +313,16 @@ def main():
         print("[%s] %-12s %-5s (%s)  %s" % ("OK " if ok else "BAD", n, k, ph, d))
 
     hard_fail = [n for (n, k, ok, d, ph) in checks if k == "HARD" and not ok]
+    # When the device is the (or a) blocker, surface plain jargon-free guidance:
+    # no env macros — just the one command to run on the machine holding the
+    # device, and what IP:port to hand back. device.sh already printed this to
+    # stderr; echo it here too so it's front-and-center in the P0 summary.
+    if "device" in hard_fail:
+        print("\n--- 真机没连上,按这一步操作 ---")
+        print("请在【插着设备的那台电脑】上执行(端口用 10086):")
+        print("    hdc -m -s 0.0.0.0:10086 start")
+        print("执行后把那台电脑的 IP 和端口(例如 192.168.1.23:10086)告诉我,我来接管连接。")
+        print("-" * 34)
     if hard_fail:
         gl.emit(pdir, 0, "gate_env_init.py", verdict="FAIL",
                 reason="missing capabilities: %s" % ",".join(hard_fail),

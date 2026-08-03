@@ -974,7 +974,41 @@ def _write_next_action(pdir, state):
 
 
 def cmd_init(args):
-    pdir = gl.pipeline_dir(args.pipeline_dir)
+    # PDIR is anchored to the source root: all docs/evidence/reports live under
+    # <repo>/specs/pipeline/<run>, never wherever the Agent happened to be. A weak
+    # model can't drift evidence out of the OHOS root because init DERIVES the
+    # path from --repo instead of trusting a hand-built --pipeline-dir.
+    #   * canonical: pass --repo + --run-id; init computes the PDIR itself.
+    #   * legacy: if --pipeline-dir is given, it MUST resolve under
+    #     <repo>/specs/pipeline/ or init HARD-FAILS (no silent out-of-root run).
+    repo = os.path.abspath(args.repo)
+    anchor = os.path.join(repo, "specs", "pipeline")
+    if args.pipeline_dir:
+        pdir = os.path.abspath(args.pipeline_dir)
+        # Enforce containment under <repo>/specs/pipeline/ so evidence can't land
+        # outside the source root. commonpath guards against ".." escapes.
+        try:
+            contained = os.path.commonpath([anchor, pdir]) == anchor and pdir != anchor
+        except ValueError:  # different drives (Windows) -> definitely not contained
+            contained = False
+        if not contained:
+            sys.exit(
+                "ERROR: --pipeline-dir must live under the source root's "
+                "specs/pipeline/ so evidence and docs stay anchored to the repo.\n"
+                "  repo (--repo/$OHOS_ROOT): %s\n"
+                "  required parent:          %s/<run>\n"
+                "  got:                      %s\n"
+                "  * drop --pipeline-dir and pass --run-id (init derives the path), or\n"
+                "  * point --pipeline-dir at %s/<run>." % (repo, anchor, pdir, anchor))
+        run_id = args.run_id or os.path.basename(pdir.rstrip("/"))
+    else:
+        run_id = args.run_id
+        if not run_id:
+            sys.exit(
+                "ERROR: pass --run-id (e.g. YYYYMMDD-<ar-slug>) so init can anchor "
+                "the pipeline at <repo>/specs/pipeline/<run-id>, or pass an explicit "
+                "--pipeline-dir under that path.")
+        pdir = os.path.join(anchor, run_id)
     os.makedirs(os.path.join(pdir, "evidence"), exist_ok=True)
     if os.path.exists(gl.state_path(pdir)) and not args.force:
         sys.exit("ERROR: pipeline.json already exists (use --force to recreate)")
@@ -1023,6 +1057,7 @@ def cmd_init(args):
         sys.exit("ERROR: unknown --environment %r (expected one of %s)"
                  % (args.environment, ", ".join(envs.ENVIRONMENTS)))
     component_type = args.component_type
+    device_type = args.device_type or None
     if args.environment == "harmonyos":
         if component_type not in envs.COMPONENT_TYPES:
             sys.exit(
@@ -1031,23 +1066,36 @@ def cmd_init(args):
                 "  Ask the user which kind this AR is, then re-run init with\n"
                 "      --component-type system   (系统组件)   or\n"
                 "      --component-type chip      (芯片组件)")
+        # HarmonyOS build commands need --device-type (bound to the source root).
+        # Missing it would emit a command with an empty --device-type, so block
+        # init and force the caller to pin it — the same fail-closed stance as
+        # the environment/component gates above.
+        if not device_type:
+            sys.exit(
+                "ERROR: --device-type is required for --environment harmonyos "
+                "(its build command needs it; it is bound to the source root).\n"
+                "  Typical values: --device-type general_all_phone_standard (系统组件),\n"
+                "                  --device-type general_7315L_phone_standard (芯片组件).\n"
+                "  Confirm the value for THIS source root, then re-run init.")
     else:
-        # component_type is meaningful only for harmonyos; drop any stray value.
+        # component_type / device_type are meaningful only for harmonyos.
         component_type = None
+        device_type = None
     # Product form is derived from the environment profile (openharmony -> rk3568;
     # harmonyos -> from the component profile, or None while it is still a
     # placeholder — later gates resolve/hard-fail via environments.product_form).
     product = envs.derive_product(args.environment, component_type)
 
-    run_id = args.run_id or os.path.basename(pdir.rstrip("/"))
+    run_id = args.run_id or run_id
     gl.create_secret(run_id)
     state = {
         "run_id": run_id,
         "ar": run_id,
-        "repo": args.repo,
-        "git_dir": args.git_dir or args.repo,
+        "repo": repo,
+        "git_dir": args.git_dir or repo,
         "environment": args.environment,
         "component_type": component_type,
+        "device_type": device_type,
         "product": product,
         "device_serial": args.device_serial,
         "build_target": args.build_target,
@@ -1076,6 +1124,7 @@ def cmd_init(args):
     _refresh_state_metadata(pdir, state)
     gl.save_state(pdir, state)
     print("initialized pipeline at %s (run_id=%s)" % (pdir, run_id))
+    print("PDIR=%s" % pdir)  # machine-parseable: capture with $(... | grep '^PDIR=')
     print("secret: %s (mode 600)" % gl.secret_path(run_id))
     print("environment: %s%s (upload=%s, product=%s)"
           % (state["environment"],
@@ -1408,7 +1457,11 @@ def main():
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     p = sub.add_parser("init")
-    p.add_argument("--run-id")
+    p.add_argument("--run-id",
+                   help="run id (e.g. YYYYMMDD-<ar-slug>). init anchors the "
+                        "pipeline at <repo>/specs/pipeline/<run-id> so all "
+                        "docs/evidence stay under the source root. Required "
+                        "unless an explicit (contained) --pipeline-dir is given.")
     p.add_argument("--repo", default=os.environ.get("OHOS_ROOT", os.getcwd()),
                    help="OHOS repo root (build/developer_test base); "
                         "defaults to $OHOS_ROOT or the current directory")
@@ -1420,6 +1473,12 @@ def main():
     p.add_argument("--device-serial", default="",
                    help="pin a device serial; default empty = auto-detect the single "
                         "connected device at P0 (or set $DEVICE_SERIAL)")
+    p.add_argument("--device-type", default="",
+                   help="HarmonyOS build --device-type, bound to the source root "
+                        "(e.g. general_all_phone_standard for system, "
+                        "general_7315L_phone_standard for chip). Rarely changes per "
+                        "repo. REQUIRED for --environment harmonyos (its build "
+                        "command needs it); ignored for openharmony.")
     p.add_argument("--build-target", default=DEFAULT_BUILD_TARGET,
                    help="GN build target to compile/verify. Defaults to the hiview "
                         "part (%s); override per AR." % DEFAULT_BUILD_TARGET)

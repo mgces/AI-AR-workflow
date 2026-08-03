@@ -68,19 +68,30 @@ dev_shell() {
 dev_send() { local s; s="$(dev_serial)" || return 3; hdcw -t "$s" file send "$1" "$2"; }
 dev_recv() { local s; s="$(dev_serial)" || return 3; hdcw -t "$s" file recv "$1" "$2"; }
 
+# Plain, jargon-free guidance printed whenever no device can be reached. No env
+# macros (HDC_HOST_OVERRIDE/HDC_WIN_PORT/DEVICE_SERIAL) — just the one command the
+# user runs on the machine physically holding the device, and what to hand back.
+_dev_offline_hint() {
+  cat >&2 <<'EOF'
+真机没连上。请在【插着设备的那台电脑】上执行这一条命令(端口用 10086):
+    hdc -m -s 0.0.0.0:10086 start
+执行后,把那台电脑的 IP 和端口(例如 192.168.1.23:10086)告诉我,我来接管连接。
+EOF
+}
+
 # Confirm a uniquely-identified device is reachable. Prints the serial on success.
 dev_assert_online() {
   local s
   if ! s="$(dev_serial)"; then
-    echo "no unique device reachable via $(_hdc_server_args || echo 'native hdc'); "\
-"set DEVICE_SERIAL or fix the connection" >&2
+    _dev_offline_hint
     return 1
   fi
   local got
   got="$(hdcw -t "$s" shell 'echo __DEV_OK__' 2>/dev/null | tr -d '\r')"
   case "$got" in
     *__DEV_OK__*) echo "$s"; return 0 ;;
-    *) echo "device $s not responding to shell" >&2; return 1 ;;
+    *) echo "设备 $s 连上了但不响应 shell(可能刚重启/未就绪),请稍后重试。" >&2;
+       _dev_offline_hint; return 1 ;;
   esac
 }
 

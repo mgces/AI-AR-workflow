@@ -51,6 +51,11 @@ class TestOpenHarmonyProfile(unittest.TestCase):
     def test_upload_backend(self):
         self.assertEqual(envs.upload_backend(self.state), "gitcode")
 
+    def test_root_markers(self):
+        # verbatim from the old hardcoded P0 source-root check
+        self.assertEqual(envs.root_markers(self.state),
+                         ["build.sh", "test/testfwk/developer_test"])
+
 
 class TestBackwardCompat(unittest.TestCase):
     """A pre-refactor pipeline.json has no `environment` field: it must behave
@@ -68,20 +73,55 @@ class TestBackwardCompat(unittest.TestCase):
 
 
 class TestHarmonyOSPlaceholders(unittest.TestCase):
-    """harmonyos build/product/out_dir are placeholders → hard-fail until filled;
-    upload backend is gerrit; component_type is required."""
+    """harmonyos build command + banners are now filled (system/chip differ);
+    product/out_dir/root_markers are still placeholders that HARD-FAIL until
+    filled; upload backend is gerrit; component_type is required."""
 
-    def _state(self, ctype):
-        return {"environment": "harmonyos", "component_type": ctype}
+    def _state(self, ctype, device_type="dt-x"):
+        return {"environment": "harmonyos", "component_type": ctype,
+                "device_type": device_type, "build_target": "make_all"}
 
     def test_component_type_passthrough(self):
         self.assertEqual(envs.component_type(self._state("system")), "system")
         self.assertEqual(envs.component_type(self._state("chip")), "chip")
 
-    def test_build_command_hard_fails(self):
+    def test_system_build_command(self):
+        cmd = envs.build_command(self._state("system"), "make_all")
+        self.assertEqual(
+            cmd,
+            "./build_system.sh --abi-type generic_generic_arm_64only "
+            "--device-type dt-x --ccache --build-target make_all "
+            "--build-variant root -ninja-args=-j30")
+
+    def test_chip_build_command(self):
+        cmd = envs.build_command(self._state("chip"), "make_all")
+        self.assertEqual(
+            cmd,
+            "./build_vendor.sh --abi-type generic_generic_arm_64only "
+            "--device-type dt-x --ccache --build-variant user "
+            "--gn-args uefi_enable=true --gn-args USE_HM_KERNEL=true "
+            "--gn-args singleap=true --build-target make_all "
+            "--root-perf-main root")
+
+    def test_build_command_needs_device_type(self):
+        # a HarmonyOS build template references {device_type}; missing it in
+        # state hard-fails rather than emitting an empty --device-type.
         for ctype in ("system", "chip"):
             with self.assertRaises(envs.EnvironmentNotConfigured):
-                envs.build_command(self._state(ctype), "t")
+                envs.build_command(
+                    {"environment": "harmonyos", "component_type": ctype}, "t")
+
+    def test_banners(self):
+        # success matches "build ... successful"; failure is "do make ... error"
+        # (NOT "build ... error").
+        for ctype in ("system", "chip"):
+            st = self._state(ctype)
+            self.assertTrue(envs.success_re(st).search(
+                "=====build general successful====="))
+            self.assertTrue(envs.error_re(st).search(
+                "=====do make general error====="))
+            self.assertFalse(envs.error_re(st).search(
+                "=====build general error====="))
 
     def test_product_hard_fails(self):
         for ctype in ("system", "chip"):
@@ -92,6 +132,13 @@ class TestHarmonyOSPlaceholders(unittest.TestCase):
         for ctype in ("system", "chip"):
             with self.assertRaises(envs.EnvironmentNotConfigured):
                 envs.out_dir(self._state(ctype))
+
+    def test_root_markers_hard_fails(self):
+        # harmonyos must NOT fall back to the OHOS layout — its source-root
+        # markers are a placeholder that hard-fails until filled.
+        for ctype in ("system", "chip"):
+            with self.assertRaises(envs.EnvironmentNotConfigured):
+                envs.root_markers(self._state(ctype))
 
     def test_upload_backend_is_gerrit(self):
         self.assertEqual(envs.upload_backend(self._state("system")), "gerrit")

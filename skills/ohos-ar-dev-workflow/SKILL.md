@@ -54,28 +54,37 @@ GN 构建目标(`build_target`)、测试 `testpart` 与套件名、目标二进�
 - **环境形态是人工强确认点**(与编译部件确认并列):init **必须**用 `--environment` 指定环境,
   裸 init 缺 `--environment` 会**硬失败**。先用 `AskUserQuestion` 问用户本 AR 属于哪种环境:
   - `openharmony`(默认):gitcode + rk3568,上库走 oh-gc PR + OpenHarmony CI。
-  - `harmonyos-系统组件`:HarmonyOS,上库走 Gerrit;`--environment harmonyos --component-type system`。
-  - `harmonyos-芯片组件`:HarmonyOS,上库走 Gerrit;`--environment harmonyos --component-type chip`。
-  HarmonyOS 两种组件编译命令不同且**目前为占位**(在 `scripts/lib/environments.py` 未填时,P0/P4 编译门与
-  P8 上库门会硬失败并打印"待填"提示,绝不静默跑错)。
+  - `harmonyos-系统组件`:HarmonyOS,上库走 Gerrit;`--environment harmonyos --component-type system --device-type <type>`。
+  - `harmonyos-芯片组件`:HarmonyOS,上库走 Gerrit;`--environment harmonyos --component-type chip --device-type <chip_product>`。
+  HarmonyOS 编译命令**已填入** `scripts/lib/environments.py`(系统 `build_system.sh` / 芯片 `build_vendor.sh`,
+  成功横幅 `=====build ... successful=====`、失败横幅 `=====do make ... error=====`);`--device-type` 与源码根
+  绑定、**必填**(系统样例 `general_all_phone_standard` / 芯片样例 `general_7315L_phone_standard`,按本仓确认)。
+  `product`/`out_dir`/`root_markers` 仍为占位,需要它们的门(P0 根校验/P4 产物等)未填时硬失败并提示"待填",绝不静默跑错。
 - 为本次 AR 建运行态目录并初始化状态机。**编译部件也是人工确认点**:init 前先用
   `AskUserQuestion` 跟用户确认本 AR 要编译的部件(默认候选 hiview:
   git_dir=`base/hiviewdfx/hiview` / build_target=`hiview_package` / part=`hiviewdfx`)。
   裸 init(三者皆缺又不带 `--confirm-defaults`)会**硬失败**,绝不静默编译 hiview。
   ```bash
-  OHOS_ROOT="${OHOS_ROOT:-$HOME/ohos/master}"   # OHOS 仓根(按需修改)
+  OHOS_ROOT="${OHOS_ROOT:-$HOME/ohos/master}"   # 源码根(按需修改)
   RUN=$(date +%Y%m%d)-<ar-slug>
-  PDIR=$OHOS_ROOT/specs/pipeline/$RUN
-  mkdir -p "$PDIR"; printf '%s\n' "<AR 原文>" > "$PDIR/ar.md"
   AGENT_SKILLS_DIR="${AGENT_SKILLS_DIR:-$HOME/.claude/skills}"
   S="$AGENT_SKILLS_DIR/ohos-ar-dev-phases/scripts"
+  # PDIR 由 init 依 --repo 派生成 <repo>/specs/pipeline/<run>,不再手工拼路径:
+  # 弱模型即便忘了 export OHOS_ROOT / 拼错路径,证据与文档也强制锚定在源码根下。
+  # 传 --repo + --run-id,不传 --pipeline-dir;init 打印 PDIR= 行,抓取即得权威路径。
   # 用户答别的组件 → 传 --git-dir/--build-target/--part;用户确认沿用 hiview → 加 --confirm-defaults
   # 环境:openharmony 传 --environment openharmony;HarmonyOS 传 --environment harmonyos --component-type system|chip
-  python3 $S/advance.py --pipeline-dir "$PDIR" init \
+  PDIR=$(python3 $S/advance.py init \
+      --repo "$OHOS_ROOT" --run-id "$RUN" \
       --environment openharmony \
       --git-dir <组件路径> --build-target <gn_target> --part <testpart> \
-      --base-commit "$(git -C $OHOS_ROOT rev-parse HEAD)"
+      --base-commit "$(git -C $OHOS_ROOT rev-parse HEAD)" \
+      | sed -n 's/^PDIR=//p')
+  printf '%s\n' "<AR 原文>" > "$PDIR/ar.md"
   ```
+  > ⚠️ PDIR **必须**从 init 的 `PDIR=` 行取(它保证在 `<repo>/specs/pipeline/` 下)。
+  > 若你显式传 `--pipeline-dir`,它必须落在 `<repo>/specs/pipeline/<run>` 之内,否则 init **硬失败**
+  > (防止弱模型把证据/文档写到源码根之外)。
 - 跑 P0 预检并推进:
   ```bash
   python3 $S/gate_env_init.py --pipeline-dir "$PDIR"

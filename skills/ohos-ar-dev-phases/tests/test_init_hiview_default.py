@@ -27,7 +27,7 @@ class TestInitHiviewDefault(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.repo = self.tmp.name
-        self.pdir = os.path.join(self.repo, "pdir")
+        self.pdir = os.path.join(self.repo, "specs", "pipeline", "pdir")
         self.run_id = "c3-init-default"
 
     def tearDown(self):
@@ -84,7 +84,7 @@ class TestInitEnvironment(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.repo = self.tmp.name
-        self.pdir = os.path.join(self.repo, "pdir")
+        self.pdir = os.path.join(self.repo, "specs", "pipeline", "pdir")
         self.run_id = "env-init"
 
     def tearDown(self):
@@ -128,14 +128,76 @@ class TestInitEnvironment(unittest.TestCase):
         self.assertIn("--component-type is required", cp.stdout + cp.stderr)
         self.assertFalse(os.path.exists(gl.state_path(self.pdir)))
 
-    def test_harmonyos_system_persists_component_type(self):
+    def test_harmonyos_requires_device_type(self):
+        # component_type given but no --device-type -> hard-fail (the build
+        # command needs it; it is bound to the source root).
         cp = self._init("--environment", "harmonyos", "--component-type", "system")
+        self.assertNotEqual(cp.returncode, 0)
+        self.assertIn("--device-type is required", cp.stdout + cp.stderr)
+        self.assertFalse(os.path.exists(gl.state_path(self.pdir)))
+
+    def test_harmonyos_system_persists_component_type(self):
+        cp = self._init("--environment", "harmonyos", "--component-type", "system",
+                        "--device-type", "general_all_phone_standard")
         self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
         st = self._state()
         self.assertEqual(st["environment"], "harmonyos")
         self.assertEqual(st["component_type"], "system")
+        self.assertEqual(st["device_type"], "general_all_phone_standard")
         # product form is still a placeholder for harmonyos -> persisted as None
         self.assertIsNone(st["product"])
+
+
+class TestInitPdirAnchoring(unittest.TestCase):
+    """PDIR (docs/evidence/reports landing dir) must stay under the source root's
+    specs/pipeline/, so a weak model can never drift artifacts outside the repo.
+    init DERIVES the path from --repo + --run-id; an explicit --pipeline-dir is
+    accepted only when it resolves under <repo>/specs/pipeline/, else hard-fails."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.repo = self.tmp.name
+        self.run_id = "anchor-run"
+
+    def tearDown(self):
+        for rid in (self.run_id, "legacy-run"):
+            try:
+                os.remove(gl.secret_path(rid))
+            except OSError:
+                pass
+        self.tmp.cleanup()
+
+    def _init(self, *extra, pdir=None):
+        cmd = [sys.executable, os.path.join(SCRIPTS, "advance.py")]
+        if pdir is not None:
+            cmd += ["--pipeline-dir", pdir]
+        cmd += ["init", "--repo", self.repo, "--environment", "openharmony",
+                "--confirm-defaults", *extra]
+        return subprocess.run(cmd, text=True, capture_output=True)
+
+    def test_derives_pdir_under_specs_pipeline(self):
+        cp = self._init("--run-id", self.run_id)
+        self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+        want = os.path.join(self.repo, "specs", "pipeline", self.run_id)
+        self.assertIn("PDIR=%s" % want, cp.stdout)
+        self.assertTrue(os.path.exists(os.path.join(want, "pipeline.json")))
+
+    def test_rejects_pipeline_dir_outside_repo(self):
+        outside = os.path.join(self.tmp.name, "..", "elsewhere", "run")
+        cp = self._init("--run-id", self.run_id, pdir=outside)
+        self.assertNotEqual(cp.returncode, 0)
+        self.assertIn("must live under the source root", cp.stdout + cp.stderr)
+
+    def test_accepts_pipeline_dir_inside_specs_pipeline(self):
+        inside = os.path.join(self.repo, "specs", "pipeline", "legacy-run")
+        cp = self._init(pdir=inside)  # run_id derived from the dir basename
+        self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+        self.assertIn("PDIR=%s" % inside, cp.stdout)
+
+    def test_requires_run_id_when_no_pipeline_dir(self):
+        cp = self._init()  # neither --run-id nor --pipeline-dir
+        self.assertNotEqual(cp.returncode, 0)
+        self.assertIn("--run-id", cp.stdout + cp.stderr)
 
 
 if __name__ == "__main__":

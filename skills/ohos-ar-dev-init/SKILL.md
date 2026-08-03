@@ -38,6 +38,12 @@ ls "$S/gate_env_init.py" "$S/lib/device.sh"     # 确认存在
 - WSL→Windows hdc 桥接:`export HDC_WIN_PORT=10086`(IP 自动从默认网关取,不写死)。
 - 任意远端/多设备:`export HDC_HOST_OVERRIDE=<ip:port>` 和/或 `export DEVICE_SERIAL=<serial>`。
 
+> ⚠️ **真机连不上时的话术(面向 Agent)**:P0 的 device 门失败会打印一段**大白话**指引——
+> **不要**把 `HDC_HOST_OVERRIDE`/`HDC_WIN_PORT`/`DEVICE_SERIAL` 这些环境变量名甩给用户。
+> 只让用户在**插着设备那台电脑**上跑一条命令:`hdc -m -s 0.0.0.0:10086 start`,然后把
+> 那台电脑的 **IP 和端口**(如 `192.168.1.23:10086`)报给你。拿到后由**你**在本机
+> `export HDC_HOST_OVERRIDE=<ip:port>` 再重跑 init——宏是你内部用的,用户全程只提供 IP:端口。
+
 ## 能力校验(P0 门控 `$S/gate_env_init.py` 落地,产签名证据)
 
 逐项探测,**HARD 缺失即阻塞**,SOFT 仅告警;并把探测到的设备序列号回填进
@@ -46,7 +52,9 @@ ls "$S/gate_env_init.py" "$S/lib/device.sh"     # 确认存在
 ```bash
 # 环境形态由用户按 AR 确定:init 必须用 --environment 指定,裸 init 缺 --environment 会硬失败。
 #   --environment openharmony            gitcode + rk3568(默认形态)
-#   --environment harmonyos --component-type system|chip   HarmonyOS(Gerrit 上库,系统/芯片组件)
+#   --environment harmonyos --component-type system|chip --device-type <type>   HarmonyOS(Gerrit 上库)
+#     HarmonyOS 还需 --device-type(与源码根绑定,一般不变):
+#       系统组件 general_all_phone_standard / 芯片组件 general_7315L_phone_standard(样例值,按本仓确认)
 # 编译部件由用户按 AR 确定,init 不再静默默认为 hiview:裸 init(三个参数都不给)会硬失败,
 # 逼你停下来跟用户确认要编译哪个部件。确认后二选一放行:
 #   A. 本 AR 改的组件:显式传 --git-dir/--build-target/--part
@@ -54,9 +62,12 @@ ls "$S/gate_env_init.py" "$S/lib/device.sh"     # 确认存在
 #        --build-target GN 目标,如 hiview_package
 #        --part         developer_test part,如 hiviewdfx
 #   B. 用户确认沿用 hiview 默认部件:加 --confirm-defaults(不传任何组件参数时才需要)
-python3 $S/advance.py --pipeline-dir "$PDIR" init \
+# PDIR 由 init 依 --repo 派生成 <repo>/specs/pipeline/<run-id>,不手工拼;抓 PDIR= 行得权威路径。
+PDIR=$(python3 $S/advance.py init \
+    --repo "$OHOS_ROOT" --run-id "$RUN" \
     --environment openharmony \
-    [--git-dir <组件路径> --build-target <gn目标> --part <testpart> | --confirm-defaults]
+    [--git-dir <组件路径> --build-target <gn目标> --part <testpart> | --confirm-defaults] \
+    | sed -n 's/^PDIR=//p')
 python3 $S/gate_env_init.py --pipeline-dir "$PDIR"            # 逐项能力校验,产证据
 python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 0
 ```
@@ -64,8 +75,11 @@ python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 0
 > 💡 **环境形态是人工强确认点。** 跑 init 前先用 `AskUserQuestion` 问清本 AR 属于哪种环境:
 > `openharmony`(gitcode/rk3568,上库走 oh-gc)/ `harmonyos-系统组件` / `harmonyos-芯片组件`
 > (HarmonyOS,上库走 Gerrit)。缺 `--environment` 会**硬失败**;`--environment harmonyos`
-> 时 `--component-type system|chip` **必填**。HarmonyOS 两种组件编译命令不同且**目前为占位**,
-> P0/P4 编译门与 P8 上库门会在 `lib/environments.py` 未填时硬失败并打印"待填"提示,绝不静默跑错。
+> 时 `--component-type system|chip` **必填**,且 `--device-type <type>` **必填**(与源码根绑定)。
+> HarmonyOS 两种组件编译命令**已填入** `lib/environments.py`(系统组件 `build_system.sh`、
+> 芯片组件 `build_vendor.sh`,成功横幅 `=====build ... successful=====`、失败横幅
+> `=====do make ... error=====`);但 `product`/`out_dir`/`root_markers` **仍为占位(UNSET)**,
+> P0 根校验/P4 产物门等需要它们时会硬失败并打印"待填"提示,绝不静默跑错。
 
 > 💡 **编译部件是人工确认点。** 跑 init 前先用 `AskUserQuestion` 问清用户本 AR 要编译的部件
 > (默认候选:hiview 部件 git_dir=`base/hiviewdfx/hiview` / build_target=`hiview_package` /
@@ -76,7 +90,7 @@ python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 0
 | 能力 | 级别 | 校验内容 | 服务阶段 |
 |---|---|---|---|
 | build | HARD | `./build.sh` 存在(编译命令按环境 profile 解析,openharmony 为产品 rk3568) | P2 |
-| compile | HARD | **真实编译探针**:默认 `--build-target hiview_package`,用**环境 profile 的编译命令/横幅**跑通(HarmonyOS 占位未填则硬失败)。**仅每个仓首次 init 编译一次**,通过后写稳定标记 `specs/.build-probe-ok`,之后 init 自动跳过;`--force-build-probe` 强制重编,`--skip-build-probe` 跳过 | P2 |
+| compile | HARD | **真实编译探针**:默认 `--build-target hiview_package`,用**环境 profile 的编译命令/横幅**跑通(openharmony 用 build.sh;HarmonyOS 用 build_system.sh/build_vendor.sh,需 `--device-type`)。**仅每个仓首次 init 编译一次**,通过后写稳定标记 `specs/.build-probe-ok`,之后 init 自动跳过;`--force-build-probe` 强制重编,`--skip-build-probe` 跳过 | P2 |
 | git | HARD | `--git-dir` 指向的**组件子仓**是 git 仓(记录 HEAD) | P1/P6 |
 | testfwk | HARD | `test/testfwk/developer_test/start.sh` 存在 | P3/P5 |
 | hdc_bin | HARD | 能解析到 hdc 二进制 | P0/P4/P5 |
@@ -102,20 +116,30 @@ python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 0
 ## 仓根(OHOS_ROOT)解析与纠错
 
 `advance.py init --repo` 默认取 **`$OHOS_ROOT`,否则 Agent 打开的当前目录(cwd)**。P0 会先校验
-该目录是否像 OHOS 仓根(同时有 `build.sh` 与 `test/testfwk/developer_test/`)。**不像就立即失败**
-并给出可操作提示:
+该目录是否像**当前环境**的源码根。**"像不像"的标志按 environment profile 取,不写死**:
+- `openharmony`:同时有 `build.sh` 与 `test/testfwk/developer_test/`(历史行为不变)。
+- `harmonyos`:标志由 `lib/environments.py` 的 `root_markers` 决定;**目前为占位(UNSET)**,
+  未填时 P0 **硬失败**并提示去 `environments.py` 填,绝不退回 OHOS 布局瞎猜。
+
+不匹配就立即失败并给出可操作提示:
 
 ```
-PHASE 0 FAIL — '<dir>' does not look like an OHOS source root ...
-  * reopen your Agent in your OHOS repo root, or
-  * re-run `advance.py init` with --repo <ohos_root>, or
-  * export OHOS_ROOT=<ohos_root> before init.
+PHASE 0 FAIL — '<dir>' does not look like a <env> source root (missing: ...)
+  * reopen your Agent in the source repo root, or
+  * re-run `advance.py init` with --repo <source_root>, or
+  * export OHOS_ROOT=<source_root> before init.
 ```
 
-即:**默认就在你打开的目录上探测;若目录不对,按提示把 Claude 重新在 OHOS 仓根目录打开**
+即:**默认就在你打开的目录上探测;若目录不对,按提示把 Claude 重新在源码根目录打开**
 (或用 `--repo` / `OHOS_ROOT` 指定),再重跑 init。
 
-> ⚠️ OHOS 根目录不是 git 仓;`git` 校验针对你 `--git-dir` 指定的组件路径
+> ⚠️ **证据/文档强制锚定在源码根下。** PDIR(所有 `evidence/`、`reports/`、`pipeline.json`
+> 的落地处)由 init **依 `--repo` 派生**成 `<repo>/specs/pipeline/<run-id>`——传 `--repo` +
+> `--run-id`,不要手工拼 PDIR。若你显式传 `--pipeline-dir`,它**必须**落在
+> `<repo>/specs/pipeline/` 之内,否则 init 硬失败。**弱模型即便忘了 `export OHOS_ROOT` 或
+> 拼错路径,也不可能把文档/证据写到源码根之外。** init 打印 `PDIR=<abs>` 行,抓它即得权威路径。
+
+> ⚠️ 源码根不是 git 仓;`git` 校验针对你 `--git-dir` 指定的组件路径
 > (如 `base/hiviewdfx/hiview`),不是仓根。
 
 ## 产物

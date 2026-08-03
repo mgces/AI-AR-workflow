@@ -59,7 +59,7 @@ class TestB1DevelopSequence(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.repo = self.tmp.name
-        self.pdir = os.path.join(self.repo, "pdir")
+        self.pdir = os.path.join(self.repo, "specs", "pipeline", "pdir")
         os.makedirs(os.path.join(self.pdir, "evidence"), exist_ok=True)
         subprocess.run(["git", "-C", self.repo, "init", "-q"], check=True)
         subprocess.run(["git", "-C", self.repo, "config", "user.email", "t@t"], check=True)

@@ -61,7 +61,7 @@ class TestDesignDependency(unittest.TestCase):
         git(self.repo, "commit", "-qm", "base")
         self.base = git(self.repo, "rev-parse", "HEAD").stdout.strip()
 
-        self.pdir = os.path.join(self.repo, "pdir")
+        self.pdir = os.path.join(self.repo, "specs", "pipeline", "pdir")
         os.makedirs(os.path.join(self.pdir, "evidence"))
         self.run_id = "design-dep"
         self.secret = gl.create_secret(self.run_id)

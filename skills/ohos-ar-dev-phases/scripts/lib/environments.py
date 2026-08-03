@@ -44,6 +44,12 @@ COMPONENT_TYPES = ("system", "chip")  # HarmonyOS only
 _OHOS_SUCCESS_RE = r"=====build.*successful====="
 _OHOS_ERROR_RE = r"=====build.*error====="
 
+# HarmonyOS build_system.sh / build_vendor.sh banners: success matches the same
+# "=====build ... successful=====" line, but FAILURE prints "=====do make ...
+# error=====" (not "build ... error"), so HarmonyOS needs its own error regex.
+_HMOS_SUCCESS_RE = r"=====build.*successful====="
+_HMOS_ERROR_RE = r"=====do make.*error====="
+
 
 class EnvironmentNotConfigured(RuntimeError):
     """Raised when a gate asks for an environment value that is still a
@@ -73,32 +79,59 @@ def _ohos_profile():
         "success_re": _OHOS_SUCCESS_RE,
         "error_re": _OHOS_ERROR_RE,
         "upload_backend": "gitcode",
+        # Paths (relative to repo root) that must ALL exist for the directory to
+        # look like a valid source root for this environment. Verbatim from the
+        # old hardcoded P0 check.
+        "root_markers": ["build.sh", "test/testfwk/developer_test"],
     }
 
 
 def _harmonyos_profile(component_type):
-    # PLACEHOLDER profiles. Fill product / build_template / out_dir (and adjust
-    # the banner regexes if the internal build prints different banners) for each
-    # component kind, then remove the UNSET sentinels. Until then any gate that
-    # needs the build command hard-fails with a clear "configure this" message.
+    # HarmonyOS build commands. Two per-invocation variables:
+    #   {device_type}  bound to the OHOS root (captured at init as --device-type,
+    #                  stored in state["device_type"]; rarely changes per repo).
+    #   {target}       the GN build target (state["build_target"], per AR).
+    # out_dir / product are still placeholders (UNSET) — fill when known; gates
+    # that need them hard-fail with a "configure environments.py" message until
+    # then. root_markers likewise UNSET until the HarmonyOS layout is confirmed.
     #
-    # TODO(harmonyos): fill the real 系统组件 / 芯片组件 build commands here.
+    # 系统组件 (system):
+    #   ./build_system.sh --abi-type generic_generic_arm_64only
+    #     --device-type <type> --ccache --build-target <target>
+    #     --build-variant root -ninja-args=-j30
+    # 芯片组件 (chip):
+    #   ./build_vendor.sh --abi-type generic_generic_arm_64only
+    #     --device-type <chip_product> --ccache --build-variant user
+    #     --gn-args uefi_enable=true --gn-args USE_HM_KERNEL=true
+    #     --gn-args singleap=true --build-target <target> --root-perf-main root
+    # (--gn-atgs in the original spec was a typo, corrected to --gn-args here;
+    #  -ninja-args stays single-dash, verbatim.)
     return {
         "system": {
             "product": UNSET,        # TODO: HarmonyOS 系统组件 product form
-            "build_template": UNSET,  # TODO: 系统组件 编译命令，含 {target}
+            "build_template": (
+                "./build_system.sh --abi-type generic_generic_arm_64only "
+                "--device-type {device_type} --ccache --build-target {target} "
+                "--build-variant root -ninja-args=-j30"),
             "out_dir": UNSET,         # TODO: 系统组件 产物目录
-            "success_re": _OHOS_SUCCESS_RE,  # TODO: 若 HarmonyOS build 横幅不同则改
-            "error_re": _OHOS_ERROR_RE,
+            "success_re": _HMOS_SUCCESS_RE,
+            "error_re": _HMOS_ERROR_RE,
             "upload_backend": "gerrit",
+            "root_markers": UNSET,    # TODO: 系统组件 源码根标志(相对路径列表)
         },
         "chip": {
             "product": UNSET,        # TODO: HarmonyOS 芯片组件 product form
-            "build_template": UNSET,  # TODO: 芯片组件 编译命令，含 {target}
+            "build_template": (
+                "./build_vendor.sh --abi-type generic_generic_arm_64only "
+                "--device-type {device_type} --ccache --build-variant user "
+                "--gn-args uefi_enable=true --gn-args USE_HM_KERNEL=true "
+                "--gn-args singleap=true --build-target {target} "
+                "--root-perf-main root"),
             "out_dir": UNSET,         # TODO: 芯片组件 产物目录
-            "success_re": _OHOS_SUCCESS_RE,  # TODO: 若 HarmonyOS build 横幅不同则改
-            "error_re": _OHOS_ERROR_RE,
+            "success_re": _HMOS_SUCCESS_RE,
+            "error_re": _HMOS_ERROR_RE,
             "upload_backend": "gerrit",
+            "root_markers": UNSET,    # TODO: 芯片组件 源码根标志(相对路径列表)
         },
     }[component_type]
 
@@ -157,9 +190,24 @@ def product_form(state):
 def build_command(state, target):
     """Full shell build command for the given GN target. Hard-fails (raises
     EnvironmentNotConfigured) when the environment's build template is still a
-    placeholder — the gate catches it and emits a fail-closed message."""
+    placeholder — the gate catches it and emits a fail-closed message.
+
+    Templates may reference {target} and {device_type}. device_type is bound to
+    the source root (captured at init as --device-type, stored in
+    state["device_type"]); a template that needs it while state has none
+    hard-fails rather than emitting a command with an empty --device-type."""
     tmpl = _require(_profile(state)["build_template"], state, "build_template")
-    return tmpl.format(target=target)
+    fields = {"target": target}
+    if "{device_type}" in tmpl:
+        dt = (state or {}).get("device_type")
+        if not dt:
+            raise EnvironmentNotConfigured(
+                "环境 %s 的编译命令需要 --device-type,但 state 里没有 device_type。\n"
+                "  请在 `advance.py init` 时用 --device-type <type> 指定"
+                "(它与当前源码根绑定,一般不变),然后重跑本门控。"
+                % env_id(state))
+        fields["device_type"] = dt
+    return tmpl.format(**fields)
 
 
 def out_dir(state):
@@ -180,6 +228,16 @@ def error_re(state):
 def upload_backend(state):
     """Which P8 upload backend this environment uses: 'gitcode' | 'gerrit'."""
     return _profile(state)["upload_backend"]
+
+
+def root_markers(state):
+    """Relative paths that must ALL exist under the repo root for the directory
+    to look like a valid source root for this environment. Hard-fails (raises
+    EnvironmentNotConfigured) when the environment's markers are still a
+    placeholder — the caller (P0) catches it and emits a fail-closed 'configure
+    environments.py' message rather than guessing a HarmonyOS layout."""
+    return _require(_profile(state).get("root_markers", UNSET),
+                    state, "root_markers")
 
 
 def derive_product(environment, component_type_value):

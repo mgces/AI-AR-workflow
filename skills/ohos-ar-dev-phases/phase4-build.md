@@ -5,6 +5,16 @@
 - 需要刷机/部署辅助时:`ohos-build-flash`。
 - 编码规范 AST 复检:`code-ruleset-style-check`(`--clang-tidy`)——编译成功后由门控自动接入,见下。
 
+> 💡 **迭代编译加速(`--fast-rebuild`,HarmonyOS 已验证)**:P2↔P4 反复改源码重编时,若
+> **同时满足** ①同一个 `--build-target` ②本轮只改了 `.c/.cpp/.h` 源码、没碰任何
+> `BUILD.gn`/`.gni`/`bundle.json` ③该 target 之前已成功编过(有 out 缓存),可在**编译命令末尾**
+> 追加 `--fast-rebuild` 跳过 GN/preloader 直接进 ninja 增量,省几分钟。三条件详解与命令样例见
+> `ohos-build-flash` §1.1。
+> - **门控编译本身不加此标**:`gate_build.py` 取环境 profile 的**完整命令**跑,保证权威结果不受
+>   增量假设影响。`--fast-rebuild` 只用于门控之前你自己**快速试编、定位编译错误**的迭代循环。
+> - ⚠️ 动了 GN / 换了 target / 首次编 / out 被清过 → **不要加**(会漏 GN 重生成致结果不一致)。
+>   ⚠️ **OpenHarmony/rk3568 `build.sh` 尚未实测**是否支持,未验证前别默认在 rk3568 上加。
+
 ## 门控
 ```bash
 python3 $S/gate_build.py --pipeline-dir "$PDIR"   # target 默认取 pipeline.json 的 build_target

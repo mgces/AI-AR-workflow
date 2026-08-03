@@ -62,6 +62,26 @@ cd "$OHOS_ROOT"          # $OHOS_ROOT = 实际源码根, 勿写死
 - sepolicy：`build_policy`(→policy.31) / `build_contexts`(→file_contexts)
 - 全量 selinux 校验：`selinux_check`（**整编才会跑**，单独 build_policy 不跑）
 
+> 💡 **加速小技巧：`--fast-rebuild`（HarmonyOS 已验证；OpenHarmony/rk3568 未实测）**。
+> 在 **HarmonyOS** 编译（`build_system.sh`/`build_vendor.sh`）里，当**同时满足**以下三个条件时，
+> 可在编译命令末尾加 `--fast-rebuild`，跳过 GN/preloader/loader 等前置阶段、直接进 ninja
+> 增量构建，省下几分钟：
+> 1. **target 不变**——和上一次成功编译的是**同一个** `--build-target`；
+> 2. **无 GN 变更**——本次改动没碰任何 `BUILD.gn`/`.gni`/`bundle.json` 等构建描述文件
+>    （只改了 `.c/.cpp/.h` 等源码）；
+> 3. **该 target 之前已成功编过**——存在上一次成功构建产生的 out 缓存（成功横幅）。
+> ```bash
+> # HarmonyOS 系统组件示例（芯片组件同理，在原命令末尾追加 --fast-rebuild）
+> ./build_system.sh --abi-type generic_generic_arm_64only --device-type <type> \
+>     --ccache --build-target <target> --build-variant root -ninja-args=-j30 --fast-rebuild
+> ```
+> ⚠️ 任一条件不满足（换了 target / 动了 GN / 首次编该 target / out 被清过）时**不要加**——
+> 会漏掉 GN 重新生成，导致编译结果与源码不一致或直接报错。拿不准就先跑一次不带
+> `--fast-rebuild` 的完整增量编译（重建 GN 缓存），之后再用它加速后续的纯源码改动。
+> ⚠️ **OpenHarmony（本节 rk3568 `build.sh`）尚未实测** `--fast-rebuild` 是否被支持/有效——
+> 未验证前**不要**默认在 rk3568 上加；要试先在一次成功增量编译后单独试跑一次并核验产物，
+> 确认可用再纳入日常。
+
 ### 1.2 全量整编（make_all，约 2 小时）
 ```bash
 cd "$OHOS_ROOT"
