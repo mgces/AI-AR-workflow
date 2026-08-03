@@ -488,7 +488,8 @@ def main():
             contract_status="unrecoverable",
             failure_class="ar_contract_unrecoverable",
             problems=["signed ar-contract not recoverable: %s" % c_detail],
-            resume_hint="修复/重新签名 AR_design 后重跑 gate_test_ut.py")
+            resume_hint="签名由 gate_design.py 自动生成、严禁手改;重跑 gate_design.py 让它重新生成"
+                        "(改了功能代码则先 advance.py reset 回 P1),再重跑 gate_test_ut.py")
         sys.exit("PHASE 5 FAIL: ar-contract unrecoverable: %s" % c_detail)
 
     print(reason)

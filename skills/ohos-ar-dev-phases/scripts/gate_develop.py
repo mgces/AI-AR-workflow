@@ -443,7 +443,8 @@ def main():
     elif c_detail and "tampered" in c_detail:
         gl.write_failure_report(pdir, 2, "gate_develop.py",
                                 "ar-contract unrecoverable: %s" % c_detail,
-                                resume_hint="重跑 gate_design.py 重新签名设计")
+                                resume_hint="签名由 gate_design.py 自动生成、严禁手改;"
+                                            "重跑 gate_design.py 让它重新生成签名(改了功能代码则先 advance.py reset 回 P1)")
         gl.emit(pdir, 2, "gate_develop.py", verdict="FAIL",
                 reason="ar-contract unrecoverable: %s" % c_detail, artifacts_rel=arts)
         sys.exit("PHASE 2 FAIL: ar-contract unrecoverable: %s" % c_detail)

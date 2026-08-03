@@ -271,7 +271,8 @@ def main():
                 reason="ar-contract unrecoverable: %s" % c_detail, artifacts_rel=arts)
         gl.write_failure_report(pdir, PHASE, GATE,
                                 "ar-contract unrecoverable: %s" % c_detail,
-                                resume_hint="修复/重新签名 AR_design 后重跑 gate_test_develop.py")
+                                resume_hint="签名由 gate_design.py 自动生成、严禁手改;重跑 gate_design.py 让它重新生成"
+                                            "(改了功能代码则先 advance.py reset 回 P1),再重跑 gate_test_develop.py")
         sys.exit("PHASE 3 FAIL: ar-contract unrecoverable: %s" % c_detail)
 
     problems = []
