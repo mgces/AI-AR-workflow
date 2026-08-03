@@ -46,6 +46,19 @@ ls "$S/gate_env_init.py" "$S/lib/device.sh"     # 确认存在
 
 ## 能力校验(P0 门控 `$S/gate_env_init.py` 落地,产签名证据)
 
+> 🚨 **init 分两步,`advance.py init` 只是第一步,不等于"环境已检测"。**
+> `advance.py init` **只写运行态**(`pipeline.json`),打印 `initialized...` / `PDIR=` /
+> environment 摘要——**这些全是纸面校验,没有真正探测任何环境能力**。真正探测
+> build.sh/编译/hdc/device/testfwk/git 的是**下一条命令 `gate_env_init.py`**。
+> **绝不能**看到 init 打印了 `PDIR=` 和 environment 摘要就以为初始化完成了——那时环境**根本没测**。
+> init 的输出末尾也会打印一段 `!! INIT IS NOT DONE` 横幅提醒你继续。完整两步(缺一不可):
+> ```bash
+> PDIR=$(python3 $S/advance.py init ... | sed -n 's/^PDIR=//p')   # ① 只写状态
+> python3 $S/gate_env_init.py --pipeline-dir "$PDIR"              # ② 真正探测能力(必跑)
+> python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 0  # ③ 凭签名证据推进
+> ```
+> ②没跑 → ③ 会 `REFUSED`(无签名证据)。**只做①就停 = 环境没检测,init 没完成。**
+
 逐项探测,**HARD 缺失即阻塞**,SOFT 仅告警;并把探测到的设备序列号回填进
 `pipeline.json` 与 `evidence/phase0/env.json`。先 `advance.py init` 建好运行态再跑校验:
 

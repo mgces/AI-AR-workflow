@@ -1137,6 +1137,21 @@ def cmd_init(args):
         print("NOTE: compiled component defaulted to hiview (human-confirmed via "
               "--confirm-defaults). If this AR touches a different component, "
               "re-init --force with --git-dir/--build-target/--part.")
+    # Loud next-step banner: `init` only WROTE state — it did NOT probe the
+    # environment. A weak model that stops here (seeing "initialized" + PDIR)
+    # would skip the only script that actually checks build/hdc/device/etc.
+    # Spell out the exact command so init is never mistaken for "env checked."
+    _gate = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         PHASE_GATE_CMD[0])
+    print("")
+    print("!! INIT IS NOT DONE — environment NOT checked yet. `init` only wrote")
+    print("!! runtime state; it did NOT probe build.sh/compile/hdc/device/testfwk.")
+    print("!! NEXT (required): run the P0 capability probe, THEN advance:")
+    print("!!   python3 %s --pipeline-dir %s" % (_gate, pdir))
+    print("!!   python3 %s --pipeline-dir %s advance --phase 0"
+          % (os.path.abspath(__file__), pdir))
+    print("!! advance --phase 0 will be REFUSED until the probe emits signed "
+          "evidence.")
 
 
 def cmd_advance(args):
