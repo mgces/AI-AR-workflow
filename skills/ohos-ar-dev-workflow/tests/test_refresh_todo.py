@@ -33,15 +33,17 @@ class TestRefreshTodo(unittest.TestCase):
 
     def test_with_design_has_items(self):
         out = rt.build_todo(self._state(1), DESIGN, [])
-        self.assertIn("实现 `src/manager.cpp`", out)
-        self.assertIn("覆盖: 边界条件处理", out)
-        self.assertIn("真机验证: hdc 注入 nonce 触发", out)
-        self.assertIn("当前阶段: **P1**", out)
+        # AR_design items now render grouped under the phase they serve,
+        # tagged with that phase's role label.
+        self.assertIn("(实现文件) src/manager.cpp", out)
+        self.assertIn("(测试功能点) 边界条件处理", out)
+        self.assertIn("(真机用例) hdc 注入 nonce 触发", out)
+        self.assertIn("当前阶段: **P1 设计固化**", out)
 
     def test_passed_phase_checked(self):
         out = rt.build_todo(self._state(2, passed=(0, 1)), DESIGN, [])
         self.assertIn("- [x] P1 设计固化", out)
-        self.assertIn("- [ ] P2 代码开发  ⬅ 当前", out)
+        self.assertIn("- [ ] P2 代码开发  ⬅ 现在做这个", out)
 
     def test_no_design_degrades(self):
         out = rt.build_todo(self._state(0), None, [])
@@ -89,7 +91,7 @@ class TestRefreshTodo(unittest.TestCase):
         sys.argv = ["refresh_todo.py", "--pipeline-dir", pdir]
         rt.main()
         with open(os.path.join(pdir, "todo.md")) as f:
-            self.assertIn("实现 `src/manager.cpp`", f.read())
+            self.assertIn("(实现文件) src/manager.cpp", f.read())
         with open(os.path.join(pdir, "todo.json")) as f:
             data = json.load(f)
         self.assertEqual(data["logical_phase_id"], "design_orchestrate")

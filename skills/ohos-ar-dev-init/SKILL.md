@@ -157,6 +157,8 @@ PHASE 0 FAIL — '<dir>' does not look like a <env> source root (missing: ...)
 
 ## 产物
 - `specs/initialized.flag`(记录仓路径、产品、连接方式、探测到的序列号、检查时间)。
+- `specs/pipeline/ACTIVE`(活跃 run 指针,存当前 PDIR)——**新窗口/换 agent 一键自举的锚**:
+  任何窗口跑 `advance.py resume` 即读它定位 PDIR、刷新 todo、打印下一步,无需知道 run-id。
 - 之后由 `ohos-ar-dev-workflow` 为每个 AR 在 `specs/pipeline/{date}-{slug}/` 起独立流水线。
 
 > 本技能负责首次环境就绪与 flag 落盘;P0 `$S/gate_env_init.py` 负责每次运行的可验证能力预检

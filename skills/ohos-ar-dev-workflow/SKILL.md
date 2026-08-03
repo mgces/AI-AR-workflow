@@ -121,12 +121,23 @@ python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-workflow/scripts/refresh_todo.py" --pipel
 
 每阶段成功后,同步更新 `TodoWrite` 与 `$PDIR/todo.md`(由 refresh_todo 重写,便于断点恢复)。
 
-## 步骤 2:断点恢复("继续流水线")
+## 步骤 2:断点恢复 / 新窗口接手("继续流水线")
 
-```bash
-python3 $S/advance.py --pipeline-dir "$PDIR" verify-all   # 重校验已通过阶段;被篡改则降级回退
-python3 $S/advance.py --pipeline-dir "$PDIR" status       # 从 current_phase 续跑
-```
+> 🚨 **新窗口、或换了另一个 agent 接手时,不知道 PDIR / 不知道跑到哪了 → 先跑 `resume` 自举。**
+> init 会把当前 run 的 PDIR 写进 `<repo>/specs/pipeline/ACTIVE` 指针,`resume` 读它自动定位:
+> ```bash
+> # 在源码根打开窗口(或传 --repo <source_root> / export OHOS_ROOT);无需知道 PDIR:
+> python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-phases/scripts/advance.py" resume
+> ```
+> `resume` 会:定位 PDIR → 刷新 `todo.md`(每阶段做什么/调哪个技能/怎么做 + AR_design 派生细项)
+> → 打印当前阶段与**下一步必做命令** + `!! PIPELINE NOT DONE ... DO NOT STOP` 横幅。
+> 照它输出的命令继续【做事 → 跑门控 → advance】循环即可,**读 `todo.md` 拿每阶段详细做法**。
+> `resume` 拿到 PDIR 后,可再跑 `verify-all` 重校验已通过阶段(被篡改则降级回退):
+> ```bash
+> PDIR=$(python3 $S/advance.py resume | sed -n 's/^RESUME .*PDIR=//p')
+> python3 $S/advance.py --pipeline-dir "$PDIR" verify-all   # 重校验已通过阶段
+> python3 $S/advance.py --pipeline-dir "$PDIR" status       # 从 current_phase 续跑
+> ```
 
 ## 完成
 

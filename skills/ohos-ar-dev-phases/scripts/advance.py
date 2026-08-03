@@ -59,6 +59,60 @@ CONTROL_PROTOCOL_VERSION = 1
 TEST_DEVELOP_STATUS_PARTS = ("test_develop", "phase1_test_develop.json")
 TEST_DEVELOP_FREEZE_PARTS = ("test_develop", "development_freeze_snapshot.json")
 
+# --- Active-run pointer -----------------------------------------------------
+# <repo>/specs/pipeline/ACTIVE is a one-line text file holding the absolute PDIR
+# of the run in flight. It lets a fresh window / a different agent bootstrap with
+# `advance.py resume` without knowing the run-id — the control pointer lives on
+# disk, not in any model's context. This is the portable (hook-free) backbone
+# for keeping the multi-phase loop alive across windows.
+ACTIVE_POINTER_NAME = "ACTIVE"
+
+
+def _write_active_pointer(anchor, pdir):
+    """Write <anchor>/ACTIVE = abspath(pdir). Best-effort: a failure here never
+    breaks init (the run still works via explicit --pipeline-dir)."""
+    try:
+        os.makedirs(anchor, exist_ok=True)
+        with open(os.path.join(anchor, ACTIVE_POINTER_NAME), "w",
+                  encoding="utf-8") as f:
+            f.write(os.path.abspath(pdir) + "\n")
+    except OSError:
+        pass
+
+
+def _repo_anchor_candidates(repo_arg):
+    """Directories that might hold specs/pipeline/ACTIVE, most-specific first:
+    an explicit --repo, then $OHOS_ROOT, then cwd. Resume walks these so a new
+    window only needs to be opened somewhere sensible (ideally the source root)."""
+    seen, out = set(), []
+    for base in (repo_arg, os.environ.get("OHOS_ROOT"), os.getcwd()):
+        if not base:
+            continue
+        a = os.path.join(os.path.abspath(base), "specs", "pipeline")
+        if a not in seen:
+            seen.add(a)
+            out.append(a)
+    return out
+
+
+def _resolve_active_pdir(repo_arg):
+    """Return (pdir, anchor) by reading the first ACTIVE pointer found, or
+    (None, tried) if none exists."""
+    tried = []
+    for anchor in _repo_anchor_candidates(repo_arg):
+        tried.append(anchor)
+        ptr = os.path.join(anchor, ACTIVE_POINTER_NAME)
+        try:
+            with open(ptr, encoding="utf-8") as f:
+                pdir = f.read().strip()
+        except OSError:
+            continue
+        if pdir and os.path.isfile(gl.state_path(pdir)):
+            return pdir, anchor
+    return None, tried
+
+
+
 # Default compiled component. The component to build is user-determined per AR,
 # but a sensible default (the hiview part) lets `init` run without three flags.
 # Override with --git-dir / --build-target / --part.
@@ -1123,8 +1177,16 @@ def cmd_init(args):
     gl.save_state(pdir, state)
     _refresh_state_metadata(pdir, state)
     gl.save_state(pdir, state)
+    # Active-run pointer: write the PDIR into <repo>/specs/pipeline/ACTIVE so a
+    # FRESH window / a DIFFERENT agent (no memory of this run) can self-bootstrap
+    # with `advance.py resume` — no need to know the run-id or PDIR. This is the
+    # portable, hook-free way to keep the multi-phase loop alive across windows:
+    # the control pointer lives on disk, not in any model's context.
+    _write_active_pointer(anchor, pdir)
     print("initialized pipeline at %s (run_id=%s)" % (pdir, run_id))
     print("PDIR=%s" % pdir)  # machine-parseable: capture with $(... | grep '^PDIR=')
+    print("ACTIVE pointer: %s -> this run (new windows: `advance.py resume`)"
+          % os.path.join(anchor, "ACTIVE"))
     print("secret: %s (mode 600)" % gl.secret_path(run_id))
     print("environment: %s%s (upload=%s, product=%s)"
           % (state["environment"],
@@ -1238,28 +1300,49 @@ def cmd_advance(args):
         # multi-phase loop is model-driven, nothing re-invokes the model. A weak
         # model that reads "phase closed" (esp. P2's "feature frozen" framing) as
         # terminal would stop here. Shout the next concrete action so it doesn't.
-        _self = os.path.abspath(__file__)
-        _next_gate = payload.get("next_gate") or PHASE_GATE_CMD.get(nxt, "")
-        _consent = nxt in CONSENT_PHASES
-        print("")
-        print("!! PIPELINE NOT DONE — %d of %d phases closed. Phase %d closing is"
-              % (phase, gl.MAX_PHASE, phase))
-        print("!! NOT the end of the job; it only advanced the pointer to P%d (%s)."
-              % (nxt, gl.PHASE_NAME[nxt]))
-        print("!! DO NOT STOP. NEXT (required): run P%d's gate, then advance:" % nxt)
-        if _next_gate.startswith("gate_"):
-            print("!!   python3 %s --pipeline-dir %s"
-                  % (os.path.join(os.path.dirname(_self), _next_gate), pdir))
-        if _consent:
-            print("!!   # P%d needs human consent AFTER its gate PASSes:" % nxt)
-            print("!!   python3 %s --pipeline-dir %s consent --phase %d --token <人>"
-                  % (_self, pdir, nxt))
-        print("!!   python3 %s --pipeline-dir %s advance --phase %d"
-              % (_self, pdir, nxt))
-        print("!! Loop [做事 → 跑门控 → advance] until P%d closes."
-              % gl.MAX_PHASE)
+        _print_next_step_banner(pdir, nxt, payload, closed_phase=phase)
     else:
         print("pipeline COMPLETE.")
+
+
+def _print_next_step_banner(pdir, cur, payload, closed_phase=None):
+    """Print the loud DO-NOT-STOP banner naming the concrete next command for
+    phase `cur`. Shared by cmd_advance (after closing `closed_phase`) and
+    cmd_resume (bootstrapping a fresh window). `payload` supplies next_gate/
+    substate derived from disk state — the single source of truth, so a new
+    window with zero memory prints the exact same next step."""
+    _self = os.path.abspath(__file__)
+    _sdir = os.path.dirname(_self)
+    _next_gate = (payload or {}).get("next_gate") or PHASE_GATE_CMD.get(cur, "")
+    _consent = cur in CONSENT_PHASES
+    print("")
+    if closed_phase is not None:
+        print("!! PIPELINE NOT DONE — %d of %d phases closed. Phase %d closing is"
+              % (closed_phase, gl.MAX_PHASE, closed_phase))
+        print("!! NOT the end of the job; it only advanced the pointer to P%d (%s)."
+              % (cur, gl.PHASE_NAME[cur]))
+    else:
+        print("!! PIPELINE NOT DONE — resuming at P%d (%s) of %d. Keep going."
+              % (cur, gl.PHASE_NAME[cur], gl.MAX_PHASE))
+    # If next_gate is an `advance ...` string, the phase's gate already PASSed
+    # and the only remaining step is to advance (possibly after consent).
+    _ready = isinstance(_next_gate, str) and _next_gate.startswith("advance")
+    if _ready:
+        print("!! P%d's gate已 PASS — DO NOT STOP, close it now:" % cur)
+    else:
+        print("!! DO NOT STOP. NEXT (required): run P%d's gate, then advance:" % cur)
+        if isinstance(_next_gate, str) and _next_gate.startswith("gate_"):
+            print("!!   python3 %s --pipeline-dir %s"
+                  % (os.path.join(_sdir, _next_gate.split()[0]), pdir))
+    if _consent:
+        print("!!   # P%d needs human consent AFTER its gate PASSes (停下问用户):" % cur)
+        print("!!   python3 %s --pipeline-dir %s consent --phase %d --token <人>"
+              % (_self, pdir, cur))
+    print("!!   python3 %s --pipeline-dir %s advance --phase %d"
+          % (_self, pdir, cur))
+    print("!! 详细做法见 %s(每阶段:做什么/调哪个技能/怎么做)。"
+          % os.path.join(pdir, "todo.md"))
+    print("!! Loop [做事 → 跑门控 → advance] until P%d closes." % gl.MAX_PHASE)
 
 
 def cmd_consent(args):
@@ -1471,6 +1554,62 @@ def cmd_status(args):
         print("hint=%s" % payload["resume_hint"])
 
 
+def cmd_resume(args):
+    """One-command self-bootstrap for a FRESH window / DIFFERENT agent with no
+    memory of the run. Reads <repo>/specs/pipeline/ACTIVE to locate the PDIR,
+    refreshes todo.md, then prints where we are + the exact next command via the
+    shared DO-NOT-STOP banner. This is what keeps the loop alive across windows
+    without any Claude-Code-specific hook: the pointer + derived next-step both
+    live on disk, so any agent that can run one shell command can pick up."""
+    pdir = os.path.abspath(args.pipeline_dir) if args.pipeline_dir else None
+    if pdir:
+        if not os.path.isfile(gl.state_path(pdir)):
+            sys.exit("ERROR: no pipeline.json under --pipeline-dir %s" % pdir)
+    else:
+        pdir, tried = _resolve_active_pdir(args.repo)
+        if not pdir:
+            sys.exit(
+                "ERROR: no active run found. Looked for the ACTIVE pointer in:\n"
+                + "\n".join("  %s/ACTIVE" % t for t in tried)
+                + "\n  * open this window in the source repo root (or pass --repo "
+                  "<source_root>), or\n"
+                  "  * pass --pipeline-dir <repo>/specs/pipeline/<run> explicitly, or\n"
+                  "  * if no run exists yet, start one with `advance.py init` "
+                  "(run the ohos-ar-dev-init skill).")
+    state = gl.load_state(pdir)
+    # Keep todo.md fresh so the human-readable per-phase how-to matches state.
+    _refresh_todo_best_effort(pdir)
+    payload = _state_payload(pdir, state)
+    cur = state["current_phase"]
+    print("RESUME run_id=%s  PDIR=%s" % (state["run_id"], pdir))
+    print("current_phase=P%d (%s)  substate=%s"
+          % (cur, gl.PHASE_NAME.get(cur, "?"), payload.get("current_substate")))
+    for pe in state["phases"]:
+        mark = {"passed": "✓", "failed": "✗", "running": "…",
+                "pending": " "}.get(pe["status"], "?")
+        print("  [%s] P%d %-18s %s" % (mark, pe["id"], pe["name"], pe["status"]))
+    if cur >= gl.MAX_PHASE and state["phases"][gl.MAX_PHASE]["status"] == "passed":
+        print("pipeline COMPLETE.")
+        return
+    _print_next_step_banner(pdir, cur, payload)
+
+
+def _refresh_todo_best_effort(pdir):
+    """Regenerate todo.md via the workflow's refresh_todo.py if reachable. Never
+    fatal — resume must still work when the workflow skill dir isn't installed."""
+    cand = os.path.normpath(os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "..", "..", "ohos-ar-dev-workflow", "scripts", "refresh_todo.py"))
+    if not os.path.isfile(cand):
+        return
+    try:
+        import subprocess
+        subprocess.run([sys.executable, cand, "--pipeline-dir", pdir],
+                       check=False, capture_output=True)
+    except Exception:
+        pass
+
+
 def cmd_next(args):
     pdir = gl.pipeline_dir(args.pipeline_dir)
     state = gl.load_state(pdir)
@@ -1571,6 +1710,14 @@ def main():
     p.add_argument("--json", action="store_true",
                    help="print machine-readable pipeline status")
     p.set_defaults(func=cmd_status)
+
+    p = sub.add_parser("resume", help="self-bootstrap in a fresh window: locate "
+                                      "the active run via specs/pipeline/ACTIVE, "
+                                      "refresh todo.md, print the exact next step")
+    p.add_argument("--repo", default=os.environ.get("OHOS_ROOT", os.getcwd()),
+                   help="source root to look for specs/pipeline/ACTIVE under; "
+                        "defaults to $OHOS_ROOT or cwd")
+    p.set_defaults(func=cmd_resume)
 
     p = sub.add_parser("next")
     p.add_argument("--json", action="store_true",
