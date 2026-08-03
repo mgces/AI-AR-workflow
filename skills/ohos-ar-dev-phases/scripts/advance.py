@@ -1227,12 +1227,37 @@ def cmd_advance(args):
     if phase < gl.MAX_PHASE:
         state["current_phase"] = phase + 1
         state["phases"][phase + 1]["status"] = "pending"
-    _refresh_state_metadata(pdir, state)
+    payload = _refresh_state_metadata(pdir, state)
     gl.save_state(pdir, state)
     print("ADVANCED: phase %d (%s) closed by signed evidence; reason: %s"
           % (phase, gl.PHASE_NAME[phase], entry.get("reason")))
     if phase < gl.MAX_PHASE:
-        print("current_phase -> %d (%s)" % (phase + 1, gl.PHASE_NAME[phase + 1]))
+        nxt = phase + 1
+        print("current_phase -> %d (%s)" % (nxt, gl.PHASE_NAME[nxt]))
+        # Loud continue-banner: `advance` closes ONE phase and returns — the
+        # multi-phase loop is model-driven, nothing re-invokes the model. A weak
+        # model that reads "phase closed" (esp. P2's "feature frozen" framing) as
+        # terminal would stop here. Shout the next concrete action so it doesn't.
+        _self = os.path.abspath(__file__)
+        _next_gate = payload.get("next_gate") or PHASE_GATE_CMD.get(nxt, "")
+        _consent = nxt in CONSENT_PHASES
+        print("")
+        print("!! PIPELINE NOT DONE — %d of %d phases closed. Phase %d closing is"
+              % (phase, gl.MAX_PHASE, phase))
+        print("!! NOT the end of the job; it only advanced the pointer to P%d (%s)."
+              % (nxt, gl.PHASE_NAME[nxt]))
+        print("!! DO NOT STOP. NEXT (required): run P%d's gate, then advance:" % nxt)
+        if _next_gate.startswith("gate_"):
+            print("!!   python3 %s --pipeline-dir %s"
+                  % (os.path.join(os.path.dirname(_self), _next_gate), pdir))
+        if _consent:
+            print("!!   # P%d needs human consent AFTER its gate PASSes:" % nxt)
+            print("!!   python3 %s --pipeline-dir %s consent --phase %d --token <人>"
+                  % (_self, pdir, nxt))
+        print("!!   python3 %s --pipeline-dir %s advance --phase %d"
+              % (_self, pdir, nxt))
+        print("!! Loop [做事 → 跑门控 → advance] until P%d closes."
+              % gl.MAX_PHASE)
     else:
         print("pipeline COMPLETE.")
 

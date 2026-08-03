@@ -93,6 +93,13 @@ GN 构建目标(`build_target`)、测试 `testpart` 与套件名、目标二进�
 
 ## 步骤 1:调度循环
 
+> 🚨 **这是一个循环,一次要跑到 P8,中途不许停。** 每个 `advance --phase N` **只关掉一个阶段**
+> 就返回——**没有任何脚本会自动拉起你跑下一阶段**,续跑全靠你自己。**关掉一个阶段 ≠ 任务完成**:
+> 尤其 **P2 闭合会打印"功能指纹已锁定/功能代码冻结"**,那只是"开发写完、进入写测试",**绝不是收工**。
+> `advance` 成功后会打印 `!! PIPELINE NOT DONE ... DO NOT STOP` 横幅并给出下一阶段门控命令——
+> **看到它就继续下一轮**,直到 `advance --phase 8` 打印 `pipeline COMPLETE.` 才算完。中途只有
+> P6/P7/P8 的**人工 consent** 是合法暂停点(停下问用户拿令牌);P2→P3、P3→P4… **没有任何暂停理由**。
+
 读 `advance.py --pipeline-dir "$PDIR" status` 得到 `current_phase`,从那一阶段开始,
 对每个阶段执行【做事 → 跑门控 → advance】。**每轮循环开头先刷新 todo**(依 AR_design 派生细项):
 ```bash
