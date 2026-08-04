@@ -288,6 +288,62 @@ def _record_result(pdir, verdict, reason, arts, *, cmd, exit_code, test_target,
             cmd=cmd, exit_code=exit_code, artifacts_rel=arts)
 
 
+def _xdevice_user_config(state):
+    """Build the xdevice user_config.xml that makes developer_test reach the
+    SAME device this run is pinned to (P0's remote hdc server).
+
+    xdevice's HdcMonitor polls the LOCAL hdc server (127.0.0.1:8710) by
+    default, so it sees none of the USB devices behind our remote
+    `hdc -s <host>:<port>` server (device.sh). P5 is the only phase that
+    hands device execution to xdevice, so it needs an explicit <device> node
+    pointing at the remote server — otherwise "hdcMonitor: device not found".
+
+    Connection is resolved from the P0-recorded connection_env exactly like
+    gate_device_func._merged_env (same single source of truth):
+      - HDC_HOST_OVERRIDE=<host:port>  -> explicit remote server
+      - else HDC_WIN_PORT=<port>       -> <wsl default gateway>:<port>
+      - else                           -> NO remote -> return "" (xdevice
+        keeps its native local-hdcd behavior, identical to pre-change runs).
+
+    Returns the XML string, or "" when there is no remote connection. Fails
+    closed on a malformed override (never emits a half-broken config).
+    """
+    conn = state.get("connection_env") or {}
+    serial = conn.get("DEVICE_SERIAL") or state.get("device_serial")
+    host = port = None
+    override = conn.get("HDC_HOST_OVERRIDE")
+    if override:
+        if ":" in override:
+            h, p = override.rsplit(":", 1)
+            if not h or not p.isdigit():
+                return ""  # malformed -> leave xdevice to its local default
+            host, port = h, p
+        else:
+            return ""  # no port -> cannot reach remote server
+    elif conn.get("HDC_WIN_PORT"):
+        try:
+            ip = subprocess.run(
+                ["ip", "route", "show", "default"], text=True, capture_output=True,
+                timeout=5).stdout.split()
+            host = ip[ip.index("default") + 1] if "default" in ip else ""
+        except Exception:
+            host = ""
+        port = conn["HDC_WIN_PORT"]
+        if not host:
+            return ""  # cannot resolve WSL gateway -> keep local default
+    if not host or not port:
+        return ""
+    ip_line = "    <ip>%s</ip>\n    <port>%s</port>\n" % (host, port)
+    sn_line = "    <sn>%s</sn>\n" % serial if serial else ""
+    return (
+        "<user_config>\n"
+        "  <device>\n"
+        "    <hdc>true</hdc>\n"
+        "%s%s"
+        "  </device>\n"
+        "</user_config>\n" % (ip_line, sn_line))
+
+
 def passed_gtests(result_xml_paths):
     """Return the set of PASSED gtest ids ("classname.name") across the given
     JUnit-style result xmls. A <testcase> is passed iff it has no <failure> and
@@ -389,7 +445,31 @@ def main():
     # 2. snapshot report dirs before the run
     before = set(glob.glob(os.path.join(reports, "20*")))
 
-    # Pin the product form explicitly and consistently with gate_integration
+    # 2b. point xdevice's user_config.xml at the remote hdc server recorded at
+    # P0, so developer_test reaches the SAME device this run is pinned to
+    # (xdevice's HdcMonitor polls the LOCAL hdcd by default and would otherwise
+    # report "device not found" for our `hdc -s host:port` architecture).
+    # Done AFTER the reports snapshot so this write can never be mistaken for a
+    # fresh test report. No remote connection -> write nothing (native xdevice
+    # behavior, unchanged).
+    xdcfg = _xdevice_user_config(state)
+    if xdcfg:
+        cfg_dir = os.path.join(dt, "config")
+        cfg_path = os.path.join(cfg_dir, "user_config.xml")
+        os.makedirs(cfg_dir, exist_ok=True)
+        if os.path.exists(cfg_path):
+            shutil.copy(cfg_path, os.path.join(pdir, "evidence/phase5/user_config.xml.bak"))
+        with open(cfg_path, "w", encoding="utf-8") as f:
+            f.write(xdcfg)
+        cfg_rel = "evidence/phase5/user_config.xml"
+        with open(os.path.join(pdir, cfg_rel), "w", encoding="utf-8") as f:
+            f.write(xdcfg)
+        arts.append(cfg_rel)
+        print("xdevice user_config.xml -> remote hdc server (%s)" %
+              os.path.basename(cfg_path))
+
+    # 3. run the harness (remote device via the user_config.xml above)
+
     # (e.g. rk3568, NOT the harness default "phone"). developer_test defaults
     # productform to "phone", which collapses the testcase path to a
     # non-existent ./tests (harness then finds 0 cases). The product is resolved
