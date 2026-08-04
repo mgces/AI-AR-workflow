@@ -12,8 +12,8 @@ Each report is ONE self-contained .md file (no external CSS/assets, nothing
 split across files), so it reads cleanly in any Markdown viewer or on gitcode.
 
 Kinds:
-  test     — P5 单测执行结果 + P6 真机关键证据点聚合(测试是否通过 + 关键点),
-             与 device_functional.md 共存(后者为真机完整报告)。P6 通过后渲染。
+  test     — P5 单元测试执行结果 + P6 端到端关键证据点聚合(测试是否通过 + 关键点),
+             与 device_functional.md 共存(后者为端到端完整报告)。P6 通过后渲染。
   device   — P4/P5-B real-device functional report (nonce/markers/e2e, hilog
              tail, host==device artifact sha256).
   quality  — P7 coverage / performance / power / stability + functional summary
@@ -243,7 +243,7 @@ def render_device(pdir, state, entries, phase=6):
             ("baseline window", clean(summary.get("baseline_window_found"))),
             ("trigger window", clean(summary.get("trigger_window_found"))),
         ])
-    body = "# 真机功能测试报告\n\nrun=%s  target=%s\n" % (
+    body = "# 端到端功能测试报告\n\nrun=%s  target=%s\n" % (
         clean(state.get("run_id")), clean(state.get("build_target")))
     body += "\n%s %s\n" % (
         _badge(ev.get("verdict") if ev else None),
@@ -262,7 +262,7 @@ def render_device(pdir, state, entries, phase=6):
     body += _section("基线窗口(触发前必须为空的 marker 看这里)", _pre(baseline))
     body += _section("触发窗口(真正用于判定的日志窗口)", _pre(trigger))
     body += _section("设备 hilog 抓取(末尾片段)", _pre(tail))
-    return _page("真机功能测试报告 — %s" % state.get("run_id"), body)
+    return _page("端到端功能测试报告 — %s" % state.get("run_id"), body)
 
 
 def _junit_totals(pdir, rel="evidence/phase5/summary_report.xml"):
@@ -331,8 +331,8 @@ def _key_lines(text, keywords):
 
 
 def render_test(pdir, state, entries):
-    """P5 单测执行结果 + P6 真机关键证据点,聚合进**一个** test_report.md(测试是否
-    通过 + 关键点)。与 device_functional.md 共存(后者为真机完整报告)。在 P6 门控
+    """P5 单元测试执行结果 + P6 端到端关键证据点,聚合进**一个** test_report.md(测试是否
+    通过 + 关键点)。与 device_functional.md 共存(后者为端到端完整报告)。在 P6 门控
     通过后由编排器渲染。所有段落在证据缺失时降级显示,绝不 traceback。"""
     gl = _gatelib()
     body = "# 测试用例报告\n\nrun=%s  target=%s\n" % (
@@ -366,16 +366,16 @@ def render_test(pdir, state, entries):
     body += _section("合约 gtest 覆盖",
                      _pre(cov) if cov else "_未产出(合约缺失或 legacy bypass)_")
 
-    # ---- P6 真机功能测试(关键点)----
+    # ---- P6 端到端功能测试(关键点)----
     ev6 = phase_verdict(entries, 6)
     summary6 = gl.read_phase_summary(pdir, 6) if gl else None
     meta6 = read_ev(pdir, "evidence/phase6/run_meta.txt")
     proof6 = read_ev(pdir, "evidence/phase6/artifact_runtime_proof.txt")
     cases6 = read_ev(pdir, "evidence/phase6/device_case_results.json")
     p6_present = ev6 or summary6 or meta6 or proof6 or cases6
-    body += "\n## P6 真机功能测试(关键证据点)\n"
+    body += "\n## P6 端到端功能测试(关键证据点)\n"
     if not p6_present:
-        body += "\n%s _P6 真机证据未产出(可能尚未运行或未通过)_\n" % _badge(None)
+        body += "\n%s _P6 端到端证据未产出(可能尚未运行或未通过)_\n" % _badge(None)
         return _page("测试用例报告 — %s" % state.get("run_id"), body)
     body += "\n%s %s\n" % (
         _badge(ev6.get("verdict") if ev6 else None),
@@ -473,7 +473,7 @@ def render_summary(pdir, state, entries):
 def render_index(state):
     links = "\n".join("- [%s](%s)" % (t, f) for f, t in (
         ("test_report.md", "测试用例报告"),
-        ("device_functional.md", "真机功能测试报告"),
+        ("device_functional.md", "端到端功能测试报告"),
         ("quality.md", "质量验证报告"),
         ("summary.md", "上库汇总报告")))
     body = "# 报告目录\n\nrun=%s\n\n%s\n" % (clean(state.get("run_id")), links)

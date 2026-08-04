@@ -27,8 +27,8 @@ PHASE_LABELS = [
     (2, "P2 代码开发"),
     (3, "P3 测试用例编写"),
     (4, "P4 编译验证"),
-    (5, "P5 单元测试验证"),
-    (6, "P6 真机功能测试"),
+    (5, "P5 单元测试"),
+    (6, "P6 端到端功能测试"),
     (7, "P7 质量验证"),
     (8, "P8 上库 review"),
 ]
@@ -128,8 +128,8 @@ PHASE_GUIDE = {
 DESIGN_ITEM_PHASE = {"files": 2, "test_points": 3, "device_cases": 6}
 DESIGN_ITEM_LABEL = {
     "files": "实现文件(P2 开发)",
-    "test_points": "测试功能点(P3 写测试 / P5 执行)",
-    "device_cases": "真机用例(P6 真机验证)",
+    "test_points": "测试功能点(P3 写测试 / P5 单元测试执行)",
+    "device_cases": "端到端用例(P6 端到端功能测试)",
 }
 
 

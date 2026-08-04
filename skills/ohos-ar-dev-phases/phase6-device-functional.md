@@ -1,4 +1,7 @@
-# P6 真机功能测试(device-functional,物理 phase 6)
+# P6 端到端功能测试(device-functional,物理 phase 6)
+
+> 📌 P5 单元测试与本阶段都在**真机**上跑;区别是 P5 逐个 gtest 验单元逻辑,P6 从真实入口触发验
+> 端到端功能(marker + 产物 sha256 + 抗伪造 + 人工确认)。"真机"不是本阶段独有,端到端才是。
 
 `gate_device_func.py` 签名 `emit(phase 6)`(默认 `--phase 6`;集成复用时 `--phase 7`,见 phase7-quality)。
 
@@ -73,11 +76,11 @@ python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-workflow/scripts/render_report.py" \
 产出**单个** `reports/device_functional.md`(真机完整报告:nonce/marker/e2e、hilog 片段、
 产物 sha256 一致,全部聚合进这一个 md)。渲染文本经脱敏;渲染失败不影响门控 verdict。
 
-P5 单测 + P6 真机都通过后,再渲染**测试用例报告**(P5 单测执行结果 + P6 真机关键证据点聚合,
-供人快速判断"测试是否真过了、关键证据点是什么";device_functional.md 仍为真机完整报告):
+P5 单元测试 + P6 端到端都通过后,再渲染**测试用例报告**(P5 单元测试执行结果 + P6 端到端关键证据点聚合,
+供人快速判断"测试是否真过了、关键证据点是什么";device_functional.md 仍为端到端完整报告):
 ```bash
 python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-workflow/scripts/render_report.py" \
     --pipeline-dir "$PDIR" --kind test
 ```
-产出**单个** `reports/test_report.md`:P5 单测总体/计数/逐用例/合约覆盖 + P6 真机总体/抗伪造与
+产出**单个** `reports/test_report.md`:P5 单元测试总体/计数/逐用例/合约覆盖 + P6 端到端总体/抗伪造与
 窗口命中/nonce·marker/产物 sha256 一致/device_cases 逐项,全部聚合进这一个 md。

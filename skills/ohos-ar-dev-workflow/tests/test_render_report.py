@@ -69,7 +69,7 @@ class TestRenderReport(unittest.TestCase):
     def test_device_md_redacts_serial(self):
         state, entries = rr.load(self.pdir)
         out = rr.render_device(self.pdir, state, entries, phase=4)
-        self.assertIn("真机功能测试报告", out)
+        self.assertIn("端到端功能测试报告", out)
         self.assertNotIn("7001005458323933328a01fce1fe3800", out)
         self.assertIn("<REDACTED-SERIAL>", out)
 
@@ -168,7 +168,7 @@ class TestRenderReport(unittest.TestCase):
         self.assertIn("P5 单元测试", out)
         self.assertIn("summary_report.xml 未产出", out)
         self.assertIn("result_*.xml 缺失", out)
-        self.assertIn("P6 真机证据未产出", out)
+        self.assertIn("P6 端到端证据未产出", out)
 
     def test_test_report_shows_p5_counts_and_cases(self):
         # Give it real P5 evidence: summary_report.xml (totals) + one result xml

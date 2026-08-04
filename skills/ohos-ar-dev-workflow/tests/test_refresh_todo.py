@@ -37,7 +37,7 @@ class TestRefreshTodo(unittest.TestCase):
         # tagged with that phase's role label.
         self.assertIn("(实现文件) src/manager.cpp", out)
         self.assertIn("(测试功能点) 边界条件处理", out)
-        self.assertIn("(真机用例) hdc 注入 nonce 触发", out)
+        self.assertIn("(端到端用例) hdc 注入 nonce 触发", out)
         self.assertIn("当前阶段: **P1 设计固化**", out)
 
     def test_passed_phase_checked(self):

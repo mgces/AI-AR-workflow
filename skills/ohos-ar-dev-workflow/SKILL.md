@@ -2,7 +2,7 @@
 name: ohos-ar-dev-workflow
 description: >
   端到端编排 OHOS(rk3568)研发生命周期:从已澄清的 AR(架构需求)出发,自动推进
-  设计固化→代码开发→测试用例编写→编译验证→单测执行验证→真机功能测试→功能/覆盖率/性能/功耗/稳定性验证→代码上库review。
+  设计固化→代码开发→测试用例编写→编译验证→单元测试→端到端功能测试→功能/覆盖率/性能/功耗/稳定性验证→代码上库review。
   每个阶段只能由确定性门控脚本基于真实证据(构建日志成功横幅/真机 hdc+hilog 抓取/
   gtest+xdevice 报告/CI 绿状态)判定通过,绝不能用模型自由文本当作阶段结束。
   当用户说"跑流水线"、"从这个 AR 自动开发到上库"、"自动构建并验证 OHOS 代码"、
@@ -36,7 +36,7 @@ GN 构建目标(`build_target`)、测试 `testpart` 与套件名、目标二进�
    最多自动重试 3 次,仍失败则停下并把真实失败日志呈现给用户。
 4. **真机/真实日志是阶段产出**。P5/P6/P7 的结束证据必须是设备上真实跑出来的报告/hilog,
    不是你写的文字。设备 RTC 错乱,新鲜度靠 nonce + `/proc/uptime` + 新建报告目录,不靠时间戳。
-5. **P1 设计固化、P6 真机结果、P7 质量/review 报告 与 P8 上库 需人工确认**。
+5. **P1 设计固化、P6 端到端结果、P7 质量/review 报告 与 P8 上库 需人工确认**。
    - **P1**:`gate_design.py`(`emit(phase 1)`)PASS(签名 AR_design + ```ar-contract``` 契约)后**不自动写码**——
      必须停下,把签名 AR_design 与其编译路径(`build_artifacts`)呈现给用户,等用户复核同意后
      `advance.py consent --phase 1 --token <人>`。该 consent 在 **P2 `gate_develop.py` 内**强校验(绑 phase1
@@ -119,8 +119,8 @@ python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-workflow/scripts/refresh_todo.py" --pipel
 | P2 开发 | **先加载** `code-ruleset-style-check` 写码前契约 + `cpp-coding-style`，再用 sa-codegen / napi-module / security-code-review(安全左移,advisory) / tdd-enforcer / code-skeletons 写码 | `gate_develop.py`(`emit 2`,强制依赖签名 AR_design + P1 consent；共享 guard 是唯一 PASS 来源) | git/untracked diff 非空 + C++ 强门控报告;**闭合时锁定功能指纹** |
 | P3 测试开发 | **先加载**同一写码前契约 + `cpp-coding-style`，再用 test-ut-generation / tdd-enforcer / code-ruleset-style-check(**只增独立测试**,编译前写完测试代码) | `gate_test_develop.py`(`emit 3`,对新增测试源强制 `--rules-only` 规则门控) | 契约每个 `test_cases[].gtest` 的 suite 出现在新测试文件中(**编写**覆盖)+ 测试源签名快照 + 测试代码规则检测报告 |
 | P4 编译 | build-execution-diagnosis / build-flash / code-ruleset-style-check(编译后 clang-tidy) | `gate_build.py`(`emit 4`) | build.log 成功横幅 + 契约 `build_artifacts` 全部编译出 + clang-tidy 子步(有 compdb 硬控/缺失降级) |
-| P5 单测执行 | test-ut-generation / tdd-enforcer(**只增独立测试**) | `gate_test_ut.py`(`emit 5`) | developer_test summary_report.xml + 契约每个 `test_cases[].gtest` 通过(**执行**覆盖) |
-| P6 真机 | build-flash / hdc-command-usage | `gate_device_func.py`(`emit 6`) | 主机/设备产物 sha256 一致 + 含 nonce/功能 marker/运行时 marker/端到端 marker 的真机 hilog + 契约每个 `device_cases[].marker` 命中 **+ 人工确认(consent --phase 6)**;渲染 `reports/device_functional.md` + `reports/test_report.md`(P5 单测 + P6 真机关键证据聚合) |
+| P5 单元测试 | test-ut-generation / tdd-enforcer(**只增独立测试**) | `gate_test_ut.py`(`emit 5`) | developer_test summary_report.xml + 契约每个 `test_cases[].gtest` 通过(**执行**覆盖) |
+| P6 端到端功能测试 | build-flash / hdc-command-usage | `gate_device_func.py`(`emit 6`) | 主机/设备产物 sha256 一致 + 含 nonce/功能 marker/运行时 marker/端到端 marker 的真机 hilog + 契约每个 `device_cases[].marker` 命中 **+ 人工确认(consent --phase 6)**;渲染 `reports/device_functional.md` + `reports/test_report.md`(P5 单元测试 + P6 端到端关键证据聚合) |
 | P7 质量验证 | build-flash / developer_test MST / coverage / performance / power / stability / code-ruleset-style-check / security-code-review | `gate_integration.py`(`emit 7`;或 `gate_device_func.py --phase 7` + `gate_integration.py`) | 功能 summary + 覆盖率 + 性能 + 功耗 + 稳定性 + 代码 review 零问题 **+ 人工确认(consent --phase 7)**;渲染 `reports/quality.md`(六段聚合含 review) |
 | P8 上库 | gitcode-cli / gitcode-pr-review / committer-review(P8-A 补充维度) / security-code-review / openharmony-ci-analysis | `gate_upload_ci.py`(`emit 8`) | A 本地自检零问题 + B PR review 零问题 + PR + CI 绿(SHA 绑定)**+ 人工确认(consent --phase 8)**;渲染 `reports/summary.md` + PR 描述注入 |
 

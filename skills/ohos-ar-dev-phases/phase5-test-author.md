@@ -1,7 +1,15 @@
-# P5 单元测试执行与验证(test-author,物理 phase 5)
+# P5 单元测试(test-author,物理 phase 5)
 
 测试**编写**已在 phase 3(test-develop)签名固化;本阶段**执行**这些测试并按契约做全量通过校验。
 `gate_test_ut.py` 签名 `emit(phase 5)`。
+
+> 📌 **P5 与 P6 都在真机上跑,区别是"单元 vs 端到端",不是"离线 vs 真机"。**
+> P5 的 `developer_test` UT 走 `start.sh run -t UT`,同样把测试二进制**部署到真机执行**再回收
+> `summary_report.xml`;P0 的 `device` 能力对 **P4/P5/P6 都是 HARD**(真机不在线 P0 就 FAIL,
+> 走不到 P5)。所以没有真机 P5 起不来。两阶段的真正分工:
+> - **P5 单元测试**:白盒、逐个 `test_cases[].gtest` 在真机上执行通过(单元逻辑对不对)。
+> - **P6 端到端功能测试**:黑盒、从真实入口触发让改动代码在系统里真的跑起来,抓 hilog 验
+>   `device_cases[].marker` + 产物 sha256 + 抗伪造 nonce/窗口,且**需人工确认**(单元过 ≠ 端到端可用)。
 
 ## ⚠️ 只增独立测试的硬约束
 本阶段仍**只能新增独立测试文件**(路径规则:`test/`、`unittest/`、`moduletest/`、`fuzztest/` 目录,
