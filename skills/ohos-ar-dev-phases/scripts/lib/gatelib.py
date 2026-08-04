@@ -2526,6 +2526,19 @@ def validate_closing_entry(pdir, phase):
         return False, "no manifest entry for phase %d" % phase, None
     if entry.get("verdict") != "PASS":
         return False, "last phase %d entry verdict=%s" % (phase, entry.get("verdict")), entry
+    # EVIDENCE-EPOCH BARRIER: a `reset` (or verify-all drift-rewind) records the
+    # manifest length at rewind time in state["evidence_epoch"]. The manifest is
+    # append-only, so any PASS emitted *before* the rewind has seq < epoch. Such
+    # a stale PASS survives the HMAC/chain/artifact checks intact, which would
+    # otherwise let `advance --phase N` re-close on pre-fix evidence without the
+    # gate ever re-running. Requiring seq >= epoch forces a FRESH gate run (whose
+    # PASS is appended after the reset marker) before the phase can close again.
+    epoch = state.get("evidence_epoch")
+    if isinstance(epoch, int) and epoch > 0:
+        seq = entry.get("seq")
+        if not isinstance(seq, int) or seq < epoch:
+            return (False, "phase %d PASS is pre-reset evidence (seq=%s < epoch=%d); "
+                    "re-run its gate after the reset" % (phase, seq, epoch), entry)
     if not verify_sig(entry, secret):
         return False, "HMAC mismatch on phase %d entry (tampered/forged)" % phase, entry
     for art in entry.get("artifacts", []):

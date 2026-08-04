@@ -125,6 +125,7 @@ P8_FAILURE_TO_SUBSTATE = {
     "pr_review_blocked": "pr_review",
     "ci_not_green": "ci_green",
     "pr_head_sha_mismatch": "ci_green",
+    "ci_stale_pre_push": "ci_green",
     "sha_mismatch": "ci_green",
     "review_ci_sha_conflict": "ci_green",
     "external_api_unstable": "ci_green",
@@ -555,6 +556,60 @@ def normalize_issue(raw):
     return "#%s" % s if s else ""
 
 
+def parse_ci_epoch(raw):
+    """Best-effort parse of a DCP CI timestamp to epoch seconds (UTC).
+
+    The DCP event timestamp format is not contractually fixed, so we try the
+    shapes it is known to use — epoch seconds, epoch milliseconds, and a handful
+    of ISO-8601 variants — and return None if none match. A None here is treated
+    fail-CLOSED by the caller (freshness cannot be proven), and the raw value is
+    surfaced so an operator can report an unrecognized format to tighten this."""
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    if not s:
+        return None
+    # numeric epoch (seconds or milliseconds)
+    if s.isdigit():
+        n = int(s)
+        # 13+ digits -> milliseconds; ~10 digits -> seconds
+        return n / 1000.0 if n >= 10 ** 12 else float(n)
+    # ISO-8601, with or without trailing Z / fractional seconds
+    iso = s.replace("Z", "+00:00")
+    for fmt in ("%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%S.%f%z",
+                "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S"):
+        try:
+            import datetime as _dt
+            dt = _dt.datetime.strptime(iso, fmt)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=_dt.timezone.utc)
+            return dt.timestamp()
+        except ValueError:
+            continue
+    return None
+
+
+def ci_freshness(ci_end_raw, pushed_at, skew_s):
+    """(ok, detail). Prove the green CI event belongs to the commit we just
+    pushed by requiring the event to have COMPLETED at/after the push (minus a
+    clock-skew tolerance). This closes the 'same-PR re-push, CI still shows the
+    previous commit's green' window: the SHA binding proves PR head == pushed
+    SHA, but not that the *CI run* was for that SHA. A pre-push completion time
+    proves it was an earlier run. Fail-closed on an unparseable/absent time."""
+    if not pushed_at:
+        return True, "no push in this run (re-verify) — freshness not enforced"
+    ci_end = parse_ci_epoch(ci_end_raw)
+    if ci_end is None:
+        return False, ("CI end_timestamp missing/unparseable (%r) — cannot prove "
+                       "the green belongs to the pushed commit" % (ci_end_raw,))
+    if ci_end + skew_s < pushed_at:
+        return False, ("CI completed before the push (ci_end=%d, pushed_at=%d, "
+                       "skew=%ds) — stale green from an earlier commit"
+                       % (int(ci_end), int(pushed_at), skew_s))
+    return True, "ci_end=%d >= pushed_at=%d (skew=%ds)" % (
+        int(ci_end), int(pushed_at), skew_s)
+
+
 # B6: subjects a weak model tends to leave when it never wrote a real message.
 # Rejecting only this closed set keeps the check false-positive-free — any real
 # descriptive subject passes untouched. Semantic quality (does the message
@@ -806,6 +861,11 @@ def main():
     ap.add_argument("--ci-query-backoff", type=float, default=2.0,
                     help="E1: base seconds for exponential backoff between CI-query "
                          "transport retries (attempt N waits base*2^(N-1)). Default 2.0.")
+    ap.add_argument("--ci-freshness-skew", type=int, default=300,
+                    help="D: clock-skew tolerance (seconds) for the CI-freshness "
+                         "check. The green CI event must have COMPLETED no earlier "
+                         "than (push_time - this) to prove it ran on the pushed "
+                         "commit, not a prior commit on the same PR. Default 300.")
     args = ap.parse_args()
     pdir = gl.pipeline_dir(args.pipeline_dir)
     state = gl.load_state(pdir)
@@ -947,6 +1007,7 @@ def main():
     local_detail = "skipped (--pr re-verify)"
 
     pr_number = args.pr
+    pushed_at = None  # epoch secs of THIS run's push; None on the re-verify path
     if pr_number is None:
         # A. LOCAL SELF-REVIEW HARD GATE (before any irreversible action).
         # Fails closed on a non-zero / missing / count-less report — nothing is
@@ -965,6 +1026,10 @@ def main():
         if push.returncode != 0:
             _fail(pdir, "git push failed: %s" % (push.stderr.strip()[:500]),
                   failure_class="push_failed")
+        # stamp the push moment: the CI freshness check below requires the CI
+        # event to have completed at/after this, proving its green is for the
+        # commit we just pushed and not a prior commit on the same PR.
+        pushed_at = time.time()
         pr_body = build_pr_body(gdir, issue_ref, pdir)
         # Qualify the head as <fork-owner>:<branch> for the fork -> upstream flow;
         # a bare name would be resolved on the base repo and 403 on an upstream PR.
@@ -1018,9 +1083,11 @@ def main():
         f.write(ci.stdout or ci.stderr)
     overall = ""
     ci_defect_locations = []
+    ci_end_raw = ""
     try:
         ci_json = json.loads(ci.stdout)
         overall = ci_json.get("overall_result", "")
+        ci_end_raw = ci_json.get("end_timestamp", "") or ci_json.get("timestamp", "")
         # H6: backfill WHICH codecheck defect class the remote flagged into the
         # repair packet. Advisory only — the PASS/FAIL verdict below stays bound
         # to overall_result + head-SHA; this just makes a red CI legible instead
@@ -1048,13 +1115,19 @@ def main():
     # unreadable/empty head as FAIL rather than silently passing.
     sha_ok = bool(pr_head) and (pr_head == head_sha)
     ci_ok = overall in OK_OVERALL
+    # FRESHNESS: prove the green CI event completed at/after this run's push, so
+    # a same-PR re-push cannot pass on the previous commit's still-green CI. Only
+    # enforced when a push happened this run (pushed_at set); the --pr re-verify
+    # path has no push time and is bound by sha_ok alone. Fail-closed on an
+    # unparseable/absent CI end time.
+    fresh_ok, fresh_detail = ci_freshness(ci_end_raw, pushed_at, args.ci_freshness_skew)
     # Both review gates already passed here (otherwise _fail exited earlier).
-    reason = ("pr=%s overall=%s ci_ok=%s pushed=%s pr_head=%s sha_ok=%s "
+    reason = ("pr=%s overall=%s ci_ok=%s pushed=%s pr_head=%s sha_ok=%s fresh=%s "
               "local_review=%s pr_review=%s") % (
-        pr_number, overall, ci_ok, head_sha[:12], pr_head[:12], sha_ok,
+        pr_number, overall, ci_ok, head_sha[:12], pr_head[:12], sha_ok, fresh_ok,
         local_detail, pr_review_detail)
     print(reason)
-    verdict = "PASS" if (ci_ok and sha_ok and pr_number) else "FAIL"
+    verdict = "PASS" if (ci_ok and sha_ok and fresh_ok and pr_number) else "FAIL"
     problems = []
     if not ci_ok:
         if ci_transport_failure:
@@ -1070,6 +1143,8 @@ def main():
         problems.append("remote PR head SHA unreadable")
     elif not sha_ok:
         problems.append("remote PR head SHA does not match pushed SHA")
+    if not fresh_ok:
+        problems.append("CI freshness: %s" % fresh_detail)
     failure_class = None
     if verdict == "FAIL":
         if not ci_ok:
@@ -1079,6 +1154,8 @@ def main():
                 "external_api_unstable" if ci_transport_failure else "ci_not_green")
         elif not pr_head or not sha_ok:
             failure_class = "pr_head_sha_mismatch"
+        elif not fresh_ok:
+            failure_class = "ci_stale_pre_push"
         else:
             failure_class = "pr_metadata_incomplete"
     _record_result(

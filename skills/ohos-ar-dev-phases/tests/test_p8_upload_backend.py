@@ -93,5 +93,54 @@ class TestUploadBackendBranch(unittest.TestCase):
         self.assertIn("--repo-slug is required", cp.stdout + cp.stderr)
 
 
+class TestCIFreshness(unittest.TestCase):
+    """D: the CI-freshness check that closes the 'same-PR re-push, CI still shows
+    the previous commit's green' window. Pure helpers — no network."""
+
+    def test_parse_epoch_seconds_and_millis(self):
+        self.assertEqual(gate_upload_ci.parse_ci_epoch("1000000000"), 1000000000.0)
+        # 13-digit -> milliseconds
+        self.assertEqual(gate_upload_ci.parse_ci_epoch("1700000000000"), 1700000000.0)
+
+    def test_parse_iso8601(self):
+        # 2021-01-01T00:00:00Z == epoch 1609459200
+        self.assertEqual(
+            gate_upload_ci.parse_ci_epoch("2021-01-01T00:00:00Z"), 1609459200.0)
+        self.assertEqual(
+            gate_upload_ci.parse_ci_epoch("2021-01-01T00:00:00.123+00:00"),
+            1609459200.123)
+
+    def test_parse_unrecognized_returns_none(self):
+        self.assertIsNone(gate_upload_ci.parse_ci_epoch(""))
+        self.assertIsNone(gate_upload_ci.parse_ci_epoch(None))
+        self.assertIsNone(gate_upload_ci.parse_ci_epoch("last Tuesday"))
+
+    def test_fresh_when_ci_after_push(self):
+        ok, _ = gate_upload_ci.ci_freshness("2000", pushed_at=1000, skew_s=300)
+        self.assertTrue(ok)
+
+    def test_stale_when_ci_before_push(self):
+        # CI completed at 1000, push at 2000, skew 300 -> 1000+300 < 2000 -> stale
+        ok, detail = gate_upload_ci.ci_freshness("1000", pushed_at=2000, skew_s=300)
+        self.assertFalse(ok)
+        self.assertIn("stale green", detail)
+
+    def test_skew_tolerance_allows_small_backdate(self):
+        # CI at 1900, push at 2000, skew 300 -> 1900+300 >= 2000 -> within tolerance
+        ok, _ = gate_upload_ci.ci_freshness("1900", pushed_at=2000, skew_s=300)
+        self.assertTrue(ok)
+
+    def test_unparseable_ci_time_fails_closed_when_pushed(self):
+        ok, detail = gate_upload_ci.ci_freshness("garbage", pushed_at=2000, skew_s=300)
+        self.assertFalse(ok)
+        self.assertIn("unparseable", detail)
+
+    def test_no_push_skips_freshness(self):
+        # re-verify path (pushed_at None): freshness not enforced, bound by sha_ok
+        ok, detail = gate_upload_ci.ci_freshness("garbage", pushed_at=None, skew_s=300)
+        self.assertTrue(ok)
+        self.assertIn("re-verify", detail)
+
+
 if __name__ == "__main__":
     unittest.main()

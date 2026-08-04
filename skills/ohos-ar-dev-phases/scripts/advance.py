@@ -310,6 +310,23 @@ def _read_repair_packet(pdir):
     return packet
 
 
+def _clear_repair_packet(pdir):
+    """Deactivate any open repair packet. A rewind (reset / verify-all drift)
+    invalidates the failure context the packet described, so a stale ACTIVE
+    packet must not survive to drive the wrong substate/next_gate on rewalk.
+    Mirrors the gate convention: write a schema-valid inactive packet rather
+    than delete the file, so the advisory validator still sees a well-formed
+    record. Best-effort — a control write must never block the rewind."""
+    try:
+        gl.write_repair_packet(
+            pdir, REPAIR_PACKET_PARTS,
+            gl.build_cleared_repair_packet(
+                1, "design_orchestrate", cleared_by="advance.py:reset"),
+            best_effort=True)
+    except Exception:
+        pass
+
+
 
 def _read_quality_substate(pdir):
     payload = gl.read_control_json(pdir, *QUALITY_SUBSTATE_PARTS) or {}
@@ -1423,6 +1440,14 @@ def cmd_reset(args):
     state["code_fingerprint"] = None
     state["functional_fingerprint"] = None
     state["locked_all_paths"] = None
+    # EVIDENCE-EPOCH BARRIER: the manifest is append-only, so pre-reset PASS
+    # records survive on disk (chain/HMAC/artifacts intact). Stamp the current
+    # manifest length as the epoch; validate_closing_entry then refuses any PASS
+    # with seq < epoch, forcing every rewalked phase to re-run its gate (whose
+    # fresh PASS is appended after this point) before it can close again.
+    state["evidence_epoch"] = len(gl.read_manifest(pdir))
+    # a stale repair packet would drive the wrong substate/next_gate on rewalk
+    _clear_repair_packet(pdir)
     _refresh_state_metadata(pdir, state)
     gl.save_state(pdir, state)
     # leave an audit trail (unsigned info entry is fine; it grants no progress)
@@ -1510,10 +1535,13 @@ def cmd_verify_all(args):
         state["code_fingerprint"] = None
         state["functional_fingerprint"] = None
         state["locked_all_paths"] = None
+        state["evidence_epoch"] = len(gl.read_manifest(pdir))
+        _clear_repair_packet(pdir)
         _refresh_state_metadata(pdir, state)
         gl.save_state(pdir, state)
         sys.exit("verify-all: functional code changed since P1 — pipeline rewound "
                  "to P1, rewalk from development.")
+    earliest_failed = None
     for pe in state["phases"]:
         if pe["status"] != "passed":
             continue
@@ -1522,10 +1550,25 @@ def cmd_verify_all(args):
             bad += 1
             pe["status"] = "failed"
             print("DEMOTED phase %d (%s): %s" % (pe["id"], pe["name"], reason))
-            if state["current_phase"] > pe["id"]:
-                state["current_phase"] = pe["id"]
+            if earliest_failed is None or pe["id"] < earliest_failed:
+                earliest_failed = pe["id"]
         else:
             print("ok phase %d (%s)" % (pe["id"], pe["name"]))
+    if earliest_failed is not None:
+        # A demoted phase invalidates everything after it: those downstream
+        # "passed" flags were closed on evidence that transitively depended on the
+        # now-failed phase. Leaving them "passed" produces a contradictory run
+        # ("at P%d" yet "P%d+ passed") and — with the evidence-epoch barrier off
+        # for a bare demotion — they could be re-closed without re-gating. Rewind
+        # current_phase to the earliest failure and drop every later phase to
+        # pending so the rewalk re-runs their gates.
+        if state["current_phase"] > earliest_failed:
+            state["current_phase"] = earliest_failed
+        for pe in state["phases"]:
+            if pe["id"] > earliest_failed and pe["status"] == "passed":
+                pe["status"] = "pending"
+                pe["manifest_ref"] = None
+                pe["closed_at_utc"] = None
     _refresh_state_metadata(pdir, state)
     if bad:
         gl.save_state(pdir, state)
