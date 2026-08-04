@@ -40,6 +40,10 @@ _REDACTIONS = (
     (re.compile(r"\b[0-9a-fA-F]{32}\b"), "<REDACTED-SERIAL>"),
     # personal home directories: /home/<user>[/...] -> ~[/...]
     (re.compile(r"/home/[^/\s\"']+"), "~"),
+    # WSL mount of a Windows user profile: /mnt/c/Users/<user> -> ~
+    (re.compile(r"/mnt/[a-zA-Z]/Users/[^/\s\"']+", re.IGNORECASE), "~"),
+    # native Windows user profile: C:\Users\<user> -> ~ (hdc-bridge host paths)
+    (re.compile(r"[a-zA-Z]:\\Users\\[^\\\s\"']+"), "~"),
     # WSL->Windows hdc bridge host:port and bare bridge port
     (re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}:\d+\b"), "<REDACTED-HOST:PORT>"),
     (re.compile(r"\bwsl_bridge_port=\d+"), "wsl_bridge_port=<REDACTED>"),
@@ -208,7 +212,7 @@ def build_feature_spec(pdir, state, entries, subsys, comp, feat):
     L.append(sec(["代码框架", "code framework", "装载", "运行链"]))
     if run_meta:
         L.append("")
-        L.append("真机运行标记(P4 run_meta,已脱敏):")
+        L.append("真机运行标记(P6 run_meta,已脱敏):")
         L.append("")
         L.append("```")
         L.append(redact(run_meta.strip()))

@@ -251,7 +251,7 @@ def render_device(pdir, state, entries, phase=6):
     if failure and failure.get("failure_class"):
         body += "\n**failure_class:** %s\n" % clean(failure.get("failure_class"))
     if summary_pairs:
-        body += _section("P4 抗伪造摘要", _kv_table(summary_pairs))
+        body += _section("P%d 抗伪造摘要" % phase, _kv_table(summary_pairs))
     process_pairs = _process_summary_pairs(summary, failure, repair)
     if process_pairs:
         body += _section("控制层流程摘要(repair / retry / 重验范围;仅导航,不授放行)",
@@ -406,7 +406,7 @@ def render_test(pdir, state, entries):
 def render_quality(pdir, state, entries):
     """P7 质量验证报告 —— 覆盖率/性能/功耗/稳定性 + 功能 summary + 代码 review,
     全部聚合进**一个** quality.md,不再分散多文件。"""
-    ev = phase_verdict(entries, 7) or phase_verdict(entries, 5)
+    ev = phase_verdict(entries, 7)
     body = "# 质量验证报告\n\nrun=%s  target=%s\n" % (
         clean(state.get("run_id")), clean(state.get("build_target")))
     body += "\n%s %s\n" % (

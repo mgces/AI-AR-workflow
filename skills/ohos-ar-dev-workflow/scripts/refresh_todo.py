@@ -177,7 +177,7 @@ def collect_design_items(design_text):
 
 def build_todo_data(state, design_text, entries):
     run_id = state.get("run_id", "")
-    cur = state.get("current_phase", 0)
+    cur = state.get("current_phase") or 0  # coerce missing/null/"" → 0 (legacy state)
     status = {p["id"]: p.get("status", "pending") for p in state.get("phases", [])}
     design_items = collect_design_items(design_text) if design_text else {
         "files": [], "test_points": [], "device_cases": []}

@@ -303,8 +303,16 @@ def passed_gtests(result_xml_paths):
             if not name:
                 continue
             suite = tc.get("classname") or ""
-            failed = any(child.tag in ("failure", "error") for child in tc)
-            if not failed:
+            # A case counts as passed ONLY if it actually ran and did not fail.
+            # <skipped/> (GTEST_SKIP / DISABLED) has no failure/error child but
+            # never executed — counting it as passed would let a required gtest
+            # be "covered" without running (fail-open). Also treat status/result
+            # attrs of skipped/notrun/disabled as not-passed.
+            bad = any(child.tag in ("failure", "error", "skipped") for child in tc)
+            st = (tc.get("status") or tc.get("result") or "").lower()
+            if st in ("skipped", "notrun", "disabled"):
+                bad = True
+            if not bad:
                 passed.add("%s.%s" % (suite, name) if suite else name)
     return passed
 
@@ -415,10 +423,11 @@ def main():
         f.write(os.path.basename(fresh_dir) + "\n")
     arts.append("evidence/phase5/report_dir.txt")
 
-    # 5. parse summary_report.xml (prefer the fresh dir; fall back to latest)
+    # 5. parse summary_report.xml — ONLY from THIS run's fresh dir. A fallback to
+    # reports/latest would read a previous run's (possibly green) summary while the
+    # per-suite result xmls below come from fresh_dir, mixing two runs and defeating
+    # the new-dir freshness proof. Missing summary in the fresh dir → fail-closed.
     summary = os.path.join(fresh_dir, "summary_report.xml")
-    if not os.path.exists(summary):
-        summary = os.path.join(reports, "latest", "summary_report.xml")
     if not os.path.exists(summary):
         reason = "summary_report.xml not found in fresh report dir"
         _record_result(
@@ -435,8 +444,13 @@ def main():
     arts.append(sum_rel)
     # also snapshot per-suite result xmls
     result_rels = []
-    for rx in glob.glob(os.path.join(fresh_dir, "result", "**", "*.xml"), recursive=True):
-        rrel = "evidence/phase5/result_%s" % os.path.basename(rx)
+    result_root = os.path.join(fresh_dir, "result")
+    for rx in glob.glob(os.path.join(result_root, "**", "*.xml"), recursive=True):
+        # Disambiguate by the path under result/ so two suites sharing a basename
+        # in different subdirs don't clobber each other (which would drop cases and
+        # cause a false coverage FAIL). Flatten separators into '__'.
+        sub = os.path.relpath(rx, result_root).replace(os.sep, "__")
+        rrel = "evidence/phase5/result_%s" % sub
         shutil.copy(rx, os.path.join(pdir, rrel))
         arts.append(rrel)
         result_rels.append(rrel)

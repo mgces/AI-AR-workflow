@@ -144,6 +144,16 @@ class TestB1DevelopSequence(unittest.TestCase):
                     " * Licensed under the Apache License, Version 2.0 (the \"License\");\n */\n")
             f.write("TEST(%s, Case001) { EXPECT_TRUE(true); }\n" % suite)
 
+    def _author_comment_only(self, suite="ATest"):
+        """A new test file that MENTIONS the required suite only in a comment —
+        no gtest macro. Must NOT satisfy authorship coverage (fail-open guard)."""
+        os.makedirs(os.path.join(self.repo, "test"), exist_ok=True)
+        with open(os.path.join(self.repo, "test", "a_test.cpp"), "w", encoding="utf-8") as f:
+            f.write("/*\n * Copyright (c) 2026.\n"
+                    " * Licensed under the Apache License, Version 2.0 (the \"License\");\n */\n")
+            f.write("// %s coming soon; TODO author TEST_F for it\n" % suite)
+            f.write("const char* note = \"%s placeholder\";\n" % suite)
+
     # ---- phase 1 (design_orchestrate) -----------------------------------------
     def test_phase1_maps_to_design_orchestrate(self):
         payload = adv._derive_next_action(self.pdir, gl.load_state(self.pdir))
@@ -221,6 +231,19 @@ class TestB1DevelopSequence(unittest.TestCase):
         self._close_feature_develop()
         # author a test file for the WRONG suite
         self._author_test(suite="WrongSuite")
+        cp = self._run("gate_test_develop.py")
+        self.assertNotEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+        self.assertIn("ATest.Case001", cp.stdout + cp.stderr)
+        ok, _reason, _entry = gl.validate_closing_entry(self.pdir, 3)
+        self.assertFalse(ok)
+
+    def test_gate_test_develop_fail_when_suite_only_in_comment(self):
+        # Fail-open guard: a new test file that names the required suite only in a
+        # comment / string literal (no TEST/TEST_F macro) must NOT count as
+        # authored — otherwise "// ATest coming soon" closes P3 with zero tests.
+        self._close_design()
+        self._close_feature_develop()
+        self._author_comment_only(suite="ATest")
         cp = self._run("gate_test_develop.py")
         self.assertNotEqual(cp.returncode, 0, cp.stdout + cp.stderr)
         self.assertIn("ATest.Case001", cp.stdout + cp.stderr)

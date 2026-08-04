@@ -32,6 +32,7 @@ phases keep their suspect-scope map — but that layer never grants pass authori
 """
 import argparse
 import os
+import re
 import subprocess
 import sys
 
@@ -157,18 +158,42 @@ def _suites_referenced(gdir, test_paths):
     return per_file
 
 
+def _suite_registered(text, suite, macro_re):
+    """True iff `suite` is the fixture/suite name of a real gtest macro in `text`.
+    We first find every gtest-macro head (TEST/TEST_F/...), then check the suite
+    token that the macro opened on. A bare mention (comment, string, BUILD.gn
+    target name) never matches — only an actual `MACRO(<...::>suite`."""
+    for m in macro_re.finditer(text):
+        # m.group(0) is e.g. "TEST_F(Test :: FooManagerTest" — the last ::-segment
+        # is the suite/fixture the macro registers.
+        opened = m.group(0).split("(", 1)[1]
+        last_seg = opened.split("::")[-1].strip()
+        if last_seg == suite:
+            return True
+    return False
+
+
 def _coverage(contract, gdir, test_paths):
     """Return (required_gtests, covered, missing, evidence_lines). A required
-    gtest is covered when some NEW test file's text references its suite."""
+    gtest is covered when some NEW test file's text references its suite AND that
+    reference is a real gtest registration — a `TEST(`/`TEST_F(`/`TEST_P(`/
+    `TYPED_TEST(`/`TYPED_TEST_P(` macro with the suite as its first argument
+    (allowing `::`-qualified names, e.g. `Test::FooManagerTest`). A bare suite
+    name in a comment, a string literal, or free text does NOT count: that would
+    let `// FooManagerTest coming soon` pass P3 with zero real test code."""
     file_text = _suites_referenced(gdir, test_paths)
     required = [tc.get("gtest") for tc in (contract.get("test_cases") or []) if tc.get("gtest")]
     covered, missing, lines = [], [], []
+    # matches TEST(FooManagerTest, Case) / TEST_F(Test::FooManagerTest, ...) ...
+    _GTEST_MACRO_RE = re.compile(
+        r"\b(?:TEST|TEST_F|TEST_P|TYPED_TEST|TYPED_TEST_P)\s*\(\s*"
+        r"([A-Za-z_][A-Za-z0-9_]*\s*::\s*)*[A-Za-z_][A-Za-z0-9_]*")
     for gtest in required:
         suite = gl.test_target_from_gtest(gtest)
         hit = None
         if suite:
             for rel, text in file_text.items():
-                if suite in text:
+                if _suite_registered(text, suite, _GTEST_MACRO_RE):
                     hit = rel
                     break
         if hit:

@@ -689,9 +689,11 @@ def main():
             resume_hint="确认集成测试真正执行并产出新报告后重跑 gate_integration.py")
         sys.exit("PHASE 7 FAIL: harness produced no fresh report dir")
     fresh_dir = fresh[-1]
+    # summary_report.xml ONLY from THIS run's fresh dir. Falling back to
+    # reports/latest would parse a previous run's (possibly green) summary while
+    # the freshness check only proved a NEW dir exists — decoupling the invariant
+    # from the bytes parsed. Missing summary in the fresh dir → fail-closed.
     summary = os.path.join(fresh_dir, "summary_report.xml")
-    if not os.path.exists(summary):
-        summary = os.path.join(reports, "latest", "summary_report.xml")
     if not os.path.exists(summary):
         reason = "summary_report.xml missing"
         _record_result(

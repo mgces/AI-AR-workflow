@@ -1762,10 +1762,22 @@ def _changed_paths(state):
     import subprocess
     gdir = resolve_git_dir(state)
     base = state.get("base_commit") or "HEAD"
-    changed = subprocess.run(["git", "-C", gdir, "diff", "--name-only", base],
-                             text=True, capture_output=True).stdout.splitlines()
-    untracked = subprocess.run(["git", "-C", gdir, "ls-files", "--others", "--exclude-standard"],
-                               text=True, capture_output=True).stdout.splitlines()
+    # FAIL-CLOSED: a non-zero git exit (bad git_dir, not a repo, unresolvable base)
+    # must NOT be swallowed into an empty path set — that would collapse the
+    # functional fingerprint to a constant and make the P1 drift check a no-op
+    # (functional code could change and still "match" the lock). Raise instead so
+    # the calling gate/advance aborts rather than locking or passing vacuously.
+    diff = subprocess.run(["git", "-C", gdir, "diff", "--name-only", base],
+                          text=True, capture_output=True)
+    others = subprocess.run(["git", "-C", gdir, "ls-files", "--others", "--exclude-standard"],
+                            text=True, capture_output=True)
+    for label, r in (("git diff", diff), ("git ls-files", others)):
+        if r.returncode != 0:
+            raise RuntimeError(
+                "%s failed in %s (base=%s, rc=%d): %s"
+                % (label, gdir, base, r.returncode, (r.stderr or "").strip()))
+    changed = diff.stdout.splitlines()
+    untracked = others.stdout.splitlines()
     return sorted({p for p in (changed + untracked) if p})
 
 
