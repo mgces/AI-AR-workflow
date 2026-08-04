@@ -180,7 +180,17 @@ def _coverage(contract, gdir, test_paths):
     `TYPED_TEST(`/`TYPED_TEST_P(` macro with the suite as its first argument
     (allowing `::`-qualified names, e.g. `Test::FooManagerTest`). A bare suite
     name in a comment, a string literal, or free text does NOT count: that would
-    let `// FooManagerTest coming soon` pass P3 with zero real test code."""
+    let `// FooManagerTest coming soon` pass P3 with zero real test code.
+
+    On top of suite authorship, each test_case's design-point `point` must be
+    referenced in the file that registers the suite — a `TEST(FooTest, C)`
+    with an empty/TODO body names the suite but never exercises the design
+    intent, so it must not pass. Comments are stripped (a `// TODO 点一` never
+    counts); string/char literals are KEPT, because a Chinese design point is
+    usually asserted as a string literal (ASSERT_STREQ(actual, "点一")) — the
+    assertion IS the implementation. See gl.point_core_tokens /
+    gl.executable_code_text.
+    """
     file_text = _suites_referenced(gdir, test_paths)
     required = [tc.get("gtest") for tc in (contract.get("test_cases") or []) if tc.get("gtest")]
     covered, missing, lines = [], [], []
@@ -188,7 +198,10 @@ def _coverage(contract, gdir, test_paths):
     _GTEST_MACRO_RE = re.compile(
         r"\b(?:TEST|TEST_F|TEST_P|TYPED_TEST|TYPED_TEST_P)\s*\(\s*"
         r"([A-Za-z_][A-Za-z0-9_]*\s*::\s*)*[A-Za-z_][A-Za-z0-9_]*")
-    for gtest in required:
+    for tc in contract.get("test_cases") or []:
+        gtest = tc.get("gtest")
+        if not gtest:
+            continue
         suite = gl.test_target_from_gtest(gtest)
         hit = None
         if suite:
@@ -196,12 +209,22 @@ def _coverage(contract, gdir, test_paths):
                 if _suite_registered(text, suite, _GTEST_MACRO_RE):
                     hit = rel
                     break
-        if hit:
-            covered.append(gtest)
-            lines.append("[OK ] %s -> suite %s in %s" % (gtest, suite, hit))
-        else:
+        if not hit:
             missing.append(gtest)
             lines.append("[MISS] %s -> suite %s not found in any new test file" % (gtest, suite))
+            continue
+        # design-point semantic coverage: the suite file must exercise the point
+        # in executable code (comments/strings stripped). A suite that exists but
+        # never references its point fails the same way as a missing suite.
+        point = tc.get("point")
+        exec_text = gl.executable_code_text(file_text[hit])
+        if not gl.point_covered(point, exec_text):
+            missing.append(gtest)
+            lines.append("[MISS] %s -> suite %s in %s but design point not in executable code"
+                         % (gtest, suite, hit))
+            continue
+        covered.append(gtest)
+        lines.append("[OK ] %s -> suite %s in %s" % (gtest, suite, hit))
     return required, covered, missing, lines
 
 
@@ -340,8 +363,7 @@ def main():
     else:
         gl.write_phase_summary(pdir, PHASE, GATE, "FAIL", reason, checks=problems)
         gl.write_failure_report(pdir, PHASE, GATE, reason, problems=problems,
-                                resume_hint="为每个 test_cases.gtest 写引用其 suite 的新测试文件后"
-                                            "重跑 gate_test_develop.py（不得改功能代码）")
+                                resume_hint="为每个 test_cases.gtest 写引用其 suite 的新测试文件,并确保该测试文件的可执行代码覆盖对应设计点(point)后重跑 gate_test_develop.py(不得改功能代码)")
 
     if verdict == "PASS":
         gl.write_gate_phase_memory_card(

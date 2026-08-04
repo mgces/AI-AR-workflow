@@ -2349,6 +2349,111 @@ def test_target_from_gtest(gtest_id):
     return suite or None
 
 
+# ---------------------------------------------------------------------------
+# Design-point semantic coverage (P3).
+#
+# The signed ar-contract's test_cases[].point is the design intent a test must
+# actually exercise. P3's suite-authorship check only proves a suite of the
+# right NAME exists — `TEST(FooTest, C) { /* TODO */ }` passes it. This layer
+# adds the missing "the DESIGN POINT is really referenced in EXECUTABLE test
+# code" gate: for each test_case, at least one core token of its `point` must
+# appear in the authored test file's code region (comments/strings stripped).
+#
+# It is a NECESSARY-not-sufficient heuristic — same philosophy as the suite
+# check. It blocks the "suite named, assertion never written" ghost test;
+# genuine semantic correctness is still proven by P5 (gtests actually PASS) and
+# P6 (real-device end-to-end). Token matching is dependency-free (no CJK
+# segmenter): ASCII identifiers/words/numbers plus CJK bigrams, minus a small
+# stop set.
+# ---------------------------------------------------------------------------
+
+# Chinese function words that carry no discriminating design intent — dropped
+# from CJK-bigram tokens so a point like "重复请求时返回已有任务" is not
+# "covered" by an incidental "时" or "的" in unrelated test code.
+_CJK_STOP = set("的了和与或在是被把将对为之其这那和以及于且并该本此则即也都还就很")
+_ASCII_STOP = {"the", "and", "for", "with", "when", "then", "that", "this",
+               "return", "returns", "should", "must", "case", "test"}
+_ASCII_TOKEN_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]{1,}|[0-9]{2,}")
+_CJK_CHAR_RE = re.compile(r"[一-鿿]")
+
+
+def point_core_tokens(point):
+    """Extract discriminating tokens from a design-point string, WITHOUT a CJK
+    segmenter. Two token kinds:
+      * ASCII: identifiers / words / multi-digit numbers >=2 chars, minus a
+        small English stop set and lowercased (API names, error codes, taskId…);
+      * CJK: 2-grams over each maximal run of Han characters, minus bigrams
+        made only of stop chars. Bigrams keep matching robust to the different
+        wording a test assertion uses vs. the prose point.
+    Returns a set (may be empty for a point with no usable token — the caller
+    treats an empty token set as trivially covered rather than un-satisfiable)."""
+    if not point:
+        return set()
+    text = str(point)
+    tokens = set()
+    for m in _ASCII_TOKEN_RE.finditer(text):
+        t = m.group(0).lower()
+        # keep numeric tokens (error codes, counts) and non-stop words
+        if t.isdigit() or t not in _ASCII_STOP:
+            tokens.add(t)
+    # CJK bigrams over each contiguous Han run
+    for run in re.findall(r"[一-鿿]+", text):
+        chars = list(run)
+        if len(chars) == 1:
+            if chars[0] not in _CJK_STOP:
+                tokens.add(chars[0])
+            continue
+        for i in range(len(chars) - 1):
+            bg = chars[i] + chars[i + 1]
+            if chars[i] in _CJK_STOP and chars[i + 1] in _CJK_STOP:
+                continue
+            tokens.add(bg)
+    return tokens
+
+
+def executable_code_text(text):
+    """Return `text` with C/C++ comments blanked out, so a token search only
+    sees code + string/char literals. Line comments (//...) and block comments
+    (/*...*/) are removed; string/char literals are KEPT because a Chinese
+    design point is most often asserted as a string literal (ASSERT_STREQ(actual,
+    "重复请求")) — the assertion IS the executable implementation of the point.
+    A `// TODO 点一` comment is the only thing that must NOT count. Deliberately
+    simple/robust — a false-negative (treating code as comment) only makes the
+    gate STRICTER, never weaker."""
+    if not text:
+        return ""
+    out = []
+    i, n = 0, len(text)
+    while i < n:
+        two = text[i:i + 2]
+        if two == "//":
+            j = text.find("\n", i)
+            i = n if j < 0 else j
+        elif two == "/*":
+            j = text.find("*/", i + 2)
+            i = n if j < 0 else j + 2
+        else:
+            out.append(text[i])
+            i += 1
+    return "".join(out)
+
+
+def point_covered(point, exec_text):
+    """True iff at least one core token of `point` appears in `exec_text` (which
+    should already be comment/string-stripped executable code). A point with no
+    usable token is trivially covered (nothing to require). Matching is
+    case-insensitive for ASCII (exec_text is lowered once by the caller for
+    batch use, but this fn lowers defensively)."""
+    tokens = point_core_tokens(point)
+    if not tokens:
+        return True
+    hay = exec_text.lower()
+    for t in tokens:
+        if t in hay:
+            return True
+    return False
+
+
 def collect_test_intent_matrix(contract, changed_files):
     """Derive the per-test-case intent matrix from a signed ar-contract. Shared by
     prepare_test_bundle.py and gate_test_develop.py (moved here in Path B1 so the

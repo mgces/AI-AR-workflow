@@ -142,6 +142,20 @@ class TestB1DevelopSequence(unittest.TestCase):
             # real authored OHOS sources always ship this block.
             f.write("/*\n * Copyright (c) 2026.\n"
                     " * Licensed under the Apache License, Version 2.0 (the \"License\");\n */\n")
+            # the assertion exercises the signed design point "点一" so the
+            # design-point semantic-coverage gate (P3) also passes, not just the
+            # suite-name authorship check.
+            f.write("TEST(%s, Case001) { EXPECT_TRUE(true); ASSERT_STRNE(\"点一\", \"\"); }\n" % suite)
+
+    def _author_test_ignoring_point(self, suite="ATest"):
+        """A suite-named test whose body never references the design point except
+        in comments. Must FAIL the P3 design-point gate even though the suite
+        name is authored."""
+        os.makedirs(os.path.join(self.repo, "test"), exist_ok=True)
+        with open(os.path.join(self.repo, "test", "a_test.cpp"), "w", encoding="utf-8") as f:
+            f.write("/*\n * Copyright (c) 2026.\n"
+                    " * Licensed under the Apache License, Version 2.0 (the \"License\");\n */\n")
+            f.write("// design point: 点一 — asserted below\n")
             f.write("TEST(%s, Case001) { EXPECT_TRUE(true); }\n" % suite)
 
     def _author_comment_only(self, suite="ATest"):
@@ -249,6 +263,31 @@ class TestB1DevelopSequence(unittest.TestCase):
         self.assertIn("ATest.Case001", cp.stdout + cp.stderr)
         ok, _reason, _entry = gl.validate_closing_entry(self.pdir, 3)
         self.assertFalse(ok)
+
+    def test_gate_test_develop_fail_when_design_point_not_in_executable_code(self):
+        # Design-point semantic-coverage gate: a suite-named test whose executable
+        # body never references the signed design point ("点一") must FAIL — it is
+        # a ghost test (right suite, no assertion of the design intent). The point
+        # appearing only in a comment/string does NOT count.
+        self._close_design()
+        self._close_feature_develop()
+        self._author_test_ignoring_point(suite="ATest")
+        cp = self._run("gate_test_develop.py")
+        self.assertNotEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+        self.assertIn("ATest.Case001", cp.stdout + cp.stderr)
+        ok, _reason, _entry = gl.validate_closing_entry(self.pdir, 3)
+        self.assertFalse(ok)
+
+    def test_gate_test_develop_pass_when_design_point_in_executable_code(self):
+        # Positive: the assertion references the design point -> P3 passes.
+        self._close_design()
+        self._close_feature_develop()
+        self._author_test(suite="ATest")
+        cp = self._run("gate_test_develop.py")
+        self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+        ok, reason, entry = gl.validate_closing_entry(self.pdir, 3)
+        self.assertTrue(ok, reason)
+        self.assertEqual(entry["gate"], "gate_test_develop.py")
 
     def test_advance_phase3_allowed_after_authorship_gate(self):
         self._close_design()
