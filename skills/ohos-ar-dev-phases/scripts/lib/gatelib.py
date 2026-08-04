@@ -2478,6 +2478,21 @@ def collect_test_intent_matrix(contract, changed_files):
     return matrix
 
 
+def contract_required_suites(contract):
+    """The set of suite targets that a signed ar-contract's test_cases REQUIRE to
+    be exercised — the suite part of each test_cases[].gtest. Used by P7
+    (gate_integration) to bind its --suites to the design: every suite the design
+    declared must be run in integration, or the "design -> acceptance" chain is
+    broken (a weak model could pass P7 by running arbitrary unrelated suites). A
+    missing / no-test_cases contract yields an empty set (nothing to enforce)."""
+    required = set()
+    for tc in (contract or {}).get("test_cases") or []:
+        suite = test_target_from_gtest(tc.get("gtest"))
+        if suite:
+            required.add(suite)
+    return required
+
+
 def load_signed_contract(pdir):
     """Recover the ar-contract from the HMAC-SIGNED AR_design evidence — the only
     tamper-proof source. Returns (ok, contract, detail).

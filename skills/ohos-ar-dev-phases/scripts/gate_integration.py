@@ -403,7 +403,7 @@ def _record_result(pdir, verdict, reason, arts, *, cmd, exit_code, testtype,
                    fresh_dir=None, quality_ok=None, quality_detail=None,
                    review_ok=None, review_detail=None, downgraded=False,
                    failure_class=None, problems=None, resume_hint=None,
-                   suspect_locations=None):
+                   suspect_locations=None, contract_status=None):
     human_escalation_needed = False
     escalation_reason = ""
     checks = [
@@ -426,6 +426,8 @@ def _record_result(pdir, verdict, reason, arts, *, cmd, exit_code, testtype,
         checks.append("review_ok=%s" % review_ok)
     if downgraded:
         checks.append("quality_gate_downgraded=true")
+    if contract_status:
+        checks.append("contract_status=%s" % contract_status)
     substate_id = _p7_substate_for_result(
         verdict=verdict,
         fresh_dir=fresh_dir,
@@ -451,6 +453,7 @@ def _record_result(pdir, verdict, reason, arts, *, cmd, exit_code, testtype,
             "review_ok": review_ok,
             "review_detail": review_detail,
             "quality_gate_downgraded": downgraded,
+            "contract_status": contract_status,
             "failure_class": failure_class,
             "logical_substate_id": substate_id,
             "logical_substate_name": P7_SUBSTATE_META[substate_id]["name"],
@@ -661,6 +664,41 @@ def main():
     gl.evidence_dir(pdir, 7)
     dt = os.path.join(repo, "test/testfwk/developer_test")
     reports = os.path.join(dt, "reports")
+
+    # CONTRACT SUITE COVERAGE (P7 hard gate): the --suites this gate runs must
+    # cover every suite the signed ar-contract's test_cases declare. This binds
+    # the integration/acceptance step to the design — without it, a weak model
+    # could pass P7 by running arbitrary unrelated suites while the designed
+    # functional points never reach acceptance. Recovered from the HMAC-signed
+    # AR_design, never the working-tree file. absent/bypass -> nothing to
+    # enforce; tampered -> FAIL.
+    c_ok, contract, c_detail = gl.load_signed_contract(pdir)
+    required_suites = gl.contract_required_suites(contract) if c_ok else set()
+    given_suites = set(args.suites)
+    missing_suites = sorted(required_suites - given_suites)
+    contract_status = "ok" if c_ok else ""
+    if c_ok and missing_suites:
+        reason = ("integration suites missing contract-declared test_cases suites: %s "
+                  "(given: %s)" % (", ".join(missing_suites), ", ".join(sorted(given_suites))))
+        _record_result(
+            pdir, "FAIL", reason, [],
+            cmd="gate_integration.py (pre-run: suite coverage check)",
+            exit_code=None, testtype=args.testtype, part=part, suites=args.suites,
+            contract_status="ok",
+            failure_class="integration_suites_missing",
+            problems=["integration must run every suite declared in the ar-contract "
+                      "test_cases: %s" % ", ".join(missing_suites)],
+            resume_hint="把缺失的套件名加进 --suites 后重跑 gate_integration.py")
+        sys.exit("PHASE 7 FAIL: %s" % reason)
+    if not c_ok and c_detail and "tampered" in c_detail:
+        reason = "ar-contract unrecoverable: %s" % c_detail
+        _record_result(
+            pdir, "FAIL", reason, [], cmd="gate_integration.py (pre-run: contract check)",
+            exit_code=None, testtype=args.testtype, part=part, suites=args.suites,
+            contract_status="unrecoverable", failure_class="ar_contract_unrecoverable",
+            problems=["signed ar-contract not recoverable: %s" % c_detail],
+            resume_hint="签名由 gate_design.py 自动生成、严禁手改;重跑 gate_design.py 让它重新生成")
+        sys.exit("PHASE 7 FAIL: %s" % reason)
 
     before = set(glob.glob(os.path.join(reports, "20*")))
     ts_args = " ".join("-ts %s" % s for s in args.suites)

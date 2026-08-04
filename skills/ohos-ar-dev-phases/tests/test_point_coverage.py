@@ -97,5 +97,33 @@ class TestPointCovered(unittest.TestCase):
         self.assertTrue(gl.point_covered("", "ANY CODE"))
 
 
+class TestContractRequiredSuites(unittest.TestCase):
+    def test_suites_from_gtest_ids(self):
+        contract = {"test_cases": [
+            {"gtest": "DuplicateRequestTest.returnsExisting"},
+            {"gtest": "AuthTest.login/0"},
+            {"gtest": "DuplicateRequestTest.dedup"},
+        ]}
+        self.assertEqual(
+            gl.contract_required_suites(contract),
+            {"DuplicateRequestTest", "AuthTest"})
+
+    def test_missing_gtest_ignored(self):
+        contract = {"test_cases": [
+            {"gtest": ""},
+            {"gtest": None},
+            {"gtest": "OnlySuiteNoCase"},
+        ]}
+        # a dotless gtest id IS the suite name (test_target_from_gtest keeps it)
+        self.assertEqual(
+            gl.contract_required_suites(contract), {"OnlySuiteNoCase"})
+
+    def test_no_test_cases_yields_empty(self):
+        self.assertEqual(gl.contract_required_suites({}), set())
+        self.assertEqual(
+            gl.contract_required_suites({"test_cases": []}), set())
+        self.assertEqual(gl.contract_required_suites(None), set())
+
+
 if __name__ == "__main__":
     unittest.main()
