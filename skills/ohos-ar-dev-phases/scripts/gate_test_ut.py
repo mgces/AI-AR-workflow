@@ -409,12 +409,118 @@ def build_target(repo, target, pdir, state):
     return ok, tail_rel
 
 
+def _run_arkts(pdir, state, contract, arts):
+    """P5 ArkTS/Hypium branch (kind==arkts test_cases). Runs the environment
+    profile's ArkTS runner (hap test build + hdc install + aa test / hypium),
+    then requires FRESH per-suite JUnit XMLs in the profile-declared report root
+    and checks contract coverage over them with the same machinery as the gtest
+    branch (passed_gtests / check_gtest_coverage — Hypium ids map 1:1 to
+    classname=suite name=case).
+
+    Fail-closed: if the profile's runner command / report root / glob are still
+    placeholders (UNSET), the branch FAILs with `arkts_runner_unconfigured` and
+    an actionable "configure environments.py" message — an arkts-kind design
+    must never pass P5 without real execution evidence.
+
+    Returns (ok, required, missing, reason_part). The caller aggregates this
+    with the gtest branch (mixed contracts run BOTH; ok is the conjunction)."""
+    suite_ids = [tc["gtest"] for tc in (contract.get("test_cases") or [])
+                 if tc.get("kind") == "arkts" and tc.get("gtest")]
+    if not suite_ids:
+        return True, [], [], ""
+    try:
+        cmd_tmpl = envs.arkts_test_command(state, "{suite}")
+        report_root = envs.arkts_report_root(state)
+        glob_pat = envs.arkts_report_glob(state)
+    except envs.EnvironmentNotConfigured as exc:
+        reason = "arkts test runner not configured: %s" % exc
+        _record_result(
+            pdir, "FAIL", reason, arts,
+            cmd="arkts-runner (unconfigured)", exit_code=None,
+            test_target="arkts", suite=",".join(suite_ids), part="arkts",
+            contract_status="ok", coverage_missing=suite_ids,
+            failure_class="arkts_runner_unconfigured",
+            problems=["environment profile has no arkts_test_template/arkts_report_"
+                      "root/arkts_report_glob"],
+            resume_hint="在 skills/ohos-ar-dev-phases/scripts/lib/environments.py "
+                        "填充该环境的 arkts_test_template / arkts_report_root / "
+                        "arkts_report_glob(真实 hap 测试构建+安装+aa test/hypium "
+                        "runner 命令与报告路径),然后重跑 gate_test_ut.py")
+        # _record_result already emitted the single FAIL manifest entry — exit
+        # here exactly like the gtest branch's fresh_report_missing path, so the
+        # caller never records a second FAIL on top of it.
+        sys.exit("PHASE 5 FAIL: %s" % reason)
+
+    # Freshness proof, mirroring the gtest branch: snapshot the report root
+    # BEFORE the run, then require a NEW artifact. Stale green reports cannot pass.
+    report_root_abs = report_root if os.path.isabs(report_root) else os.path.join(state["repo"], report_root)
+    before = set(glob.glob(os.path.join(report_root_abs, "**", "*.xml"), recursive=True))
+    for suite in suite_ids:
+        cmd = cmd_tmpl.format(suite=suite)
+        print("running arkts suite: %s" % cmd)
+        proc = subprocess.run(cmd, shell=True, cwd=state["repo"], text=True,
+                              capture_output=True)
+        out_rel = "evidence/phase5/arkts_run_stdout_%s.txt" % suite.replace("/", "__")
+        with open(os.path.join(pdir, out_rel), "w", encoding="utf-8") as f:
+            f.write(proc.stdout + "\n----stderr----\n" + proc.stderr)
+        arts.append(out_rel)
+
+    after = set(glob.glob(os.path.join(report_root_abs, "**", "*.xml"), recursive=True))
+    fresh_xmls = sorted(after - before)
+    if not fresh_xmls:
+        reason = "arkts runner produced no fresh JUnit result xml in %s" % report_root
+        _record_result(
+            pdir, "FAIL", reason, arts,
+            cmd="arkts-runner", exit_code=None,
+            test_target="arkts", suite=",".join(suite_ids), part="arkts",
+            contract_status="ok", coverage_missing=suite_ids,
+            failure_class="arkts_fresh_report_missing",
+            problems=["no fresh arkts JUnit result xml produced"],
+            resume_hint="确认 arkts_test_template 实际产出新 JUnit XML(见 "
+                        "arkts_report_root/arkts_report_glob)后重跑 gate_test_ut.py")
+        # single FAIL manifest entry already recorded above — exit, not return,
+        # so the caller cannot stack a second FAIL on top of it.
+        sys.exit("PHASE 5 FAIL: %s" % reason)
+
+    # Snapshot the fresh xmls into evidence (flatten subpaths like the gtest
+    # branch) and check coverage over them.
+    arkts_rels = []
+    for fx in fresh_xmls:
+        sub = os.path.relpath(fx, report_root_abs).replace(os.sep, "__")
+        rrel = "evidence/phase5/arkts_result_%s" % sub
+        shutil.copy(fx, os.path.join(pdir, rrel))
+        arts.append(rrel)
+        arkts_rels.append(rrel)
+    passed = passed_gtests([os.path.join(pdir, r) for r in arkts_rels])
+    cov_ok, missing = check_gtest_coverage(suite_ids, passed)
+    cov_rel = "evidence/phase5/arkts_coverage.txt"
+    with open(os.path.join(pdir, cov_rel), "w", encoding="utf-8") as f:
+        f.write("required arkts (from ar-contract): %d\npassed in fresh report: %d\n\n"
+                % (len(suite_ids), len(passed)))
+        for g in suite_ids:
+            f.write("[%s] %s\n" % ("OK " if g in passed else "MISS", g))
+        if missing:
+            f.write("\nMISSING passed cases: %s\n" % ", ".join(missing))
+    arts.append(cov_rel)
+    reason = "arkts_cov=%d/%d" % (len(suite_ids) - len(missing), len(suite_ids))
+    if missing:
+        reason += " MISSING: %s" % ", ".join(missing)
+    return cov_ok, suite_ids, missing, reason
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--pipeline-dir")
     ap.add_argument("--test-target", required=True, help="GN unittest target to build")
     ap.add_argument("--part", help="testpart; default from pipeline.json test.part")
     ap.add_argument("--suite", required=True, help="testsuit name (binary name)")
+    ap.add_argument("--kind", default="auto", choices=("auto", "gtest", "arkts"),
+                    help="which test-kind branch to run. auto = derive from the "
+                         "signed contract: any test_cases[].kind==arkts runs the "
+                         "ArkTS branch (plus the gtest branch when the contract "
+                         "also has gtest entries); all-gtest contracts run the "
+                         "legacy gtest path unchanged. gtest/arkts force one "
+                         "branch (legacy/CI pinning).")
     args = ap.parse_args()
     pdir = gl.pipeline_dir(args.pipeline_dir)
     state = gl.load_state(pdir)
@@ -547,27 +653,46 @@ def main():
     # signed ar-contract must appear as a PASSED case in the freshly-produced
     # result xmls. This verifies the tests were written and verified exactly per
     # the AR_design test points. Recovered from the HMAC-signed AR_design.
+    # Kind dispatch: gtest entries are covered by the developer_test run above;
+    # arkts entries by _run_arkts (the environment profile's Hypium runner). A
+    # mixed contract runs BOTH branches; coverage_ok is their conjunction.
     c_ok, contract, c_detail = gl.load_signed_contract(pdir)
     coverage_ok = True
     missing = []
     contract_status = "ok" if c_ok else ""
     if c_ok:
         required = [c["gtest"] for c in contract["test_cases"]]
+        # gtest-kind entries only — verified against the developer_test report.
+        gtest_ids = [tc["gtest"] for tc in contract["test_cases"]
+                     if tc.get("kind", "gtest") == "gtest" and tc.get("gtest")]
         result_paths = [os.path.join(pdir, r) for r in result_rels]
         passed = passed_gtests(result_paths)
-        coverage_ok, missing = check_gtest_coverage(required, passed)
+        gcov_ok, gmissing = check_gtest_coverage(gtest_ids, passed)
         cov_rel = "evidence/phase5/gtest_coverage.txt"
         with open(os.path.join(pdir, cov_rel), "w", encoding="utf-8") as f:
-            f.write("required (from ar-contract): %d\npassed in report: %d\n\n"
-                    % (len(required), len(passed)))
-            for g in required:
+            f.write("required gtest (from ar-contract): %d\npassed in report: %d\n\n"
+                    % (len(gtest_ids), len(passed)))
+            for g in gtest_ids:
                 f.write("[%s] %s\n" % ("OK " if g in passed else "MISS", g))
-            if missing:
-                f.write("\nMISSING passed cases: %s\n" % ", ".join(missing))
+            if gmissing:
+                f.write("\nMISSING passed cases: %s\n" % ", ".join(gmissing))
         arts.append(cov_rel)
-        reason += " gtest_cov=%d/%d" % (len(required) - len(missing), len(required))
-        if missing:
-            reason += " MISSING: %s" % ", ".join(missing)
+        reason += " gtest_cov=%d/%d" % (len(gtest_ids) - len(gmissing), len(gtest_ids))
+        if gmissing:
+            reason += " MISSING: %s" % ", ".join(gmissing)
+
+        # ArkTS branch: runs whenever the contract (or --kind) demands it.
+        arkts_required = [tc["gtest"] for tc in contract["test_cases"]
+                          if tc.get("kind") == "arkts" and tc.get("gtest")]
+        want_arkts = args.kind == "arkts" or (
+            args.kind == "auto" and bool(arkts_required))
+        if want_arkts:
+            aok, _, amissing, areason = _run_arkts(pdir, state, contract, arts)
+            coverage_ok = coverage_ok and aok
+            missing = gmissing + amissing
+            reason += " " + areason
+        else:
+            missing = list(gmissing)
     elif "absent" in c_detail:
         contract_status = "absent"
         reason += " (AR-CONTRACT-BYPASS: %s)" % c_detail

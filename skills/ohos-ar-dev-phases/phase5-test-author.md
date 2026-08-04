@@ -24,7 +24,7 @@
 ## 门控
 ```bash
 python3 $S/gate_test_ut.py --pipeline-dir "$PDIR" \
-    --test-target <gn_unittest_target> --suite <suite_bin_name> [--part <testpart>]
+    --test-target <gn_unittest_target> --suite <suite_bin_name> [--part <testpart>] [--kind auto|gtest|arkts]
 ```
 脚本逻辑:
 1. 编测试目标 `./build.sh ... --build-target <Test>`(同样校验成功横幅);
@@ -40,9 +40,22 @@ python3 $S/gate_test_ut.py --pipeline-dir "$PDIR" \
    契约 `gtest` 需精确等于 XML 的 `classname.name`(参数化名如 `Suite/0.Case`)。契约缺失(legacy/
    `--allow-missing-contract`)→ 跳过覆盖并留 bypass 标;契约被篡改 → FAIL。
 
+**按 kind 分派(`--kind`,2026-08 新增):** 缺省 `auto` 从签名契约推导 —— 任一
+`test_cases[].kind=="arkts"` 就走 **ArkTS/Hypium 执行分支**(同时保留上述 gtest 分支,混合契约
+两条都跑、覆盖为合取);全 gtest 契约与今天逐字节一致。`--kind gtest|arkts` 强制单分支
+(遗留/CI pinning)。ArkTS 分支:
+- 命令来自环境 profile `environments.py` 的 `arkts_test_template`(hap 测试构建 + `hdc install`
+  + `aa test`/hypium runner,可引用 `{suite}`)、`arkts_report_root`/`arkts_report_glob`(每套件一个
+  JUnit XML);三键未填(占位 `UNSET`)→ FAIL `arkts_runner_unconfigured`,报错指向 environments.py,
+  **绝不静默放行**。
+- 新鲜度纪律同 gtest 分支:run 前快照报告根,要求**新** JUnit XML;覆盖复用 `passed_gtests`/
+  `check_gtest_coverage`(Hypium id 1:1 映射 `classname=套件 name=用例`,required 就是 arkts 条目的
+  `gtest`);证据 `arkts_result_*.xml` + `arkts_coverage.txt`。
+
 ## 通过条件
 本次确有新报告目录 **且** `tests>0 && failures==0 && errors==0`
-**且** 契约声明的每个 `test_cases[].gtest` 都在本次通过用例集中(全量覆盖)。
+**且** 契约声明的每个 `test_cases[].gtest` 都在本次通过用例集中(全量覆盖;
+含 arkts 分支时,其每个套件的用例也须出现在新鲜的 JUnit XML 通过集里)。
 
 ## 通过后
 ```bash

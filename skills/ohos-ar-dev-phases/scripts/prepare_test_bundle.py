@@ -99,7 +99,7 @@ def _pipeline_internal_prefixes(pdir, state):
     return prefixes
 
 
-def _verify_feature_freeze(pdir, state, freeze):
+def _verify_feature_freeze(pdir, state, freeze, contract=None):
     current_paths = gl._changed_paths(state)
     prefixes = _pipeline_internal_prefixes(pdir, state)
     if prefixes:
@@ -107,7 +107,10 @@ def _verify_feature_freeze(pdir, state, freeze):
                          if not any(p == pref[:-1] or p.startswith(pref) for pref in prefixes)]
     frozen_paths = freeze.get("locked_all_paths") or freeze.get("changed_files") or []
     extra = [p for p in current_paths if p not in frozen_paths]
-    non_test = [p for p in extra if gl.classify_path(p) != "test"]
+    # gl.is_allowed_test_path relaxes the test-only rule for contract-declared
+    # ArkTS app-test project files (kind==arkts); with no arkts test_cases it is
+    # exactly classify_path == "test", so gtest-only runs behave identically.
+    non_test = [p for p in extra if not gl.is_allowed_test_path(p, contract)]
     if non_test:
         _block(
             pdir,
@@ -315,7 +318,7 @@ def run_prepare(pdir, state):
     signed manifest record or mutates pipeline.json phase status."""
     freeze = _load_freeze_snapshot(pdir)
     contract = _load_signed_contract_or_fail(pdir)
-    changed_files, expanded_paths = _verify_feature_freeze(pdir, state, freeze)
+    changed_files, expanded_paths = _verify_feature_freeze(pdir, state, freeze, contract)
     matrix_items = gl.collect_test_intent_matrix(contract, changed_files)
     bundle_revision = gl.entry_id(gl.last_entry_for_phase(pdir, 2) or {"phase": 2})[:12]
     scope_payload = _signed_test_scope_payload(

@@ -70,6 +70,12 @@ class EnvironmentNotConfigured(RuntimeError):
 #   success_re     compile-success banner regex (str)
 #   error_re       compile-error banner regex (str)
 #   upload_backend "gitcode" | "gerrit"
+#   arkts_*        ArkTS/Hypium app-test runner config (P5 kind==arkts branch).
+#                  All three are UNSET placeholders: the real per-repo runner
+#                  command (hap test build + hdc install + aa test / hypium) and
+#                  its report root/glob must be filled before an arkts-kind
+#                  contract can PASS P5. Until then the gate FAILs closed with a
+#                  "configure environments.py" message — never a silent pass.
 # ----------------------------------------------------------------------------
 def _ohos_profile():
     return {
@@ -83,6 +89,9 @@ def _ohos_profile():
         # look like a valid source root for this environment. Verbatim from the
         # old hardcoded P0 check.
         "root_markers": ["build.sh", "test/testfwk/developer_test"],
+        "arkts_test_template": UNSET,  # TODO: hap 测试构建+安装+aa test/hypium runner
+        "arkts_report_root": UNSET,    # TODO: runner 报告输出目录(相对 repo 根)
+        "arkts_report_glob": UNSET,    # TODO: 每套件一个 JUnit XML 的 glob(相对报告根)
     }
 
 
@@ -118,6 +127,9 @@ def _harmonyos_profile(component_type):
             "error_re": _HMOS_ERROR_RE,
             "upload_backend": "gerrit",
             "root_markers": UNSET,    # TODO: 系统组件 源码根标志(相对路径列表)
+            "arkts_test_template": UNSET,
+            "arkts_report_root": UNSET,
+            "arkts_report_glob": UNSET,
         },
         "chip": {
             "product": UNSET,        # TODO: HarmonyOS 芯片组件 product form
@@ -132,6 +144,9 @@ def _harmonyos_profile(component_type):
             "error_re": _HMOS_ERROR_RE,
             "upload_backend": "gerrit",
             "root_markers": UNSET,    # TODO: 芯片组件 源码根标志(相对路径列表)
+            "arkts_test_template": UNSET,
+            "arkts_report_root": UNSET,
+            "arkts_report_glob": UNSET,
         },
     }[component_type]
 
@@ -238,6 +253,29 @@ def root_markers(state):
     environments.py' message rather than guessing a HarmonyOS layout."""
     return _require(_profile(state).get("root_markers", UNSET),
                     state, "root_markers")
+
+
+def arkts_test_command(state, suite):
+    """Full shell command that builds + installs + runs the ArkTS/Hypium app
+    tests for a kind==arkts contract (P5 branch). May reference {suite} (a
+    Hypium describe name). The profile value is a placeholder (UNSET) until the
+    owning environment fills in the real runner — the gate FAILs closed with
+    this "configure environments.py" message rather than silently passing an
+    ArkTS design without execution."""
+    tmpl = _require(_profile(state)["arkts_test_template"], state, "arkts_test_template")
+    return tmpl.format(suite=suite)
+
+
+def arkts_report_root(state):
+    """Absolute report root the ArkTS runner writes fresh JUnit XMLs into."""
+    rel = _require(_profile(state)["arkts_report_root"], state, "arkts_report_root")
+    return rel
+
+
+def arkts_report_glob(state):
+    """Glob (relative to the arkts report root) matching one JUnit XML per
+    Hypium suite — e.g. 'result/**/*.xml'."""
+    return _require(_profile(state)["arkts_report_glob"], state, "arkts_report_glob")
 
 
 def derive_product(environment, component_type_value):

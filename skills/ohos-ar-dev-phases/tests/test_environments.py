@@ -157,5 +157,31 @@ class TestHarmonyOSPlaceholders(unittest.TestCase):
         self.assertEqual(envs.derive_product("openharmony", None), "rk3568")
 
 
+class TestArktsRunnerAccessors(unittest.TestCase):
+    """The P5 ArkTS branch runner is profile-carried and fail-closed: every
+    environment ships the three arkts keys as UNSET placeholders, so the
+    accessors HARD-FAIL (EnvironmentNotConfigured) until a real hap-test build +
+    hypium runner is filled in. This mirrors build_template's discipline — an
+    arkts-kind design must never pass P5 without real execution evidence."""
+
+    def test_openharmony_arkts_keys_unconfigured(self):
+        st = {"environment": "openharmony"}
+        with self.assertRaises(envs.EnvironmentNotConfigured):
+            envs.arkts_test_command(st, "EntryAbilityTest")
+        with self.assertRaises(envs.EnvironmentNotConfigured):
+            envs.arkts_report_root(st)
+        with self.assertRaises(envs.EnvironmentNotConfigured):
+            envs.arkts_report_glob(st)
+
+    def test_harmonyos_arkts_keys_unconfigured(self):
+        st = {"environment": "harmonyos", "component_type": "system"}
+        with self.assertRaises(envs.EnvironmentNotConfigured):
+            envs.arkts_test_command(st, "EntryAbilityTest")
+        with self.assertRaises(envs.EnvironmentNotConfigured):
+            envs.arkts_report_root(st)
+        with self.assertRaises(envs.EnvironmentNotConfigured):
+            envs.arkts_report_glob(st)
+
+
 if __name__ == "__main__":
     unittest.main()

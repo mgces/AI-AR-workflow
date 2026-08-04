@@ -365,6 +365,11 @@ def render_test(pdir, state, entries):
     cov = read_ev(pdir, "evidence/phase5/gtest_coverage.txt")
     body += _section("合约 gtest 覆盖",
                      _pre(cov) if cov else "_未产出(合约缺失或 legacy bypass)_")
+    # ArkTS/Hypium 覆盖(仅当契约声明了 kind==arkts 的测试用例;纯 gtest 契约
+    # 无此产物,降级显示而不 traceback)
+    acov = read_ev(pdir, "evidence/phase5/arkts_coverage.txt")
+    if acov:
+        body += _section("合约 ArkTS(Hypium)覆盖", _pre(acov))
 
     # ---- P6 端到端功能测试(关键点)----
     ev6 = phase_verdict(entries, 6)

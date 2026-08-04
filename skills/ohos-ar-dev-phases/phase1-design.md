@@ -37,6 +37,28 @@ python3 openharmony-knowledge-base/tools/search/kb_search.py \
 三个键均为**非空数组**:`build_artifacts` 为编译产物路径(相对仓根,或相对 `out/rk3568`);
 `test_cases[].gtest` 形如 `Suite.Case`(允许 `/` 支持参数化名 `Suite/0.Case`);
 `device_cases[].marker` 为真机日志里只会在该用例真实成功时出现的标记字符串。
+
+**测试用例语言形态(`test_cases[].kind`,2026-08 新增):** 缺省 `"gtest"` = C++ gtest
+(与上述完全一致,存量契约零变化);`"arkts"` = ArkTS/Hypium 应用测试。kind 为纯增量字段,
+缺省向后兼容,一个契约可**混合**两种 kind:
+
+```json
+"test_cases": [
+  {"point": "处理超时", "gtest": "FooTest.HandleTimeout_001"},
+  {"point": "页面跳转", "kind": "arkts",
+   "gtest": "EntryAbilityTest.abilityPageTest",
+   "suite": "EntryAbilityTest",
+   "file": "entry/src/ohosTest/ets/test/Ability.test.ets"}
+]
+```
+
+arkts 条目的 `gtest` 仍是必填的 `Suite.Case` 身份(Hypium `describe('套件')` → Suite、
+`it('用例')` → Case,1:1 映射),但校验更宽松:允许 CJK/下划线/数字,两个半段内无空白即可
+(如 `"套件.用例"`)。两个**可选**辅助字段:`suite` = 确切的 describe 名(可含 CJK/空格,
+P3 authorship 匹配用)、`file` = ArkTS 测试源文件/目录路径(相对仓根,P3 特征冻结放行的
+锚点)。未知 `kind` 值 → 契约 FAIL(关死)。下游分派:P3 按 kind 检查 authorship(gtest 走
+`TEST/TEST_F` 宏,arkts 走 `describe()/it()`),P5 按 kind 执行(gtest 走 developer_test,
+arkts 走环境 profile 的 Hypium runner),P7 的套件绑定只管 gtest 套件。
 ```bash
 python3 $S/gate_design.py --pipeline-dir "$PDIR"   # 默认读 $PDIR/AR_design.md
 ```

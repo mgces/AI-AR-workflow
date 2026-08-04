@@ -61,6 +61,15 @@ HYGIENE_GUARD = gl.resolve_dep("code-ruleset-style-check/scripts/file_hygiene_gu
                                env_var="FILE_HYGIENE_GUARD")
 CXX_EXTS = (".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx")
 
+# Hypium/ArkTS authorship (kind==arkts), parallel to the C++ gtest macros below:
+# describe('<suite>', ...) registers the suite, it('<case>', ...) the case. The
+# quoted name may contain CJK/spaces, so we capture the string literal verbatim
+# (1-200 chars) and match the suite name exactly (case-sensitive, as Hypium is).
+_HYPIUM_DESCRIBE_RE = re.compile(
+    r"\bdescribe\s*\(\s*(?:\"|\'|`)(?P<suite>[^\"\'`]{1,200})(?:\"|\'|`)")
+_HYPIUM_IT_RE = re.compile(
+    r"\bit\s*\(\s*(?:\"|\'|`)(?P<case>[^\"\'`]{1,200})(?:\"|\'|`)")
+
 
 def _rule_check_new_tests(pdir, gdir, new_tests):
     """Run the code_ruleset guard (rules-only) over newly authored C/C++ test
@@ -72,6 +81,8 @@ def _rule_check_new_tests(pdir, gdir, new_tests):
     if not cxx:
         with open(out, "w", encoding="utf-8") as f:
             f.write("no C/C++ test files authored — code_ruleset rule check has no scope\n")
+            f.write("(non-C/C++ test files, e.g. ArkTS .ets/.ts, are not covered by the "
+                    "C/C++ code-ruleset workbook and are deliberately skipped)\n")
         return [], rel
     if not os.path.exists(STYLE_GUARD):
         with open(out, "w", encoding="utf-8") as f:
@@ -173,14 +184,29 @@ def _suite_registered(text, suite, macro_re):
     return False
 
 
+def _arkts_suite_registered(text, suite, file_rel):
+    """True iff `suite` is the name of a real `describe('<suite>', ...)` call in
+    the ArkTS test source. Matching runs on the COMMENT-STRIPPED text (via
+    gl.executable_code_text) so a `// describe('X', ...)` comment never counts —
+    the same fail-closed parity as the gtest _suite_registered. The suite name is
+    matched verbatim (case-sensitive); a bare mention in a string or free text
+    never matches."""
+    exec_text = gl.executable_code_text(text)
+    for m in _HYPIUM_DESCRIBE_RE.finditer(exec_text):
+        if m.group("suite") == suite:
+            return True
+    return False
+
+
 def _coverage(contract, gdir, test_paths):
     """Return (required_gtests, covered, missing, evidence_lines). A required
     gtest is covered when some NEW test file's text references its suite AND that
-    reference is a real gtest registration — a `TEST(`/`TEST_F(`/`TEST_P(`/
-    `TYPED_TEST(`/`TYPED_TEST_P(` macro with the suite as its first argument
-    (allowing `::`-qualified names, e.g. `Test::FooManagerTest`). A bare suite
-    name in a comment, a string literal, or free text does NOT count: that would
-    let `// FooManagerTest coming soon` pass P3 with zero real test code.
+    reference is a real registration — for kind==gtest a `TEST(`/`TEST_F(`/
+    `TEST_P(`/`TYPED_TEST(`/`TYPED_TEST_P(` macro with the suite as its first
+    argument (allowing `::`-qualified names); for kind==arkts a Hypium
+    `describe('<suite>', ...)` call in a new test file (preferring the
+    contract-declared `file` when present). A bare suite name in a comment, a
+    string literal, or free text does NOT count.
 
     On top of suite authorship, each test_case's design-point `point` must be
     referenced in the file that registers the suite — a `TEST(FooTest, C)`
@@ -188,8 +214,9 @@ def _coverage(contract, gdir, test_paths):
     intent, so it must not pass. Comments are stripped (a `// TODO 点一` never
     counts); string/char literals are KEPT, because a Chinese design point is
     usually asserted as a string literal (ASSERT_STREQ(actual, "点一")) — the
-    assertion IS the implementation. See gl.point_core_tokens /
-    gl.executable_code_text.
+    assertion IS the implementation. This holds for ArkTS too (// and /* */ are
+    its comment syntax; expect(...).assertEqual("点一") keeps the literal). See
+    gl.point_core_tokens / gl.executable_code_text.
     """
     file_text = _suites_referenced(gdir, test_paths)
     required = [tc.get("gtest") for tc in (contract.get("test_cases") or []) if tc.get("gtest")]
@@ -202,16 +229,35 @@ def _coverage(contract, gdir, test_paths):
         gtest = tc.get("gtest")
         if not gtest:
             continue
+        kind = tc.get("kind", "gtest")
         suite = gl.test_target_from_gtest(gtest)
         hit = None
         if suite:
-            for rel, text in file_text.items():
-                if _suite_registered(text, suite, _GTEST_MACRO_RE):
-                    hit = rel
-                    break
+            if kind == "arkts":
+                # Prefer the contract-declared file: the freeze-relaxed source is
+                # the one that must actually author the suite. Otherwise scan all
+                # new test files.
+                declared = (tc.get("file") or "").strip().lstrip("./")
+                if declared and declared in file_text:
+                    if _arkts_suite_registered(file_text[declared], suite, declared):
+                        hit = declared
+                if hit is None:
+                    for rel, text in file_text.items():
+                        if _arkts_suite_registered(text, suite, rel):
+                            hit = rel
+                            break
+            else:
+                for rel, text in file_text.items():
+                    if _suite_registered(text, suite, _GTEST_MACRO_RE):
+                        hit = rel
+                        break
         if not hit:
             missing.append(gtest)
-            lines.append("[MISS] %s -> suite %s not found in any new test file" % (gtest, suite))
+            if kind == "arkts":
+                lines.append("[MISS] arkts %s -> describe('%s') not found in any new ArkTS test file"
+                             % (gtest, suite))
+            else:
+                lines.append("[MISS] %s -> suite %s not found in any new test file" % (gtest, suite))
             continue
         # design-point semantic coverage: the suite file must exercise the point
         # in executable code (comments/strings stripped). A suite that exists but
@@ -224,7 +270,10 @@ def _coverage(contract, gdir, test_paths):
                          % (gtest, suite, hit))
             continue
         covered.append(gtest)
-        lines.append("[OK ] %s -> suite %s in %s" % (gtest, suite, hit))
+        if kind == "arkts":
+            lines.append("[OK ] arkts %s -> describe('%s') in %s" % (gtest, suite, hit))
+        else:
+            lines.append("[OK ] %s -> suite %s in %s" % (gtest, suite, hit))
     return required, covered, missing, lines
 
 
@@ -249,9 +298,16 @@ def main():
                                 resume_hint="先跑 gate_develop.py 完成 phase 2 冻结")
         sys.exit("PHASE 3 FAIL: development_freeze_snapshot missing — run gate_develop.py first")
 
+    # CONTRACT AUTHORSHIP COVERAGE: recover the contract from the SIGNED design.
+    # Loaded up front so the feature-freeze check below can relax the test-only
+    # rule for contract-declared ArkTS test projects.
+    c_ok, contract, c_detail = gl.load_signed_contract(pdir)
+    contract_status = "ok" if c_ok else ""
+
     # FEATURE FREEZE: after phase 2 locked the functional fingerprint, only NEW
-    # test files may appear. Any non-test path added since freeze is a violation
-    # (mirrors prepare_test_bundle._verify_feature_freeze, reused directly).
+    # test files may appear (plus contract-declared ArkTS app-test project files
+    # for kind==arkts test_cases). Any other path added since freeze is a
+    # violation (mirrors prepare_test_bundle._verify_feature_freeze).
     current_paths = gl._changed_paths(state)
     prefixes = ptb._pipeline_internal_prefixes(pdir, state)
     if prefixes:
@@ -259,7 +315,7 @@ def main():
                          if not any(p == pref[:-1] or p.startswith(pref) for pref in prefixes)]
     frozen_paths = freeze.get("locked_all_paths") or freeze.get("changed_files") or []
     non_test_extra = [p for p in current_paths
-                      if p not in frozen_paths and gl.classify_path(p) != "test"]
+                      if p not in frozen_paths and not gl.is_allowed_test_path(p, contract)]
 
     new_tests = _new_test_paths(state, freeze)
     files_rel = "evidence/phase3/new_test_files.txt"

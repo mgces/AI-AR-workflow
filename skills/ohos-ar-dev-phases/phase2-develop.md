@@ -70,3 +70,8 @@ python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 2
 (此刻的全量路径基线)。语义正是"功能开发完、写测试前冻结功能代码"。此后 P3–P8 任一**功能代码/配置内容**
 漂移都会被 `advance` 拒绝(`check_code_drift` 从 phase 3 起生效);测试文件留到 P3 新增(见 phase3-test-develop)。
 推进到物理 phase 3(test-develop)。
+
+**语言无关:** 功能指纹与冻结对**任何语言的 functional 代码**一视同仁 —— 若该 AR 的 P1 设计声明了
+`test_cases[].kind=="arkts"`,其 ArkTS 应用功能代码(`entry/src/main/...`、`AppScope/...` 等)同样算
+functional、在冻结锁内;P3 只对契约**声明的** arkts 测试工程路径(`file` 指向的 `entry/src/ohosTest/...`)
+放行新增,应用功能 `.ets` 的增改仍是 freeze 违规(与 C++ 功能改动同待遇)。

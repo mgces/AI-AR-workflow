@@ -1823,9 +1823,14 @@ def code_fingerprint(state):
 # component's test/ dir, so a test/ BUILD.gn is a test file, not functional).
 # ----------------------------------------------------------------------------
 _TEST_DIR_MARKERS = ("/test/", "/tests/", "/unittest/", "/moduletest/",
-                     "/fuzztest/", "/systemtest/")
+                     "/fuzztest/", "/systemtest/",
+                     "/ohostest/", "/src/ohostest/")
+# .ets/.ts were added (2026-08) so an ArkTS application test file
+# (e.g. entry/src/ohosTest/ets/test/Ability.test.ets) classifies as "test";
+# the name segment must still look test-ish (test_*, *_test, *fuzz*), so
+# functional app code like src/logger.ets stays "code".
 _TEST_NAME_RE = re.compile(
-    r"(?:^|/)(?:test_[^/]+|[^/]*_?test|[^/]*fuzz[^/]*)\.(?:c|cc|cpp|cxx|h|hpp)$",
+    r"(?:^|/)(?:test_[^/]+|[^/]*_?test|[^/]*fuzz[^/]*)\.(?:c|cc|cpp|cxx|h|hpp|ets|ts)$",
     re.IGNORECASE)
 
 
@@ -1839,6 +1844,32 @@ def classify_path(rel):
     if _TEST_NAME_RE.search(p):
         return "test"
     return "code"
+
+
+def is_allowed_test_path(rel, contract):
+    """True iff `rel` may be added in a test-only phase (P3/P5/P6/P7 freeze).
+
+    A path is allowed when it classifies as a test path (classify_path ==
+    "test"), OR when the signed contract declares an ArkTS test source file/dir
+    whose path prefixes or equals `rel`. The second clause is what lets a
+    kind==arkts application-test project (multi-file, e.g. entry/src/ohosTest/…)
+    through the freeze: the relaxation is anchored to the CONTRACT-DECLARED path,
+    not to a naming heuristic, so arbitrary functional app code (e.g.
+    entry/src/main/ets/…, never declared) stays "code" and still trips the
+    freeze. With no arkts test_cases (or no contract) this returns classify_path
+    exactly — zero behavior change for gtest-only runs."""
+    if classify_path(rel) == "test":
+        return True
+    for tc in (contract or {}).get("test_cases") or []:
+        if tc.get("kind") != "arkts":
+            continue
+        d = (tc.get("file") or "").strip().lstrip("./")
+        if not d:
+            continue
+        d = d.rstrip("/")
+        if rel == d or rel.startswith(d + "/") or d.startswith(rel.rstrip("/") + "/"):
+            return True
+    return False
 
 
 def split_paths(paths):
@@ -2035,6 +2066,14 @@ _AR_CONTRACT_FENCE_RE = re.compile(
 # Suite.Case, allowing '/' in either half for GTest typed/value-parameterized
 # names (e.g. FooTest/0.Bar, Foo.Bar/2).
 _GTEST_ID_RE = re.compile(r"^[A-Za-z_][\w/]*\.[A-Za-z_][\w/]*$")
+# ArkTS/Hypium identity in the same "Suite.Case" slot: describe('套件') ->
+# Suite, it('用例') -> Case. Looser than _GTEST_ID_RE because a Hypium suite/case
+# may contain CJK, spaces-free identifiers, underscores, digits — but still no
+# whitespace inside either half and no '/' parameterization.
+_ARKTS_ID_RE = re.compile(r"^[^\s.]+\.[^\s.]+$")
+# Declared test kinds. "gtest" is the default (missing/empty -> gtest); anything
+# outside this set is a parse error (fail-closed, like a bad gtest id).
+TEST_KINDS = ("gtest", "arkts")
 
 
 def _nonempty_str(v):
@@ -2176,14 +2215,42 @@ def parse_ar_contract(text):
             return False, None, "%s must be an object" % where
         if not _nonempty_str(c.get("point")):
             return False, None, "%s.point must be a non-empty string" % where
+        # kind defaults to "gtest" (backward compatible); an unknown kind is a
+        # parse error so a weak model can't smuggle an unhandled language shape.
+        kind = c.get("kind")
+        if kind is None or (isinstance(kind, str) and not kind.strip()):
+            kind = "gtest"
+        else:
+            kind = kind.strip()
+            if kind not in TEST_KINDS:
+                return False, None, (
+                    "%s.kind must be one of %s (got %r)" % (where, TEST_KINDS, kind))
         g = c.get("gtest")
-        if not _nonempty_str(g) or not _GTEST_ID_RE.match(g.strip()):
-            return False, None, "%s.gtest must be a 'Suite.Case' id" % where
+        id_re = _GTEST_ID_RE if kind == "gtest" else _ARKTS_ID_RE
+        if not _nonempty_str(g) or not id_re.match(g.strip()):
+            if kind == "gtest":
+                return False, None, "%s.gtest must be a 'Suite.Case' id" % where
+            return False, None, (
+                "%s.gtest must be a 'Suite.Case' id (describe/it names, "
+                "no whitespace inside either half)" % where)
         ok, fr, det = _for_requirements(c)
         if not ok:
             return False, None, "%s.%s" % (where, det)
-        tc.append({"id": c.get("id"), "point": c["point"].strip(),
-                   "gtest": g.strip(), "for_requirements": fr})
+        entry = {"id": c.get("id"), "point": c["point"].strip(),
+                 "gtest": g.strip(), "for_requirements": fr, "kind": kind}
+        if kind == "arkts":
+            # ArkTS-only optional fields. `suite` is the exact describe() name
+            # used for authorship matching (may contain CJK/spaces); `file` is the
+            # repo-relative test source path the P3 freeze relaxation anchors to.
+            if c.get("suite") is not None:
+                if not _nonempty_str(c.get("suite")):
+                    return False, None, "%s.suite must be a non-empty string" % where
+                entry["suite"] = c["suite"].strip()
+            if c.get("file") is not None:
+                if not _nonempty_str(c.get("file")):
+                    return False, None, "%s.file must be a non-empty string" % where
+                entry["file"] = c["file"].strip().lstrip("./")
+        tc.append(entry)
 
     # ---- device_cases (v1 desc/marker + v2 provenance/side-effect) ----------
     dc_raw = data.get("device_cases")
@@ -2341,7 +2408,9 @@ def check_contract_closure(contract):
 
 
 def test_target_from_gtest(gtest_id):
-    """Suite name from a "Suite.Case" gtest id (drops the '.Case' and any '/param')."""
+    """Suite name from a "Suite.Case" gtest id (drops the '.Case' and any '/param').
+    Works for an ArkTS identity too: Hypium describe('套件')/it('用例') map 1:1 to
+    the same "Suite.Case" slot, so the suite half is extracted the same way."""
     if not gtest_id:
         return None
     suite = str(gtest_id).split(".", 1)[0].strip()
@@ -2467,6 +2536,7 @@ def collect_test_intent_matrix(contract, changed_files):
             "expected_target": test_target_from_gtest(gtest_id),
             "expected_suite": test_target_from_gtest(gtest_id),
             "expected_gtest": gtest_id,
+            "kind": tc.get("kind", "gtest"),
             "depends_on_files": changed_files,
             "negative_cases": [],
             "device_followup_needed": bool(tc.get("for_requirements") and any(
@@ -2484,9 +2554,15 @@ def contract_required_suites(contract):
     (gate_integration) to bind its --suites to the design: every suite the design
     declared must be run in integration, or the "design -> acceptance" chain is
     broken (a weak model could pass P7 by running arbitrary unrelated suites). A
-    missing / no-test_cases contract yields an empty set (nothing to enforce)."""
+    missing / no-test_cases contract yields an empty set (nothing to enforce).
+
+    ArkTS (kind==arkts) entries are SKIPPED: their suites are P5-domain (the
+    Hypium app-test runner), not P7 MST integration suites — binding them here
+    would force an unrelated integration run for an ArkTS-only design."""
     required = set()
     for tc in (contract or {}).get("test_cases") or []:
+        if tc.get("kind") == "arkts":
+            continue
         suite = test_target_from_gtest(tc.get("gtest"))
         if suite:
             required.add(suite)

@@ -170,7 +170,7 @@ P8_SUBSTATE_NAMES = {
 }
 
 
-def check_code_drift(state, phase):
+def check_code_drift(state, phase, contract=None):
     """Return (ok, message). Enforces, for phase>=3:
 
     The functional fingerprint is locked at the close of phase 2
@@ -181,6 +181,11 @@ def check_code_drift(state, phase):
         any edit/add/delete of functional code or config is drift;
       * in TEST_ONLY_PHASES, every path that appeared since the P2 lock must be a
         test path → only independent test files may be added.
+
+    `contract` (optional, the signed ar-contract) additionally relaxes the
+    test-only rule for contract-declared ArkTS app-test project files
+    (kind==arkts); with None or an arkts-free contract the rule is exactly
+    classify_path == "test" — zero behavior change for gtest-only runs.
 
     Legacy runs — only the old full-tree `code_fingerprint` was locked:
       * fall back to the original whole-tree drift check (behavior unchanged).
@@ -201,7 +206,7 @@ def check_code_drift(state, phase):
         if phase in TEST_ONLY_PHASES:
             base_paths = set(state.get("locked_all_paths") or [])
             new_paths = [p for p in gl._changed_paths(state) if p not in base_paths]
-            non_test = [p for p in new_paths if gl.classify_path(p) != "test"]
+            non_test = [p for p in new_paths if not gl.is_allowed_test_path(p, contract)]
             if non_test:
                 return False, (
                     "REFUSED: phase %d may add INDEPENDENT TEST files only, but new "
@@ -1269,9 +1274,18 @@ def cmd_advance(args):
     # CODE-DRIFT CONTROL: once phase 2 (feature_develop) locks the functional
     # fingerprint, every later phase is validated against THAT functional code.
     # Test files added in phase 3+ do not trip it, but functional edits do (and
-    # non-test additions are refused in test-only phases). Legacy runs fall back
-    # to the whole-tree check.
-    ok_drift, drift_msg = check_code_drift(state, phase)
+    # non-test additions are refused in test-only phases). The signed contract is
+    # loaded best-effort so contract-declared ArkTS app-test projects pass the
+    # test-only rule; a missing contract keeps the pre-change behavior. Legacy
+    # runs fall back to the whole-tree check.
+    contract = None
+    try:
+        ok_c, contract, _ = gl.load_signed_contract(pdir)
+        if not ok_c:
+            contract = None
+    except Exception:
+        contract = None
+    ok_drift, drift_msg = check_code_drift(state, phase, contract)
     if not ok_drift:
         sys.exit(drift_msg)
 
@@ -1523,7 +1537,14 @@ def cmd_verify_all(args):
     # advance. Floor at phase 3 because the fingerprint is only locked once phase 2
     # (feature_develop) closes, and drift is only meaningful from phase 3 onward.
     cur = state.get("current_phase", 0)
-    drift_ok, _ = check_code_drift(state, max(cur, 3))
+    contract = None
+    try:
+        ok_c, contract, _ = gl.load_signed_contract(pdir)
+        if not ok_c:
+            contract = None
+    except Exception:
+        contract = None
+    drift_ok, _ = check_code_drift(state, max(cur, 3), contract)
     if not drift_ok:
         for pe in state["phases"]:
             if pe["id"] >= 1:

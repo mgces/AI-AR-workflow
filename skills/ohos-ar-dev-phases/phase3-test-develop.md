@@ -13,9 +13,21 @@
 
 ## ⚠️ 只增独立测试的硬约束(功能冻结)
 phase 2 闭合已锁定功能指纹。本阶段起**只允许新增独立测试文件**(路径规则:`test/`、`unittest/`、
-`moduletest/`、`fuzztest/` 目录,或 `*Test.cpp`/`test_*.cpp` 等命名;test 目录下的 BUILD.gn 也算测试)。
+`moduletest/`、`fuzztest/` 目录,或 `*Test.cpp`/`test_*.cpp` 等命名;test 目录下的 BUILD.gn 也算测试),
+**或契约声明的 ArkTS 应用测试工程文件**(见下「按 kind 分派」:`test_cases[].kind=="arkts"` 时,
+`file` 声明的 `entry/src/ohosTest/...` 目录/文件放行)。
 **任何自 phase-2 冻结以来新增的非测试路径都判违规**(复用 `prepare_test_bundle._verify_feature_freeze`);
 改动被测组件功能代码/配置会被 `advance` 以功能指纹漂移拒绝,必须 `advance.py reset` 回 P1 重走。
+
+## 测试语言形态:按 kind 分派(2026-08 新增)
+契约 `test_cases[].kind` 决定 authorship 判据:
+- **gtest(缺省,存量不变)**:suite 必须被某个新测试文件里的真实 `TEST`/`TEST_F`/`TEST_P`/
+  `TYPED_TEST`/`TYPED_TEST_P` 宏注册(允许 `::` 限定名),裸出现于注释/字符串/自由文本不计数。
+- **arkts**:suite 必须被某个新 ArkTS 测试文件里的真实 `describe('<suite>', ...)` 调用注册
+  (先剥注释再匹配,`// describe(...)` 注释永不计数);`it('<case>', ...)` 承载用例。契约
+  `file` 声明了具体文件时**优先检查该文件**——放行进来的工程文件必须真的承载套件。
+两种 kind 的设计点(`point`)覆盖机制相同:核心 token 必须出现在该测试文件的**可执行代码区**
+(注释剥离、字符串/字符字面量保留;`expect(...).assertEqual("点一")` 即实现,`// TODO 点一` 不算)。
 
 ## 🚨 动手前必做:先研究被测代码,别想当然写测试
 写测试前**必须先读懂 P2 冻结的功能实现**,不允许对着 `AR_design.md` 的测试框架凭空造断言。
@@ -56,7 +68,9 @@ python3 $S/gate_test_develop.py --pipeline-dir "$PDIR"
 2. 校验功能冻结:自冻结以来只能出现新测试文件,任何新增非测试路径 → FAIL。
 3. 从**签名设计**恢复 ar-contract:absent(legacy/无契约)→ `AR-CONTRACT-BYPASS` PASS;
    tampered(设计条目在但证据/契约损坏)→ FAIL-closed;ok → 强制全量编写覆盖。
-4. 覆盖判据:每个契约 `test_cases[].gtest` 的 suite(`test_target_from_gtest`)须在某个新测试文件文本中出现;
+4. 覆盖判据:**按 kind 分派**(gtest 走 `TEST` 宏注册,arkts 走 `describe()/it()` 于声明
+   `file`),每个契约 `test_cases[].gtest` 的 suite 须在某个新测试文件文本中**真实注册**;
+   再叠加设计点语义覆盖(该文件可执行代码区含 `point` 核心 token);
    缺任一即 FAIL,写 `evidence/phase3/authorship_coverage.txt` 列命中/缺失。
 5. 把新测试源文件快照进 `evidence/phase3/authored/<flattened>` 并作为签名 artifact(sha256)绑进
    manifest——后续删/改测试会被 `validate_closing_entry`(advance 闭合 phase 3 时)抓到。
