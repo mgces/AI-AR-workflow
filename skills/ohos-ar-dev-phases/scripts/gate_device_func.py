@@ -629,11 +629,31 @@ def phase4_failure_class(*, marker_ok, runtime_ok, e2e_ok, artifact_ok,
     return "device_functional_verdict_failed"
 
 
+_CONN_ENV = {}  # connection env recorded by P0, replayed for fresh windows
+
+
+def _merged_env(extra=None):
+    """os.environ + the P0-recorded connection env (HDC_HOST_OVERRIDE /
+    HDC_WIN_PORT / HDC_BIN / DEVICE_SERIAL). A FRESH WINDOW that forgot to
+    re-export still reaches the SAME device this run was pinned to. Explicit
+    env in the current shell WINS (setdefault), so P0's config only fills gaps —
+    never overrides a deliberate override the operator set this window."""
+    env = dict(os.environ)
+    for k, v in (_CONN_ENV or {}).items():
+        if v:
+            env.setdefault(k, v)
+    if extra:
+        env.update(extra)
+    return env
+
+
 def sh(snippet, **kw):
     """Run a snippet with device.sh sourced; return CompletedProcess.
     Device logs (hilog) can contain non-UTF-8 bytes, so decode tolerantly with
-    errors='replace' to avoid crashing the capture (verdict logic is unchanged)."""
+    errors='replace' to avoid crashing the capture (verdict logic is unchanged).
+    Defaults env to the P0-recorded connection so a fresh window still connects."""
     full = '. "%s"\n%s' % (DEVICE_SH, snippet)
+    kw.setdefault("env", _merged_env())
     return subprocess.run(["bash", "-c", full], text=True, errors="replace",
                           capture_output=True, **kw)
 
@@ -690,6 +710,21 @@ def main():
 
     pdir = gl.pipeline_dir(args.pipeline_dir)
     gl.evidence_dir(pdir, phase)
+
+    # A FRESH WINDOW inherits none of the process-level hdc connection env. P0
+    # recorded what this run used into pipeline.json (connection_env / the probed
+    # device_serial); load it so device.sh reaches the SAME device even when the
+    # operator forgot to re-export. Explicit env in this shell still wins (see
+    # _merged_env). Best-effort: a legacy run without connection_env just relies
+    # on the current env, exactly as before.
+    global _CONN_ENV
+    try:
+        _st = gl.load_state(pdir)
+        _CONN_ENV = dict(_st.get("connection_env") or {})
+        if _st.get("device_serial"):
+            _CONN_ENV.setdefault("DEVICE_SERIAL", _st["device_serial"])
+    except Exception:
+        _CONN_ENV = {}
 
     # CONTRACT COVERAGE (P4 hard gate): the signed ar-contract's device_cases[]
     # markers must ALL appear in the captured hilog window. Recovered from the
@@ -771,7 +806,7 @@ def main():
     if args.deploy_script:
         with open(args.deploy_script) as f:
             dep = f.read()
-        cp = sh(dep, env={**os.environ, "GATE_NONCE": nonce})
+        cp = sh(dep, env=_merged_env({"GATE_NONCE": nonce}))
         record("deploy", cp, cmd=args.deploy_script)
         if cp.returncode != 0:
             _fail(pdir, phase, nonce, cmds_log, "deploy script exited %d" % cp.returncode,
@@ -828,7 +863,7 @@ def main():
     # 3. drive the functional scenario (nonce exported for the component to echo)
     with open(args.scenario_script) as f:
         scen = f.read()
-    cp = sh(scen, env={**os.environ, "GATE_NONCE": nonce})
+    cp = sh(scen, env=_merged_env({"GATE_NONCE": nonce}))
     record("scenario", cp, cmd=args.scenario_script)
     if cp.returncode != 0:
         _fail(pdir, phase, nonce, cmds_log, "scenario script exited %d" % cp.returncode,

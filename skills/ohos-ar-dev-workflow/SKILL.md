@@ -136,6 +136,10 @@ python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-workflow/scripts/refresh_todo.py" --pipel
 > ```
 > `resume` 会:定位 PDIR → 刷新 `todo.md`(每阶段做什么/调哪个技能/怎么做 + AR_design 派生细项)
 > → 打印当前阶段与**下一步必做命令** + `!! PIPELINE NOT DONE ... DO NOT STOP` 横幅。
+> **它还会回放本 run 的 hdc 连接环境**(P0 存进 `pipeline.json` 的 `connection_env`):新窗口
+> 不继承 `HDC_HOST_OVERRIDE`/`HDC_WIN_PORT`/`DEVICE_SERIAL` 等进程级变量,`resume` 会明确打印
+> `export ...` 让你在碰真机前补上(桥接/远端还需那台电脑的 hdc server 仍开着)。真机门控也会自动
+> 回灌这些值兜底(当前窗口显式设的优先)。
 > 照它输出的命令继续【做事 → 跑门控 → advance】循环即可,**读 `todo.md` 拿每阶段详细做法**。
 > `resume` 拿到 PDIR 后,可再跑 `verify-all` 重校验已通过阶段(被篡改则降级回退):
 > ```bash

@@ -159,6 +159,12 @@ PHASE 0 FAIL — '<dir>' does not look like a <env> source root (missing: ...)
 - `specs/initialized.flag`(记录仓路径、产品、连接方式、探测到的序列号、检查时间)。
 - `specs/pipeline/ACTIVE`(活跃 run 指针,存当前 PDIR)——**新窗口/换 agent 一键自举的锚**:
   任何窗口跑 `advance.py resume` 即读它定位 PDIR、刷新 todo、打印下一步,无需知道 run-id。
+- **连接环境回放**:P0 把本 run 实际用的 hdc 连接环境变量(`HDC_HOST_OVERRIDE` / `HDC_WIN_PORT` /
+  `HDC_BIN` / 探到的 `DEVICE_SERIAL`)**存进 `pipeline.json` 的 `connection_env`**(同时写进
+  `evidence/phase0/env.json`)。这些是**进程级环境变量,新窗口不继承**;`resume` 会读回并明确打印
+  "新窗口请先 `export ...` 再碰真机",真机门控(`gate_device_func.py`)也会**自动回灌**它们
+  (当前窗口显式设的仍优先),这样换窗口不会连错设备/连不上。桥接/远端连接仍需【插着设备那台电脑】
+  上的 hdc server 还开着。
 - 之后由 `ohos-ar-dev-workflow` 为每个 AR 在 `specs/pipeline/{date}-{slug}/` 起独立流水线。
 
 > 本技能负责首次环境就绪与 flag 落盘;P0 `$S/gate_env_init.py` 负责每次运行的可验证能力预检

@@ -293,12 +293,29 @@ def main():
         state["device_serial"] = serial
         gl.save_state(pdir, state)
 
+    # Persist the CONNECTION env this run used, so a FRESH WINDOW can replay it.
+    # HDC_HOST_OVERRIDE / HDC_WIN_PORT / HDC_BIN / DEVICE_SERIAL are process-level
+    # env vars — a new shell loses them. We record exactly which ones were set
+    # (values, not just a label) into pipeline.json; `resume` reads them back and
+    # tells the operator what to `export` before touching the device again. Only
+    # non-empty vars are stored; native-USB runs store an empty dict (nothing to
+    # re-export). This is CONFIG (how to reach the device), not signed evidence.
+    conn_env = {k: os.environ[k] for k in
+                ("HDC_HOST_OVERRIDE", "HDC_WIN_PORT", "HDC_BIN", "DEVICE_SERIAL")
+                if os.environ.get(k)}
+    if serial and "DEVICE_SERIAL" not in conn_env:
+        conn_env["DEVICE_SERIAL"] = serial  # pin the probed serial for replay
+    if state.get("connection_env") != conn_env:
+        state["connection_env"] = conn_env
+        gl.save_state(pdir, state)
+
     report = {
         "repo": repo, "git_dir": gdir, "head": head,
         "hdc_bin": hdc_bin, "device_serial": serial or None,
         "connection": ("override=%s" % os.environ["HDC_HOST_OVERRIDE"]) if os.environ.get("HDC_HOST_OVERRIDE")
                       else ("wsl_bridge_port=%s" % os.environ["HDC_WIN_PORT"]) if os.environ.get("HDC_WIN_PORT")
                       else "native_hdc",
+        "connection_env": conn_env,
         "checks": [{"name": n, "kind": k, "ok": ok, "detail": d, "phases": ph}
                    for (n, k, ok, d, ph) in checks],
     }

@@ -1591,7 +1591,36 @@ def cmd_resume(args):
     if cur >= gl.MAX_PHASE and state["phases"][gl.MAX_PHASE]["status"] == "passed":
         print("pipeline COMPLETE.")
         return
+    _print_connection_env(state)
     _print_next_step_banner(pdir, cur, payload)
+
+
+def _print_connection_env(state):
+    """A FRESH WINDOW inherits none of the process-level hdc connection env
+    (HDC_HOST_OVERRIDE / HDC_WIN_PORT / HDC_BIN / DEVICE_SERIAL). P0 recorded
+    what this run used into state['connection_env']; replay it here so the
+    operator re-exports the SAME connection instead of guessing. Native-USB runs
+    stored nothing to re-export — say so, don't nag."""
+    conn = (state or {}).get("connection_env") or {}
+    already = {k: v for k, v in conn.items() if os.environ.get(k) == v}
+    if not conn:
+        # P0 either used native USB, or predates connection_env (legacy run).
+        if not state.get("device_serial"):
+            return
+        print("\n-- 设备连接 --")
+        print("本 run P0 探到设备序列号 DEVICE_SERIAL=%s(原生 USB/本地 daemon,无需额外 export)。"
+              % state["device_serial"])
+        return
+    print("\n-- 设备连接(新窗口不继承,真机阶段前先 export)--")
+    if len(already) == len(conn):
+        print("当前窗口的连接环境已与本 run 一致,无需改动:")
+    for k, v in conn.items():
+        mark = "  ✓ 已设置" if os.environ.get(k) == v else "  ⚠ 未设置 → 请执行"
+        print("%s: export %s=%s" % (mark, k, v))
+    if any(os.environ.get(k) != v for k, v in conn.items()):
+        if "HDC_WIN_PORT" in conn or "HDC_HOST_OVERRIDE" in conn:
+            print("  提示:上面是 WSL 桥接/远端连接,还需【插着设备那台电脑】上的 hdc server 仍在运行"
+                  "(hdc -m -s 0.0.0.0:<port> start);挂了就让用户重启并把 IP:端口报给你。")
 
 
 def _refresh_todo_best_effort(pdir):

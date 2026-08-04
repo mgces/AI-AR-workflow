@@ -116,6 +116,55 @@ class TestActivePointerAndResume(unittest.TestCase):
         self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
         self.assertIn("PDIR=%s" % self.pdir, cp.stdout)
 
+    def _load_state(self):
+        import json
+        with open(os.path.join(self.pdir, "pipeline.json"), encoding="utf-8") as f:
+            return json.load(f)
+
+    def _save_state(self, state):
+        import json
+        with open(os.path.join(self.pdir, "pipeline.json"), "w", encoding="utf-8") as f:
+            json.dump(state, f)
+
+    def test_resume_replays_bridge_connection_env(self):
+        # A fresh window inherits none of the hdc bridge env. When P0 recorded a
+        # WSL-bridge / remote connection, resume must tell the operator exactly
+        # what to re-export (values, not just names).
+        self._init()
+        st = self._load_state()
+        st["connection_env"] = {"HDC_WIN_PORT": "10086",
+                                "DEVICE_SERIAL": "SN-42"}
+        self._save_state(st)
+        cp = self._resume("--repo", self.repo)  # _resume strips OHOS_ROOT/env
+        self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+        self.assertIn("设备连接", cp.stdout)
+        self.assertIn("export HDC_WIN_PORT=10086", cp.stdout)
+        self.assertIn("export DEVICE_SERIAL=SN-42", cp.stdout)
+        # bridge runs need the far-side hdc server still up
+        self.assertIn("hdc -m -s", cp.stdout)
+
+    def test_resume_marks_already_set_conn_var(self):
+        self._init()
+        st = self._load_state()
+        st["connection_env"] = {"HDC_HOST_OVERRIDE": "1.2.3.4:10086"}
+        self._save_state(st)
+        cp = self._resume("--repo", self.repo,
+                          env={"HDC_HOST_OVERRIDE": "1.2.3.4:10086"})
+        self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+        self.assertIn("✓ 已设置", cp.stdout)
+
+    def test_resume_native_usb_no_export_nag(self):
+        # No connection_env, but a probed serial -> say so plainly, no export list.
+        self._init()
+        st = self._load_state()
+        st["connection_env"] = {}
+        st["device_serial"] = "USB-SN"
+        self._save_state(st)
+        cp = self._resume("--repo", self.repo)
+        self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+        self.assertIn("USB-SN", cp.stdout)
+        self.assertNotIn("请执行", cp.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()
