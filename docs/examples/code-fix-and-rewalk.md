@@ -29,8 +29,8 @@ python3 $S/advance.py --pipeline-dir "$PDIR" reset --reason "P5 发现功能 bug
 3. **P1b 代码开发**:按新签名设计改代码,跑 `gate_develop.py` 闭合时**重锁功能指纹**
 4. **P3 测试开发**:契约每个 gtest suite 出现在新测试文件(若需新测试)
 5. **P4 编译**:真跑 build.sh
-6. **P5 单测**:developer_test 跑通
-7. **P6 真机**:部署 + scenario + hilog + 人工 consent
+6. **P5 单元测试**:developer_test 跑通
+7. **P6 端到端功能测试**:部署 + scenario + hilog + 人工 consent
 8. **P7 质量**:覆盖率/性能/功耗/稳定性 + review 零问题 + 人工 consent
 9. **P8 上库**:本地自检 + commit + push + PR + PR review + CI + 人工 consent
 

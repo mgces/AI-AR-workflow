@@ -70,7 +70,7 @@ python3 $S/advance.py --pipeline-dir "$PDIR" consent --phase 6 --token <人>
 - 部署的 sha256 与主机产物一致
 - 抗伪造三层证明是否可信
 
-通过后渲染 `reports/device_functional.md` + `reports/test_report.md`(P5 单测 + P6 真机关键证据聚合)。
+通过后渲染 `reports/device_functional.md` + `reports/test_report.md`(P5 单元测试 + P6 端到端关键证据聚合)。
 
 ## 常见误区
 
@@ -81,7 +81,7 @@ python3 $S/advance.py --pipeline-dir "$PDIR" consent --phase 6 --token <人>
 
 ## 延伸阅读
 
-- [P6 真机功能阶段](/workflow/phase-6-device) — 抗伪造三层与人工确认
+- [P6 端到端功能测试阶段](/workflow/phase-6-device) — 抗伪造三层与人工确认
 - [Skill 实战:真机调试 hdc](/skill-playbooks/device-debug-and-hdc) — hdc 连接与抓取
 - [Skill 实战:增量构建与刷机](/skill-playbooks/build-and-flash) — 部署到设备
 - [门控契约](/reference/gate-contract) — gate_device_func 契约细节

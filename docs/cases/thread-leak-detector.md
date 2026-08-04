@@ -52,5 +52,5 @@ OpenHarmony 研发中，线程泄漏是常见可靠性问题：应用创建线�
 ## 延伸阅读
 
 - [新增功能端到端示例](/examples/new-feature-end-to-end) — 通用端到端流程
-- [P6 真机功能阶段](/workflow/phase-6-device) — 真机 scenario 与 marker 思路
+- [P6 端到端功能测试阶段](/workflow/phase-6-device) — 真机 scenario 与 marker 思路
 - [根 README 示例 AR](https://atomgit.com) — 本案例的 AR 原文出处

@@ -53,7 +53,7 @@ hdc shell dd if=/data/local/tmp/<组件> of=<系统路径>
 | 阶段 | skill | 做什么 |
 |---|---|---|
 | P4 编译 | `ohos-build-flash` | 增量构建产物 |
-| P6 真机 | `ohos-build-flash` + `ohos-dev-hdc-command-usage` | 部署到设备 + scenario + hilog |
+| P6 端到端功能测试 | `ohos-build-flash` + `ohos-dev-hdc-command-usage` | 部署到设备 + scenario + hilog |
 
 ## 常见误区
 
@@ -63,7 +63,7 @@ hdc shell dd if=/data/local/tmp/<组件> of=<系统路径>
 
 ## 延伸阅读
 
-- [P6 真机功能阶段](/workflow/phase-6-device) — 真机门控与抗伪造三层
+- [P6 端到端功能测试阶段](/workflow/phase-6-device) — 真机门控与抗伪造三层
 - [真机调试 hdc](/skill-playbooks/device-debug-and-hdc) — 与 build-flash 的协作
 - [编译与诊断](/skill-playbooks/build-and-diagnosis) — build-flash 在 P2 的角色
 - [真机验证示例](/examples/device-verification-example) — deploy + scenario + marker

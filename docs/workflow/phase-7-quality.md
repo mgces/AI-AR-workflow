@@ -52,10 +52,10 @@ python3 $S/advance.py --pipeline-dir "$PDIR" consent --phase 7 --token <人>
 
 ## 顺序边界
 
-P7 在 P6 真机之后、P8 上库之前:
+P7 在 P6 端到端功能测试之后、P8 上库之前:
 
 ```
-P6 真机功能 → consent → P7 质量验证 → consent → P8 上库
+P6 端到端功能测试 → consent → P7 质量验证 → consent → P8 上库
 ```
 
 ## 常见 skill 参与 P7

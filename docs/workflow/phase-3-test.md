@@ -1,6 +1,6 @@
 # P3 测试开发
 
-> 本页拆解 P3(物理 phase 3 测试开发)——为什么只能新增独立测试文件、如何生成 UT、如何验证 `test_cases[].gtest` 编写覆盖、`ohos-test-ut-generation` 如何配合 workflow。单测**执行**见 [P5 单测执行](/workflow/phase-5-test-ut)。
+> 本页拆解 P3(物理 phase 3 测试开发)——为什么只能新增独立测试文件、如何生成 UT、如何验证 `test_cases[].gtest` 编写覆盖、`ohos-test-ut-generation` 如何配合 workflow。单测**执行**见 [P5 单元测试](/workflow/phase-5-test-ut)。
 
 ## 阶段定位
 
@@ -11,7 +11,7 @@ P3 是测试**编写**验证阶段——在编译前证明测试代码已写完,
 | 阶段 | 证明什么 | 门控 |
 |---|---|---|
 | P3 测试开发(物理 phase 3) | 测试**编写**覆盖(每个 gtest suite 出现在新测试文件) | `gate_test_develop.py` |
-| P5 单测执行(物理 phase 5) | 测试**执行**覆盖(每个 gtest 通过) | `gate_test_ut.py` |
+| P5 单元测试(物理 phase 5) | 测试**执行**覆盖(每个 gtest 通过) | `gate_test_ut.py` |
 
 ## 为什么只能新增独立测试文件
 

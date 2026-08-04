@@ -59,7 +59,7 @@
 
 P6/P7/P8 PASS 后编排器跑 `render_report.py --kind test|device|quality|summary` 渲染各产**单个**聚合 `.md`:
 
-- `test_report.md` — P6 通过后渲染,P5 单测 + P6 真机关键证据聚合
+- `test_report.md` — P6 通过后渲染,P5 单元测试 + P6 端到端关键证据聚合
 - `device_functional.md` — 真机功能完整报告
 - `quality.md` — 覆盖率/性能/功耗/稳定性 + 代码 review(六段聚合)
 - `summary.md` — 上库汇总(背景/设计/修改/用例/结果)

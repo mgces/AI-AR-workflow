@@ -53,8 +53,8 @@ hdc file send <新组件> <系统路径>
 | 阶段 | skill | 做什么 |
 |---|---|---|
 | P0 环境预检 | `lib/device.sh` | 真机在线 + 序列号回填 |
-| P6 真机 | `ohos-dev-hdc-command-usage` | 部署 + scenario + hilog |
-| P6 真机 | `ohos-build-flash` | 增量构建 + 部署 |
+| P6 端到端功能测试 | `ohos-dev-hdc-command-usage` | 部署 + scenario + hilog |
+| P6 端到端功能测试 | `ohos-build-flash` | 增量构建 + 部署 |
 
 抗伪造三层证明(由 `gate_device_func.py` 校验):
 
@@ -70,7 +70,7 @@ hdc file send <新组件> <系统路径>
 
 ## 延伸阅读
 
-- [P6 真机功能阶段](/workflow/phase-6-device) — 抗伪造三层与人工确认
+- [P6 端到端功能测试阶段](/workflow/phase-6-device) — 抗伪造三层与人工确认
 - [增量构建与刷机](/skill-playbooks/build-and-flash) — 与 hdc 的协作
 - [真机验证示例](/examples/device-verification-example) — deploy/scenario/marker 思路
 - [关键命令](/reference/key-commands) — hdc 常用命令速查

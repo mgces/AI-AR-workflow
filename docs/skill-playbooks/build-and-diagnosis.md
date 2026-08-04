@@ -37,7 +37,7 @@
 |---|---|---|
 | P4 编译 | `ohos-dev-build-execution-diagnosis` | 跑 build.sh,捕获横幅 |
 | P4 编译 | `ohos-build-flash` | 增量构建产物(若需要) |
-| P6 真机 | `ohos-build-flash` | 部署到设备 |
+| P6 端到端功能测试 | `ohos-build-flash` | 部署到设备 |
 
 ## 典型输入输出
 

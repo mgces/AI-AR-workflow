@@ -1,10 +1,12 @@
-# P6 真机功能
+# P6 端到端功能测试
 
-> 本页拆解 P6(物理 phase 6)真机阶段如何理解、deploy/scenario/runtime/e2e marker、为什么必须人工确认、hdc skill 与 flash skill 怎样协作。
+> 本页拆解 P6(物理 phase 6)端到端阶段如何理解、deploy/scenario/runtime/e2e marker、为什么必须人工确认、hdc skill 与 flash skill 怎样协作。
 
-## 真机阶段如何理解
+## 端到端阶段如何理解
 
-P6 是真机功能验证阶段——把编译产物部署到真机,跑 scenario 脚本触发改动代码,抓取真机 hilog 证明功能真的在设备上跑起来了。门控脚本 `gate_device_func.py`(emit 6)。
+P6 是端到端功能验证阶段——把编译产物部署到真机,跑 scenario 脚本从真实入口触发改动代码,抓取真机 hilog 证明功能真的在设备上跑起来了。门控脚本 `gate_device_func.py`(emit 6)。
+
+> 📌 P5 与 P6 都在**真机**上跑,区别是"单元 vs 端到端",不是"离线 vs 真机"。P5 白盒逐个 gtest 验单元逻辑;P6 黑盒从真实入口触发验端到端功能 + 抗伪造 + 人工确认(见 [P5 单元测试](/workflow/phase-5-test-ut))。
 
 设备 RTC 错乱,新鲜度不靠时间戳,而靠 per-run **nonce** + `/proc/uptime` 单调锚 + 内容切窗 + sha256。
 
@@ -57,7 +59,7 @@ python3 $S/advance.py --pipeline-dir "$PDIR" consent --phase 6 --token <人>
 
 没令牌时 `advance` 会 HOLD。这是为了确保真机真实结果被人工核对,不是脚本"看起来通过"。
 
-通过后渲染 `reports/device_functional.md` + `reports/test_report.md`(P5 单测 + P6 真机关键证据聚合)。
+通过后渲染 `reports/device_functional.md` + `reports/test_report.md`(P5 单元测试 + P6 端到端关键证据聚合)。
 
 ## hdc skill 与 flash skill 怎样协作
 
@@ -68,10 +70,10 @@ python3 $S/advance.py --pipeline-dir "$PDIR" consent --phase 6 --token <人>
 
 ## 顺序边界
 
-P6 在 P5 单测之后、P7 质量之前:
+P6 在 P5 单元测试之后、P7 质量之前:
 
 ```
-P5 单测执行 → P6 真机功能 → consent → P7 质量验证
+P5 单元测试 → P6 端到端功能测试 → consent → P7 质量验证
 ```
 
 ## 常见误区

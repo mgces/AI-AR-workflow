@@ -43,8 +43,8 @@ features:
     linkText: 查看 Skill 组合拳
 
   - icon: 📱
-    title: 真机与质量验证
-    details: 真机功能验证叠加进程溯源、副作用断言、负对照差分三层抗伪造证明；质量阶段覆盖覆盖率、性能、功耗、稳定性与代码 review。
+    title: 端到端与质量验证
+    details: 端到端功能验证叠加进程溯源、副作用断言、负对照差分三层抗伪造证明；质量阶段覆盖覆盖率、性能、功耗、稳定性与代码 review。
     link: /workflow/phase-6-device
     linkText: 查看真机功能阶段
 

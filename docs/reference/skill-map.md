@@ -11,8 +11,8 @@
 | P2 开发 | `ohos-dev-sa-codegen` / `ohos-dev-napi-module` / `code-ruleset-style-check` / `tdd-enforcer` / `ohos-code-skeletons` | 代码开发与门控 |
 | P3 测试开发 | `ohos-test-ut-generation` / `tdd-enforcer` / `code-ruleset-style-check` | 单测生成（只增独立测试） |
 | P4 编译 | `ohos-dev-build-execution-diagnosis` / `ohos-build-flash` | 编译与诊断 |
-| P5 单测执行 | `ohos-test-ut-generation` / `tdd-enforcer` | developer_test 跑通 |
-| P6 真机 | `ohos-build-flash` / `ohos-dev-hdc-command-usage` | 部署 + scenario + hilog |
+| P5 单元测试 | `ohos-test-ut-generation` / `tdd-enforcer` | developer_test 跑通 |
+| P6 端到端功能测试 | `ohos-build-flash` / `ohos-dev-hdc-command-usage` | 部署 + scenario + hilog |
 | P7 质量 | `ohos-build-flash` / developer_test(MST) / `ohos-test-ut-generation` / coverage / performance / power / stability / `code-ruleset-style-check` / `ohos-dev-security-code-review` | 质量验证与 review |
 | P8 上库 | `ohos-ci-gitcode-cli-usage` / `ohos-dev-gitcode-pr-review` / `ohos-dev-security-code-review` / `ohos-ci-openharmony-ci-analysis` | 上库与 review |
 

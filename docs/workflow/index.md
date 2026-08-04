@@ -30,12 +30,12 @@
    │      PASS ──▶ advance --phase 4                                                     │
    └──────────────────────────┼───────────────────────────────────────────┘
                               ▼
-   ┌── P5 单测执行 gate_test_ut.py ── 编测试目标 + 本次新建报告 + tests>0,fail==0,err==0 ─┐
+   ┌── P5 单元测试 gate_test_ut.py ── 编测试目标 + 本次新建报告 + tests>0,fail==0,err==0 ─┐
    │      + 契约每个 test_cases[].gtest 通过(执行覆盖)                                  │
    │      PASS ──▶ advance --phase 5                                                     │
    └──────────────────────────┼───────────────────────────────────────────┘
                               ▼
-   ┌── P6 真机 gate_device_func.py ── 部署 sha256 一致 + hilog 含 nonce/marker/e2e + ────┐
+   ┌── P6 端到端 gate_device_func.py ── 部署 sha256 一致 + hilog 含 nonce/marker/e2e + ──┐
    │      uptime 单调 ── 证据 PASS ──▶【停:人工核对真机结果】── consent ──▶ advance       │
    └──────────────────────────┼───────────────────────────────────────────┘
                               ▼
@@ -62,8 +62,8 @@
 | [P2 代码开发](/workflow/phase-2-build) | 2 | `gate_develop.py` | 按签名设计写代码;闭合锁功能指纹 |
 | [P3 测试开发](/workflow/phase-3-test) | 3 | `gate_test_develop.py` | 测试开发(编写覆盖) |
 | [P4 编译](/workflow/phase-4-build) | 4 | `gate_build.py` | 真实编译验证 |
-| [P5 单测执行](/workflow/phase-5-test-ut) | 5 | `gate_test_ut.py` | 单测执行验证(执行覆盖) |
-| [P6 真机功能](/workflow/phase-6-device) | 6 | `gate_device_func.py` | 真机功能验证(抗伪造三层) |
+| [P5 单元测试](/workflow/phase-5-test-ut) | 5 | `gate_test_ut.py` | 单元测试执行验证(执行覆盖) |
+| [P6 端到端功能测试](/workflow/phase-6-device) | 6 | `gate_device_func.py` | 端到端功能验证(抗伪造三层) |
 | [P7 质量验证](/workflow/phase-7-quality) | 7 | `gate_integration.py` | 覆盖率/性能/功耗/稳定性/review |
 | [P8 上库](/workflow/phase-8-upload) | 8 | `gate_upload_ci.py` | commit → PR → CI |
 

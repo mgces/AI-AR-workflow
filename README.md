@@ -4,7 +4,7 @@
 OHOS(rk3568,C/C++ 系统组件)的完整研发生命周期,直到代码上库:
 
 ```
-设计固化 → 代码开发 → 测试用例编写 → 编译验证 → 单测执行验证 → 真机功能测试 → 功能/覆盖率/性能/功耗/稳定性验证 → 代码上库review
+设计固化 → 代码开发 → 测试用例编写 → 编译验证 → 单元测试 → 端到端功能测试 → 功能/覆盖率/性能/功耗/稳定性验证 → 代码上库review
    P1        P2          P3            P4          P5            P6              P7                                P8
 ```
 
@@ -53,12 +53,12 @@ OHOS(rk3568,C/C++ 系统组件)的完整研发生命周期,直到代码上库:
    │             PASS(emit 4)─▶ advance --phase 4                                                    │
    └──────────────────────────────────────────────┼──────────────────────────────────────────────┘
                                                   ▼
-   ┌──────────── P5 单测执行 gate_test_ut.py ── 编测试目标 ＋ 本次新建报告 ＋ tests>0,fail==0,err==0 ─┐
+   ┌──────────── P5 单元测试 gate_test_ut.py ── 编测试目标 ＋ 本次新建报告 ＋ tests>0,fail==0,err==0 ─┐
    │             ＋ 契约每个 test_cases[].gtest 通过(执行覆盖);⚠ 只允许新增独立测试文件               │
    │             PASS(emit 5)─▶ advance --phase 5                                                    │
    └──────────────────────────────────────────────┼──────────────────────────────────────────────┘
                                                   ▼
-   ┌──────────── P6 真机 gate_device_func.py ── 部署 sha256 一致 ＋ hilog 含 nonce/marker/e2e ＋ ──┐
+   ┌──────────── P6 端到端 gate_device_func.py ── 部署 sha256 一致 ＋ hilog 含 nonce/marker/e2e ＋ ──┐
    │             uptime 单调 ── 证据 PASS(emit 6)──▶【停:人工核对真机结果】── consent --phase 6 ─▶ advance │
    │             (render_report --kind device → reports/device_functional.md)                      │
    └──────────────────────────────────────────────┼──────────────────────────────────────────────┘
@@ -132,7 +132,7 @@ AI-AR-workflow/
     │       ├── prepare_test_bundle.py      ← P3 控制层薄层(test_intent_matrix + bundle revision;非真相门,由 gate_test_develop 调用)
     │       ├── gate_build.py               ← P4 编译(捕获 build.sh stdout 判横幅;emit 4)
     │       ├── gate_test_ut.py             ← P5 ohos_unittest 执行(developer_test;emit 5)
-    │       ├── gate_device_func.py         ← P6 真机功能(nonce+uptime+hilog+抗伪造三层证明;emit 6;集成复用 --phase 7)
+    │       ├── gate_device_func.py         ← P6 端到端功能测试(nonce+uptime+hilog+抗伪造三层证明;emit 6;集成复用 --phase 7)
     │       ├── gate_integration.py         ← P7 功能与质量验证(MST + 覆盖率/性能/功耗/稳定性报告;emit 7)
     │       ├── gate_upload_ci.py           ← P8 上库(oh-gc PR + CI 绿,SHA 绑定;emit 8)
     │       ├── schemas/                    ← 控制层各包 draft-07 schema(stage_packet/handoff/repair/…/bundle_definition)
@@ -227,8 +227,8 @@ P0 会把探测到的序列号回填进 `pipeline.json` 与 `evidence/phase0/env
 | **P2 开发** | ohos-dev-sa-codegen / -napi-module / code-ruleset-style-check / ohos-dev-cpp-coding-style(OHOS C++ 约定,可选) / ohos-dev-security-code-review(安全左移,advisory) / tdd-enforcer / ohos-code-skeletons | `gate_develop.py`(emit 2) | 已有签名 AR_design **且** 已有绑定的 P1 设计 consent **且** 相对 `base_commit` 有 tracked/untracked 改动 **且** C/C++ 格式 guard + 强规则检查通过;**闭合时锁功能指纹** | `diff.patch`、`changed_files.txt`、`style_report.txt`、`strict_cpp_report.txt` |
 | **P3 测试开发** | ohos-test-ut-generation / tdd-enforcer(**只增独立测试**) | `gate_test_develop.py`(emit 3) | phase2 冻结快照存在 **且** 无新增非测试路径 **且** 契约每个 `test_cases[].gtest` 的 suite 被某个**新测试文件**引用(编写覆盖) | `new_test_files.txt`、`authorship_coverage.txt`、`authored/*`(签名快照) |
 | **P4 编译** | ohos-dev-build-execution-diagnosis / ohos-build-flash / code-ruleset-style-check(编译后 clang-tidy) | `gate_build.py`(emit 4) | build.sh exit 0 **且** 输出含 `=====build…successful=====` 且无 error 横幅 **且** 契约 `build_artifacts` 全部编译出 **且** clang-tidy 子步(有 compdb 则 findings 为空硬控;compdb/工具缺失则降级放行并标注) | `build_tail.log`、`build_banner.txt`、`artifact_check.txt`、`clang_tidy_findings.json`、`clang_tidy_note.txt`(失败再加 `error_distill.txt`) |
-| **P5 单测执行** | ohos-test-ut-generation / tdd-enforcer | `gate_test_ut.py`(emit 5) | 编出测试二进制 + developer_test 本次**新建**报告 + `tests>0 && failures==0 && errors==0` **且** 契约每个 `test_cases[].gtest` 通过(执行覆盖) | `summary_report.xml`、`result_*.xml`、`gtest_coverage.txt`、`start_sh_stdout.txt`、`report_dir.txt` |
-| **P6 真机** | ohos-build-flash / ohos-dev-hdc-command-usage | `gate_device_func.py`(emit 6) | 部署命令全 exit 0 + 主机/设备产物 sha256 一致 + hilog 含**本次 nonce**、功能 marker、运行时 marker、端到端 marker + 契约每个 `device_cases[].marker` 命中 + uptime 单调 + **抗伪造三层**(进程溯源 `process` / `artifact_loaded` 加载证明 / `side_effect` shell 断言 / `absent_before_trigger` 负对照差分);**证据 PASS 后停下,人工核对真机真实结果并 `consent --phase 6` 才推进** | `hilog_capture.txt`、`device_cmds.txt`、`run_meta.txt`、`artifact_runtime_proof.txt`、`device_marker_coverage.txt` |
+| **P5 单元测试** | ohos-test-ut-generation / tdd-enforcer | `gate_test_ut.py`(emit 5) | 编出测试二进制 + developer_test 本次**新建**报告 + `tests>0 && failures==0 && errors==0` **且** 契约每个 `test_cases[].gtest` 通过(执行覆盖) | `summary_report.xml`、`result_*.xml`、`gtest_coverage.txt`、`start_sh_stdout.txt`、`report_dir.txt` |
+| **P6 端到端功能测试** | ohos-build-flash / ohos-dev-hdc-command-usage | `gate_device_func.py`(emit 6) | 部署命令全 exit 0 + 主机/设备产物 sha256 一致 + hilog 含**本次 nonce**、功能 marker、运行时 marker、端到端 marker + 契约每个 `device_cases[].marker` 命中 + uptime 单调 + **抗伪造三层**(进程溯源 `process` / `artifact_loaded` 加载证明 / `side_effect` shell 断言 / `absent_before_trigger` 负对照差分);**证据 PASS 后停下,人工核对真机真实结果并 `consent --phase 6` 才推进** | `hilog_capture.txt`、`device_cmds.txt`、`run_meta.txt`、`artifact_runtime_proof.txt`、`device_marker_coverage.txt` |
 | **P7 质量验证** | ohos-build-flash / developer_test(MST) / ohos-test-ut-generation / coverage / performance / power / stability / code-ruleset-style-check / ohos-dev-security-code-review | `gate_integration.py`(emit 7;或 `gate_device_func.py --phase 7` + `gate_integration.py`) | 功能 summary `failures==0 && errors==0 && tests>0` **且 覆盖率、性能、功耗、稳定性报告全部生成并签名,代码 review 问题数为 0;证据 PASS 后需人工确认并 `consent --phase 7` 才进入 P8** | `summary_report.xml`、`coverage_report.*`、`performance_report.*`、`power_report.*`、`stability_report.*`、`code_review_report.txt`、`report_dir.txt` |
 | **P8 上库** | ohos-ci-gitcode-cli-usage / -gitcode-pr-review / ohos-committer-review(P8-A 补充维度) / -security-code-review / -openharmony-ci-analysis | `gate_upload_ci.py`(emit 8) | P1–P7 全过 + 上库前落全部代码 diff 供人工确认 + **A 本地自检零问题报告(commit 前硬控)** + `git commit -s`(DCO 签名)+ push + **`--issue` 绑定的 PR**(CI 门禁只对绑定 Issue 的 PR 触发)+ **B PR review 零问题报告(建 PR 后、CI 前硬控)** + consent --phase 8 + CI `overall∈{success,passed}` + PR head SHA==push SHA | `full_diff.patch`、`full_diff.stat.txt`、`local_code_review_report.*`、`pr.json`、`pr_create.txt`、`pr_review_report.*`、`ci_status.json` |
 
@@ -297,7 +297,7 @@ $REPO/specs/pipeline/{YYYYMMDD}-{slug}/
 ```
 advance.py  init        --git-dir <组件> --build-target <t> --part <p> [--base-commit <sha>]
             advance     --phase N
-            consent     --phase N --token <s>   # 记录 P1 设计 / P6 真机 / P7 质量报告 / P8 上库 的人工确认
+            consent     --phase N --token <s>   # 记录 P1 设计 / P6 端到端 / P7 质量报告 / P8 上库 的人工确认
             reset       --reason <s>            # 改了代码 → 回 P1 重走(打回 P1-P8)
             migrate                             # 在途旧 7 阶段 run 迁到 9 阶段(仅 current_phase<=1;只动 pipeline.json,不碰 manifest)
             verify-all                          # 重校验已通过阶段(篡改/代码漂移则回退)
@@ -352,7 +352,7 @@ gate_upload_ci.py   --pipeline-dir P --repo-slug owner/repo --branch B [--base m
 ## 11. 设计范式
 
 「thin 入口 + thick 阶段 skill + 确定性门控脚本」三层,借鉴 AID/MigBot 工作流,但
-**阶段边界是脚本门控,不是用户点头**(证据自动放行;仅 **P1 设计**、**P6 真机结果**、**P7 质量/review** 与 **P8 上库** 在证据 PASS 后停下等人工签名 consent 确认)。
+**阶段边界是脚本门控,不是用户点头**(证据自动放行;仅 **P1 设计**、**P6 端到端结果**、**P7 质量/review** 与 **P8 上库** 在证据 PASS 后停下等人工签名 consent 确认)。
 架构图见 `skills/ohos-ar-dev-workflow/README.md`。
 
 ---

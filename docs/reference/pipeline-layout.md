@@ -99,7 +99,7 @@ P1 固化的设计文档,**6 必含章节**:
 - `quality.md` — 覆盖率/性能/功耗/稳定性 + 代码 review(六段聚合)
 - `summary.md` — 上库汇总(背景/设计/修改/用例/结果)
 - `pr_description.md` — P8 汇总,gate_upload_ci 注入 PR 描述
-- `test_report.md` — P5 单测 + P6 真机关键证据聚合
+- `test_report.md` — P5 单元测试 + P6 端到端关键证据聚合
 
 ## 延伸阅读
 

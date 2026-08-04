@@ -137,7 +137,7 @@ python3 $S/advance.py --pipeline-dir "$PDIR" status
 | 阶段 | 停下原因 | consent 命令 |
 |---|---|---|
 | P1 设计 | 设计固化是后续契约真源，错了后面全错 | `consent --phase 1` |
-| P6 真机 | 证据 PASS 后等人工核对真机真实结果 | `consent --phase 6` |
+| P6 端到端功能测试 | 证据 PASS 后等人工核对真机真实结果 | `consent --phase 6` |
 | P7 质量 | 证据 PASS 后等人工核对质量/review | `consent --phase 7` |
 | P8 上库 | push 是唯一对外不可逆动作 | `consent --phase 8` |
 

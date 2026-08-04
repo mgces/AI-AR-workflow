@@ -57,12 +57,12 @@ python3 $S/prepare_test_bundle.py --pipeline-dir "$PDIR"     # 控制层薄层,�
 python3 $S/gate_build.py --pipeline-dir "$PDIR" [--target T]
 ```
 
-### P5 单测执行
+### P5 单元测试
 ```bash
 python3 $S/gate_test_ut.py --pipeline-dir "$PDIR" --test-target T --suite S [--part P]
 ```
 
-### P6 真机功能
+### P6 端到端功能测试
 ```bash
 python3 $S/gate_device_func.py --pipeline-dir "$PDIR" \
     [--deploy-script f] --scenario-script f --marker M \
