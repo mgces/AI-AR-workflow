@@ -436,7 +436,7 @@ def render_quality(pdir, state, entries):
 
 def _test_result_rows(entries):
     rows = []
-    for ph, name in ((3, "P3 单元测试"), (4, "P4 真机功能"), (5, "P5 质量验证")):
+    for ph, name in ((5, "P5 单元测试"), (6, "P6 端到端功能测试"), (7, "P7 质量验证")):
         ev = phase_verdict(entries, ph)
         rows.append((name, "%s %s" % (_badge(ev.get("verdict") if ev else None),
                                       clean(ev.get("reason") if ev else "—"))))
@@ -452,7 +452,7 @@ def build_pr_description(pdir):
     cases = redact(design_section(pdir, ["需测试", "功能点", "测试框架"]) or "(见 AR_design.md)")
     lines = ["## 背景介绍", bg, "", "## 设计思路", design, "", "## 修改概要", "```", stat, "```",
              "", "## 用例概要", cases, "", "## 用例结果总结"]
-    for ph, name in ((3, "P3 单元测试"), (4, "P4 真机功能"), (5, "P5 质量验证")):
+    for ph, name in ((5, "P5 单元测试"), (6, "P6 端到端功能测试"), (7, "P7 质量验证")):
         ev = phase_verdict(entries, ph)
         lines.append("- %s: %s — %s" % (name, ev.get("verdict") if ev else "N/A",
                                         redact(ev.get("reason") if ev else "—")))

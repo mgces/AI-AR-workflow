@@ -98,7 +98,7 @@ class TestSinkFeature(unittest.TestCase):
         with open(os.path.join(pdir, "evidence/phase6/run_meta.txt"), "w") as f:
             f.write("nonce=x\nserial=deadbeefcafef00d0123456789abcdef\n")
         with open(os.path.join(pdir, "evidence", "manifest.jsonl"), "w") as f:
-            f.write(json.dumps({"phase": 3, "verdict": "PASS", "reason": "tests=5"}) + "\n")
+            f.write(json.dumps({"phase": 5, "verdict": "PASS", "reason": "tests=5"}) + "\n")
         kb = os.path.join(tmp.name, "kb")
         feat_dir = os.path.join(kb, "subsystems", "hiviewdfx", "features", "demo")
         if pre_existing:
@@ -118,7 +118,7 @@ class TestSinkFeature(unittest.TestCase):
             spec = f.read()
         for sec in ("## 目标与当前实现", "## 文件职责", "## 构建与测试", "## 装载 / 运行链"):
             self.assertIn(sec, spec)
-        self.assertIn("P3 单元测试:PASS", spec)
+        self.assertIn("P5 单元测试:PASS", spec)
         self.assertIn("TODO(人工补充)", spec)  # deep analysis placeholder
         self.assertIn("build_target: `hiview_package`", spec)
 
@@ -141,7 +141,7 @@ class TestSinkFeature(unittest.TestCase):
             spec = f.read()
         # still produces evidence-based sections + falls back to changed_files
         self.assertIn("demo.cpp", spec)
-        self.assertIn("P3 单元测试:PASS", spec)
+        self.assertIn("P5 单元测试:PASS", spec)
 
 
 if __name__ == "__main__":
