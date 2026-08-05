@@ -52,6 +52,10 @@ GN 构建目标(`build_target`)、测试 `testpart` 与套件名、目标二进�
    自动回退到 P1。**P3/P5/P6/P7 只允许新增独立测试文件**(test 路径),出现非测试新增路径会被拒绝。
    测试文件的增改不触发功能指纹漂移。
    (P8 上库时的 `git commit -s` 因指纹 commit 无关,不算漂移。旧 run 无功能指纹时回退到全量指纹旧行为。)
+   > `reset`(及 `verify-all` 的漂移自动回退)现在会一并**删除上一轮 P1→P8 的 `controls/` 阶段导航包**
+   > (signed_test_scope / phase1_test_develop / 各 handoff·receipt / substate / next_action·handoffs·memory_cards
+   > 当前指针),重走从干净的控制层开始——避免读到旧 `contract_status: "signed"`/`ready_for_build: true`
+   > 造成"导航层说能过、门控层说不行"的互斥信号把弱模型卡死。P0 足迹(bootstrap/phase0)与 repair 包保留。
 
 ## 步骤 0:初始化检查
 

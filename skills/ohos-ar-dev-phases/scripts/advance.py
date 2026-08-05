@@ -19,6 +19,7 @@ Subcommands:
 import argparse
 import json
 import os
+import shutil
 import sys
 import time
 
@@ -330,6 +331,67 @@ def _clear_repair_packet(pdir):
             best_effort=True)
     except Exception:
         pass
+
+
+# Logical-phase ids for P1..P8 (P0/bootstrap excluded — reset preserves P0).
+# Derived from the canonical LOGICAL_PHASES table so this can never drift out of
+# sync with the phase vocabulary. These ids are BOTH the phase-scoped controls
+# subdir names (controls/<id>/…) AND the per-phase packet keys
+# (controls/packets/<id>.json).
+_RESET_LOGICAL_IDS = tuple(
+    row[1] for row in gl.LOGICAL_PHASES if row[3] >= 1)
+
+
+def _clear_stale_controls(pdir):
+    """On a rewind, invalidate every P1..P8 navigation packet the reset just
+    made obsolete. reset already sets the evidence-epoch barrier, but that only
+    guards the SIGNED manifest — these unsigned control packets are read
+    directly by the next-action deriver (_test_develop_ready / _require_
+    test_develop_gate) and by the downstream gates' _test_bundle_context, so a
+    stale 'signed'/'ready_for_build' packet from the prior walk makes the
+    navigation layer say 'ready' while the real gate says 'no' — the exact
+    contradiction that loops a weak model.
+
+    Unlike the repair packet (which has an `active` bit and so is cleared by
+    writing an inactive record), these packets have no such bit and every
+    reader is missing-tolerant (`read_control_json(...) or {}`), with the P3
+    gate treating a missing status/scope as an explicit hard refusal. So the
+    correct invalidation is DELETION — the rewalk re-signs fresh packets at each
+    phase. P0's footprint (memory_cards/phase0.json, packets/bootstrap.json) and
+    the repair packet are preserved. Best-effort throughout: a control-layer
+    cleanup must never block the rewind."""
+    def _rm_file(*parts):
+        try:
+            p = gl.controls_path(pdir, *parts)
+            if os.path.isfile(p):
+                os.remove(p)
+        except Exception:
+            pass
+
+    def _rm_tree(*parts):
+        try:
+            p = gl.controls_path(pdir, *parts)
+            if os.path.isdir(p):
+                shutil.rmtree(p, ignore_errors=True)
+        except Exception:
+            pass
+
+    # 1) Phase-scoped subdirs are 100% P1..P8 (handoffs, receipts, scope,
+    #    matrix, status, freeze, failure packets) — wipe wholesale.
+    for lid in _RESET_LOGICAL_IDS:
+        _rm_tree(lid)
+    # 2) Shared dirs mix P0 with P1..P8 — delete only the P1..P8 + derived
+    #    "current" entries, never the P0 (phase0 / bootstrap) footprint.
+    for lid in _RESET_LOGICAL_IDS:
+        _rm_file("packets", "%s.json" % lid)
+    for phase in range(1, gl.MAX_PHASE + 1):
+        _rm_file("memory_cards", "phase%d.json" % phase)
+    _rm_file("memory_cards", "current.json")
+    _rm_file("packets", "current.json")
+    _rm_file("handoffs", "current.json")
+    _rm_file("next_action.json")
+    # 3) indexes/ holds only downstream-derived (P4) artifact indexes.
+    _rm_tree("indexes")
 
 
 
@@ -1462,6 +1524,11 @@ def cmd_reset(args):
     state["evidence_epoch"] = len(gl.read_manifest(pdir))
     # a stale repair packet would drive the wrong substate/next_gate on rewalk
     _clear_repair_packet(pdir)
+    # …and so would every other P1..P8 navigation packet from the prior walk:
+    # the evidence-epoch barrier only guards the signed manifest, not these
+    # unsigned control packets that the next-action deriver + downstream gates
+    # read directly. Clear them so the rewalk starts from a clean control layer.
+    _clear_stale_controls(pdir)
     _refresh_state_metadata(pdir, state)
     gl.save_state(pdir, state)
     # leave an audit trail (unsigned info entry is fine; it grants no progress)
@@ -1558,6 +1625,7 @@ def cmd_verify_all(args):
         state["locked_all_paths"] = None
         state["evidence_epoch"] = len(gl.read_manifest(pdir))
         _clear_repair_packet(pdir)
+        _clear_stale_controls(pdir)
         _refresh_state_metadata(pdir, state)
         gl.save_state(pdir, state)
         sys.exit("verify-all: functional code changed since P1 — pipeline rewound "
