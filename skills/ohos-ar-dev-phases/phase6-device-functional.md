@@ -23,6 +23,36 @@
   这两个 proof marker 不允许作为字面量出现在 deploy/scenario 脚本中,否则门控会拒绝;
   它们必须来自设备端真实运行路径或真实端到端结果。
 
+## ❓ 组件"没有 hilog 输出"怎么办(弱模型高频质疑,照此走勿绕门)
+门控 `ok = marker_seen and …`(`gate_device_func.py`),**真机日志里命中一行 marker 是唯一硬锚,不可绕过**。
+但这一行 marker **不是、也不该由"测试用例"来打**:它不是"测试通过标记",而是**把这次真机运行钉在
+本台设备、本次 nonce、目标进程上**的运行时痕迹(marker 行的 PID 还会反查进程身份/加载的 so)。
+所以它必须来自**真实运行时路径**,不能是脚本里写死的字面量(`find_marker_literals` 就是防这个)。
+
+先分清层级:**P5 单元测试**证明"逻辑对"(gtest/ArkTS 报告,不碰 hilog);**P6 端到端**证明
+"组件在真机上被真实触发、真的跑了那条路径"。"组件没 hilog" ≠ "不用验 hilog",而是"这次真机运行
+当前不可观测"。按下面三种情况取一,**都不是去掉 hilog 校验**:
+
+- **情况 1 — 组件有成功路径、只是没打日志 → 在成功路径补一行 HILOG(首选)。**
+  这是正经的可观测性改进,不是给门控开后门:
+  ```cpp
+  HILOG_INFO(LOG_CORE, "AR_E2E_OK nonce=%{public}s", nonce.c_str());  // nonce 由 $GATE_NONCE 注入并回读
+  ```
+  marker 由真实成功分支发出,防伪三锚(nonce + 时间窗 + /proc/uptime)全部成立。
+  ⚠️ 改了组件**功能代码** → 按 workflow 护栏 6 必须 `advance.py reset` 回 P1 重走。
+- **情况 2 — 组件确实"沉默"(纯数据/纯计算,无合理日志点)→ 用 side_effect/process/artifact 作证,
+  marker 只当锚,组件一行日志都不用加。** 契约 `device_cases[]` 除 `marker` 外支持更强维度:
+  `side_effect`(真实副作用:读文件/属性/端口)、`process`(marker 行 PID 命中目标进程)、
+  `artifact_loaded`(目标进程 maps 里加载了你编的 so)。真正的功能断言落在这些维度上;门控要的
+  那行 marker 由 **scenario 片段**在"真实触发组件之后"打出(见上节:场景必须触发真实入口并把
+  `$GATE_NONCE` 写进设备日志),marker 只负责锚定 nonce/PID/时间窗。
+- **情况 3 — 让 ArkTS/Hypium app-test 当发日志者 → 可以,但它必须"真跑组件"而非自证。**
+  判据只有一条:**marker 源自被测组件被拉起后的真实运行时路径**,而非测试脚本里 `console.log('passed')`
+  式的自说自话。谁触发的不重要,marker 来自哪条路径才重要。
+
+> 一句话:P6 要的不是"测试系统写 hilog",是"**被测组件在真机上真的跑起来了**"这个事实的运行时痕迹。
+> 让它变可观测(情况 1)或用真实副作用作证(情况 2),**不要**去掉 hilog 校验——那是防伪设计,非可选项。
+
 ## 门控
 ```bash
 python3 $S/gate_device_func.py --pipeline-dir "$PDIR" \
