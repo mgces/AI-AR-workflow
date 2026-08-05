@@ -12,16 +12,22 @@
 python3 openharmony-knowledge-base/tools/search/kb_search.py \
     --query-file "$PDIR/ar.md" --k 8 --out "$PDIR/design_refs.md" || true
 ```
-产出 `$PDIR/design_refs.md`(命中文档路径 + 章节 + 预览 + BM25 分数),写 6 章节时可据此复用
+产出 `$PDIR/design_refs.md`(命中文档路径 + 章节 + 预览 + BM25 分数),写 7 章节时可据此复用
 既有事实、对齐命名与目录。**这是 advisory 输入,不是门控输入**:`gate_design.py` 不校验
 `design_refs.md`,检索失败(索引缺失会自动增量重建;仍失败则写占位)也不阻挡 P1。首次运行会
 自动建索引,无需手动预建;知识库更新后重跑 `kb_search.py` 会自动增量刷新索引。
 
 ## 设计固化(gate_design.py)
 
-先写 `$PDIR/AR_design.md`,**必须包含 6 个章节**(标题存在 + body 非空,门控确定性校验):
+先写 `$PDIR/AR_design.md`,**必须包含 7 个章节**(标题存在 + body 非空,门控确定性校验):
 目标组件 / 详细功能需求 / 完整代码框架(其下含"文件清单""每文件功能""每文件代码框架"三小节)/
-完整测试框架 / 需测试的功能点 / 真机测试用例构造。
+完整测试框架 / 需测试的功能点 / 真机测试用例构造 / **DFX设计**。
+
+> **DFX设计(可测试性/可维护性/可观测性,2026-08 新增必填章节)**:body **必须同时**谈到
+> ①**可观测性**(组件成功时往哪条 hilog 打日志、真机 marker 从哪条运行时路径浮现)②**可测试性/
+> 可维护性**(接口分层、日志分级等);只写空标题会因 anchor 未命中而 FAIL。这是把"到 P6 才发现组件
+> 没 hilog"的问题**左移到设计阶段**——designer 在此就得想清楚 marker 来源。详见
+> `phase6-device-functional.md` 的"组件没有 hilog 输出怎么办"决策树。
 
 **并且必须内嵌一个机器可读的 ```ar-contract``` 围栏 JSON 块**(恰好一个;下游 P3/P4/P5/P6
 据此做全量覆盖硬门控,让"编译路径"清晰、测试点/真机用例可逐项校验):
@@ -30,13 +36,20 @@ python3 openharmony-knowledge-base/tools/search/kb_search.py \
 {
   "build_artifacts": ["out/rk3568/.../libfoo.z.so"],
   "test_cases":   [{"point": "处理超时", "gtest": "FooTest.HandleTimeout_001"}],
-  "device_cases": [{"desc": "注入事件", "marker": "AR_DEV_CASE1_OK"}]
+  "device_cases": [{"desc": "注入事件", "marker": "AR_DEV_CASE1_OK", "observability": "component_log"}]
 }
 ```
 ````
 三个键均为**非空数组**:`build_artifacts` 为编译产物路径(相对仓根,或相对 `out/rk3568`);
 `test_cases[].gtest` 形如 `Suite.Case`(允许 `/` 支持参数化名 `Suite/0.Case`);
 `device_cases[].marker` 为真机日志里只会在该用例真实成功时出现的标记字符串。
+
+**`device_cases[].observability`(可选,2026-08 新增):** 声明该 marker 从哪条**真机运行时路径**
+浮现,取值三选一——`component_log`(组件成功路径自己打,对应 phase6 情况1)/ `scenario_log`
+(scenario 片段触发组件后打,情况2/3)/ `side_effect`(真正断言落在副作用上、marker 只当锚,情况2;
+声明此值**必须**同时给 `side_effect` 块,否则契约自相矛盾 FAIL)。缺省 = 存量契约零变化。它是**设计
+意图声明,不改 P6 判定逻辑**(P6 仍按 marker/side_effect/artifact 实测),价值在于逼 designer 在 P1
+就回答"marker 从哪来"。取值外的字符串 → 契约 FAIL。
 
 **测试用例语言形态(`test_cases[].kind`,2026-08 新增):** 缺省 `"gtest"` = C++ gtest
 (与上述完全一致,存量契约零变化);`"arkts"` = ArkTS/Hypium 应用测试。kind 为纯增量字段,
@@ -62,7 +75,7 @@ arkts 走环境 profile 的 Hypium runner),P7 的套件绑定只管 gtest 套件
 ```bash
 python3 $S/gate_design.py --pipeline-dir "$PDIR"   # 默认读 $PDIR/AR_design.md
 ```
-门控校验 6 章节 + ```ar-contract``` 块,把 AR_design.md 拷进 `evidence/phase1/AR_design.md`
+门控校验 7 章节 + ```ar-contract``` 块,把 AR_design.md 拷进 `evidence/phase1/AR_design.md`
 并 HMAC 签名,合法契约另写签名副本 `evidence/phase1/ar_contract.json`。缺章节/空 body/缺契约块/
 契约畸形(块数≠1、非法 JSON、空数组、gtest 不像 `Suite.Case`、device 项缺 desc/marker)→ FAIL。
 legacy run 可 `--allow-missing-contract`(PASS 但 reason 标 `AR-CONTRACT-LEGACY-BYPASS`,不写 json)。
@@ -81,7 +94,7 @@ consent,需重新签字**。这道 consent 不在 `advance --phase 1` 时校验,
 会 FAIL 并提示 `consent --phase 1`。
 
 ## 通过条件
-`AR_design.md` 6 章节齐全 + ```ar-contract``` 块合法,已 HMAC 签名。
+`AR_design.md` 7 章节齐全(含 DFX设计)+ ```ar-contract``` 块合法,已 HMAC 签名。
 
 ## 通过后
 ```bash

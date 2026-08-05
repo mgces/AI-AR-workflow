@@ -42,6 +42,9 @@ ohos_unittest
 ## 真机测试用例构造
 真机 hdc 触发
 
+## DFX设计
+可观测性:组件成功路径打 hilog marker;可测试/可维护:接口分层、日志分级。
+
 ```ar-contract
 {
   "contract_version": "2.0",

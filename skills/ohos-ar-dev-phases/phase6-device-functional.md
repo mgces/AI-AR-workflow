@@ -24,6 +24,10 @@
   它们必须来自设备端真实运行路径或真实端到端结果。
 
 ## ❓ 组件"没有 hilog 输出"怎么办(弱模型高频质疑,照此走勿绕门)
+> ⏫ **本应在 P1 就想清楚**:marker 的运行时来源应在 **P1 DFX设计章节 + `device_cases[].observability`**
+> 声明好(见 `phase1-design.md`)。走到 P6 才发现"组件没日志、marker 不知从哪来" = P1 设计不完整,
+> **首选 `advance.py reset` 回 P1 补 DFX 设计**,而非在 P6 现编或绕门。下面是补救决策树。
+
 门控 `ok = marker_seen and …`(`gate_device_func.py`),**真机日志里命中一行 marker 是唯一硬锚,不可绕过**。
 但这一行 marker **不是、也不该由"测试用例"来打**:它不是"测试通过标记",而是**把这次真机运行钉在
 本台设备、本次 nonce、目标进程上**的运行时痕迹(marker 行的 PID 还会反查进程身份/加载的 so)。

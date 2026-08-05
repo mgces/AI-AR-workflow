@@ -119,7 +119,7 @@ python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-workflow/scripts/refresh_todo.py" --pipel
 
 | 阶段 | 做事(调用技能) | 门控脚本 | 结束证据 |
 |---|---|---|---|
-| P1 设计 | **(设计前)** `kb_search.py` 检索知识库生成 `design_refs.md`(advisory,失败不阻断)→ 写 AR_design.md(6 章节 + ```ar-contract``` 契约块)→ **人工 consent**(P2 门内校验) | `gate_design.py`(`emit 1`) | 签名 AR_design(6 章节 + 契约)+ **P1 设计 consent**(绑签名条目) |
+| P1 设计 | **(设计前)** `kb_search.py` 检索知识库生成 `design_refs.md`(advisory,失败不阻断)→ 写 AR_design.md(7 章节含 DFX设计 + ```ar-contract``` 契约块)→ **人工 consent**(P2 门内校验) | `gate_design.py`(`emit 1`) | 签名 AR_design(7 章节 + 契约)+ **P1 设计 consent**(绑签名条目) |
 | P2 开发 | **先加载** `code-ruleset-style-check` 写码前契约 + `cpp-coding-style`，再用 sa-codegen / napi-module / security-code-review(安全左移,advisory) / tdd-enforcer / code-skeletons 写码 | `gate_develop.py`(`emit 2`,强制依赖签名 AR_design + P1 consent；共享 guard 是唯一 PASS 来源) | git/untracked diff 非空 + C++ 强门控报告;**闭合时锁定功能指纹** |
 | P3 测试开发 | **先加载**同一写码前契约 + `cpp-coding-style`，再用 test-ut-generation / tdd-enforcer / code-ruleset-style-check(**只增独立测试**,编译前写完测试代码) | `gate_test_develop.py`(`emit 3`,对新增测试源强制 `--rules-only` 规则门控) | 契约每个 `test_cases[].gtest` 的 suite 出现在新测试文件中(**编写**覆盖)+ 测试源签名快照 + 测试代码规则检测报告 |
 | P4 编译 | build-execution-diagnosis / build-flash / code-ruleset-style-check(编译后 clang-tidy) | `gate_build.py`(`emit 4`) | build.log 成功横幅 + 契约 `build_artifacts` 全部编译出 + clang-tidy 子步(有 compdb 硬控/缺失降级) |

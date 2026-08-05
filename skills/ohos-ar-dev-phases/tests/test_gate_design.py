@@ -38,6 +38,9 @@ class Manager { void Run(); };
 
 ## 真机测试用例构造
 在真机上通过 hdc shell 触发,注入 nonce 到 hilog。
+
+## DFX设计
+可观测性:组件成功路径打 hilog marker,marker 来自运行时日志;可测试/可维护:接口分层、日志分级。
 """
 
 

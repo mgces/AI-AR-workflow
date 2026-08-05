@@ -146,6 +146,8 @@ def _derive_design_controls(pdir, contract, *, contract_rel, design_rel):
         "build_artifacts_count": len(build_artifacts),
         "test_cases_count": len(test_cases),
         "device_cases_count": len(device_cases),
+        "device_cases_with_observability": sum(
+            1 for c in device_cases if c.get("observability")),
     }
     handoff = {
         "from_phase": 1,
@@ -218,7 +220,7 @@ def main():
     src = args.design or os.path.join(pdir, "AR_design.md")
     if not os.path.isfile(src):
         reason = "AR_design.md not found at %s — write the design first" % src
-        _fail(reason, hint="创建 AR_design.md(含 6 章节 + ar-contract v2 块)")
+        _fail(reason, hint="创建 AR_design.md(含 7 章节含 DFX设计 + ar-contract v2 块)")
         gl.emit(pdir, 1, "gate_design.py", verdict="FAIL", reason=reason,
                 artifacts_rel=[])
         sys.exit("PHASE 1a FAIL: AR_design.md not found (%s)" % src)

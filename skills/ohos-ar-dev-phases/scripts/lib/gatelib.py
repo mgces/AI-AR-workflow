@@ -1983,6 +1983,13 @@ REQUIRED_DESIGN_SECTIONS = (
     ("完整测试框架", [r"测试框架", r"test\s+framework"], []),
     ("需测试的功能点", [r"测试.*功能点|需测试|功能点|test\s+points?"], []),
     ("真机测试用例构造", [r"真机.*用例|用例.*构造|真机测试|device.*test\s*case"], []),
+    # DFX 设计:把可观测性(hilog/marker 从哪条运行时路径来)左移到设计阶段,
+    # 免得到 P6 才发现"组件没日志"。body 需同时谈到可观测性和可测试/可维护,
+    # 光有标题不谈内容 = anchor 未命中 = FAIL。
+    ("DFX设计",
+     [r"DFX|可观测|可测试|可维护|observability|dfx\s+design"],
+     [r"可观测|可观察|observab|hilog|日志",
+      r"可测试|可维护|testab|maintainab"]),
 )
 
 
@@ -2111,6 +2118,12 @@ def _parse_side_effect(se, where):
         return False, None, "%s.side_effect.expect must be a non-empty string" % where
     return True, {"type": "shell_assert", "command": se["command"].strip(),
                   "expect": se["expect"].strip()}, ""
+
+
+# Legal values for device_cases[].observability — where the marker originates
+# on the real device runtime. See phase6-device-functional.md "组件没有 hilog
+# 输出怎么办" for the matching decision tree.
+DEVICE_OBS_SOURCES = ("component_log", "scenario_log", "side_effect")
 
 
 def parse_ar_contract(text):
@@ -2280,6 +2293,18 @@ def parse_ar_contract(text):
         se_ok, se, se_det = _parse_side_effect(c.get("side_effect"), where)
         if not se_ok:
             return False, None, se_det
+        # observability: 声明 marker 从哪条真机运行时路径来(设计意图,P1 左移用;
+        # 不改 P6 判定)。component_log=组件成功路径自己打;scenario_log=scenario
+        # 片段触发后打;side_effect=真正断言落在副作用上、marker 只当锚。缺省 None
+        # = 存量契约零变化。声明 side_effect 来源却没给 side_effect 块 = 契约自相矛盾。
+        obs = c.get("observability")
+        if obs is not None:
+            if obs not in DEVICE_OBS_SOURCES:
+                return False, None, "%s.observability must be one of %s" % (
+                    where, "/".join(DEVICE_OBS_SOURCES))
+            if obs == "side_effect" and se is None:
+                return False, None, (
+                    "%s.observability=side_effect requires a side_effect block" % where)
         abt = c.get("absent_before_trigger", False)
         if not isinstance(abt, bool):
             return False, None, "%s.absent_before_trigger must be a boolean" % where
@@ -2289,6 +2314,7 @@ def parse_ar_contract(text):
             "process": proc.strip() if _nonempty_str(proc) else None,
             "artifact_loaded": art.strip() if _nonempty_str(art) else None,
             "side_effect": se, "absent_before_trigger": abt,
+            "observability": obs,
         })
 
     # ---- changed_files (v2; str or object form) ------------------------------

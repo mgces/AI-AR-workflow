@@ -61,10 +61,11 @@ PHASE_GUIDE = {
     1: {"skill": "kb_search → 写 AR_design.md",
         "gate": "gate_design.py", "consent": True,
         "doc": "ohos-ar-dev-phases/phase1-design.md",
-        "pass": "签名 AR_design(6 章节 + ```ar-contract``` 契约块)+ 人工 consent",
+        "pass": "签名 AR_design(7 章节含 DFX设计 + ```ar-contract``` 契约块)+ 人工 consent",
         "how": ["先 kb_search.py 检索知识库生成 design_refs.md(advisory)",
-                "写 AR_design.md:6 章节 + ar-contract 契约(changed_files/build_artifacts/"
-                "test_cases[].gtest/device_cases[].marker)",
+                "写 AR_design.md:7 章节(含 DFX设计:可测试/可维护/可观测,marker 来源)+ "
+                "ar-contract 契约(changed_files/build_artifacts/"
+                "test_cases[].gtest/device_cases[].marker+observability)",
                 "跑 gate_design.py 签名",
                 "停下把签名设计呈现给用户 → consent --phase 1 --token <人>(P2 门内强校验)"]},
     2: {"skill": "code-ruleset-style-check + cpp-coding-style + sa-codegen/napi/tdd",
