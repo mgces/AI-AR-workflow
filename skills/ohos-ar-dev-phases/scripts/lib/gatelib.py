@@ -19,6 +19,7 @@ import argparse
 import hashlib
 import hmac
 import json
+import ntpath
 import os
 import re
 import sys
@@ -42,6 +43,29 @@ MAX_PHASE = max(i for i, _ in PHASES)
 # when physical phase 1 was split into design_orchestrate / feature_develop /
 # test_develop. load_state() refuses any pipeline.json not stamped with this.
 PHASE_SCHEME = 9
+
+
+def repo_relative_path_error(value):
+    """Return an error for paths that could resolve outside a repository.
+
+    Contracts are portable JSON and may be authored on either POSIX or Windows,
+    so reject both absolute syntaxes, drive/UNC prefixes, traversal, NUL bytes,
+    and ambiguous backslashes. Symlink containment is checked again by the gate
+    at resolution time.
+    """
+    if not isinstance(value, str) or not value.strip():
+        return "must be a non-empty repository-relative path"
+    path = value.strip()
+    drive, _ = ntpath.splitdrive(path)
+    if ("\x00" in path or os.path.isabs(path) or drive
+            or path.startswith(("/", "\\"))):
+        return "must be repository-relative (absolute/drive/UNC paths are forbidden)"
+    if "\\" in path:
+        return "must use '/' separators; backslashes are forbidden"
+    parts = path.split("/")
+    if any(part in ("", ".", "..") for part in parts):
+        return "must not contain empty, '.' or '..' path components"
+    return None
 
 # --- canonical logical-phase vocabulary (spec §5 table + §5.x mapping) ------
 # The design speaks in logical phases P0..P8; the physical state machine now runs
@@ -2203,11 +2227,17 @@ def parse_ar_contract(text):
         if isinstance(p, str):
             if not _nonempty_str(p):
                 return False, None, "%s must be a non-empty string" % where
+            path_error = repo_relative_path_error(p)
+            if path_error:
+                return False, None, "%s %s" % (where, path_error)
             ba_paths.append(p.strip())
             ba_meta.append({"path": p.strip(), "for_requirements": []})
         elif isinstance(p, dict):
             if not _nonempty_str(p.get("path")):
                 return False, None, "%s.path must be a non-empty string" % where
+            path_error = repo_relative_path_error(p.get("path"))
+            if path_error:
+                return False, None, "%s.path %s" % (where, path_error)
             ok, fr, det = _for_requirements(p)
             if not ok:
                 return False, None, "%s.%s" % (where, det)
@@ -2328,11 +2358,17 @@ def parse_ar_contract(text):
             if isinstance(p, str):
                 if not _nonempty_str(p):
                     return False, None, "%s must be a non-empty string" % where
+                path_error = repo_relative_path_error(p)
+                if path_error:
+                    return False, None, "%s %s" % (where, path_error)
                 cf_paths.append(p.strip())
                 cf_meta.append({"path": p.strip(), "for_requirements": []})
             elif isinstance(p, dict):
                 if not _nonempty_str(p.get("path")):
                     return False, None, "%s.path must be a non-empty string" % where
+                path_error = repo_relative_path_error(p.get("path"))
+                if path_error:
+                    return False, None, "%s.path %s" % (where, path_error)
                 ok, fr, det = _for_requirements(p)
                 if not ok:
                     return False, None, "%s.%s" % (where, det)
@@ -2715,11 +2751,18 @@ def verify_chain(pdir):
     secret = load_secret(load_state(pdir)["run_id"])
     entries = read_manifest(pdir)
     chained = any("seq" in e for e in entries)
+    chain_started = False
     prev_hmac = ""
     for i, e in enumerate(entries):
         if not verify_sig(e, secret):
             return False, "HMAC mismatch at manifest line %d (tampered/forged/replayed)" % i, entries
-        if chained and "seq" in e:
+        has_seq = "seq" in e
+        if has_seq:
+            chain_started = True
+        elif chain_started:
+            return False, ("manifest chain break at line %d: unchained legacy record "
+                           "appears after chained evidence (record replayed)" % i), entries
+        if chain_started:
             if e.get("seq") != i:
                 return False, ("manifest chain break at line %d: seq=%s expected %d "
                                "(record reordered or replayed)" % (i, e.get("seq"), i)), entries
@@ -2728,6 +2771,29 @@ def verify_chain(pdir):
                                "(record replayed or a record was removed)" % i), entries
         prev_hmac = e.get("hmac", "")
     return True, "chain ok (%d entries%s)" % (len(entries), "" if chained else ", legacy-unchained"), entries
+
+
+def evidence_floor(state, phase):
+    """Minimum manifest sequence accepted for a phase's current evidence.
+
+    ``evidence_epoch`` is the rewind barrier and applies only from
+    ``evidence_epoch_min_phase`` onward. ``phase_opened_seq`` records when each
+    phase actually became current. Taking the maximum closes both stale-rewind
+    reuse and evidence generated before a phase opened while preserving P0 when
+    a normal reset rewinds only P1..P8.
+    """
+    floors = []
+    epoch = state.get("evidence_epoch")
+    min_phase = state.get("evidence_epoch_min_phase", 0)
+    if (isinstance(epoch, int) and epoch > 0
+            and isinstance(min_phase, int) and phase >= min_phase):
+        floors.append(epoch)
+    opened = state.get("phase_opened_seq") or {}
+    if isinstance(opened, dict):
+        value = opened.get(str(phase))
+        if isinstance(value, int) and value >= 0:
+            floors.append(value)
+    return max(floors) if floors else None
 
 
 def validate_closing_entry(pdir, phase):
@@ -2755,12 +2821,14 @@ def validate_closing_entry(pdir, phase):
     # otherwise let `advance --phase N` re-close on pre-fix evidence without the
     # gate ever re-running. Requiring seq >= epoch forces a FRESH gate run (whose
     # PASS is appended after the reset marker) before the phase can close again.
-    epoch = state.get("evidence_epoch")
-    if isinstance(epoch, int) and epoch > 0:
+    epoch = evidence_floor(state, phase)
+    if isinstance(epoch, int):
         seq = entry.get("seq")
         if not isinstance(seq, int) or seq < epoch:
-            return (False, "phase %d PASS is pre-reset evidence (seq=%s < epoch=%d); "
-                    "re-run its gate after the reset" % (phase, seq, epoch), entry)
+            return (False, "phase %d PASS is pre-reset/out-of-phase evidence and "
+                    "predates the current phase/rewind barrier "
+                    "(seq=%s < floor=%d); re-run its gate" %
+                    (phase, seq, epoch), entry)
     if not verify_sig(entry, secret):
         return False, "HMAC mismatch on phase %d entry (tampered/forged)" % phase, entry
     for art in entry.get("artifacts", []):
@@ -2772,6 +2840,48 @@ def validate_closing_entry(pdir, phase):
     return True, "ok", entry
 
 
+UPLOAD_CONSENT_GATE = "gate_upload_ci.py:consent-precheck"
+
+
+def validate_upload_consent_entry(pdir):
+    """Validate the latest signed P8 pre-upload review packet.
+
+    P8 consent authorizes an irreversible push, so it must bind to the exact
+    full diff and upload target shown *before* the push, not to the final PASS
+    that can only exist afterwards. The precheck deliberately carries FAIL
+    (awaiting consent), which prevents it from closing P8 while still giving
+    consent an HMAC-chain-backed evidence entry to sign.
+    """
+    state = load_state(pdir)
+    chain_ok, chain_reason, entries = verify_chain(pdir)
+    if not chain_ok:
+        return False, chain_reason, None
+    candidates = [e for e in entries
+                  if e.get("phase") == 8 and e.get("gate") == UPLOAD_CONSENT_GATE]
+    if not candidates:
+        return False, "no signed P8 upload-consent precheck; run gate_upload_ci.py dry-run first", None
+    entry = candidates[-1]
+    if entry.get("verdict") != "FAIL":
+        return False, "invalid P8 consent-precheck verdict=%s" % entry.get("verdict"), entry
+    epoch = evidence_floor(state, 8)
+    if isinstance(epoch, int):
+        seq = entry.get("seq")
+        if not isinstance(seq, int) or seq < epoch:
+            return False, "P8 consent precheck is pre-reset evidence; rerun dry-run", entry
+    secret = load_secret(state["run_id"])
+    if not verify_sig(entry, secret):
+        return False, "P8 consent-precheck HMAC mismatch", entry
+    if not entry.get("artifacts"):
+        return False, "P8 consent precheck has no review artifacts", entry
+    for art in entry.get("artifacts", []):
+        ap = os.path.join(pdir, art["path"])
+        if not os.path.exists(ap):
+            return False, "P8 consent artifact vanished: %s" % art["path"], entry
+        if sha256_file(ap) != art["sha256"]:
+            return False, "P8 consent artifact changed: %s; rerun dry-run" % art["path"], entry
+    return True, "ok", entry
+
+
 def phase_state(state, phase):
     for pe in state.get("phases", []):
         if pe.get("id") == phase:
@@ -2779,14 +2889,29 @@ def phase_state(state, phase):
     return None
 
 
+def require_current_phase(state, phase, gate):
+    """Fail closed when a gate is invoked before/after its physical phase.
+
+    Gate scripts are independently runnable CLIs, so checking only
+    ``advance.py`` is too late: a future gate could otherwise append a valid
+    signed PASS and have it reused when the pointer eventually catches up.
+    """
+    current = state.get("current_phase")
+    if current != phase:
+        raise SystemExit(
+            "ERROR: %s is phase %d but current_phase is %s; refusing to emit "
+            "out-of-phase evidence" % (gate, phase, current))
+
+
 # ----------------------------------------------------------------------------
-# consent — human sign-off for P4/P5/P6. A consent is only meaningful if it is
-# bound to the EXACT signed PASS evidence a reviewer looked at. We therefore
+# consent — human sign-off. A consent is meaningful only when it is bound to
+# the exact signed evidence a reviewer looked at (P8 uses its signed pre-upload
+# diff/target precheck; result-review phases use their closing PASS). We
 # store consent as an HMAC-signed record whose evidence_ref is the entry_id of
-# the phase's current closing PASS entry. advance.py re-derives that entry_id at
-# advance time and rejects unless it matches — so:
-#   * a phase with no PASS evidence yet cannot be consented (nothing to sign);
-#   * re-running a gate (new evidence => new entry_id) invalidates old consent;
+# the reviewed evidence. advance.py re-derives the expected entry_id and rejects
+# unless it matches — so:
+#   * a phase with no reviewable evidence yet cannot be consented;
+#   * replacing that evidence (new entry_id) invalidates old consent;
 #   * hand-editing the consent record in pipeline.json breaks its HMAC.
 # The per-run secret is shared, so this does not cryptographically prove a human
 # (vs the model) produced it — but it removes "rubber-stamp from thin air" and

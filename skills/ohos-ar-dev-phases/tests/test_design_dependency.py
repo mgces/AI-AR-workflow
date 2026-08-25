@@ -72,6 +72,7 @@ class TestDesignDependency(unittest.TestCase):
             "run_id": self.run_id, "repo": self.repo, "git_dir": self.repo,
             "base_commit": self.base, "consent_tokens": {},
             "phase_scheme": gl.PHASE_SCHEME,
+            "current_phase": 1,
             "phases": [{"id": i, "name": n, "status": "pending"} for i, n in gl.PHASES],
         })
         # make a non-C/C++ change so develop has something to see without
@@ -96,6 +97,11 @@ class TestDesignDependency(unittest.TestCase):
         with open(os.path.join(self.pdir, "AR_design.md"), "w") as f:
             f.write(text)
 
+    def _set_phase(self, phase):
+        state = gl.load_state(self.pdir)
+        state["current_phase"] = phase
+        gl.save_state(self.pdir, state)
+
     def _consent(self, phase=1, token="reviewer"):
         return subprocess.run(
             [sys.executable, os.path.join(SCRIPTS, "advance.py"),
@@ -104,6 +110,7 @@ class TestDesignDependency(unittest.TestCase):
             text=True, capture_output=True)
 
     def test_develop_refused_without_design(self):
+        self._set_phase(2)
         cp = self._run("gate_develop.py")
         self.assertNotEqual(cp.returncode, 0)
         self.assertIn("AR_design", cp.stdout + cp.stderr)
@@ -112,6 +119,7 @@ class TestDesignDependency(unittest.TestCase):
         self._write_design(GOOD_DESIGN)
         self.assertEqual(self._run("gate_design.py").returncode, 0)
         # design signed but no phase-1 consent yet -> develop refuses
+        self._set_phase(2)  # simulate a caller attempting to bypass the P1 hold
         cp = self._run("gate_develop.py")
         self.assertNotEqual(cp.returncode, 0)
         self.assertIn("consent", (cp.stdout + cp.stderr).lower())
@@ -122,6 +130,11 @@ class TestDesignDependency(unittest.TestCase):
         self.assertEqual(d.returncode, 0, d.stdout + d.stderr)
         c = self._consent()
         self.assertEqual(c.returncode, 0, c.stdout + c.stderr)
+        advanced = subprocess.run(
+            [sys.executable, os.path.join(SCRIPTS, "advance.py"),
+             "--pipeline-dir", self.pdir, "advance", "--phase", "1"],
+            text=True, capture_output=True)
+        self.assertEqual(advanced.returncode, 0, advanced.stdout + advanced.stderr)
         cp = self._run("gate_develop.py")
         self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
 
@@ -131,6 +144,7 @@ class TestDesignDependency(unittest.TestCase):
         self.assertEqual(self._consent().returncode, 0)
         # re-run gate_design -> new signed design entry -> old consent goes stale
         self.assertEqual(self._run("gate_design.py").returncode, 0)
+        self._set_phase(2)  # exercise P2's defense-in-depth consent check
         cp = self._run("gate_develop.py")
         self.assertNotEqual(cp.returncode, 0)
         self.assertIn("stale", (cp.stdout + cp.stderr).lower())
@@ -141,11 +155,13 @@ class TestDesignDependency(unittest.TestCase):
         # tamper the signed evidence artifact
         with open(os.path.join(self.pdir, "evidence/phase1/AR_design.md"), "a") as f:
             f.write("\nTAMPERED\n")
+        self._set_phase(2)
         cp = self._run("gate_develop.py")
         self.assertNotEqual(cp.returncode, 0)
         self.assertIn("tamper", (cp.stdout + cp.stderr).lower())
 
     def test_legacy_bypass(self):
+        self._set_phase(2)
         cp = self._run("gate_develop.py", "--allow-missing-design")
         self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
         # bypass is recorded in the signed reason

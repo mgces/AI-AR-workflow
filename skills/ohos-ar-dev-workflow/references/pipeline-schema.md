@@ -74,6 +74,9 @@ reports/               # 人读 Markdown 审计报告(脱敏,可归档)——与
   "test": { "part": "<testpart>", "ut_suites": [], "mst_suites": [] },
   "base_commit": "<phase1 起点 SHA>",
   "current_phase": 0,
+  "phase_opened_seq": { "0": 0 },
+  "evidence_epoch": null,
+  "evidence_epoch_min_phase": 0,
   "current_phase_name": "bootstrap",
   "current_substate": "awaiting_gate",
   "legacy_mode": false,
@@ -101,7 +104,9 @@ reports/               # 人读 Markdown 审计报告(脱敏,可归档)——与
 
 - `advance.py` 是 **唯一** 会写 `pipeline.json` 的脚本。
 - `evidence/manifest.jsonl` 是唯一放行真相源；`next_action.json`、`todo.json`、`phase_summary.json`、`failure_report.json` 只用于导航/恢复，不可单独推动阶段前进。
-- `phases[].status` 实际使用的是 `pending | passed`，推进失败不会直接把 `pipeline.json` 改成 `failed`；失败事实来自 manifest 里的签名 FAIL 记录和 phase failure report。
+- `phase_opened_seq[phase]` 是该阶段成为 current 时的 manifest 长度；更早的 PASS 不可用于关闭该阶段。
+- `evidence_epoch` + `evidence_epoch_min_phase` 是 reset/verify-all 回退屏障；只使起始 phase 及其下游旧证据失效，因此 reset 到 P1 不会误伤保留的 P0。
+- `phases[].status` 使用 `pending | passed | failed`；普通 gate 失败事实来自 manifest 的签名 FAIL，`verify-all` 发现已通过阶段的证据/consent 失效时会把最早阶段标成 `failed` 并回退下游。
 
 ### `environment` / `component_type`(环境形态,init 时人工强确认)
 
@@ -127,10 +132,10 @@ reports/               # 人读 Markdown 审计报告(脱敏,可归档)——与
 - `current_substate`
   - `awaiting_gate`：当前 phase 还没有可闭合 PASS 证据，应运行 gate
   - `awaiting_design_gate`：P1 还没有签名设计，应先跑 `gate_design.py`
-  - `awaiting_design_consent`：P1 设计已 PASS，但还缺设计人工 consent(在 P2 开发门校验)
+  - `awaiting_design_consent`：P1 设计已 PASS，但还缺设计人工 consent；P1 authoritative close 与 P2 开发门都会校验
   - `awaiting_develop_gate`：P2 等待 `gate_develop.py`(需 P1 签名设计 + consent)
   - `awaiting_test_develop_gate`：P3 等待 `gate_test_develop.py`
-  - `awaiting_consent`：P6/P7/P8 已有 PASS 证据，但还缺人工审核令牌
+  - `awaiting_consent`：P6/P7 已有结果 PASS，或 P8 已有签名的 push 前 diff/目标预检，但还缺人工审核令牌
   - `ready_to_advance`：当前 phase 已有有效 PASS 证据，可执行 `advance.py advance`
   - `blocked`：上游签名设计被篡改/丢失等 fail-closed 状态
   - `complete`：全部阶段闭合完成
@@ -307,6 +312,6 @@ reports/               # 人读 Markdown 审计报告(脱敏,可归档)——与
 `consent_tokens` 记录签名且绑定证据的人工审批：
 
 - `consent_tokens["1"]`：P1 设计固化后的人工审批，`gate_develop.py`(P2) 强制校验(绑 phase1 设计条目)
-- `consent_tokens["6"|"7"|"8"]`：P6/P7/P8 的结果审核审批，`advance.py advance` 强制校验
+- `consent_tokens["6"|"7"]`：P6/P7 的结果 PASS 审核审批；`consent_tokens["8"]`：绑定 P8 push 前签名 diff/目标预检的审批。`gate_upload_ci.py --allow-push` 与最终 `advance.py advance` 都强制校验 P8 consent。
 
-旧 consent 只对**当时那条 PASS 证据**有效；重跑 gate 产生新的 PASS 记录后，旧 consent 自动失效。
+旧 consent 只对当时绑定的签名证据有效；P6/P7 重跑 PASS、或 P8 diff/上传目标变化并重跑 DRY 后，旧 consent 自动失效。

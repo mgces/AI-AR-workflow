@@ -39,6 +39,12 @@ class TestOpenHarmonyProfile(unittest.TestCase):
             envs.build_command(self.state, "hiview_package"),
             "./build.sh --product-name rk3568 --ccache --build-target hiview_package")
 
+    def test_build_argv_keeps_shell_metacharacters_literal(self):
+        target = "name; touch /tmp/must-not-run"
+        argv = envs.build_argv(self.state, target)
+        self.assertEqual(argv[-1], target)
+        self.assertNotIn(";", argv)
+
     def test_out_dir(self):
         self.assertEqual(envs.out_dir(self.state), "out/rk3568")
 

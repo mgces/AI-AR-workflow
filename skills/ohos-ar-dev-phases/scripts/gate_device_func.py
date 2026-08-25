@@ -720,6 +720,7 @@ def main():
     global _CONN_ENV
     try:
         _st = gl.load_state(pdir)
+        gl.require_current_phase(_st, phase, "gate_device_func.py")
         _CONN_ENV = dict(_st.get("connection_env") or {})
         if _st.get("device_serial"):
             _CONN_ENV.setdefault("DEVICE_SERIAL", _st["device_serial"])

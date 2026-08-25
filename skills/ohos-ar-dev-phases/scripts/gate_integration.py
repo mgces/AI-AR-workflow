@@ -20,6 +20,7 @@ import argparse
 import glob
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -657,6 +658,7 @@ def main():
     args = ap.parse_args()
     pdir = gl.pipeline_dir(args.pipeline_dir)
     state = gl.load_state(pdir)
+    gl.require_current_phase(state, 7, "gate_integration.py")
     repo = state["repo"]
     part = args.part or state.get("test", {}).get("part")
     if not part:
@@ -701,14 +703,17 @@ def main():
         sys.exit("PHASE 7 FAIL: %s" % reason)
 
     before = set(glob.glob(os.path.join(reports, "20*")))
-    ts_args = " ".join("-ts %s" % s for s in args.suites)
     # Pass the product form explicitly; developer_test otherwise defaults it to
     # "phone" and fails to locate the testcase output ("tests is not exist").
     # Resolved from the environment profile (openharmony -> rk3568).
     product = envs.product_form(state)
-    run_cmd = "./start.sh run -t %s -tp %s %s -p %s" % (args.testtype, part, ts_args, product)
+    run_argv = ["./start.sh", "run", "-t", args.testtype, "-tp", part]
+    for suite in args.suites:
+        run_argv.extend(["-ts", suite])
+    run_argv.extend(["-p", product])
+    run_cmd = shlex.join(run_argv)
     print("running: (cd %s && %s)" % (dt, run_cmd))
-    proc = subprocess.run(run_cmd, shell=True, cwd=dt, text=True, capture_output=True)
+    proc = subprocess.run(run_argv, cwd=dt, text=True, capture_output=True)
     stdout_rel = "evidence/phase7/start_sh_stdout.txt"
     with open(os.path.join(pdir, stdout_rel), "w", encoding="utf-8") as f:
         f.write(proc.stdout + "\n----stderr----\n" + proc.stderr)

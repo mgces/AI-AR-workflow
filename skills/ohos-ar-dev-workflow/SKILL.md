@@ -41,8 +41,10 @@ GN 构建目标(`build_target`)、测试 `testpart` 与套件名、目标二进�
      必须停下,把签名 AR_design 与其编译路径(`build_artifacts`)呈现给用户,等用户复核同意后
      `advance.py consent --phase 1 --token <人>`。该 consent 在 **P2 `gate_develop.py` 内**强校验(绑 phase1
      设计条目):没签字 P2 开发门 FAIL。重跑 gate_design 会作废旧 consent。
-   - **P6/P7/P8**:这些阶段证据 PASS 后**不自动放行**:必须停下,把真实结果与所有产物路径呈现给用户,
-     等用户确认;用户同意后 `advance.py consent --phase 6|7|8 --token <人>` 再 `advance`。没令牌时
+   - **P6/P7**:结果 PASS 后**不自动放行**:必须停下,把真实结果与所有产物路径呈现给用户,
+     等用户确认后 `advance.py consent --phase 6|7 --token <人>` 再 `advance`。**P8** 必须先 DRY
+     生成签名的完整 diff + repo/branch/base/Issue 预检，在任何 push 前停下确认并执行
+     `advance.py consent --phase 8 --token <人>`；上传完成后的最终 PASS 再由 `advance` 复验。没令牌时
      `advance` 会 HOLD。P8 的 push 仍是唯一对外不可逆动作。
 6. **任何阶段发现要改代码 → 回 P1 重走**。不管走到 P2..P8,只要发现 bug 需要改代码,
    就**必须** `advance.py reset --reason "<改了什么>"` 回到 P1,从设计/代码开发踏踏实实重走一遍

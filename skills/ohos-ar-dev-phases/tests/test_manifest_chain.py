@@ -102,6 +102,39 @@ class TestManifestChain(unittest.TestCase):
         ok, reason, _ = gl.verify_chain(self.pdir)
         self.assertFalse(ok)
 
+    def test_legacy_record_replayed_after_chain_is_rejected(self):
+        rel = self._art(4, "build ok")
+        chained = gl.emit(self.pdir, 4, "g", verdict="FAIL", reason="x",
+                          artifacts_rel=[rel])
+        legacy = dict(chained)
+        legacy.pop("seq")
+        legacy.pop("prev")
+        legacy["phase"] = 5
+        legacy["verdict"] = "PASS"
+        legacy.pop("hmac")
+        legacy["hmac"] = gl.sign(legacy, gl.load_secret(self.run_id))
+        self._append_raw(legacy)
+        ok, reason, _ = gl.verify_chain(self.pdir)
+        self.assertFalse(ok)
+        self.assertIn("legacy record", reason)
+
+    def test_phase_open_floor_rejects_early_pass(self):
+        rel = self._art(5, "early")
+        entry = gl.emit(self.pdir, 5, "g", verdict="PASS", reason="early",
+                        artifacts_rel=[rel])
+        state = gl.load_state(self.pdir)
+        state["phase_opened_seq"] = {"5": entry["seq"] + 1}
+        gl.save_state(self.pdir, state)
+        ok, reason, _ = gl.validate_closing_entry(self.pdir, 5)
+        self.assertFalse(ok)
+        self.assertIn("out-of-phase", reason)
+
+    def test_gate_rejects_future_phase_execution(self):
+        state = gl.load_state(self.pdir)
+        state["current_phase"] = 4
+        with self.assertRaises(SystemExit):
+            gl.require_current_phase(state, 5, "gate_test_ut.py")
+
 
 if __name__ == "__main__":
     unittest.main()

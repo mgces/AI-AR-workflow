@@ -283,6 +283,7 @@ def main():
     args = ap.parse_args()
     pdir = gl.pipeline_dir(args.pipeline_dir)
     state = gl.load_state(pdir)
+    gl.require_current_phase(state, 3, "gate_test_develop.py")
     gdir = gl.resolve_git_dir(state)
     gl.evidence_dir(pdir, PHASE)
 

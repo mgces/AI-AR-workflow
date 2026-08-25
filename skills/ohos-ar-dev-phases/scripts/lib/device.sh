@@ -29,6 +29,11 @@ _hdc_server_args() {
   elif [ -n "$HDC_WIN_PORT" ]; then
     local ip
     ip="$(ip route show default 2>/dev/null | awk '{print $3; exit}')"
+    # Netlink can be unavailable in restricted WSL shells. WSL's generated
+    # resolv.conf nameserver is the Windows-side host reachable from the distro.
+    if [ -z "$ip" ]; then
+      ip="$(awk '$1 == "nameserver" {print $2; exit}' /etc/resolv.conf 2>/dev/null)"
+    fi
     [ -n "$ip" ] && printf -- '-s %s:%s' "$ip" "$HDC_WIN_PORT"
   fi
 }

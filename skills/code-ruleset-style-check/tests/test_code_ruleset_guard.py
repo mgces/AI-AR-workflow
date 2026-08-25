@@ -42,6 +42,83 @@ class CodeRulesetGuardTest(unittest.TestCase):
     def _rule_ids(data):
         return [finding["rule_id"] for finding in data["findings"]]
 
+    def test_findings_outside_changed_lines_are_baselined(self):
+        path = self.dir / "legacy.cpp"
+        path.write_text("int *Legacy = NULL;\nint g_added = 1;\n", encoding="utf-8")
+        line_filter = self.dir / "lines.json"
+        line_filter.write_text(
+            json.dumps({str(path.resolve()): [[2, 2]]}), encoding="utf-8")
+        report = self.dir / "report.json"
+        cp = subprocess.run(
+            [sys.executable, str(GUARD), "--rules-only",
+             "--line-filter-json", str(line_filter), "--json", str(report), str(path)],
+            text=True, capture_output=True)
+        data = json.loads(report.read_text(encoding="utf-8"))
+        self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+        self.assertNotIn("G.EXP.35-CPP", self._rule_ids(data))
+
+    def test_git_baseline_catches_context_finding_on_unchanged_line(self):
+        subprocess.run(["git", "-C", str(self.dir), "init", "-q"], check=True)
+        subprocess.run(["git", "-C", str(self.dir), "config", "user.email", "t@t"], check=True)
+        subprocess.run(["git", "-C", str(self.dir), "config", "user.name", "t"], check=True)
+        path = self.dir / "context.cpp"
+        path.write_text(
+            "#include <vector>\nusing namespace std;\nint main() { return 0; }\n",
+            encoding="utf-8")
+        subprocess.run(["git", "-C", str(self.dir), "add", "context.cpp"], check=True)
+        subprocess.run(["git", "-C", str(self.dir), "commit", "-q", "-m", "base"], check=True)
+        base = subprocess.run(
+            ["git", "-C", str(self.dir), "rev-parse", "HEAD"],
+            text=True, capture_output=True, check=True).stdout.strip()
+        path.write_text(
+            "#include <vector>\nusing namespace std;\n#include <string>\n"
+            "int main() { return 0; }\n", encoding="utf-8")
+        line_filter = self.dir / "lines.json"
+        line_filter.write_text(
+            json.dumps({str(path.resolve()): [[3, 3]]}), encoding="utf-8")
+        report = self.dir / "context.json"
+        cp = subprocess.run(
+            [sys.executable, str(GUARD), "--rules-only",
+             "--line-filter-json", str(line_filter),
+             "--baseline-git-dir", str(self.dir), "--baseline-commit", base,
+             "--json", str(report), str(path)], text=True, capture_output=True)
+        data = json.loads(report.read_text(encoding="utf-8"))
+        self.assertNotEqual(cp.returncode, 0)
+        self.assertIn("G.INC.08-CPP", self._rule_ids(data))
+
+    def test_git_baseline_suppresses_unchanged_legacy_finding(self):
+        subprocess.run(["git", "-C", str(self.dir), "init", "-q"], check=True)
+        subprocess.run(["git", "-C", str(self.dir), "config", "user.email", "t@t"], check=True)
+        subprocess.run(["git", "-C", str(self.dir), "config", "user.name", "t"], check=True)
+        path = self.dir / "legacy.cpp"
+        path.write_text("int *Legacy = NULL;\n", encoding="utf-8")
+        subprocess.run(["git", "-C", str(self.dir), "add", "legacy.cpp"], check=True)
+        subprocess.run(["git", "-C", str(self.dir), "commit", "-q", "-m", "base"], check=True)
+        base = subprocess.run(
+            ["git", "-C", str(self.dir), "rev-parse", "HEAD"],
+            text=True, capture_output=True, check=True).stdout.strip()
+        path.write_text("int *Legacy = NULL;\nint g_new_value = 1;\n", encoding="utf-8")
+        report = self.dir / "legacy-baseline.json"
+        cp = subprocess.run(
+            [sys.executable, str(GUARD), "--rules-only",
+             "--baseline-git-dir", str(self.dir), "--baseline-commit", base,
+             "--json", str(report), str(path)], text=True, capture_output=True)
+        data = json.loads(report.read_text(encoding="utf-8"))
+        self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+        self.assertNotIn("G.EXP.35-CPP", self._rule_ids(data))
+
+    def test_global_prefix_rule_ignores_locals_and_prefixed_globals(self):
+        cp, data = self._run(
+            "scope.cpp",
+            "int g_count = 0;\nvoid update()\n{\n    int local = 1;\n}\n")
+        self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+        self.assertNotIn("G.NAM.03-CPP", self._rule_ids(data))
+
+    def test_global_prefix_rule_flags_unprefixed_file_scope_variable(self):
+        cp, data = self._run("global.cpp", "int count = 0;\n")
+        self.assertNotEqual(cp.returncode, 0)
+        self.assertIn("G.NAM.03-CPP", self._rule_ids(data))
+
     def test_normal_cpp_constructs_pass(self):
         cp, data = self._run(
             "clean.cpp",

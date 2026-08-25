@@ -250,14 +250,15 @@ P7 PASS 需要同时满足:
 P8 是唯一对外不可逆阶段。PASS 需要同时满足:
 
 - P1–P7 已全部 advance 成功;
-- phase 8 consent 已记录;
+- phase 8 consent 已绑定当前签名 DRY diff/上传目标预检;
 - 本地 review 报告零问题(PR 创建路径上是硬门控);
 - PR review 报告零问题;
 - 远端 PR 存在;
 - CI overall 成功;
 - 远端 PR head SHA 与本次 pushed SHA 一致。
 
-DRY RUN(无 `--allow-push`)只产出导航性 FAIL/blocked 摘要,不产 PASS。
+DRY RUN(无 `--allow-push`)产出签名的 consent-precheck FAIL（所以不能关闭 P8）和导航摘要；人工 consent 绑定该条目的 diff/目标产物，不产最终 PASS。
+该 FAIL 是预期的人审 hold，不生成 active repair packet：导航必须为 `awaiting_consent`，记录 consent 后切到 `push_pr`/上传 gate，而不是要求 `scoped_fix`。
 
 P8 摘要字段示例:
 

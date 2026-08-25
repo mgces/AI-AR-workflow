@@ -96,6 +96,16 @@ class FileHygieneH1Test(unittest.TestCase):
         cp = self._run(p)
         self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
 
+    def test_cross_file_root_finds_unchanged_same_stem_source(self):
+        old = self._write("pair.cc", APACHE_HEADER + "int old_value;\n")
+        new = self._write("pair.cpp", APACHE_HEADER + "int new_value;\n")
+        cp = subprocess.run(
+            [sys.executable, HYGIENE, "--cross-file-root", self.dir, new],
+            text=True, capture_output=True)
+        self.assertTrue(os.path.exists(old))
+        self.assertNotEqual(cp.returncode, 0)
+        self.assertIn("G.FIL.04-CPP", cp.stderr)
+
 
 class FileHygieneH2H5Test(unittest.TestCase):
     """H2 bytes / H3 JSON / H4 non-code sensitive words / H5 GN source existence.
@@ -213,6 +223,41 @@ class FileHygieneH2H5Test(unittest.TestCase):
                         '  public = [ "//foo/bar:baz.h" ]\n'
                         '  deps = [ ":other" ]\n}\n')
         cp, data = self._run(p)
+        self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+
+    def test_header_and_implementation_are_not_duplicate_files(self):
+        header = self._write("worker.h", APACHE_HEADER + "int Work();\n")
+        source = self._write("worker.cpp", APACHE_HEADER +
+                             '#include "worker.h"\nint Work() { return 0; }\n')
+        cp, data = self._run(header, source)
+        self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+        self.assertNotIn("G.FIL.04-CPP", self._rules(data))
+
+    def test_two_implementation_variants_are_duplicate_files(self):
+        cpp = self._write("worker.cpp", APACHE_HEADER + "int Work() { return 0; }\n")
+        cc = self._write("worker.cc", APACHE_HEADER + "int Work2() { return 0; }\n")
+        cp, data = self._run(cpp, cc)
+        self.assertNotEqual(cp.returncode, 0)
+        self.assertIn("G.FIL.04-CPP", self._rules(data))
+
+    def test_same_basename_in_different_directories_is_not_duplicate(self):
+        os.makedirs(os.path.join(self.dir, "src"))
+        os.makedirs(os.path.join(self.dir, "test"))
+        src = self._write("src/worker.cpp", APACHE_HEADER + "int Work() { return 0; }\n")
+        test = self._write("test/worker.cpp", APACHE_HEADER + "int Test() { return 0; }\n")
+        cp, data = self._run(src, test)
+        self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+
+    def test_sensitive_finding_outside_changed_lines_is_baselined(self):
+        p = self._write("BUILD.gn", GN_HEADER + "# 香港 legacy baseline\n" +
+                        'group("changed") {}\n')
+        line_filter = os.path.join(self.dir, "lines.json")
+        with open(line_filter, "w", encoding="utf-8") as f:
+            json.dump({os.path.abspath(p): [[4, 4]]}, f)
+        jout = os.path.join(self.dir, "f.json")
+        cp = subprocess.run(
+            [sys.executable, HYGIENE, "--line-filter-json", line_filter,
+             "--json", jout, p], text=True, capture_output=True)
         self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
 
 

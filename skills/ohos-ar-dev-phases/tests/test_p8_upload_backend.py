@@ -92,6 +92,42 @@ class TestUploadBackendBranch(unittest.TestCase):
         self.assertNotEqual(cp.returncode, 0)
         self.assertIn("--repo-slug is required", cp.stdout + cp.stderr)
 
+    def test_successful_dry_run_navigates_to_consent_not_repair(self):
+        self._write_state(environment="openharmony")
+        rel = "evidence/phase8/upload_consent_request.json"
+        os.makedirs(os.path.dirname(os.path.join(self.pdir, rel)), exist_ok=True)
+        with open(os.path.join(self.pdir, rel), "w", encoding="utf-8") as f:
+            json.dump({"repo_slug": "owner/repo", "branch": "feat/x"}, f)
+        gate_upload_ci._record_result(
+            self.pdir, "FAIL", "dry run prepared upload plan (no --allow-push)",
+            [rel], mode="dry_run", failure_class="dry_run_no_pass",
+            manifest_gate=gl.UPLOAD_CONSENT_GATE)
+        cp = subprocess.run(
+            [sys.executable, os.path.join(SCRIPTS, "advance.py"),
+             "--pipeline-dir", self.pdir, "next", "--json"],
+            text=True, capture_output=True)
+        self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+        data = json.loads(cp.stdout)
+        self.assertEqual(data["current_substate"], "awaiting_consent")
+        self.assertEqual(data["required_inputs"], ["reviewer_token"])
+        repair = gl.read_control_json(self.pdir, "repairs", "current.json")
+        self.assertFalse(repair.get("active", True))
+        card = gl.read_control_json(self.pdir, "memory_cards", "phase8.json")
+        self.assertEqual(card["next_expected_action_class"], "consent")
+
+        precheck = gl.validate_upload_consent_entry(self.pdir)[2]
+        state = gl.load_state(self.pdir)
+        state["consent_tokens"]["8"] = gl.make_consent_record(
+            self.run_id, 8, "reviewer", gl.entry_id(precheck))
+        gl.save_state(self.pdir, state)
+        data = json.loads(subprocess.run(
+            [sys.executable, os.path.join(SCRIPTS, "advance.py"),
+             "--pipeline-dir", self.pdir, "next", "--json"],
+            text=True, capture_output=True, check=True).stdout)
+        self.assertEqual(data["current_substate"], "awaiting_gate")
+        self.assertNotIn("scoped_fix", data["required_inputs"])
+        self.assertEqual(data["logical_substate"]["id"], "push_pr")
+
 
 class TestCIFreshness(unittest.TestCase):
     """D: the CI-freshness check that closes the 'same-PR re-push, CI still shows
@@ -140,6 +176,34 @@ class TestCIFreshness(unittest.TestCase):
         ok, detail = gate_upload_ci.ci_freshness("garbage", pushed_at=None, skew_s=300)
         self.assertTrue(ok)
         self.assertIn("re-verify", detail)
+
+
+class TestUploadConsentTarget(unittest.TestCase):
+    def test_target_change_after_consent_is_rejected(self):
+        with tempfile.TemporaryDirectory() as pdir:
+            path = os.path.join(pdir, "evidence", "phase8",
+                                "upload_consent_request.json")
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump({
+                    "repo_slug": "owner/repo", "branch": "feature/x",
+                    "base": "master", "issue": "#123", "head_owner": "fork"
+                }, f)
+            ok, detail = gate_upload_ci.upload_consent_target_matches(
+                pdir, repo_slug="other/repo", branch="feature/x", base="master",
+                issue="#123", head_owner="fork", creating_pr=True)
+            self.assertFalse(ok)
+            self.assertIn("repo_slug", detail)
+
+    def test_command_runner_does_not_interpret_shell_syntax(self):
+        with tempfile.TemporaryDirectory() as temp:
+            marker = os.path.join(temp, "must-not-exist")
+            literal = "$(touch %s)" % marker
+            cp = gate_upload_ci.run([sys.executable, "-c",
+                                     "import sys; print(sys.argv[1])", literal])
+            self.assertEqual(cp.returncode, 0)
+            self.assertEqual(cp.stdout.strip(), literal)
+            self.assertFalse(os.path.exists(marker))
 
 
 if __name__ == "__main__":

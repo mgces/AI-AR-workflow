@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 # Copyright (c) 2026. Licensed under the Apache License, Version 2.0.
 """
-gate_upload_ci.py — Phase 6 (code upload + review). The only outward, irreversible step.
+gate_upload_ci.py — Phase 8 (code upload + review). The only outward, irreversible step.
 
 Hard prerequisites (read from pipeline.json / manifest):
   * phases 1..7 all status==passed;
-  * consent for phase 6 recorded (human approved the push) — also re-checked by
-    advance.py, so this cannot be bypassed.
+  * consent for phase 8 bound to the signed dry-run diff/target packet (human
+    approved the exact push) — also re-checked by advance.py.
 
 The push itself only happens with --allow-push. Without it the gate runs in
 DRY mode: it prepares the branch/PR plan and exits WITHOUT emitting a PASS.
@@ -35,6 +35,7 @@ message until they are filled — the same fail-closed stance as the build gates
 The two review gates + consent + SHA binding are backend-agnostic and always run.
 """
 import argparse
+import hashlib
 import json
 import os
 import shutil
@@ -114,6 +115,7 @@ P8_FAILURE_TO_SUBSTATE = {
     "consent_missing": "precheck",
     "consent_stale": "precheck",
     "issue_binding_missing": "precheck",
+    "branch_mismatch": "precheck",
     "upload_backend_unconfigured": "precheck",
     "review_gate_failed": "local_review",
     "local_review_blocked": "local_review",
@@ -143,7 +145,14 @@ EXTERNAL_INSTABILITY_CLASSES = {"external_api_unstable"}
 
 
 def run(cmd, cwd=None):
-    return subprocess.run(cmd, shell=True, text=True, capture_output=True, cwd=cwd)
+    """Run an argv vector without a shell.
+
+    P8 consumes branch names, PR titles and a body derived from the diff. None
+    of those bytes may be reinterpreted as shell syntax on an upload path.
+    """
+    if isinstance(cmd, str):
+        raise TypeError("run() requires an argv list, never a shell command string")
+    return subprocess.run(cmd, text=True, capture_output=True, cwd=cwd)
 
 
 def _unique_ordered(items):
@@ -454,7 +463,7 @@ def _write_completion_controls(pdir, *, arts, pr_number, overall, ci_ok, pushed_
 def remote_owner(gdir, remote="origin"):
     """Return the owner/namespace of a git remote (e.g. 'mgce1' from
     https://gitcode.com/mgce1/hiviewdfx_hiview.git), or '' if it can't be parsed."""
-    url = run("git -C %s remote get-url %s" % (gdir, remote)).stdout.strip()
+    url = run(["git", "-C", gdir, "remote", "get-url", remote]).stdout.strip()
     if not url:
         return ""
     # strip protocol + host, drop a trailing .git, then take the owner segment.
@@ -490,7 +499,7 @@ def fork_qualified_head(gdir, repo_slug, branch, head_owner=""):
 
 def write_full_diff(state, gdir, pdir):
     """Dump the full diff of ALL modified code (component repo vs base_commit)
-    into evidence/phase6 so a human can review the exact changes before upload.
+    into evidence/phase8 so a human can review the exact changes before upload.
 
     `git diff base` only covers tracked changes, so untracked NEW files (a brand
     new plugin directory is entirely untracked) would be invisible in the review.
@@ -498,28 +507,82 @@ def write_full_diff(state, gdir, pdir):
     human confirms the exact set that `git add -A` will commit and push.
     Returns (rel_path, stat_rel, stat_summary)."""
     base = state.get("base_commit") or "HEAD"
-    diff = run("git -C %s diff %s" % (gdir, base)).stdout
-    stat = run("git -C %s diff --stat %s" % (gdir, base)).stdout.strip()
+    diff = run(["git", "-C", gdir, "diff", base]).stdout
+    stat = run(["git", "-C", gdir, "diff", "--stat", base]).stdout.strip()
 
     untracked = [f for f in run(
-        "git -C %s ls-files --others --exclude-standard" % gdir).stdout.splitlines() if f.strip()]
+        ["git", "-C", gdir, "ls-files", "--others", "--exclude-standard"]
+    ).stdout.splitlines() if f.strip()]
     if untracked:
         diff += "\n" + "=" * 64 + "\nNEW (UNTRACKED) FILES — will be added by `git add -A`\n" + \
             "=" * 64 + "\n"
         for f in untracked:
             # --no-index exits 1 when files differ (they always do vs /dev/null); that's expected.
-            diff += run("git -C %s diff --no-index -- /dev/null %s" % (gdir, json.dumps(f))).stdout
+            diff += run(["git", "-C", gdir, "diff", "--no-index", "--",
+                        "/dev/null", f]).stdout
         stat += ("\n" if stat else "") + \
             "\n".join(" %s | new file" % f for f in untracked) + \
             "\n %d new file(s)" % len(untracked)
 
-    rel = "evidence/phase6/full_diff.patch"
+    rel = "evidence/phase8/full_diff.patch"
     with open(os.path.join(pdir, rel), "w", encoding="utf-8") as f:
         f.write(diff)
-    stat_rel = "evidence/phase6/full_diff.stat.txt"
+    stat_rel = "evidence/phase8/full_diff.stat.txt"
     with open(os.path.join(pdir, stat_rel), "w", encoding="utf-8") as f:
         f.write("base=%s\n\n%s\n" % (base, stat or "(no changes)"))
     return rel, stat_rel, (stat or "(no changes)")
+
+
+def write_upload_consent_request(pdir, *, repo_slug, branch, base, issue,
+                                 head_owner, head_sha, diff_rel, stat_rel):
+    """Write the exact immutable upload intent a human is being asked to sign."""
+    def digest(rel):
+        h = hashlib.sha256()
+        with open(os.path.join(pdir, rel), "rb") as f:
+            for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                h.update(chunk)
+        return h.hexdigest()
+
+    rel = "evidence/phase8/upload_consent_request.json"
+    os.makedirs(os.path.dirname(os.path.join(pdir, rel)), exist_ok=True)
+    payload = {
+        "version": 1,
+        "repo_slug": repo_slug,
+        "branch": branch,
+        "base": base,
+        "issue": issue,
+        "head_owner": head_owner or "",
+        "head_sha_before_push": head_sha,
+        "full_diff": {"path": diff_rel, "sha256": digest(diff_rel)},
+        "full_diff_stat": {"path": stat_rel, "sha256": digest(stat_rel)},
+    }
+    with open(os.path.join(pdir, rel), "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, sort_keys=True, indent=2)
+        f.write("\n")
+    return rel
+
+
+def upload_consent_target_matches(pdir, *, repo_slug, branch, base, issue,
+                                  head_owner, creating_pr):
+    """Ensure CLI upload coordinates still match the human-reviewed request."""
+    path = os.path.join(pdir, "evidence/phase8/upload_consent_request.json")
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            request = json.load(f)
+    except (OSError, ValueError, TypeError) as exc:
+        return False, "cannot read signed upload consent request: %s" % exc
+    expected = {
+        "repo_slug": repo_slug,
+        "branch": branch,
+        "base": base,
+    }
+    if creating_pr:
+        expected.update({"issue": issue, "head_owner": head_owner or ""})
+    mismatches = ["%s=%r (reviewed %r)" % (key, value, request.get(key))
+                  for key, value in expected.items() if request.get(key) != value]
+    if mismatches:
+        return False, "upload target changed after consent: %s" % ", ".join(mismatches)
+    return True, "ok"
 
 
 def commit_pending_changes(gdir, title, pdir):
@@ -529,10 +592,10 @@ def commit_pending_changes(gdir, title, pdir):
     No-op (returns None) when the tree is already clean — the changes were
     committed earlier. The fingerprint is base_commit-relative, so committing
     here does NOT count as code drift."""
-    dirty = run("git -C %s status --porcelain" % gdir).stdout.strip()
+    dirty = run(["git", "-C", gdir, "status", "--porcelain"]).stdout.strip()
     if not dirty:
         return None
-    add = run("git -C %s add -A" % gdir)
+    add = run(["git", "-C", gdir, "add", "-A"])
     if add.returncode != 0:
         _fail(pdir, "git add failed: %s" % add.stderr.strip()[:500])
     msg = title or "P6 upload"
@@ -544,10 +607,10 @@ def commit_pending_changes(gdir, title, pdir):
         _fail(pdir, "commit message rejected (%s). Provide a descriptive "
                     "--title, then re-run P8." % detail,
               failure_class="commit_message_invalid")
-    commit = run('git -C %s commit -s -m %s' % (gdir, json.dumps(msg)))
+    commit = run(["git", "-C", gdir, "commit", "-s", "-m", msg])
     if commit.returncode != 0:
         _fail(pdir, "git commit -s failed: %s" % commit.stderr.strip()[:500])
-    return run("git -C %s rev-parse HEAD" % gdir).stdout.strip()
+    return run(["git", "-C", gdir, "rev-parse", "HEAD"]).stdout.strip()
 
 
 def normalize_issue(raw):
@@ -673,7 +736,7 @@ def build_pr_body(gdir, issue_ref, pdir=None):
 
 
 def require_zero_issue_report(path, label, dst_rel, pdir, arts):
-    """Copy a code-review report into evidence/phase6 and require a
+    """Copy a code-review report into evidence/phase8 and require a
     machine-readable zero-issue count. Fails closed: a missing report, a report
     without a parseable count, or any non-zero count aborts the phase — the
     report itself may be model-authored, but the gate only PASSes on count 0.
@@ -703,7 +766,8 @@ def _record_result(pdir, verdict, reason, arts, *, cmd=None, repo_slug=None,
                    pushed_sha=None, pr_head=None, sha_ok=None,
                    local_review_detail=None, pr_review_detail=None,
                    mode=None, failure_class=None, problems=None,
-                   resume_hint=None, emit_manifest=True, suspect_locations=None):
+                   resume_hint=None, emit_manifest=True, suspect_locations=None,
+                   manifest_gate="gate_upload_ci.py"):
     checks = []
     if mode:
         checks.append("mode=%s" % mode)
@@ -765,6 +829,21 @@ def _record_result(pdir, verdict, reason, arts, *, cmd=None, repo_slug=None,
             pr_review_detail=pr_review_detail,
             mode=mode,
         )
+    elif failure_class == "dry_run_no_pass":
+        # A successful dry-run is an intentional human hold, not a repairable
+        # defect. Keep the signed FAIL precheck (it must not close P8), but clear
+        # repair/failure controls so navigation projects consent_await instead
+        # of asking a weak model for a meaningless scoped_fix.
+        gl.clear_failure_report(pdir, 8)
+        gl.write_repair_packet(
+            pdir, REPAIR_PACKET_PARTS,
+            gl.build_cleared_repair_packet(
+                8, "upload-review", cleared_by="gate_upload_ci.py:dry-run",
+                bundle_revision_from=_test_bundle_context(pdir).get(
+                    "bundle_revision") or ""))
+        _write_substate_snapshot(
+            pdir, substate_id="consent_await", mode=mode, ci_ok=ci_ok,
+            sha_ok=sha_ok, pr_number=pr_number)
     else:
         packet = _write_repair_packet(
             pdir,
@@ -804,12 +883,15 @@ def _record_result(pdir, verdict, reason, arts, *, cmd=None, repo_slug=None,
                 "escalation_note": packet["escalation_note"],
             })
 
+    consent_hold = verdict != "PASS" and failure_class == "dry_run_no_pass"
     gl.write_gate_phase_memory_card(
         pdir, 8, "upload-review", verdict=verdict,
         bundle_revision=_test_bundle_context(pdir).get("bundle_revision"),
-        current_blocker=None if verdict == "PASS" else reason,
+        current_blocker=(None if verdict == "PASS" else
+                         "reviewer_token" if consent_hold else reason),
         next_expected_action_class=(
             "complete" if verdict == "PASS"
+            else "consent" if consent_hold
             else gl.action_class_for("repair_or_regenerate",
                                      failure_class=failure_class)),
         last_failure_class=None if verdict == "PASS" else failure_class,
@@ -823,7 +905,7 @@ def _record_result(pdir, verdict, reason, arts, *, cmd=None, repo_slug=None,
         pdir, "upload_review", "upload-review", physical_phase=8)
 
     if emit_manifest:
-        gl.emit(pdir, 8, "gate_upload_ci.py", verdict=verdict, reason=reason,
+        gl.emit(pdir, 8, manifest_gate, verdict=verdict, reason=reason,
                 cmd=cmd, artifacts_rel=arts)
 
 
@@ -869,6 +951,7 @@ def main():
     args = ap.parse_args()
     pdir = gl.pipeline_dir(args.pipeline_dir)
     state = gl.load_state(pdir)
+    gl.require_current_phase(state, 8, "gate_upload_ci.py")
     repo = state["repo"]
     gdir = state.get("git_dir", repo)
     if not os.path.isabs(gdir):
@@ -933,6 +1016,18 @@ def main():
     # existing --pr). Fail closed early so a missing issue never produces a PR
     # whose gates silently never fire.
     creating_pr = args.pr is None
+    if creating_pr:
+        current_branch = run(
+            ["git", "-C", gdir, "branch", "--show-current"]).stdout.strip()
+        if current_branch != args.branch:
+            reason = ("checked-out branch %r does not match --branch %r"
+                      % (current_branch or "(detached HEAD)", args.branch))
+            _record_result(
+                pdir, "FAIL", reason, [], repo_slug=args.repo_slug,
+                branch=args.branch, mode="precheck", failure_class="branch_mismatch",
+                problems=[reason], resume_hint="checkout the exact upload branch, then rerun",
+                emit_manifest=False)
+            sys.exit("PHASE 8 BLOCKED: %s" % reason)
     if creating_pr and not args.issue:
         reason = "--issue is required to create a PR"
         _record_result(
@@ -951,23 +1046,27 @@ def main():
     # Save the full diff of ALL modified code for human confirmation BEFORE upload.
     diff_rel, stat_rel, stat = write_full_diff(state, gdir, pdir)
 
-    head_sha = run("git -C %s rev-parse %s" % (gdir, args.branch)).stdout.strip()
+    head_sha = run(["git", "-C", gdir, "rev-parse", args.branch]).stdout.strip()
 
     if not args.allow_push and not args.pr:
+        consent_request_rel = write_upload_consent_request(
+            pdir, repo_slug=args.repo_slug, branch=args.branch, base=args.base,
+            issue=issue_ref, head_owner=args.head_owner, head_sha=head_sha,
+            diff_rel=diff_rel, stat_rel=stat_rel)
         planned_head = fork_qualified_head(gdir, args.repo_slug, args.branch, args.head_owner)
         reason = "dry run prepared upload plan (no --allow-push)"
         _record_result(
-            pdir, "FAIL", reason, [diff_rel, stat_rel],
+            pdir, "FAIL", reason, [diff_rel, stat_rel, consent_request_rel],
             repo_slug=args.repo_slug, branch=args.branch,
             pushed_sha=head_sha, mode="dry_run",
             local_review_detail="not-run (dry run)",
             pr_review_detail="not-run (dry run)",
             failure_class="dry_run_no_pass",
             problems=["dry run only: no irreversible upload was performed"],
-            resume_hint="人工确认 diff 后记录 phase 6 consent，并带 --allow-push 重跑",
-            emit_manifest=False)
+            resume_hint="人工确认 diff 后记录 phase 8 consent，并带 --allow-push 重跑",
+            emit_manifest=True, manifest_gate=gl.UPLOAD_CONSENT_GATE)
         print("\n" + "=" * 64)
-        print("P6 上库前 —— 全部代码改动已保存,待人工确认")
+        print("P8 上库前 —— 全部代码改动已保存,待人工确认")
         print("=" * 64)
         print("完整 diff : %s" % os.path.join(pdir, diff_rel))
         print("改动统计 :\n%s" % stat)
@@ -987,18 +1086,29 @@ def main():
         print("=" * 64)
         return  # no PASS emitted
 
-    if not state.get("consent_tokens", {}).get("8"):
-        reason = "no consent for phase 8"
+    ok_precheck, precheck_reason, precheck_entry = gl.validate_upload_consent_entry(pdir)
+    if ok_precheck:
+        ok_consent, consent_reason = gl.verify_consent(
+            state, 8, gl.entry_id(precheck_entry))
+        if ok_consent:
+            ok_consent, consent_reason = upload_consent_target_matches(
+                pdir, repo_slug=args.repo_slug, branch=args.branch, base=args.base,
+                issue=issue_ref, head_owner=args.head_owner, creating_pr=creating_pr)
+    else:
+        ok_consent, consent_reason = False, precheck_reason
+    if not ok_consent:
+        reason = "invalid consent for phase 8: %s" % consent_reason
         _record_result(
             pdir, "FAIL", reason, [diff_rel, stat_rel],
             repo_slug=args.repo_slug, branch=args.branch,
             pushed_sha=head_sha, mode="precheck",
             failure_class="consent_missing",
-            problems=["phase 8 consent token missing"],
-            resume_hint="人工审核后执行 advance.py consent --phase 8 --token <reviewer>，再重跑",
+            problems=[consent_reason],
+            resume_hint="先 dry-run 生成签名预检证据，人工审核后执行 "
+                        "advance.py consent --phase 8 --token <reviewer>，再重跑",
             emit_manifest=False)
-        sys.exit("PHASE 8 BLOCKED: no consent for phase 8. Record it with "
-                 "`advance.py consent --phase 8 --token <token>` after human approval.")
+        sys.exit("PHASE 8 BLOCKED: %s. Run the dry-run, review its exact diff/target, "
+                 "then record `advance.py consent --phase 8 --token <token>`." % consent_reason)
 
     arts = [diff_rel, stat_rel]
 
@@ -1014,7 +1124,7 @@ def main():
         # committed or pushed until the local review is clean.
         local_rel, local_detail = require_zero_issue_report(
             args.local_review_report, "local-review-report",
-            "evidence/phase6/local_code_review_report", pdir, arts)
+            "evidence/phase8/local_code_review_report", pdir, arts)
         # Commit any pending work-tree changes with DCO sign-off, then push.
         # Committing here is safe: the code fingerprint is base_commit-relative,
         # so it stays equal to the value P1 locked (no false "code drift").
@@ -1022,7 +1132,7 @@ def main():
         if new_head:
             head_sha = new_head
         # push + create PR (irreversible)
-        push = run("git -C %s push -u origin %s" % (gdir, args.branch))
+        push = run(["git", "-C", gdir, "push", "-u", "origin", args.branch])
         if push.returncode != 0:
             _fail(pdir, "git push failed: %s" % (push.stderr.strip()[:500]),
                   failure_class="push_failed")
@@ -1034,10 +1144,11 @@ def main():
         # Qualify the head as <fork-owner>:<branch> for the fork -> upstream flow;
         # a bare name would be resolved on the base repo and 403 on an upstream PR.
         head_ref = fork_qualified_head(gdir, args.repo_slug, args.branch, args.head_owner)
-        create = run('oh-gc pr create --repo %s --head %s --base %s --title %s --body %s --json'
-                     % (args.repo_slug, head_ref, args.base,
-                        json.dumps(args.title or args.branch), json.dumps(pr_body)))
-        with open(os.path.join(pdir, "evidence/phase6/pr_create.txt"), "w") as f:
+        create = run(["oh-gc", "pr", "create", "--repo", args.repo_slug,
+                      "--head", head_ref, "--base", args.base,
+                      "--title", args.title or args.branch,
+                      "--body", pr_body, "--json"])
+        with open(os.path.join(pdir, "evidence/phase8/pr_create.txt"), "w") as f:
             f.write(create.stdout + "\n----\n" + create.stderr)
         if create.returncode != 0:
             _fail(pdir, "oh-gc pr create failed: %s" % create.stderr.strip()[:500],
@@ -1049,8 +1160,9 @@ def main():
                   failure_class="pr_create_failed")
 
     # record PR view (head SHA from the remote PR)
-    view = run("oh-gc pr view %d --repo %s --json" % (pr_number, args.repo_slug))
-    pr_rel = "evidence/phase6/pr.json"
+    view = run(["oh-gc", "pr", "view", str(pr_number),
+                "--repo", args.repo_slug, "--json"])
+    pr_rel = "evidence/phase8/pr.json"
     with open(os.path.join(pdir, pr_rel), "w") as f:
         f.write(view.stdout or view.stderr)
     pr_head = ""
@@ -1060,15 +1172,15 @@ def main():
     except Exception:
         pass
     arts.append(pr_rel)
-    if os.path.exists(os.path.join(pdir, "evidence/phase6/pr_create.txt")):
-        arts.append("evidence/phase6/pr_create.txt")
+    if os.path.exists(os.path.join(pdir, "evidence/phase8/pr_create.txt")):
+        arts.append("evidence/phase8/pr_create.txt")
 
     # B. PR REVIEW HARD GATE — the PR now exists, so review it, and require a
     # machine-readable zero-issue report BEFORE spending a CI check / PASS. A
     # non-zero report fails closed: fix the code and `advance.py reset` to P1.
     pr_review_rel, pr_review_detail = require_zero_issue_report(
         args.pr_review_report, "pr-review-report",
-        "evidence/phase6/pr_review_report", pdir, arts)
+        "evidence/phase8/pr_review_report", pdir, arts)
 
     # CI status for this PR
     env = dict(os.environ)
@@ -1078,7 +1190,7 @@ def main():
          "--repo", args.repo_slug, "--json"],
         env, max_attempts=args.ci_query_attempts,
         base_delay=args.ci_query_backoff)
-    ci_rel = "evidence/phase6/ci_status.json"
+    ci_rel = "evidence/phase8/ci_status.json"
     with open(os.path.join(pdir, ci_rel), "w") as f:
         f.write(ci.stdout or ci.stderr)
     overall = ""

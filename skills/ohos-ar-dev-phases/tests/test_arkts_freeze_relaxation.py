@@ -43,7 +43,8 @@ class TestArktsFreezeRelaxation(TestArktsAuthorship):
         fp = os.path.join(self.pdir, "evidence", "phase3", "failure_report.json")
         if not os.path.exists(fp):
             return {}
-        return _json.load(open(fp, encoding="utf-8"))
+        with open(fp, encoding="utf-8") as stream:
+            return _json.load(stream)
 
     # ---- P3 freeze: declared ohosTest project may be added, main/ may not ----
     def test_arkts_declared_project_passes_freeze(self):

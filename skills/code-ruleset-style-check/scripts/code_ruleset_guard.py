@@ -6,12 +6,14 @@ an executable backend before the guard can return PASS.  Deterministic rules are
 implemented locally; AST/tool rows require an explicitly available executor.
 """
 import argparse
+from collections import Counter
 import hashlib
 import json
 import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 EXTS = {".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx"}
@@ -335,9 +337,9 @@ _RAW_RULES = [
     # --- G.PRE.02-CPP: prefer function over function-like macro ---
     ("G.PRE.02-CPP", "一般", r"#\s*define\s+\w+\([^)]*\)\s*\\",
      "prefer a function over a multi-line function-like macro", None),
-    # --- G.NAM.03-CPP: global variables should have g_ prefix ---
-    ("G.NAM.03-CPP", "提示", r"^(int|char|long|short|float|double|void\s*\*|size_t|bool|unsigned)\s+\w+(?:\[\d+\])?\s*=\s*[^;]*;\s*$",
-     "prefix global variables with 'g_' for clarity", None),
+    # G.NAM.03-CPP (global variable prefix) needs brace/scope context and is
+    # implemented in _multiline_findings. A former per-line regex reported
+    # locals and even correctly-prefixed g_* variables as globals.
     # --- G.STD.10-CPP: non-const iterator when const would do ---
     ("G.STD.10-CPP", "一般", r"\bfor\s*\(\s*auto\s+\w+\s*=\s*\w+\.begin\(\)",
      "use cbegin()/cend() when the iterator is not modified", None),
@@ -610,6 +612,26 @@ def _multiline_findings(path, ext, lines):
     findings = []
     no_comments, code_lines = _strip_comments_and_literals(lines)
 
+    # G.NAM.03-CPP — only declarations demonstrably at file scope, and only
+    # when the declared name really lacks the required prefix. Prefer a false
+    # negative for complex namespace/macro declarations over blocking locals.
+    global_decl = re.compile(
+        r"^\s*(?:static\s+)?(?:const\s+)?"
+        r"(?:int|char|long|short|float|double|size_t|bool|unsigned|void\s*\*)"
+        r"\s+([A-Za-z_]\w*)(?:\[\d+\])?\s*=\s*[^;]*;\s*$")
+    depth = 0
+    for n, line in enumerate(code_lines, 1):
+        if ext in CPP_RULE_EXTS and depth == 0:
+            match = global_decl.match(line)
+            if match and not match.group(1).startswith("g_"):
+                findings.append({
+                    "file": str(path), "line": n, "rule_id": "G.NAM.03-CPP",
+                    "severity": "提示",
+                    "remediation": "prefix global variables with 'g_' for clarity",
+                })
+        depth += line.count("{") - line.count("}")
+        depth = max(0, depth)
+
     # G.INC.08-CPP — importing a namespace is allowed after all includes.
     includes = [n for n, line in enumerate(code_lines, 1)
                 if re.match(r"^\s*#\s*include\b", line)]
@@ -738,12 +760,116 @@ def _rule_findings(files):
     return findings
 
 
-def _format_failures(files):
+def _line_selected(path, line, line_filter):
+    if line_filter is None:
+        return True
+    ranges = line_filter.get(str(path.resolve()))
+    if ranges is None:
+        return True
+    return any(start <= line <= end for start, end in ranges)
+
+
+def _filter_findings(findings, line_filter):
+    if line_filter is None:
+        return findings
+    return [f for f in findings
+            if _line_selected(Path(f["file"]), int(f.get("line", 1)), line_filter)]
+
+
+def _finding_keys(findings):
+    """Stable identities for findings that survive unrelated line shifts."""
+    line_cache = {}
+    keys = []
+    for finding in findings:
+        path = Path(finding["file"])
+        if path not in line_cache:
+            try:
+                line_cache[path] = path.read_text(
+                    encoding="utf-8", errors="replace").splitlines()
+            except OSError:
+                line_cache[path] = []
+        lineno = int(finding.get("line", 1))
+        lines = line_cache[path]
+        source = lines[lineno - 1].strip() if 0 < lineno <= len(lines) else ""
+        identity_file = finding.get("_identity_file", str(path.resolve()))
+        source = finding.get("_source_text", source)
+        keys.append((identity_file, finding.get("rule_id"), finding.get("severity"),
+                     finding.get("remediation"), source))
+    return keys
+
+
+def _subtract_baseline_findings(current, baseline):
+    """Return only findings newly introduced relative to the baseline."""
+    allowance = Counter(_finding_keys(baseline))
+    out = []
+    for finding, key in zip(current, _finding_keys(current)):
+        if allowance[key]:
+            allowance[key] -= 1
+        else:
+            out.append(finding)
+    return out
+
+
+def _git_baseline_findings(files, git_dir, commit):
+    """Run deterministic rules over each changed file's bytes at ``commit``."""
+    root = Path(git_dir).resolve()
+    with tempfile.TemporaryDirectory(prefix="code-ruleset-baseline-") as temp:
+        temp_root = Path(temp)
+        baseline_files = []
+        originals = {}
+        for path in files:
+            try:
+                rel = path.resolve().relative_to(root)
+            except ValueError:
+                continue
+            cp = subprocess.run(
+                ["git", "-C", str(root), "show",
+                 "%s:%s" % (commit, rel.as_posix())], capture_output=True)
+            if cp.returncode != 0:
+                continue
+            dst = temp_root / rel
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            dst.write_bytes(cp.stdout)
+            baseline_files.append(dst)
+            originals[str(dst)] = path.resolve()
+        findings = _rule_findings(baseline_files)
+        for finding in findings:
+            baseline_path = Path(finding["file"])
+            try:
+                lines = baseline_path.read_text(
+                    encoding="utf-8", errors="replace").splitlines()
+            except OSError:
+                lines = []
+            lineno = int(finding.get("line", 1))
+            finding["_source_text"] = (
+                lines[lineno - 1].strip() if 0 < lineno <= len(lines) else "")
+            finding["_identity_file"] = str(
+                originals.get(str(baseline_path), baseline_path).resolve())
+        return findings
+
+
+def _format_failures(files, line_filter=None):
     clang_format = shutil.which("clang-format")
     if not clang_format:
         return ["clang-format not found in PATH"]
-    cp = subprocess.run([clang_format, "--dry-run", "--Werror", *map(str, files)], text=True)
-    return ["format guard failed"] if cp.returncode else []
+    if line_filter is None:
+        cp = subprocess.run(
+            [clang_format, "--dry-run", "--Werror", *map(str, files)], text=True)
+        return ["format guard failed"] if cp.returncode else []
+    failures = []
+    for path in files:
+        ranges = line_filter.get(str(path.resolve()))
+        if ranges is None:
+            cmd = [clang_format, "--dry-run", "--Werror", str(path)]
+        elif not ranges:
+            continue
+        else:
+            cmd = [clang_format, "--dry-run", "--Werror"]
+            cmd.extend("--lines=%d:%d" % (start, end) for start, end in ranges)
+            cmd.append(str(path))
+        if subprocess.run(cmd, text=True).returncode:
+            failures.append("format guard failed: %s" % path)
+    return failures
 
 
 def _clang_tidy_findings(files, compile_commands_dir):
@@ -795,8 +921,17 @@ def main():
                     help="run clang-tidy on changed files using the compilation "
                     "database at BUILD_DIR/compile_commands.json")
     ap.add_argument("--json", metavar="PATH", help="write findings as JSON to PATH")
+    ap.add_argument("--line-filter-json", metavar="PATH",
+                    help="JSON map of absolute file paths to added/modified line ranges; "
+                         "existing findings outside those ranges are baselined")
+    ap.add_argument("--baseline-git-dir", metavar="PATH",
+                    help="git work tree used to compare pre-existing findings")
+    ap.add_argument("--baseline-commit", metavar="REV",
+                    help="revision paired with --baseline-git-dir")
     ap.add_argument("files", nargs="*")
     args = ap.parse_args()
+    if bool(args.baseline_git_dir) != bool(args.baseline_commit):
+        ap.error("--baseline-git-dir and --baseline-commit must be supplied together")
 
     # Scope guard: keep only C/C++ source among the (already changed-only) files
     # the caller passed. Unchanged files are never passed; non-code files drop here.
@@ -804,13 +939,28 @@ def main():
     run_format = not args.rules_only
     run_rules = not args.format_only
 
-    format_failures = _format_failures(files) if (files and run_format) else []
+    line_filter = None
+    if args.line_filter_json:
+        try:
+            line_filter = json.loads(Path(args.line_filter_json).read_text(encoding="utf-8"))
+        except (OSError, ValueError, TypeError) as exc:
+            ap.error("cannot read --line-filter-json: %s" % exc)
+
+    format_failures = _format_failures(files, line_filter) if (files and run_format) else []
     findings = _rule_findings(files) if (files and run_rules) else []
+    baseline_count = 0
+    if findings and args.baseline_git_dir:
+        baseline_findings = _git_baseline_findings(
+            files, args.baseline_git_dir, args.baseline_commit)
+        baseline_count = len(baseline_findings)
+        findings = _subtract_baseline_findings(findings, baseline_findings)
+    else:
+        findings = _filter_findings(findings, line_filter)
     clang_tidy_findings = []
     clang_tidy_note = ""
     if args.clang_tidy and files:
         ct_findings, ct_note = _clang_tidy_findings(files, args.clang_tidy)
-        clang_tidy_findings = ct_findings
+        clang_tidy_findings = _filter_findings(ct_findings, line_filter)
         clang_tidy_note = ct_note
 
     if args.json:
@@ -819,6 +969,7 @@ def main():
             "mode": "rules-only" if args.rules_only else "format-only" if args.format_only else "full",
             "clang_tidy": bool(args.clang_tidy),
             "clang_tidy_note": clang_tidy_note or None,
+            "baseline_findings": baseline_count,
             "format_failures": format_failures,
             "findings": findings,
             "clang_tidy_findings": clang_tidy_findings,

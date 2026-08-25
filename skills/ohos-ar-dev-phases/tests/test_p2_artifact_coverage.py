@@ -57,6 +57,28 @@ class TestResolveArtifacts(unittest.TestCase):
         self.assertEqual(present, ["liba.z.so"])
         self.assertEqual(missing, ["libmissing.z.so"])
 
+    def test_absolute_and_traversal_paths_never_count(self):
+        outside = os.path.join(os.path.dirname(self.repo), "outside.bin")
+        with open(outside, "w") as f:
+            f.write("x")
+        self.addCleanup(lambda: os.path.exists(outside) and os.remove(outside))
+        present, missing, resolved = gate_build.resolve_artifacts(
+            self.repo, [outside, "../outside.bin"], "out/rk3568")
+        self.assertEqual(present, [])
+        self.assertEqual(missing, [outside, "../outside.bin"])
+        self.assertTrue(all(value is None for value in resolved.values()))
+
+    def test_symlink_escape_never_counts(self):
+        outside = os.path.join(os.path.dirname(self.repo), "outside-link.bin")
+        with open(outside, "w") as f:
+            f.write("x")
+        self.addCleanup(lambda: os.path.exists(outside) and os.remove(outside))
+        os.symlink(outside, os.path.join(self.repo, "artifact.bin"))
+        present, missing, _ = gate_build.resolve_artifacts(
+            self.repo, ["artifact.bin"], "out/rk3568")
+        self.assertEqual(present, [])
+        self.assertEqual(missing, ["artifact.bin"])
+
 
 if __name__ == "__main__":
     unittest.main()
