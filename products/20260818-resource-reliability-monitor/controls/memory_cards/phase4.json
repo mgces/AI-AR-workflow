@@ -1,0 +1,19 @@
+{
+  "control_protocol_version": 1,
+  "phase": 4,
+  "phase_name": "build-verify",
+  "bundle_revision": "7e6455fa8d29",
+  "current_blocker": "none",
+  "forbidden_actions": [
+    "treat_navigation_files_as_truth_source",
+    "edit_pipeline_json_directly",
+    "advance_without_signed_evidence"
+  ],
+  "next_expected_action_class": "advance",
+  "last_failure_class": null,
+  "human_escalation_needed": false,
+  "primary_entry_doc": "controls/next_action.json",
+  "primary_failure_doc": "evidence/phase4/failure_report.json",
+  "primary_handoff_doc": "controls/build_verify/handoff_to_test_author.json",
+  "verdict": "PASS"
+}

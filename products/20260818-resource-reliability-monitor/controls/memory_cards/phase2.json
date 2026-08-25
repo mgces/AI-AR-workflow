@@ -1,0 +1,21 @@
+{
+  "control_protocol_version": 1,
+  "phase": 2,
+  "phase_name": "feature-develop",
+  "bundle_revision": null,
+  "current_blocker": "none",
+  "forbidden_actions": [
+    "treat_navigation_files_as_truth_source",
+    "edit_pipeline_json_directly",
+    "advance_without_signed_evidence",
+    "edit_design_as_if_it_were_unsigned_working_copy",
+    "skip_signed_design_consent_check"
+  ],
+  "next_expected_action_class": "prepare_test_bundle",
+  "last_failure_class": null,
+  "human_escalation_needed": false,
+  "primary_entry_doc": "controls/next_action.json",
+  "primary_failure_doc": "evidence/phase2/failure_report.json",
+  "primary_handoff_doc": "controls/feature_develop/handoff_p2_to_p3.json",
+  "verdict": "PASS"
+}

@@ -1,0 +1,16 @@
+{
+  "phase": 1,
+  "gate": "gate_design.py",
+  "verdict": "PASS",
+  "reason": "design sections 7/7 ok; contract v2 build_artifacts=1 test_cases=36 device_cases=6 requirements=18 changed_files=29",
+  "checks": [
+    "sections",
+    "contract",
+    "closure",
+    "device_anchors"
+  ],
+  "ok": true,
+  "contract_version": 2,
+  "p4_weak_device_cases": 0,
+  "p4_weak_anchors_bypassed": false
+}

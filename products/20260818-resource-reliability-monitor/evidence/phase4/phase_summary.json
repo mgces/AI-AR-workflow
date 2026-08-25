@@ -1,0 +1,21 @@
+{
+  "phase": 4,
+  "gate": "gate_build.py",
+  "verdict": "PASS",
+  "reason": "exit=0 and success banner in build output (target=hiview_package) artifacts 1/1 present [metric: PASS; clang-tidy: clang-tidy not executed by guard (clang-tidy not found in PATH); CI will still scan]",
+  "checks": [
+    "target=hiview_package",
+    "exit_code=0",
+    "success_banner=True",
+    "error_banner=False",
+    "contract=ok"
+  ],
+  "ok": true,
+  "target": "hiview_package",
+  "exit_code": 0,
+  "success_banner_seen": true,
+  "error_banner_seen": false,
+  "contract_status": "ok",
+  "build_artifacts_missing": [],
+  "failure_class": null
+}

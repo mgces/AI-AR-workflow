@@ -1,0 +1,195 @@
+{
+  "run_id": "20260818-resource-reliability-monitor",
+  "ar": "20260818-resource-reliability-monitor",
+  "repo": "/home/qaq/openharmony/code",
+  "git_dir": "base/hiviewdfx/hiview",
+  "environment": "openharmony",
+  "component_type": null,
+  "device_type": null,
+  "product": "rk3568",
+  "device_serial": "7001005458323933328a01fce1fe3800",
+  "build_target": "hiview_package",
+  "test": {
+    "part": "hiviewdfx",
+    "ut_suites": [],
+    "mst_suites": []
+  },
+  "base_commit": "428e80c18ff172dc857066dd2ec5686044fe6dde",
+  "phase_scheme": 9,
+  "current_phase": 8,
+  "consent_tokens": {
+    "1": {
+      "phase": 1,
+      "token": "xyz",
+      "evidence_ref": "28d9606fd66fec9752ed0418873aa366ce0c0b374cd08bc6e030b06bdfa056cf",
+      "ts_utc": "2026-08-20T02:15:54Z",
+      "hmac": "b1bb8a2787966afcbbf7673599782c417f23ac7dc51675014de983a24745a7b4"
+    },
+    "6": {
+      "phase": 6,
+      "token": "xyz",
+      "evidence_ref": "cba765c93ccfc5e71999281776855ca0e1b5d7423b400525982aed3f8ebabdba",
+      "ts_utc": "2026-08-21T06:10:04Z",
+      "hmac": "8a0434610f2c5a839e326cbeae1ffa67ca6d335ae4c58c6f351f46e5ed0df78f"
+    },
+    "7": {
+      "phase": 7,
+      "token": "xyz",
+      "evidence_ref": "954cff7b25a0320bf8a036f215474cb5cb61eba386c507843ba58439824e5d11",
+      "ts_utc": "2026-08-21T06:10:04Z",
+      "hmac": "40b253536f026c57f967628b904ceaa13b2bf4dff68bc694e85dca58d1d3c851"
+    },
+    "8": {
+      "phase": 8,
+      "token": "xyz",
+      "evidence_ref": "954cff7b25a0320bf8a036f215474cb5cb61eba386c507843ba58439824e5d11",
+      "ts_utc": "2026-08-21T06:10:37Z",
+      "hmac": "d67fcdd3915ae50028b78b346ba852e4a96b86c9b0a0ea6c8c319321456780b9"
+    }
+  },
+  "code_fingerprint": "3ffb9142a32d1735d38612e1f8ef8d3a61a579492b7627183142a7c500ad96c4",
+  "functional_fingerprint": "cc4d73df89cc4bba2942355bb7d7be868b5b3f23c6bddbe034ca924acbad65a8",
+  "locked_all_paths": [
+    "BUILD.gn",
+    "plugins/BUILD.gn",
+    "plugins/reliability/resource_monitor/.clang-format",
+    "plugins/reliability/resource_monitor/BUILD.gn",
+    "plugins/reliability/resource_monitor/config/resmon_config.json",
+    "plugins/reliability/resource_monitor/resmon_collector.h",
+    "plugins/reliability/resource_monitor/resmon_config.cpp",
+    "plugins/reliability/resource_monitor/resmon_config.h",
+    "plugins/reliability/resource_monitor/resmon_cpu_collector.cpp",
+    "plugins/reliability/resource_monitor/resmon_cpu_collector.h",
+    "plugins/reliability/resource_monitor/resmon_event_listener.cpp",
+    "plugins/reliability/resource_monitor/resmon_event_listener.h",
+    "plugins/reliability/resource_monitor/resmon_io_collector.cpp",
+    "plugins/reliability/resource_monitor/resmon_io_collector.h",
+    "plugins/reliability/resource_monitor/resmon_landing.cpp",
+    "plugins/reliability/resource_monitor/resmon_landing.h",
+    "plugins/reliability/resource_monitor/resmon_mem_collector.cpp",
+    "plugins/reliability/resource_monitor/resmon_mem_collector.h",
+    "plugins/reliability/resource_monitor/resmon_net_collector.cpp",
+    "plugins/reliability/resource_monitor/resmon_net_collector.h",
+    "plugins/reliability/resource_monitor/resmon_plugin_config",
+    "plugins/reliability/resource_monitor/resmon_pwr_collector.cpp",
+    "plugins/reliability/resource_monitor/resmon_pwr_collector.h",
+    "plugins/reliability/resource_monitor/resmon_ring_buffer.cpp",
+    "plugins/reliability/resource_monitor/resmon_ring_buffer.h",
+    "plugins/reliability/resource_monitor/resmon_thr_collector.cpp",
+    "plugins/reliability/resource_monitor/resmon_thr_collector.h",
+    "plugins/reliability/resource_monitor/resmon_threshold.cpp",
+    "plugins/reliability/resource_monitor/resmon_threshold.h",
+    "plugins/reliability/resource_monitor/resmon_types.h",
+    "plugins/reliability/resource_monitor/resource_monitor_plugin.cpp",
+    "plugins/reliability/resource_monitor/resource_monitor_plugin.h",
+    "plugins/reliability/resource_monitor/test/BUILD.gn",
+    "plugins/reliability/resource_monitor/test/unittest/common/resmon_config_test.cpp",
+    "plugins/reliability/resource_monitor/test/unittest/common/resmon_cpu_collector_test.cpp",
+    "plugins/reliability/resource_monitor/test/unittest/common/resmon_event_listener_test.cpp",
+    "plugins/reliability/resource_monitor/test/unittest/common/resmon_io_collector_test.cpp",
+    "plugins/reliability/resource_monitor/test/unittest/common/resmon_landing_test.cpp",
+    "plugins/reliability/resource_monitor/test/unittest/common/resmon_mem_collector_test.cpp",
+    "plugins/reliability/resource_monitor/test/unittest/common/resmon_net_collector_test.cpp",
+    "plugins/reliability/resource_monitor/test/unittest/common/resmon_pwr_collector_test.cpp",
+    "plugins/reliability/resource_monitor/test/unittest/common/resmon_ring_buffer_test.cpp",
+    "plugins/reliability/resource_monitor/test/unittest/common/resmon_test_util.h",
+    "plugins/reliability/resource_monitor/test/unittest/common/resmon_thr_collector_test.cpp",
+    "plugins/reliability/resource_monitor/test/unittest/common/resmon_threshold_test.cpp",
+    "plugins/reliability/resource_monitor/test/unittest/common/resource_monitor_plugin_test.cpp"
+  ],
+  "phases": [
+    {
+      "id": 0,
+      "name": "bootstrap",
+      "status": "passed",
+      "manifest_ref": "d3a531b5c7276081f2a952f252dd75fc9f214fe514144f6be40752edb22539b0",
+      "closed_at_utc": "2026-08-18T08:31:49Z"
+    },
+    {
+      "id": 1,
+      "name": "design-orchestrate",
+      "status": "passed",
+      "manifest_ref": "28d9606fd66fec9752ed0418873aa366ce0c0b374cd08bc6e030b06bdfa056cf",
+      "closed_at_utc": "2026-08-20T02:15:54Z"
+    },
+    {
+      "id": 2,
+      "name": "feature-develop",
+      "status": "passed",
+      "manifest_ref": "7e6455fa8d298e2393d50d39a5cd5c0a6c2023f887a985d1f28ecd6682104702",
+      "closed_at_utc": "2026-08-20T02:15:59Z"
+    },
+    {
+      "id": 3,
+      "name": "test-develop",
+      "status": "passed",
+      "manifest_ref": "2743b2f7390589d8ed340d378d79d4d75b5f7524b01e9e95379da0efaa0dbf54",
+      "closed_at_utc": "2026-08-20T02:16:09Z"
+    },
+    {
+      "id": 4,
+      "name": "build-verify",
+      "status": "passed",
+      "manifest_ref": "bf589f7c9b54702268b31a2017d1504e39dcfff9cf48027206e5d63dd0e490f1",
+      "closed_at_utc": "2026-08-20T02:17:54Z"
+    },
+    {
+      "id": 5,
+      "name": "test-author",
+      "status": "passed",
+      "manifest_ref": "ef973c5a100bc10d74e5e757c7e7206fbba27a14c70a8b7d81bc33f9d97be151",
+      "closed_at_utc": "2026-08-20T02:19:03Z"
+    },
+    {
+      "id": 6,
+      "name": "device-functional",
+      "status": "passed",
+      "manifest_ref": "cba765c93ccfc5e71999281776855ca0e1b5d7423b400525982aed3f8ebabdba",
+      "closed_at_utc": "2026-08-21T06:10:04Z"
+    },
+    {
+      "id": 7,
+      "name": "quality-verify",
+      "status": "passed",
+      "manifest_ref": "954cff7b25a0320bf8a036f215474cb5cb61eba386c507843ba58439824e5d11",
+      "closed_at_utc": "2026-08-21T06:10:04Z"
+    },
+    {
+      "id": 8,
+      "name": "upload-review",
+      "status": "passed",
+      "manifest_ref": "d7432874c5c547580913689f6d06069c500801e172fea83a6a69d19c8b810aba",
+      "closed_at_utc": "2026-08-21T07:22:40Z"
+    }
+  ],
+  "current_substate": "complete",
+  "legacy_mode": false,
+  "last_failure": {
+    "phase": 8,
+    "gate": "gate_upload_ci.py",
+    "reason": "oh-gc pr create failed: ›   Error: API error 409: \n ›   {\"error_code\":409,\"error_code_name\":\"UN_KNOW\",\"error_message\":\"Another \n ›   open merge request already exists for this source branch: \n ›   !4485\",\"trace_id\":\"3906c8b1e022593adf21e7e8b74be0f4\"}",
+    "ts_utc": "2026-08-21T06:21:20Z",
+    "entry_id": "784c12d01f5854f5df113e2b7d3be3368d7a35e84ad98609f4d6568f63e632da"
+  },
+  "resume_hint": "All phases are closed by signed evidence; the pipeline is complete.",
+  "next_gate": null,
+  "required_inputs": [],
+  "control_protocol_version": 1,
+  "logical_phase_id": "upload_review",
+  "logical_phase_name": "upload-review",
+  "action_kind": "complete",
+  "control_refs": {
+    "next_action": "controls/next_action.json",
+    "memory_card": "controls/memory_cards/current.json",
+    "stage_packet": "controls/packets/upload_review.json",
+    "receipt": "controls/receipts/phase8.json",
+    "handoff_in": "controls/handoffs/current.json",
+    "handoff_out": "controls/handoffs/phase8-next.json"
+  },
+  "repair_packet": null,
+  "connection_env": {
+    "HDC_BIN": "/home/qaq/openharmony/code/prebuilts/ohos-sdk/linux/26.0.0/toolchains/hdc",
+    "DEVICE_SERIAL": "7001005458323933328a01fce1fe3800"
+  },
+  "evidence_epoch": 49
+}

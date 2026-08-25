@@ -1,0 +1,775 @@
+{
+  "version": 2,
+  "requirements": [
+    {
+      "id": "R01",
+      "desc": "FR-LC-01 插件标准注册自动加载"
+    },
+    {
+      "id": "R02",
+      "desc": "FR-ERR-01/03 FR-LC-04 单项失败隔离+错误计数+自身异常上报"
+    },
+    {
+      "id": "R03",
+      "desc": "FR-CPU-01/02/03 整机CPU分项+进程线程CPU TopN+load"
+    },
+    {
+      "id": "R04",
+      "desc": "FR-MEM-01/02/03 meminfo+进程内存TopN+ION尽力降级"
+    },
+    {
+      "id": "R05",
+      "desc": "FR-IO-01/02 磁盘IO差分+分区存储水位"
+    },
+    {
+      "id": "R06",
+      "desc": "FR-PWR-01 thermal zone 温度与trip采集"
+    },
+    {
+      "id": "R07",
+      "desc": "FR-PWR-04 温度越trip触发温升快照"
+    },
+    {
+      "id": "R08",
+      "desc": "FR-NET-01 网口流量差分采集"
+    },
+    {
+      "id": "R09",
+      "desc": "FR-THR-01 线程状态分布+D态标记"
+    },
+    {
+      "id": "R10",
+      "desc": "FR-TRG-01 周期轮询可配默认5s最小1s"
+    },
+    {
+      "id": "R11",
+      "desc": "FR-TRG-02 FR-STB-01 EventListener配置驱动订阅"
+    },
+    {
+      "id": "R12",
+      "desc": "FR-MEM-06 OOM事件快照"
+    },
+    {
+      "id": "R13",
+      "desc": "FR-THR-02 ANR事件快照"
+    },
+    {
+      "id": "R14",
+      "desc": "FR-STB-02/03 稳定性事件综合快照+环形缓冲现场回放"
+    },
+    {
+      "id": "R15",
+      "desc": "FR-TRG-03/04/05 阈值触发+去抖+最小间隔+独立开关"
+    },
+    {
+      "id": "R16",
+      "desc": "FR-DSK-01/02/03 落盘目录/命名/纯文本格式"
+    },
+    {
+      "id": "R17",
+      "desc": "FR-DSK-04 配额+保留时长双维滚动清理"
+    },
+    {
+      "id": "R18",
+      "desc": "FR-CFG-01/02/03 配置加载/热更下一周期生效/默认值"
+    }
+  ],
+  "build_artifacts": [
+    "out/rk3568/hiviewdfx/hiview/libresmon.z.so"
+  ],
+  "build_artifacts_meta": [
+    {
+      "id": "ba01",
+      "path": "out/rk3568/hiviewdfx/hiview/libresmon.z.so",
+      "for_requirements": [
+        "R01"
+      ]
+    }
+  ],
+  "test_cases": [
+    {
+      "id": "t01",
+      "point": "配置默认值完整可工作",
+      "gtest": "ResmonConfigTest.LoadDefaults",
+      "for_requirements": [
+        "R18"
+      ],
+      "kind": "gtest"
+    },
+    {
+      "id": "t02",
+      "point": "JSON 配置文件加载覆盖默认值",
+      "gtest": "ResmonConfigTest.LoadFromJson",
+      "for_requirements": [
+        "R18"
+      ],
+      "kind": "gtest"
+    },
+    {
+      "id": "t03",
+      "point": "坏配置文件回退默认值",
+      "gtest": "ResmonConfigTest.InvalidFileKeepsDefaults",
+      "for_requirements": [
+        "R18"
+      ],
+      "kind": "gtest"
+    },
+    {
+      "id": "t04",
+      "point": "proc/stat 分项解析",
+      "gtest": "ResmonCpuCollectorTest.ParseProcStat",
+      "for_requirements": [
+        "R03"
+      ],
+      "kind": "gtest"
+    },
+    {
+      "id": "t05",
+      "point": "两拍差分得到整机 CPU 使用率",
+      "gtest": "ResmonCpuCollectorTest.CpuUsageDelta",
+      "for_requirements": [
+        "R03",
+        "R15"
+      ],
+      "kind": "gtest"
+    },
+    {
+      "id": "t06",
+      "point": "进程 CPU TopN 排序",
+      "gtest": "ResmonCpuCollectorTest.ProcCpuTopN",
+      "for_requirements": [
+        "R03"
+      ],
+      "kind": "gtest"
+    },
+    {
+      "id": "t07",
+      "point": "loadavg 解析",
+      "gtest": "ResmonCpuCollectorTest.LoadAvg",
+      "for_requirements": [
+        "R03"
+      ],
+      "kind": "gtest"
+    },
+    {
+      "id": "t08",
+      "point": "meminfo 关键项解析",
+      "gtest": "ResmonMemCollectorTest.ParseMeminfo",
+      "for_requirements": [
+        "R04"
+      ],
+      "kind": "gtest"
+    },
+    {
+      "id": "t09",
+      "point": "进程 RSS/PSS/USS TopN",
+      "gtest": "ResmonMemCollectorTest.ProcMemTopN",
+      "for_requirements": [
+        "R04"
+      ],
+      "kind": "gtest"
+    },
+    {
+      "id": "t10",
+      "point": "ION 接口缺失时跳过且计数",
+      "gtest": "ResmonMemCollectorTest.IonDegradeWhenAbsent",
+      "for_requirements": [
+        "R04",
+        "R02"
+      ],
+      "kind": "gtest"
+    },
+    {
+      "id": "t11",
+      "point": "diskstats 解析与差分",
+      "gtest": "ResmonIoCollectorTest.ParseDiskstats",
+      "for_requirements": [
+        "R05"
+      ],
+      "kind": "gtest"
+    },
+    {
+      "id": "t12",
+      "point": "分区 used/avail/inode 水位",
+      "gtest": "ResmonIoCollectorTest.PartitionWater",
+      "for_requirements": [
+        "R05"
+      ],
+      "kind": "gtest"
+    },
+    {
+      "id": "t13",
+      "point": "thermal zone 温度遍历",
+      "gtest": "ResmonPwrCollectorTest.ThermalZones",
+      "for_requirements": [
+        "R06"
+      ],
+      "kind": "gtest"
+    },
+    {
+      "id": "t14",
+      "point": "trip point 读取与越限判定输入",
+      "gtest": "ResmonPwrCollectorTest.TripPoints",
+      "for_requirements": [
+        "R06",
+        "R07"
+      ],
+      "kind": "gtest"
+    },
+    {
+      "id": "t15",
+      "point": "netdev 解析",
+      "gtest": "ResmonNetCollectorTest.ParseNetDev",
+      "for_requirements": [
+        "R08"
+      ],
+      "kind": "gtest"
+    },
+    {
+      "id": "t16",
+      "point": "netdev 两拍差分",
+      "gtest": "ResmonNetCollectorTest.NetDevDelta",
+      "for_requirements": [
+        "R08"
+      ],
+      "kind": "gtest"
+    },
+    {
+      "id": "t17",
+      "point": "线程状态分布统计",
+      "gtest": "ResmonThrCollectorTest.ThreadStateDistribution",
+      "for_requirements": [
+        "R09"
+      ],
+      "kind": "gtest"
+    },
+    {
+      "id": "t18",
+      "point": "D 状态线程标记与列表",
+      "gtest": "ResmonThrCollectorTest.DStateMarked",
+      "for_requirements": [
+        "R09"
+      ],
+      "kind": "gtest"
+    },
+    {
+      "id": "t19",
+      "point": "越阈值触发增强采集判定",
+      "gtest": "ResmonThresholdTest.OverThresholdTrigger",
+      "for_requirements": [
+        "R15"
+      ],
+      "kind": "gtest"
+    },
+    {
+      "id": "t20",
+      "point": "去抖:M 次连续越限才触发",
+      "gtest": "ResmonThresholdTest.DebounceSuppress",
+      "for_requirements": [
+        "R15"
+      ],
+      "kind": "gtest"
+    },
+    {
+      "id": "t21",
+      "point": "最小触发间隔限制",
+      "gtest": "ResmonThresholdTest.MinInterval",
+      "for_requirements": [
+        "R15"
+      ],
+      "kind": "gtest"
+    },
+    {
+      "id": "t22",
+      "point": "三触发机制独立开关",
+      "gtest": "ResmonThresholdTest.IndependentSwitches",
+      "for_requirements": [
+        "R15"
+      ],
+      "kind": "gtest"
+    },
+    {
+      "id": "t23",
+      "point": "环形缓冲定长滚动",
+      "gtest": "ResmonRingBufferTest.PushRoll",
+      "for_requirements": [
+        "R14"
+      ],
+      "kind": "gtest"
+    },
+    {
+      "id": "t24",
+      "point": "导出事件前 N 拍现场",
+      "gtest": "ResmonRingBufferTest.DrainSnapshotContext",
+      "for_requirements": [
+        "R14"
+      ],
+      "kind": "gtest"
+    },
+    {
+      "id": "t25",
+      "point": "落盘文件命名约定",
+      "gtest": "ResmonLandingTest.FileNameConvention",
+      "for_requirements": [
+        "R16"
+      ],
+      "kind": "gtest"
+    },
+    {
+      "id": "t26",
+      "point": "追加写与目录归类",
+      "gtest": "ResmonLandingTest.AppendWrite",
+      "for_requirements": [
+        "R16"
+      ],
+      "kind": "gtest"
+    },
+    {
+      "id": "t27",
+      "point": "按配额滚动清理",
+      "gtest": "ResmonLandingTest.RollingByQuota",
+      "for_requirements": [
+        "R17"
+      ],
+      "kind": "gtest"
+    },
+    {
+      "id": "t28",
+      "point": "按保留时长滚动清理",
+      "gtest": "ResmonLandingTest.RollingByAge",
+      "for_requirements": [
+        "R17"
+      ],
+      "kind": "gtest"
+    },
+    {
+      "id": "t29",
+      "point": "事件到达触发综合快照落盘",
+      "gtest": "ResmonEventListenerTest.OnUnorderedEventTriggersSnapshot",
+      "for_requirements": [
+        "R11"
+      ],
+      "kind": "gtest"
+    },
+    {
+      "id": "t30",
+      "point": "订阅表外事件被过滤",
+      "gtest": "ResmonEventListenerTest.EventNameFiltered",
+      "for_requirements": [
+        "R11"
+      ],
+      "kind": "gtest"
+    },
+    {
+      "id": "t31",
+      "point": "OOM 快照含水位与Top消费者",
+      "gtest": "ResmonEventListenerTest.OomSnapshotContent",
+      "for_requirements": [
+        "R12"
+      ],
+      "kind": "gtest"
+    },
+    {
+      "id": "t32",
+      "point": "ANR 快照含涉事进程现场",
+      "gtest": "ResmonEventListenerTest.AnrSnapshotContent",
+      "for_requirements": [
+        "R13"
+      ],
+      "kind": "gtest"
+    },
+    {
+      "id": "t33",
+      "point": "稳定性快照含环形缓冲回放",
+      "gtest": "ResmonEventListenerTest.StabilitySnapshotWithRingContext",
+      "for_requirements": [
+        "R14"
+      ],
+      "kind": "gtest"
+    },
+    {
+      "id": "t34",
+      "point": "周期tick产生6类落盘",
+      "gtest": "ResourceMonitorPluginTest.PeriodicTickLands",
+      "for_requirements": [
+        "R10",
+        "R16"
+      ],
+      "kind": "gtest"
+    },
+    {
+      "id": "t35",
+      "point": "单项采集失败不影响其他项",
+      "gtest": "ResourceMonitorPluginTest.SingleItemFailureIsolated",
+      "for_requirements": [
+        "R02"
+      ],
+      "kind": "gtest"
+    },
+    {
+      "id": "t36",
+      "point": "配置热更延迟到workLoop串行生效",
+      "gtest": "ResourceMonitorPluginTest.DeferredConfigReload",
+      "for_requirements": [
+        "R18"
+      ],
+      "kind": "gtest"
+    }
+  ],
+  "device_cases": [
+    {
+      "id": "d1",
+      "desc": "周期采集:2个tick后6类目录均有resmon文件",
+      "marker": "AR_RESMON_PERIODIC_OK",
+      "for_requirements": [
+        "R10",
+        "R16"
+      ],
+      "process": "hiview",
+      "artifact_loaded": "/system/lib/libresmon.z.so",
+      "side_effect": {
+        "type": "shell_assert",
+        "command": "ls /data/log/reliability/resmon/cpu/ | grep -o resmon_cpu | head -1",
+        "expect": "resmon_cpu"
+      },
+      "absent_before_trigger": true,
+      "observability": null
+    },
+    {
+      "id": "d2",
+      "desc": "CPU持续越阈值触发增强采集快照",
+      "marker": "AR_RESMON_THRESH_CPU_OK",
+      "for_requirements": [
+        "R15"
+      ],
+      "process": "hiview",
+      "artifact_loaded": "/system/lib/libresmon.z.so",
+      "side_effect": {
+        "type": "shell_assert",
+        "command": "ls /data/log/reliability/resmon/cpu/ | grep -o resmon_cpu_enhanced | head -1",
+        "expect": "resmon_cpu_enhanced"
+      },
+      "absent_before_trigger": true,
+      "observability": null
+    },
+    {
+      "id": "d3",
+      "desc": "温度越过trip point触发温升快照",
+      "marker": "AR_RESMON_TEMP_TRIP_OK",
+      "for_requirements": [
+        "R07"
+      ],
+      "process": "hiview",
+      "artifact_loaded": "/system/lib/libresmon.z.so",
+      "side_effect": {
+        "type": "shell_assert",
+        "command": "ls /data/log/reliability/resmon/pwr/ | grep -o resmon_pwr_trip | head -1",
+        "expect": "resmon_pwr_trip"
+      },
+      "absent_before_trigger": true,
+      "observability": null
+    },
+    {
+      "id": "d4",
+      "desc": "power-shell wakeup真实POWER.SCREEN_ON事件触发综合快照",
+      "marker": "AR_RESMON_EVT_SNAPSHOT_OK",
+      "for_requirements": [
+        "R11",
+        "R14"
+      ],
+      "process": "hiview",
+      "artifact_loaded": "/system/lib/libresmon.z.so",
+      "side_effect": {
+        "type": "shell_assert",
+        "command": "ls /data/log/reliability/resmon/event/ | grep -o resmon_event_screen | head -1",
+        "expect": "resmon_event_screen"
+      },
+      "absent_before_trigger": true,
+      "observability": null
+    },
+    {
+      "id": "d5",
+      "desc": "超出配额后旧文件被滚动清理",
+      "marker": "AR_RESMON_ROLLING_OK",
+      "for_requirements": [
+        "R17"
+      ],
+      "process": "hiview",
+      "artifact_loaded": "/system/lib/libresmon.z.so",
+      "side_effect": {
+        "type": "shell_assert",
+        "command": "ls /data/log/reliability/resmon/cpu/ | grep -c resmon_cpu | head -1",
+        "expect": "10"
+      },
+      "absent_before_trigger": false,
+      "observability": null
+    },
+    {
+      "id": "d6",
+      "desc": "运行中修改配置下一周期生效",
+      "marker": "AR_RESMON_HOTCFG_OK",
+      "for_requirements": [
+        "R18"
+      ],
+      "process": "hiview",
+      "artifact_loaded": "/system/lib/libresmon.z.so",
+      "side_effect": null,
+      "absent_before_trigger": true,
+      "observability": null
+    }
+  ],
+  "changed_files": [
+    "base/hiviewdfx/hiview/BUILD.gn",
+    "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/BUILD.gn",
+    "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resource_monitor_plugin.h",
+    "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resource_monitor_plugin.cpp",
+    "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_types.h",
+    "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_collector.h",
+    "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_cpu_collector.h",
+    "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_cpu_collector.cpp",
+    "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_mem_collector.h",
+    "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_mem_collector.cpp",
+    "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_io_collector.h",
+    "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_io_collector.cpp",
+    "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_pwr_collector.h",
+    "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_pwr_collector.cpp",
+    "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_net_collector.h",
+    "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_net_collector.cpp",
+    "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_thr_collector.h",
+    "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_thr_collector.cpp",
+    "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_threshold.h",
+    "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_threshold.cpp",
+    "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_ring_buffer.h",
+    "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_ring_buffer.cpp",
+    "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_landing.h",
+    "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_landing.cpp",
+    "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_event_listener.h",
+    "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_event_listener.cpp",
+    "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/config/resmon_config.json",
+    "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_plugin_config",
+    "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/.clang-format"
+  ],
+  "changed_files_meta": [
+    {
+      "id": "cf01",
+      "path": "base/hiviewdfx/hiview/BUILD.gn",
+      "for_requirements": [
+        "R01"
+      ]
+    },
+    {
+      "id": "cf02",
+      "path": "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/BUILD.gn",
+      "for_requirements": [
+        "R01"
+      ]
+    },
+    {
+      "id": "cf03",
+      "path": "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resource_monitor_plugin.h",
+      "for_requirements": [
+        "R01",
+        "R02",
+        "R10",
+        "R18"
+      ]
+    },
+    {
+      "id": "cf04",
+      "path": "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resource_monitor_plugin.cpp",
+      "for_requirements": [
+        "R01",
+        "R02",
+        "R10",
+        "R18"
+      ]
+    },
+    {
+      "id": "cf05",
+      "path": "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_types.h",
+      "for_requirements": [
+        "R02"
+      ]
+    },
+    {
+      "id": "cf06",
+      "path": "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_collector.h",
+      "for_requirements": [
+        "R02"
+      ]
+    },
+    {
+      "id": "cf07",
+      "path": "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_cpu_collector.h",
+      "for_requirements": [
+        "R03"
+      ]
+    },
+    {
+      "id": "cf08",
+      "path": "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_cpu_collector.cpp",
+      "for_requirements": [
+        "R03"
+      ]
+    },
+    {
+      "id": "cf09",
+      "path": "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_mem_collector.h",
+      "for_requirements": [
+        "R04"
+      ]
+    },
+    {
+      "id": "cf10",
+      "path": "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_mem_collector.cpp",
+      "for_requirements": [
+        "R04"
+      ]
+    },
+    {
+      "id": "cf11",
+      "path": "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_io_collector.h",
+      "for_requirements": [
+        "R05"
+      ]
+    },
+    {
+      "id": "cf12",
+      "path": "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_io_collector.cpp",
+      "for_requirements": [
+        "R05"
+      ]
+    },
+    {
+      "id": "cf13",
+      "path": "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_pwr_collector.h",
+      "for_requirements": [
+        "R06",
+        "R07"
+      ]
+    },
+    {
+      "id": "cf14",
+      "path": "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_pwr_collector.cpp",
+      "for_requirements": [
+        "R06",
+        "R07"
+      ]
+    },
+    {
+      "id": "cf15",
+      "path": "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_net_collector.h",
+      "for_requirements": [
+        "R08"
+      ]
+    },
+    {
+      "id": "cf16",
+      "path": "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_net_collector.cpp",
+      "for_requirements": [
+        "R08"
+      ]
+    },
+    {
+      "id": "cf17",
+      "path": "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_thr_collector.h",
+      "for_requirements": [
+        "R09"
+      ]
+    },
+    {
+      "id": "cf18",
+      "path": "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_thr_collector.cpp",
+      "for_requirements": [
+        "R09"
+      ]
+    },
+    {
+      "id": "cf19",
+      "path": "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_threshold.h",
+      "for_requirements": [
+        "R07",
+        "R15"
+      ]
+    },
+    {
+      "id": "cf20",
+      "path": "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_threshold.cpp",
+      "for_requirements": [
+        "R07",
+        "R15"
+      ]
+    },
+    {
+      "id": "cf21",
+      "path": "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_ring_buffer.h",
+      "for_requirements": [
+        "R14"
+      ]
+    },
+    {
+      "id": "cf22",
+      "path": "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_ring_buffer.cpp",
+      "for_requirements": [
+        "R14"
+      ]
+    },
+    {
+      "id": "cf23",
+      "path": "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_landing.h",
+      "for_requirements": [
+        "R16",
+        "R17"
+      ]
+    },
+    {
+      "id": "cf24",
+      "path": "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_landing.cpp",
+      "for_requirements": [
+        "R16",
+        "R17"
+      ]
+    },
+    {
+      "id": "cf25",
+      "path": "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_event_listener.h",
+      "for_requirements": [
+        "R11",
+        "R12",
+        "R13",
+        "R14"
+      ]
+    },
+    {
+      "id": "cf26",
+      "path": "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_event_listener.cpp",
+      "for_requirements": [
+        "R11",
+        "R12",
+        "R13",
+        "R14"
+      ]
+    },
+    {
+      "id": "cf27",
+      "path": "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/config/resmon_config.json",
+      "for_requirements": [
+        "R18"
+      ]
+    },
+    {
+      "id": "cf28",
+      "path": "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_plugin_config",
+      "for_requirements": [
+        "R01"
+      ]
+    },
+    {
+      "id": "cf29",
+      "path": "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/.clang-format",
+      "for_requirements": [
+        "R02"
+      ]
+    }
+  ]
+}

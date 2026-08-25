@@ -1,0 +1,31 @@
+{
+  "phase": 8,
+  "gate": "gate_upload_ci.py",
+  "verdict": "PASS",
+  "reason": "pr=4485 overall=success ci_ok=True pushed=5151de16333e pr_head=5151de16333e sha_ok=True fresh=True local_review=skipped (--pr re-verify) pr_review=review_issue_count=0",
+  "checks": [
+    "mode=verify_pr",
+    "repo=openharmony/hiviewdfx_hiview",
+    "branch=feat/resmon-resource-monitor",
+    "pr=4485",
+    "ci_overall=success",
+    "ci_ok=True",
+    "sha_ok=True"
+  ],
+  "ok": true,
+  "repo_slug": "openharmony/hiviewdfx_hiview",
+  "branch": "feat/resmon-resource-monitor",
+  "pr": 4485,
+  "ci_overall": "success",
+  "ci_ok": true,
+  "pushed_sha": "5151de16333e24d821ddd62797a66c81a2250b87",
+  "pr_head_sha": "5151de16333e24d821ddd62797a66c81a2250b87",
+  "sha_ok": true,
+  "local_review_detail": "skipped (--pr re-verify)",
+  "pr_review_detail": "review_issue_count=0",
+  "mode": "verify_pr",
+  "failure_class": null,
+  "logical_substate_id": "finalize",
+  "logical_substate_name": "finalize",
+  "logical_substate_goal": "record the signed upload PASS and close the pipeline"
+}

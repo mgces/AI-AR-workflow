@@ -1,0 +1,275 @@
+{
+  "run_id": "20260818-resource-reliability-monitor",
+  "pipeline_dir": "/home/qaq/openharmony/code/specs/pipeline/20260818-resource-reliability-monitor",
+  "current_phase": 8,
+  "current_phase_name": "upload-review",
+  "legacy_mode": false,
+  "last_failure": {
+    "phase": 7,
+    "gate": "gate_integration.py",
+    "reason": "type=UT tests=38 failures=2 errors=0 fresh=2026-08-19-15-04-10 | quality:coverage=evidence/phase7/coverage_report.md; performance=evidence/phase7/performance_report.md; power=evidence/phase7/power_report.md; stability=evidence/phase7/stability_report.md | review:auto_review_issues=0 guard rc=0 metric_findings=0 on 39 file(s) | external_review=not-provided",
+    "ts_utc": "2026-08-19T07:04:17Z",
+    "entry_id": "b32ce5dd1ee2688b737618bdc45db9782af341290adb1bfe0a835a5d66be6a07"
+  },
+  "phase_summary": {
+    "phase": 8,
+    "gate": "gate_upload_ci.py",
+    "verdict": "FAIL",
+    "reason": "no consent for phase 8",
+    "checks": [
+      "mode=precheck",
+      "repo=openharmony/hiviewdfx_hiview",
+      "branch=feat/resmon-resource-monitor"
+    ],
+    "ok": false,
+    "repo_slug": "openharmony/hiviewdfx_hiview",
+    "branch": "feat/resmon-resource-monitor",
+    "pr": null,
+    "ci_overall": null,
+    "ci_ok": null,
+    "pushed_sha": "428e80c18ff172dc857066dd2ec5686044fe6dde",
+    "pr_head_sha": null,
+    "sha_ok": null,
+    "local_review_detail": null,
+    "pr_review_detail": null,
+    "mode": "precheck",
+    "failure_class": "consent_missing",
+    "logical_substate_id": "precheck",
+    "logical_substate_name": "precheck",
+    "logical_substate_goal": "confirm phases 1..7 passed and phase-8 consent is recorded before any push"
+  },
+  "failure_report": {
+    "phase": 8,
+    "gate": "gate_upload_ci.py",
+    "reason": "no consent for phase 8",
+    "problems": [
+      "phase 8 consent token missing"
+    ],
+    "resume_hint": "人工审核后执行 advance.py consent --phase 8 --token <reviewer>，再重跑",
+    "repo_slug": "openharmony/hiviewdfx_hiview",
+    "branch": "feat/resmon-resource-monitor",
+    "pr": null,
+    "ci_overall": null,
+    "ci_ok": null,
+    "pushed_sha": "428e80c18ff172dc857066dd2ec5686044fe6dde",
+    "pr_head_sha": null,
+    "sha_ok": null,
+    "local_review_detail": null,
+    "pr_review_detail": null,
+    "mode": "precheck",
+    "failure_class": "consent_missing",
+    "logical_substate_id": "precheck",
+    "logical_substate_name": "precheck",
+    "logical_substate_goal": "confirm phases 1..7 passed and phase-8 consent is recorded before any push",
+    "human_escalation_needed": true,
+    "escalation_note": "same bundle revision exceeded max_repair_rounds=2"
+  },
+  "repair_packet": {
+    "phase": 8,
+    "phase_name": "upload-review",
+    "bundle_id": "phase1-bundle",
+    "bundle_revision_from": "76fcb9384b86",
+    "active": true,
+    "failure_class": "consent_missing",
+    "suspect_files": [
+      "BUILD.gn",
+      "plugins/BUILD.gn",
+      "plugins/reliability/resource_monitor/.clang-format",
+      "plugins/reliability/resource_monitor/BUILD.gn",
+      "plugins/reliability/resource_monitor/config/resmon_config.json",
+      "plugins/reliability/resource_monitor/resmon_collector.h",
+      "plugins/reliability/resource_monitor/resmon_config.cpp",
+      "plugins/reliability/resource_monitor/resmon_config.h",
+      "plugins/reliability/resource_monitor/resmon_cpu_collector.cpp",
+      "plugins/reliability/resource_monitor/resmon_cpu_collector.h",
+      "plugins/reliability/resource_monitor/resmon_event_listener.cpp",
+      "plugins/reliability/resource_monitor/resmon_event_listener.h",
+      "plugins/reliability/resource_monitor/resmon_io_collector.cpp",
+      "plugins/reliability/resource_monitor/resmon_io_collector.h",
+      "plugins/reliability/resource_monitor/resmon_landing.cpp",
+      "plugins/reliability/resource_monitor/resmon_landing.h",
+      "plugins/reliability/resource_monitor/resmon_mem_collector.cpp",
+      "plugins/reliability/resource_monitor/resmon_mem_collector.h",
+      "plugins/reliability/resource_monitor/resmon_net_collector.cpp",
+      "plugins/reliability/resource_monitor/resmon_net_collector.h",
+      "plugins/reliability/resource_monitor/resmon_plugin_config",
+      "plugins/reliability/resource_monitor/resmon_pwr_collector.cpp",
+      "plugins/reliability/resource_monitor/resmon_pwr_collector.h",
+      "plugins/reliability/resource_monitor/resmon_ring_buffer.cpp",
+      "plugins/reliability/resource_monitor/resmon_ring_buffer.h",
+      "plugins/reliability/resource_monitor/resmon_thr_collector.cpp",
+      "plugins/reliability/resource_monitor/resmon_thr_collector.h",
+      "plugins/reliability/resource_monitor/resmon_threshold.cpp",
+      "plugins/reliability/resource_monitor/resmon_threshold.h",
+      "plugins/reliability/resource_monitor/resmon_types.h",
+      "plugins/reliability/resource_monitor/resource_monitor_plugin.cpp",
+      "plugins/reliability/resource_monitor/resource_monitor_plugin.h",
+      "plugins/reliability/resource_monitor/test/BUILD.gn",
+      "plugins/reliability/resource_monitor/test/unittest/common/resmon_config_test.cpp",
+      "plugins/reliability/resource_monitor/test/unittest/common/resmon_cpu_collector_test.cpp",
+      "plugins/reliability/resource_monitor/test/unittest/common/resmon_event_listener_test.cpp",
+      "plugins/reliability/resource_monitor/test/unittest/common/resmon_io_collector_test.cpp",
+      "plugins/reliability/resource_monitor/test/unittest/common/resmon_landing_test.cpp",
+      "plugins/reliability/resource_monitor/test/unittest/common/resmon_mem_collector_test.cpp",
+      "plugins/reliability/resource_monitor/test/unittest/common/resmon_net_collector_test.cpp",
+      "plugins/reliability/resource_monitor/test/unittest/common/resmon_pwr_collector_test.cpp",
+      "plugins/reliability/resource_monitor/test/unittest/common/resmon_ring_buffer_test.cpp",
+      "plugins/reliability/resource_monitor/test/unittest/common/resmon_test_util.h",
+      "plugins/reliability/resource_monitor/test/unittest/common/resmon_thr_collector_test.cpp",
+      "plugins/reliability/resource_monitor/test/unittest/common/resmon_threshold_test.cpp",
+      "plugins/reliability/resource_monitor/test/unittest/common/resource_monitor_plugin_test.cpp"
+    ],
+    "suspect_locations": [],
+    "suspect_tests": [
+      "ResmonConfigTest.LoadDefaults",
+      "ResmonConfigTest.LoadFromJson",
+      "ResmonConfigTest.InvalidFileKeepsDefaults",
+      "ResmonCpuCollectorTest.ParseProcStat",
+      "ResmonCpuCollectorTest.CpuUsageDelta",
+      "ResmonCpuCollectorTest.ProcCpuTopN",
+      "ResmonCpuCollectorTest.LoadAvg",
+      "ResmonMemCollectorTest.ParseMeminfo",
+      "ResmonMemCollectorTest.ProcMemTopN",
+      "ResmonMemCollectorTest.IonDegradeWhenAbsent",
+      "ResmonIoCollectorTest.ParseDiskstats",
+      "ResmonIoCollectorTest.PartitionWater",
+      "ResmonPwrCollectorTest.ThermalZones",
+      "ResmonPwrCollectorTest.TripPoints",
+      "ResmonNetCollectorTest.ParseNetDev",
+      "ResmonNetCollectorTest.NetDevDelta",
+      "ResmonThrCollectorTest.ThreadStateDistribution",
+      "ResmonThrCollectorTest.DStateMarked",
+      "ResmonThresholdTest.OverThresholdTrigger",
+      "ResmonThresholdTest.DebounceSuppress",
+      "ResmonThresholdTest.MinInterval",
+      "ResmonThresholdTest.IndependentSwitches",
+      "ResmonRingBufferTest.PushRoll",
+      "ResmonRingBufferTest.DrainSnapshotContext",
+      "ResmonLandingTest.FileNameConvention",
+      "ResmonLandingTest.AppendWrite",
+      "ResmonLandingTest.RollingByQuota",
+      "ResmonLandingTest.RollingByAge",
+      "ResmonEventListenerTest.OnUnorderedEventTriggersSnapshot",
+      "ResmonEventListenerTest.EventNameFiltered",
+      "ResmonEventListenerTest.OomSnapshotContent",
+      "ResmonEventListenerTest.AnrSnapshotContent",
+      "ResmonEventListenerTest.StabilitySnapshotWithRingContext",
+      "ResourceMonitorPluginTest.PeriodicTickLands",
+      "ResourceMonitorPluginTest.SingleItemFailureIsolated",
+      "ResourceMonitorPluginTest.DeferredConfigReload"
+    ],
+    "allowed_fix_scope": [
+      "declared test files",
+      "upload metadata",
+      "review/ci evidence inputs for the current bundle"
+    ],
+    "must_rerun": [
+      "gate_upload_ci.py"
+    ],
+    "downstream_revalidate_scope": "P4_P5",
+    "repair_disallowed_if": [
+      "functional requirement changes are needed",
+      "signed contract is unrecoverable"
+    ],
+    "regen_trigger_if": [
+      "fix requires new functional code outside the phase1 freeze",
+      "upload target or approval scope changes"
+    ],
+    "regen_required": false,
+    "regen_signals": [],
+    "last_failure_reason": "no consent for phase 8",
+    "problems": [
+      "phase 8 consent token missing"
+    ],
+    "max_retry_rounds": 2,
+    "max_repair_rounds": 2,
+    "fallback_key": "f7d8c5d057633476",
+    "retry_rounds": 0,
+    "repair_rounds": 3,
+    "human_escalation_needed": true,
+    "escalation_note": "same bundle revision exceeded max_repair_rounds=2",
+    "recommended_next_action": "human_escalation",
+    "control_protocol_version": 1
+  },
+  "current_substate": "blocked",
+  "next_gate": "gate_upload_ci.py",
+  "required_inputs": [
+    "human_review"
+  ],
+  "resume_hint": "same bundle revision exceeded max_repair_rounds=2",
+  "control_protocol_version": 1,
+  "logical_phase_id": "upload_review",
+  "logical_phase_name": "upload-review",
+  "action_kind": "blocked",
+  "control_refs": {
+    "next_action": "controls/next_action.json",
+    "memory_card": "controls/memory_cards/current.json",
+    "stage_packet": "controls/packets/upload_review.json",
+    "receipt": "controls/receipts/phase8.json",
+    "handoff_in": "controls/handoffs/current.json",
+    "handoff_out": "controls/handoffs/phase8-next.json"
+  },
+  "window_startup_order": {
+    "control_protocol_version": 1,
+    "authority_note": "reading order only; pass authority stays with signed evidence + consent + advance.py",
+    "steps": [
+      {
+        "order": 1,
+        "artifact": "phase_memory_card",
+        "ref": "controls/memory_cards/current.json",
+        "optional": false
+      },
+      {
+        "order": 2,
+        "artifact": "advance_status_json",
+        "ref": null,
+        "optional": false
+      },
+      {
+        "order": 3,
+        "artifact": "stage_packet",
+        "ref": "controls/packets/upload_review.json",
+        "optional": false
+      },
+      {
+        "order": 4,
+        "artifact": "handoff_or_repair_packet",
+        "ref": "controls/handoffs/current.json",
+        "optional": false
+      },
+      {
+        "order": 5,
+        "artifact": "completion_receipt",
+        "ref": "controls/receipts/phase8.json",
+        "optional": true
+      },
+      {
+        "order": 6,
+        "artifact": "failure_report_or_phase_summary",
+        "ref": null,
+        "optional": true
+      },
+      {
+        "order": 7,
+        "artifact": "phase_evidence",
+        "ref": null,
+        "optional": false
+      }
+    ],
+    "forbidden_starts": [
+      "read_global_readme_first",
+      "read_large_logs_first",
+      "read_next_phase_packet_first",
+      "replay_full_chat_history_first"
+    ]
+  },
+  "logical_substate": {
+    "id": "precheck",
+    "name": "precheck",
+    "unclassified_failure_class": null,
+    "human_escalation_needed": true,
+    "escalation_reason": "same bundle revision exceeded max_repair_rounds=2",
+    "source": "repair_packet"
+  },
+  "generated_at_utc": "2026-08-19T08:06:50Z"
+}

@@ -1,0 +1,2 @@
+degraded=True
+clang-tidy not executed by guard (clang-tidy not found in PATH); CI will still scan

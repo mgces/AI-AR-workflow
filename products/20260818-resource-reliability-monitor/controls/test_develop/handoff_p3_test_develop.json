@@ -1,0 +1,98 @@
+{
+  "bundle_id": "phase1-bundle",
+  "bundle_revision": "7e6455fa8d29",
+  "from_phase": 3,
+  "from_phase_name": "test-develop",
+  "to_phase": 4,
+  "to_phase_name": "build-verify",
+  "logical_phase_id": "test_develop",
+  "logical_phase_name": "test-develop",
+  "objective_completed": true,
+  "produced_artifacts": [
+    {
+      "path": "controls/test_develop/signed_test_scope.json",
+      "role": "signed_test_scope"
+    },
+    {
+      "path": "controls/test_develop/test_intent_matrix.json",
+      "role": "test_intent_matrix"
+    },
+    {
+      "path": "controls/test_develop/completion_receipt_p3.json",
+      "role": "completion_receipt"
+    }
+  ],
+  "facts_for_next_phase": [
+    "phase1 test-develop bundle is active",
+    "feature freeze held during test-develop preparation",
+    "planned test cases=36"
+  ],
+  "risks": [
+    "device follow-up needed"
+  ],
+  "open_questions": [],
+  "recommended_next_action": {
+    "phase": 4,
+    "action": "build-verify",
+    "next_gate": "advance.py advance --phase 3"
+  },
+  "requires_repair": false,
+  "repair_scope_hint": [],
+  "downstream_revalidate_scope": "P4_P5",
+  "artifact_index": {
+    "bundle_revision": "7e6455fa8d29",
+    "freeze_snapshot": "controls/test_develop/development_freeze_snapshot.json",
+    "signed_test_scope": "controls/test_develop/signed_test_scope.json",
+    "test_intent_matrix": "controls/test_develop/test_intent_matrix.json",
+    "completion_receipt": "controls/test_develop/completion_receipt_p3.json",
+    "handoff_packet": "controls/test_develop/handoff_p3_test_develop.json",
+    "planned_test_cases": 36
+  },
+  "evidence_index": {
+    "develop_summary": "evidence/phase2/phase_summary.json",
+    "develop_failure_report": "evidence/phase2/failure_report.json",
+    "development_manifest_entry": "7e6455fa8d29",
+    "changed_files_consistency": {
+      "declared_present": [
+        "base/hiviewdfx/hiview/BUILD.gn",
+        "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/BUILD.gn",
+        "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resource_monitor_plugin.h",
+        "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resource_monitor_plugin.cpp",
+        "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_types.h",
+        "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_collector.h",
+        "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_cpu_collector.h",
+        "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_cpu_collector.cpp",
+        "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_mem_collector.h",
+        "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_mem_collector.cpp",
+        "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_io_collector.h",
+        "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_io_collector.cpp",
+        "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_pwr_collector.h",
+        "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_pwr_collector.cpp",
+        "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_net_collector.h",
+        "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_net_collector.cpp",
+        "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_thr_collector.h",
+        "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_thr_collector.cpp",
+        "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_threshold.h",
+        "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_threshold.cpp",
+        "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_ring_buffer.h",
+        "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_ring_buffer.cpp",
+        "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_landing.h",
+        "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_landing.cpp",
+        "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_event_listener.h",
+        "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_event_listener.cpp",
+        "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/config/resmon_config.json",
+        "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/resmon_plugin_config",
+        "base/hiviewdfx/hiview/plugins/reliability/resource_monitor/.clang-format"
+      ],
+      "declared_missing": [],
+      "new_test_paths": []
+    }
+  },
+  "report_index": {
+    "primary_entry_doc": "controls/test_develop/signed_test_scope.json",
+    "primary_handoff_doc": "controls/test_develop/handoff_p3_test_develop.json",
+    "primary_failure_doc": "controls/test_develop/failure_packet.json",
+    "primary_completion_receipt": "controls/test_develop/completion_receipt_p3.json"
+  },
+  "control_protocol_version": 1
+}

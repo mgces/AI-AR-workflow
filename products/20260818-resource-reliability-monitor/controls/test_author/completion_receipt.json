@@ -1,0 +1,18 @@
+{
+  "phase": 5,
+  "logical_phase_id": "test_author",
+  "bundle_id": "phase1-bundle",
+  "bundle_revision": "7e6455fa8d29",
+  "semantic_done": true,
+  "truth_layer_pass_known": true,
+  "next_phase_ready": true,
+  "human_gate_pending": false,
+  "next_phase": 6,
+  "downstream_revalidate_scope": "P4_P5",
+  "tests": 38,
+  "failures": 0,
+  "errors": 0,
+  "fresh_report_dir": "2026-08-20-10-18-52",
+  "missing_gtests": [],
+  "control_protocol_version": 1
+}

@@ -1,0 +1,22 @@
+{
+  "control_protocol_version": 1,
+  "phase": 3,
+  "phase_name": "test-develop",
+  "bundle_revision": null,
+  "current_blocker": "none",
+  "forbidden_actions": [
+    "treat_navigation_files_as_truth_source",
+    "edit_pipeline_json_directly",
+    "advance_without_signed_evidence",
+    "modify_functional_code_after_feature_freeze",
+    "count_test_execution_as_authorship",
+    "treat_control_bundle_as_signed_truth"
+  ],
+  "next_expected_action_class": "advance",
+  "last_failure_class": null,
+  "human_escalation_needed": false,
+  "primary_entry_doc": null,
+  "primary_failure_doc": "evidence/phase3/failure_report.json",
+  "primary_handoff_doc": null,
+  "verdict": "PASS"
+}
