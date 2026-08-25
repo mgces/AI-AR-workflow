@@ -1,0 +1,24 @@
+08-20 19:37:11.269   779 16665 I C02d13/HDC_LOG: [async_cmd.cpp:131] FinishShellProc finish pipeRead fd:44 pid:16664 count:1
+08-20 19:37:11.270   779 16665 I C02d13/HDC_LOG: [task.cpp:55] HdcTaskBase::TaskFinish notify begin type:0 cid:118767910 sid:214******656(L:10)
+08-20 19:37:11.270   779 16665 I C02d13/HDC_LOG: [task.cpp:58] HdcTaskBase::TaskFinish notify end type:0 cid:118767910 sid:214******656(L:10)
+08-20 19:37:11.273   779 13262 I C02d13/HDC_LOG: [daemon.cpp:1235] FetchCommand channelId:118767910 command:2
+08-20 19:37:11.273   779 13262 W C02d13/HDC_LOG: [session.cpp:163] BeginRemoveTask taskType:0 channelId:118767910
+08-20 19:37:11.273   779 13262 W C02d13/HDC_LOG: [session.cpp:193] ClearOwnTasks OP_CLEAR finish, sessionId:214******656(L:10) channelIDInput:118767910
+08-20 19:37:11.273   779 13262 W C02d13/HDC_LOG: [session.cpp:118] taskClassDeleteRetry start clear task, taskType:0 cid:118767910 sid:214******656(L:10)
+08-20 19:37:11.273   779 13262 I C02d13/HDC_LOG: [async_cmd.cpp:111] DoRelease rc:-3 pid:16664
+08-20 19:37:11.273   779 13262 I C02d13/HDC_LOG: [session.cpp:129] TaskDelay task remove retry count 0/30, taskType:0 channelId:118767910, sessionId:214******656(L:10)
+08-20 19:37:11.273   779 13262 I C02d13/HDC_LOG: [daemon_unity.cpp:35] ~HdcDaemonUnity cid:118767910 sid:214******656(L:10)
+08-20 19:37:11.273   779 13262 I C02d13/HDC_LOG: [task.cpp:40] ~HdcTaskBase type:0 cid:118767910 sid:214******656(L:10)
+08-20 19:37:11.273   779 13262 W C02d13/HDC_LOG: [session.cpp:137] TaskDelay task remove finish, channelId:118767910
+08-20 19:37:11.273   779 13262 I C02d13/HDC_LOG: [base.cpp:1072] before uv handle close, the uv handle type is 13
+08-20 19:37:11.278   779 13262 I C02d13/HDC_LOG: [daemon.cpp:1235] FetchCommand channelId:118767910 command:2
+08-20 19:37:11.295   779 13262 I C02d13/HDC_LOG: [daemon.cpp:1235] FetchCommand channelId:2263730611 command:1001
+08-20 19:37:11.295   779 13262 I C02d13/HDC_LOG: [session.cpp:1670] New HTaskInfo cid:2263730611 sid:214******656(L:10) command:1001
+08-20 19:37:11.295   779 13262 I C02d13/HDC_LOG: [session.cpp:905] AdminTask add task type:0 cid:2263730611 sid:214******656(L:10) mapsize:1
+08-20 19:37:11.295   779 13262 I C02d13/HDC_LOG: [task.cpp:34] HdcTaskBase type:0 cid:2263730611 sid:214******656(L:10)
+08-20 19:37:11.295   779 13262 I C02d13/HDC_LOG: [daemon_unity.cpp:425] Unity CommandDispatch command:1001 cid:2263730611 sid:214******656(L:10)
+08-20 19:37:11.296   779 13262 W C02d13/HDC_LOG: [async_cmd.cpp:35] GetDevItem false key:persist.hdc.root
+08-20 19:37:11.296   779 13262 I C02d13/HDC_LOG: [async_cmd.cpp:188] Popen pipe fds[pipeRead]:44 fds[pipeWrite]:45, mode 0
+08-20 19:37:11.298   779 13262 I C02d13/HDC_LOG: [async_cmd.cpp:251] ExecuteCommand cmd:date +"%m-%d %H:%M:%S.%N" fd:44 pid:16668
+08-20 19:37:11.298   779 13262 I C02d13/HDC_LOG: [daemon_unity.cpp:497] Unity CommandDispatch command:1001 finish cid:2263730611 sid:214******656(L:10)
+08-20 19:37:11.298 16668 16668 W C02d13/HDC_LOG: [async_cmd.cpp:159] SetSelinuxLabel con:u:r:su:s0 isRoot:0

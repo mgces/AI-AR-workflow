@@ -1,0 +1,2 @@
+62
+66	/data/log/reliability/resmon

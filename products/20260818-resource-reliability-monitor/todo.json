@@ -1,0 +1,109 @@
+{
+  "run_id": "20260818-resource-reliability-monitor",
+  "current_phase": 7,
+  "current_phase_label": "P7 质量验证",
+  "logical_phase_id": "quality_verify",
+  "logical_phase_name": "quality-verify",
+  "action_kind": "run_gate",
+  "control_protocol_version": 1,
+  "control_refs": {
+    "next_action": "controls/next_action.json",
+    "memory_card": "controls/memory_cards/current.json",
+    "stage_packet": "controls/packets/quality_verify.json",
+    "receipt": "controls/receipts/phase7.json",
+    "handoff_in": "controls/handoffs/current.json",
+    "handoff_out": "controls/handoffs/phase7-next.json"
+  },
+  "design_present": true,
+  "legacy_mode": false,
+  "last_failure": {
+    "phase": 6,
+    "gate": "gate_device_func.py",
+    "reason": "nonce=True trigger_window=True marker=True runtime=True e2e=True device_cases=6/6 artifact_hash=True provenance=True artifact_loaded=True side_effect=False negative_control=True uptime 1718310.16->1718474.61 mono=True BAD_device_cases=d2",
+    "ts_utc": "2026-08-19T05:26:57Z",
+    "entry_id": "7b6e8741961de955cedadf5c90b3a598d5bafac9fbcebe480e65994bb0b25f2a"
+  },
+  "phases": [
+    {
+      "id": 0,
+      "label": "P0 环境初始化",
+      "status": "passed",
+      "current": false,
+      "manifest_ref": "d3a531b5c7276081f2a952f252dd75fc9f214fe514144f6be40752edb22539b0"
+    },
+    {
+      "id": 1,
+      "label": "P1 设计固化",
+      "status": "passed",
+      "current": false,
+      "manifest_ref": "f3d1d3a520eef5c3ef6a49366d94a5474ea1005c164c95a5728ed3fb41d9b1e6"
+    },
+    {
+      "id": 2,
+      "label": "P2 代码开发",
+      "status": "passed",
+      "current": false,
+      "manifest_ref": "76fcb9384b862ee91deff0789907b03bc83d51cc11bddffc0147aa684a4609c4"
+    },
+    {
+      "id": 3,
+      "label": "P3 测试用例编写",
+      "status": "passed",
+      "current": false,
+      "manifest_ref": "655e584ca7e309f631407ddf653299ec9be766c8d63476cd55a28f2e34a04286"
+    },
+    {
+      "id": 4,
+      "label": "P4 编译验证",
+      "status": "passed",
+      "current": false,
+      "manifest_ref": "b9a56c35d6b7ef9baf77dbd3d5be887b7612f27b76aa6366f1cedff7e54ed095"
+    },
+    {
+      "id": 5,
+      "label": "P5 单元测试",
+      "status": "passed",
+      "current": false,
+      "manifest_ref": "b4a7f1b278cf0bb663af902a8693c5fa8bc84bbb7a2ccef53ce06f18674684f0"
+    },
+    {
+      "id": 6,
+      "label": "P6 端到端功能测试",
+      "status": "passed",
+      "current": false,
+      "manifest_ref": "442b2581bbf0449da089efa9208c953c9ae539593cfe1581e0f688975739a00f"
+    },
+    {
+      "id": 7,
+      "label": "P7 质量验证",
+      "status": "pending",
+      "current": true,
+      "manifest_ref": null
+    },
+    {
+      "id": 8,
+      "label": "P8 上库 review",
+      "status": "pending",
+      "current": false,
+      "manifest_ref": null
+    }
+  ],
+  "design_items": {
+    "files": [],
+    "test_points": [],
+    "device_cases": []
+  },
+  "next_action": {
+    "text": "gate_integration.py + 质量报告 → 人工 consent → advance --phase 7",
+    "next_gate": "gate_integration.py",
+    "resume_hint": "Run gate_integration.py, inspect reports, then consent and advance.",
+    "required_inputs": [
+      "quality_reports",
+      "review_report"
+    ],
+    "current_substate": "awaiting_gate"
+  },
+  "manifest_entries": 42,
+  "phase_summary": null,
+  "failure_report": null
+}

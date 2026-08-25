@@ -1,0 +1,28 @@
+{
+  "from_phase": 8,
+  "from_phase_name": "upload-review",
+  "logical_phase_id": "upload_review",
+  "logical_phase_name": "upload-review",
+  "phase_scope": "phase",
+  "objective_completed": false,
+  "truth_layer_pass_known": false,
+  "current_substate": "blocked",
+  "repair_packet_present": true,
+  "facts_for_next_phase": [
+    "same bundle revision exceeded max_repair_rounds=2",
+    "phase summary available"
+  ],
+  "risks": [
+    "type=UT tests=38 failures=2 errors=0 fresh=2026-08-19-15-04-10 | quality:coverage=evidence/phase7/coverage_report.md; performance=evidence/phase7/performance_report.md; power=evidence/phase7/power_report.md; stability=evidence/phase7/stability_report.md | review:auto_review_issues=0 guard rc=0 metric_findings=0 on 39 file(s) | external_review=not-provided"
+  ],
+  "recommended_next_action": {
+    "action_kind": "blocked",
+    "next_gate": "gate_upload_ci.py",
+    "required_inputs": [
+      "human_review"
+    ]
+  },
+  "to_phase": null,
+  "to_phase_name": null,
+  "control_protocol_version": 1
+}

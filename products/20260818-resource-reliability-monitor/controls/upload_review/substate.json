@@ -1,0 +1,28 @@
+{
+  "phase": 8,
+  "phase_name": "upload-review",
+  "substate": "finalize",
+  "substate_id": "finalize",
+  "substate_name": "finalize",
+  "substate_goal": "record the signed upload PASS and close the pipeline",
+  "entry_conditions": [
+    "CI is green for the pushed SHA",
+    "PR head SHA equals the pushed SHA"
+  ],
+  "exit_conditions": [
+    "signed upload PASS recorded; pipeline complete"
+  ],
+  "next_substate_id": null,
+  "next_substate_name": null,
+  "objective_completed": true,
+  "human_gate_pending": false,
+  "human_escalation_needed": false,
+  "escalation_reason": "",
+  "notes": [
+    "mode=verify_pr",
+    "ci_ok=True",
+    "sha_ok=True",
+    "pr=4485"
+  ],
+  "control_protocol_version": 1
+}

@@ -1,0 +1,24 @@
+{
+  "periodSec": 5,
+  "topN": 10,
+  "quotaFiles": 10,
+  "retentionSec": 86400,
+  "ringCapacity": 12,
+  "procRoot": "/proc",
+  "sysRoot": "/sys",
+  "ionUsagePath": "",
+  "mountPoints": ["/", "/data"],
+  "periodicEnabled": true,
+  "eventEnabled": true,
+  "thresholdEnabled": true,
+  "cpuThresholdPct": 90,
+  "memAvailThresholdMB": 200,
+  "tempThresholdC": 0,
+  "debounce": 2,
+  "minIntervalSec": 30,
+  "events": [
+    {"domain": "AAFWK", "name": "THREAD_BLOCK_3S", "kind": "freeze", "suffix": "freeze"},
+    {"domain": "AAFWK", "name": "LIFECYCLE_HALF_TIMEOUT", "kind": "freeze", "suffix": "freeze"},
+    {"domain": "POWER", "name": "SCREEN_ON", "kind": "GENERIC", "suffix": "screen"}
+  ]
+}

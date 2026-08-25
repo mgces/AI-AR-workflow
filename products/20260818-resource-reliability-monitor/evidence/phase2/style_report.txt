@@ -1,0 +1,4 @@
+changed_cxx=39 style_ok=True strict_ok=True
+
+--- code_ruleset_guard (format+rules) ---
+code_ruleset PASS: 39 file(s), 93 regex rule(s) + 307 sensitive word(s) + 26 clang-format checked

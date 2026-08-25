@@ -1,0 +1,1 @@
+08-19 15:01:34.814   779  2698 I C02d13/HDC_LOG: [async_cmd.cpp:251] ExecuteCommand cmd:hilog -x 2>/dev/null | grep -i resmon | grep -iE 'error|fatal|fail' | tail -10 fd:37 pid:29410

@@ -1,0 +1,33 @@
+{
+  "phase": 8,
+  "logical_phase_id": "upload_review",
+  "bundle_id": "phase1-bundle",
+  "bundle_revision": "7e6455fa8d29",
+  "semantic_done": true,
+  "truth_layer_pass_known": true,
+  "next_phase_ready": true,
+  "human_gate_pending": false,
+  "next_phase": null,
+  "downstream_revalidate_scope": "P4_P5",
+  "pr": 4485,
+  "ci_overall": "success",
+  "ci_ok": true,
+  "pushed_sha": "5151de16333e24d821ddd62797a66c81a2250b87",
+  "pr_head_sha": "5151de16333e24d821ddd62797a66c81a2250b87",
+  "sha_ok": true,
+  "local_review_detail": "skipped (--pr re-verify)",
+  "pr_review_detail": "review_issue_count=0",
+  "mode": "verify_pr",
+  "key_artifacts": [
+    "evidence/phase6/full_diff.patch",
+    "evidence/phase6/full_diff.stat.txt",
+    "evidence/phase6/pr.json",
+    "evidence/phase6/pr_create.txt",
+    "evidence/phase6/pr_review_report.txt",
+    "evidence/phase6/ci_status.json"
+  ],
+  "logical_substate_id": "finalize",
+  "logical_substate_name": "finalize",
+  "logical_substate_goal": "record the signed upload PASS and close the pipeline",
+  "control_protocol_version": 1
+}

@@ -1,0 +1,29 @@
+{
+  "phase": 5,
+  "gate": "gate_test_ut.py",
+  "verdict": "PASS",
+  "reason": "tests=38 failures=0 errors=0 fresh=2026-08-20-10-18-52 gtest_cov=36/36",
+  "checks": [
+    "target=ResourceMonitorTest",
+    "suite=ResourceMonitorTest",
+    "part=hiview",
+    "exit_code=0",
+    "tests=38",
+    "failures=0",
+    "errors=0",
+    "fresh_report=2026-08-20-10-18-52",
+    "contract=ok"
+  ],
+  "ok": true,
+  "test_target": "ResourceMonitorTest",
+  "suite": "ResourceMonitorTest",
+  "part": "hiview",
+  "exit_code": 0,
+  "tests": 38,
+  "failures": 0,
+  "errors": 0,
+  "fresh_report_dir": "2026-08-20-10-18-52",
+  "contract_status": "ok",
+  "missing_gtests": [],
+  "failure_class": null
+}

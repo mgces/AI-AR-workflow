@@ -1,0 +1,19 @@
+{
+  "phase": 1,
+  "phase_name": "design-orchestrate",
+  "kind": "report_index",
+  "primary_entry_doc": "evidence/phase1/AR_design.md",
+  "primary_handoff_doc": "controls/design_orchestrate/handoff_to_feature_develop.json",
+  "primary_completion_receipt": "controls/design_orchestrate/completion_receipt_p1.json",
+  "entries": [
+    {
+      "path": "evidence/phase1/AR_design.md",
+      "role": "signed_design_doc"
+    },
+    {
+      "path": "evidence/phase1/ar_contract.json",
+      "role": "signed_ar_contract"
+    }
+  ],
+  "control_protocol_version": 1
+}

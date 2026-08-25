@@ -1,0 +1,47 @@
+{
+  "kind": "evidence_index",
+  "evidence": [
+    {
+      "kind": "process_provenance",
+      "rank": 1,
+      "verified": true
+    },
+    {
+      "kind": "artifact_loaded",
+      "rank": 2,
+      "verified": true
+    },
+    {
+      "kind": "side_effect",
+      "rank": 3,
+      "verified": true
+    },
+    {
+      "kind": "differential",
+      "rank": 4,
+      "verified": true
+    },
+    {
+      "kind": "runtime_e2e_marker",
+      "rank": 5,
+      "verified": null
+    },
+    {
+      "kind": "plain_marker",
+      "rank": 6,
+      "verified": null
+    }
+  ],
+  "phase": 6,
+  "phase_name": "device-functional",
+  "evidence_priority": [
+    "process_provenance",
+    "artifact_loaded",
+    "side_effect",
+    "differential",
+    "runtime_e2e_marker",
+    "plain_marker"
+  ],
+  "trust_rule": "resolve conflicts in listed order; plain_marker is the weakest claim",
+  "control_protocol_version": 1
+}

@@ -1,0 +1,3 @@
+contract build_artifacts: 1 present, 0 missing
+
+[OK ] out/rk3568/hiviewdfx/hiview/libresmon.z.so  -> /home/qaq/openharmony/code/out/rk3568/hiviewdfx/hiview/libresmon.z.so
