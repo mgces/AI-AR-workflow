@@ -209,6 +209,7 @@ def main():
                          "Recorded as P4-WEAK-ANCHORS-BYPASS in the signed reason")
     args = ap.parse_args()
     pdir = gl.pipeline_dir(args.pipeline_dir)
+    gl.require_current_phase(gl.load_state(pdir), 1, "gate_design.py")
     gl.evidence_dir(pdir, 1)
 
     def _fail(reason, problems=None, hint=None):

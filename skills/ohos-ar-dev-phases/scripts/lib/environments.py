@@ -30,6 +30,7 @@ missing `environment` to "openharmony" so pre-existing runs (whose pipeline.json
 has no `environment` field) behave exactly as before.
 """
 import re
+import shlex
 
 # Sentinel for a profile value that must be filled in before the environment can
 # be used. `build_command()` etc. raise EnvironmentNotConfigured when they hit it.
@@ -211,6 +212,16 @@ def build_command(state, target):
     the source root (captured at init as --device-type, stored in
     state["device_type"]); a template that needs it while state has none
     hard-fails rather than emitting a command with an empty --device-type."""
+    return shlex.join(build_argv(state, target))
+
+
+def build_argv(state, target):
+    """Build invocation as an argv vector, safe for ``shell=False`` execution.
+
+    Split the trusted profile template *before* substituting runtime values, so
+    a target/device value containing whitespace or shell metacharacters remains
+    one literal argument and can never become syntax.
+    """
     tmpl = _require(_profile(state)["build_template"], state, "build_template")
     fields = {"target": target}
     if "{device_type}" in tmpl:
@@ -222,7 +233,7 @@ def build_command(state, target):
                 "(它与当前源码根绑定,一般不变),然后重跑本门控。"
                 % env_id(state))
         fields["device_type"] = dt
-    return tmpl.format(**fields)
+    return [token.format(**fields) for token in shlex.split(tmpl)]
 
 
 def out_dir(state):
@@ -262,8 +273,13 @@ def arkts_test_command(state, suite):
     owning environment fills in the real runner — the gate FAILs closed with
     this "configure environments.py" message rather than silently passing an
     ArkTS design without execution."""
+    return shlex.join(arkts_test_argv(state, suite))
+
+
+def arkts_test_argv(state, suite):
+    """ArkTS runner argv with runtime suite substitution kept literal."""
     tmpl = _require(_profile(state)["arkts_test_template"], state, "arkts_test_template")
-    return tmpl.format(suite=suite)
+    return [token.format(suite=suite) for token in shlex.split(tmpl)]
 
 
 def arkts_report_root(state):

@@ -130,7 +130,7 @@ python3 $S/advance.py --pipeline-dir "$PDIR" status
 
 | 你做 | workflow 做 | 预计 |
 |---|---|---|
-| 在 P1/P6/P7/P8 证据 PASS 后，核对结果并 `consent` | 其余阶段由门控脚本自动放行，不停 | — |
+| 在 P1/P6/P7 的审核证据后，以及 P8 push 前的签名 DRY 预检后，核对并 `consent` | 其余阶段由门控脚本自动放行，不停 | — |
 
 只有这四处会停下等人工签名 consent 确认：
 
@@ -139,7 +139,7 @@ python3 $S/advance.py --pipeline-dir "$PDIR" status
 | P1 设计 | 设计固化是后续契约真源，错了后面全错 | `consent --phase 1` |
 | P6 端到端功能测试 | 证据 PASS 后等人工核对真机真实结果 | `consent --phase 6` |
 | P7 质量 | 证据 PASS 后等人工核对质量/review | `consent --phase 7` |
-| P8 上库 | push 是唯一对外不可逆动作 | `consent --phase 8` |
+| P8 上库 | push 是唯一对外不可逆动作；consent 绑定完整 diff 与上传目标 | `consent --phase 8` |
 
 其余阶段（P0/P2/P3/P4/P5）由门控脚本自动放行。
 

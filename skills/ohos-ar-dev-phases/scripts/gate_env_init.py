@@ -30,6 +30,7 @@ placeholder hard-fails the probe with a "configure environments.py" message.
 import argparse
 import json
 import os
+import shlex
 import subprocess
 import sys
 
@@ -47,12 +48,13 @@ DEFAULT_PROBE_TARGET = "hiview_package"
 
 
 def run(cmd, env=None):
-    return subprocess.run(cmd, shell=True, text=True, capture_output=True, env=env)
+    return subprocess.run(cmd, text=True, capture_output=True, env=env)
 
 
 def dev(snippet, env=None):
     """Run a snippet with device.sh sourced."""
-    return run('. "%s"\n%s' % (DEVICE_SH, snippet), env=env)
+    return run(["bash", "-c", '. "$1"\n%s' % snippet,
+                "device-probe", DEVICE_SH], env=env)
 
 
 def _write_bootstrap_controls(pdir, verdict, *, blocker=None,
@@ -89,6 +91,7 @@ def main():
     args = ap.parse_args()
     pdir = gl.pipeline_dir(args.pipeline_dir)
     state = gl.load_state(pdir)
+    gl.require_current_phase(state, 0, "gate_env_init.py")
     repo = state["repo"]
     gdir = state.get("git_dir", repo)
     if not os.path.isabs(gdir):
@@ -175,7 +178,8 @@ def main():
         # actionable "configure environments.py" message instead of running the
         # wrong command — the same fail-closed stance as the rest of the pipeline.
         try:
-            cmd = envs.build_command(state, args.probe_target)
+            cmd_argv = envs.build_argv(state, args.probe_target)
+            cmd = shlex.join(cmd_argv)
         except envs.EnvironmentNotConfigured as e:
             rel = "evidence/phase0/env.json"
             with open(os.path.join(pdir, rel), "w", encoding="utf-8") as f:
@@ -194,7 +198,7 @@ def main():
         print("compile probe: %s" % cmd)
         path = os.path.join(pdir, probe_rel)
         with open(path, "w", encoding="utf-8") as logf:
-            proc = subprocess.Popen(cmd, shell=True, cwd=repo, text=True,
+            proc = subprocess.Popen(cmd_argv, cwd=repo, text=True,
                                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=1)
             for line in proc.stdout:
                 sys.stdout.write(line)
@@ -218,7 +222,7 @@ def main():
             % probe_marker, "P2")
 
     # git component repo
-    g = run("git -C %s rev-parse HEAD" % gdir)
+    g = run(["git", "-C", gdir, "rev-parse", "HEAD"])
     head = g.stdout.strip()
     add("git", "HARD", g.returncode == 0 and len(head) == 40,
         "%s @ %s" % (gdir, head or g.stderr.strip()), "P1/P6")
@@ -247,7 +251,7 @@ def main():
     backend = envs.upload_backend(state)
     upload_soft = []  # names of SOFT upload checks that failed (for the P8 hint)
     if backend == "gitcode":
-        ohv = run("oh-gc --version")
+        ohv = run(["oh-gc", "--version"])
         oh_gc_ok = ohv.returncode == 0
         add("oh_gc", "SOFT", oh_gc_ok,
             (ohv.stdout or ohv.stderr).strip()[:80] if oh_gc_ok
@@ -257,7 +261,7 @@ def main():
         if oh_gc_ok:
             aenv = dict(env)
             aenv.setdefault("XDG_CACHE_HOME", "/tmp/oh-gc-cache")
-            auth = subprocess.run("oh-gc auth status", shell=True, text=True,
+            auth = subprocess.run(["oh-gc", "auth", "status"], text=True,
                                   capture_output=True, env=aenv)
             auth_ok = auth.returncode == 0
             first = (auth.stdout or auth.stderr).strip().splitlines()
@@ -272,7 +276,7 @@ def main():
         upload_soft = ["oh_gc", "gitcode_auth"]
     else:  # gerrit (HarmonyOS)
         # A push target: git_dir must have a remote to push refs/for/<base> to.
-        rem = run("git -C %s remote" % gdir)
+        rem = run(["git", "-C", gdir, "remote"])
         has_remote = rem.returncode == 0 and bool(rem.stdout.strip())
         add("git_remote", "SOFT", has_remote,
             ("remotes: %s" % ",".join(rem.stdout.split())) if has_remote

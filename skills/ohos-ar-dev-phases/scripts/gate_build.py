@@ -19,6 +19,7 @@ design promised were actually compiled in. Missing any one is a FAIL.
 import argparse
 import json
 import os
+import shlex
 import subprocess
 import sys
 
@@ -307,9 +308,23 @@ def resolve_artifacts(repo, artifacts, out_dir_rel):
     'out/rk3568/foo.so' or 'foo.so'.
     Returns (present, missing, resolved) where resolved maps path -> abspath|None."""
     present, missing, resolved = [], [], {}
+    repo_real = os.path.realpath(repo)
     for rel in artifacts:
+        if gl.repo_relative_path_error(rel):
+            resolved[rel] = None
+            missing.append(rel)
+            continue
         cands = [os.path.join(repo, rel), os.path.join(repo, out_dir_rel, rel)]
-        hit = next((c for c in cands if os.path.isfile(c)), None)
+        safe = []
+        for candidate in cands:
+            real = os.path.realpath(candidate)
+            try:
+                contained = os.path.commonpath([repo_real, real]) == repo_real
+            except ValueError:
+                contained = False
+            if contained:
+                safe.append(candidate)
+        hit = next((c for c in safe if os.path.isfile(c)), None)
         resolved[rel] = hit
         (present if hit else missing).append(rel)
     return present, missing, resolved
@@ -449,6 +464,7 @@ def main():
     args = ap.parse_args()
     pdir = gl.pipeline_dir(args.pipeline_dir)
     state = gl.load_state(pdir)
+    gl.require_current_phase(state, 4, "gate_build.py")
     repo = state["repo"]
     target = args.target or state.get("build_target")
     if not target:
@@ -460,7 +476,8 @@ def main():
     # hard-fails here with an actionable "configure environments.py" message
     # rather than running the wrong command.
     try:
-        cmd = envs.build_command(state, target)
+        cmd_argv = envs.build_argv(state, target)
+        cmd = shlex.join(cmd_argv)
     except envs.EnvironmentNotConfigured as e:
         sys.exit("PHASE 4 FAIL — %s" % e)
     success_re = envs.success_re(state)
@@ -474,7 +491,7 @@ def main():
     stdout_rel = "evidence/phase4/build_stdout.log"
     stdout_path = os.path.join(pdir, stdout_rel)
     with open(stdout_path, "w", encoding="utf-8") as logf:
-        proc = subprocess.Popen(cmd, shell=True, cwd=repo, text=True,
+        proc = subprocess.Popen(cmd_argv, cwd=repo, text=True,
                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                 bufsize=1)
         for line in proc.stdout:

@@ -69,10 +69,11 @@ OHOS(rk3568,C/C++ 系统组件)的完整研发生命周期,直到代码上库:
    └──────────────────────────────────────────────┼──────────────────────────────────────────────┘
                                                   ▼
    ┌──────────── P8 上库 gate_upload_ci.py ─────────────────────────────────────────────────────── ┐
-   │   A 本地自检==0(commit 前硬控) → git commit -s(DCO) → push → 建 issue 绑定 PR                │
+   │   DRY 落完整 diff+上库目标并签名 →【停:人工确认】→ consent --phase 8                         │
+   │   → A 本地自检==0(commit 前硬控) → git commit -s(DCO) → push → 建 issue 绑定 PR              │
    │   → B PR review==0(硬控) → CI overall∈{success,passed} ＋ PR head SHA==push SHA               │
    │   render_report --kind summary → pr_description.md 注入 PR(背景/设计/修改/用例/结果)          │
-   │   证据 PASS(emit 8)──▶【停:人工确认上库(唯一不可逆)】── consent --phase 8 ─▶ advance ── 完成 ✅ │
+   │   证据 PASS(emit 8) ─▶ advance(复验预检 consent + 最终 PASS) ── 完成 ✅                       │
    └──────────────────────────────────────────────────────────────────────────────────────────────┘
 
    ▲ 任一阶段发现要改功能代码 ─────────────────────────────────────────────────────────────────────┐
@@ -96,7 +97,7 @@ OHOS(rk3568,C/C++ 系统组件)的完整研发生命周期,直到代码上库:
 | **抗事后篡改 / 抗重放** | 改动证据文件 → `verify-all` sha256/HMAC 失配 → 降级回退;**重放一条历史合法 PASS 记录** → `seq`/`prev` 对不上链尾被拒(无密钥无法重签)。 |
 | **设计先行门控** | P1 设计门 `gate_design.py`(`emit 1`)先确定性校验 `AR_design.md` 6 必含章节 + ar-contract 契约并签名;P2 开发门 `gate_develop.py`(`emit 2`)**强制依赖**该签名设计 + P1 consent 才允许写码通过。 |
 | **编译前测试代码已写(Finding 1)** | P3 测试开发门 `gate_test_develop.py`(`emit 3`)是"先写完功能+测试代码再编译"的**真签名门**——不闭合 phase3 就到不了 phase4(build)。它证明测试**编写**(契约每个 `test_cases[].gtest` 的 suite 出现在新测试文件),测试**执行**留到 P5(`gate_test_ut.py`)。 |
-| **签名且绑定证据的 consent** | P6/P7/P8 人工确认令牌**签名**并绑定当前 PASS 证据的 entry_id;凭空盖章、重跑门控后旧 consent 复用都会失效。P1 设计 consent 绑签名设计条目,重跑 gate_design 即作废。 |
+| **签名且绑定证据的 consent** | P6/P7 人工确认令牌绑定当前 PASS；P8 在不可逆 push **之前**绑定签名的完整 diff + repo/branch/base/Issue 预检条目，最终推进再同时复验该 consent 与上传 PASS。P1 设计 consent 绑定签名设计条目。证据变化后旧 consent 都会失效。 |
 | **改码回 P1 重走(功能指纹分层)** | **P2(feature-develop)闭合时锁定功能指纹**(仅**非测试路径**内容,相对 `base_commit`、commit 无关)。改**功能代码/配置内容** → `advance P3..P8` 因功能指纹漂移被拒(`check_code_drift` 从 phase3 起生效);**P3/P5/P6/P7 只允许新增独立测试文件**(test 路径),新增非测试路径被拒——必须 `advance.py reset` 回 P1。P8 的 `git commit -s` 不算漂移。 |
 | **真机抗伪造三层证明(P6)** | 真机功能不再只认"日志里出现过 marker",而是叠加:①**进程溯源**——marker 命中行绑定 PID,校验进程名与契约 `device_cases[].process` 一致、且 `/proc/<pid>/exe\|maps` 真加载了 `artifact_loaded`;②**副作用断言**——`side_effect` 的 `shell_assert` 命令实跑并比对期望;③**负对照差分**——按 `absent_before_trigger` 切 baseline/trigger 窗口,marker 若在触发前已出现即 FAIL。证据优先级:进程溯源 > artifact_loaded > side_effect > baseline/trigger 差分 > runtime/e2e marker > 纯文本 marker。 |
 | **失败三分回路 + 双熔断 + 人工升级** | 失败按 `Retry / Repair / Regenerate` 三分(§10 判定矩阵机械化):Retry 同阶段重试不动 bundle;Repair 新窗口修复、bundle revision 升级、显式声明 `downstream_revalidate_scope`;越设计边界才 Regenerate 回 P1/P2/P3。`MAX_RETRY_ROUNDS`/`MAX_REPAIR_ROUNDS`(默认各 2)超预算即 `human_escalation_needed`。外部 API/网络瞬时不可用(`external_api_unstable`)与"真红 CI"区分,前者直接升级人工而非空转 repair。 |
@@ -352,7 +353,7 @@ gate_upload_ci.py   --pipeline-dir P --repo-slug owner/repo --branch B [--base m
 ## 11. 设计范式
 
 「thin 入口 + thick 阶段 skill + 确定性门控脚本」三层,借鉴 AID/MigBot 工作流,但
-**阶段边界是脚本门控,不是用户点头**(证据自动放行;仅 **P1 设计**、**P6 端到端结果**、**P7 质量/review** 与 **P8 上库** 在证据 PASS 后停下等人工签名 consent 确认)。
+**阶段边界是脚本门控,不是用户点头**(证据自动放行;**P1 设计**、**P6 端到端结果**、**P7 质量/review** 在相应签名证据后停下；**P8 上库**在 push 前的签名 diff/目标预检后停下等人工 consent)。
 架构图见 `skills/ohos-ar-dev-workflow/README.md`。
 
 ---

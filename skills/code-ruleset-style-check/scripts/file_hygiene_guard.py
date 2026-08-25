@@ -314,7 +314,23 @@ def _oat6_finding(path):
                     "document via README.OpenSource instead")
 
 
-def _findings(files):
+def _line_selected(path, line, line_filter):
+    """Whether a content finding belongs to this change.
+
+    A missing filter entry keeps the historical whole-file behavior. An entry
+    with ranges scopes content rules to added/modified lines, so legacy findings
+    elsewhere in an already-existing file remain baseline debt instead of
+    becoming an unrelated P2 blocker.
+    """
+    if line_filter is None:
+        return True
+    ranges = line_filter.get(str(path.resolve()))
+    if ranges is None:
+        return True
+    return any(start <= line <= end for start, end in ranges)
+
+
+def _findings(files, line_filter=None):
     out = []
     for path in files:
         ext = path.suffix.lower()
@@ -329,7 +345,8 @@ def _findings(files):
             if f:
                 out.append(f)
         if ext in SENSITIVE_EXTS:
-            out.extend(_sensitive_findings(path))
+            out.extend(f for f in _sensitive_findings(path)
+                       if _line_selected(path, f["line"], line_filter))
         if ext in GN_EXTS:
             out.extend(_gn_findings(path))
         # OAT.1: any file with a binary extension is contamination.
@@ -347,7 +364,7 @@ def _findings(files):
     return out
 
 
-def _cross_file_findings(files):
+def _cross_file_findings(files, balance_files=None):
     """Cross-file checks that need to see multiple files at once.
 
     G.FIL.04-CPP — same basename with different extensions (suspected duplicate).
@@ -355,23 +372,35 @@ def _cross_file_findings(files):
     file individually for balanced preprocessor conditionals).
     """
     out = []
+    balance_scope = ({path.resolve() for path in balance_files}
+                     if balance_files is not None else None)
     seen_basenames = {}
+    source_exts = {".c", ".cc", ".cpp", ".cxx"}
+    header_exts = {".h", ".hh", ".hpp", ".hxx"}
     for path in files:
         ext = path.suffix.lower()
         if ext not in _CXX_EXTS:
             continue
-        stem = path.stem
-        if stem in seen_basenames:
+        # A conventional foo.h + foo.cpp pair is not a duplicate. G.FIL.04-CPP
+        # only rejects competing variants in the same role and directory, such
+        # as foo.cc + foo.cpp or foo.h + foo.hpp.
+        family = "source" if ext in source_exts else "header" if ext in header_exts else ext
+        key = (str(path.resolve().parent), path.stem, family)
+        if key in seen_basenames:
             out.append({
                 "file": str(path), "line": 1, "rule_id": "G.FIL.04-CPP",
                 "severity": "一般",
                 "remediation": "duplicate file: %s already exists (same basename %r)"
-                % (seen_basenames[stem], stem),
+                % (seen_basenames[key], path.stem),
             })
         else:
-            seen_basenames[stem] = str(path)
+            seen_basenames[key] = str(path)
 
-        # G.PRE.05-CPP / G.PRE.13: check #if / #endif balance in each file
+        # G.PRE.05-CPP / G.PRE.13 remain changed-file checks. Repository sibling
+        # expansion exists only for duplicate-name detection and must not revive
+        # unrelated pre-existing preprocessor debt from an unchanged sibling.
+        if balance_scope is not None and path.resolve() not in balance_scope:
+            continue
         try:
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
@@ -388,17 +417,48 @@ def _cross_file_findings(files):
     return out
 
 
+def _cross_file_candidates(files, repository_root):
+    """Include unchanged same-stem C/C++ siblings for cross-file checks only."""
+    root = Path(repository_root).resolve()
+    out = {path.resolve() for path in files}
+    for path in list(out):
+        if path.suffix.lower() not in _CXX_EXTS:
+            continue
+        for sibling in path.parent.glob(path.stem + ".*"):
+            try:
+                resolved = sibling.resolve()
+                resolved.relative_to(root)
+            except (OSError, ValueError):
+                continue
+            if sibling.is_file() and sibling.suffix.lower() in _CXX_EXTS:
+                out.add(resolved)
+    return sorted(out)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--json", metavar="PATH", help="write findings as JSON to PATH")
+    ap.add_argument("--line-filter-json", metavar="PATH",
+                    help="JSON map of absolute file paths to added/modified line ranges; "
+                         "content findings outside those ranges are treated as baseline")
+    ap.add_argument("--cross-file-root", metavar="PATH",
+                    help="repository root used to discover unchanged same-stem siblings")
     ap.add_argument("files", nargs="*")
     args = ap.parse_args()
 
     # Scope guard: keep only in-scope extensions among the (already changed-only)
     # files the caller passed. Out-of-scope / unchanged files drop here.
     files = [Path(x) for x in args.files if Path(x).suffix.lower() in EXTS]
-    findings = _findings(files)
-    findings.extend(_cross_file_findings(files))
+    line_filter = None
+    if args.line_filter_json:
+        try:
+            line_filter = json.loads(Path(args.line_filter_json).read_text(encoding="utf-8"))
+        except (OSError, ValueError, TypeError) as exc:
+            ap.error("cannot read --line-filter-json: %s" % exc)
+    findings = _findings(files, line_filter=line_filter)
+    cross_files = (_cross_file_candidates(files, args.cross_file_root)
+                   if args.cross_file_root else files)
+    findings.extend(_cross_file_findings(cross_files, balance_files=files))
 
     if args.json:
         Path(args.json).write_text(json.dumps({

@@ -418,6 +418,29 @@ class TestAdvanceNext(unittest.TestCase):
         self.assertTrue(data["logical_substate"]["human_gate_pending"])
         self.assertEqual(data["logical_substate"]["source"], "upload_substate")
 
+    def test_phase8_final_pass_is_ready_with_preupload_bound_consent(self):
+        state = gl.load_state(self.pdir)
+        state["current_phase"] = 8
+        gl.save_state(self.pdir, state)
+        request_rel = "evidence/phase8/upload_consent_request.json"
+        os.makedirs(os.path.dirname(os.path.join(self.pdir, request_rel)), exist_ok=True)
+        with open(os.path.join(self.pdir, request_rel), "w", encoding="utf-8") as f:
+            json.dump({"repo_slug": "owner/repo", "branch": "feature/x"}, f)
+        precheck = gl.emit(
+            self.pdir, 8, gl.UPLOAD_CONSENT_GATE, verdict="FAIL",
+            reason="dry run prepared upload plan (no --allow-push)",
+            artifacts_rel=[request_rel])
+        state = gl.load_state(self.pdir)
+        state["consent_tokens"]["8"] = gl.make_consent_record(
+            self.run_id, 8, "reviewer", gl.entry_id(precheck))
+        gl.save_state(self.pdir, state)
+        self._emit_pass(8, reason="PR + review + CI green")
+
+        data = json.loads(self._run("next", "--json").stdout)
+
+        self.assertEqual(data["current_substate"], "ready_to_advance")
+        self.assertIn("advance --phase 8", data["next_gate"])
+
     def test_phase8_repair_maps_sha_conflict_to_ci_green_substate(self):
         state = gl.load_state(self.pdir)
         state["current_phase"] = 8

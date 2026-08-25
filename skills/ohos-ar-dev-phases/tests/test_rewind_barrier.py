@@ -203,6 +203,63 @@ class TestRewindBarrier(unittest.TestCase):
         self.assertNotEqual(st["phases"][4]["status"], "passed")
         self.assertEqual(st["current_phase"], 2)
 
+    def test_reset_preserves_valid_phase0_during_verify_all(self):
+        rel = "evidence/phase0/env.json"
+        os.makedirs(os.path.dirname(os.path.join(self.pdir, rel)), exist_ok=True)
+        with open(os.path.join(self.pdir, rel), "w") as f:
+            f.write("{}\n")
+        entry = gl.emit(self.pdir, 0, "gate_env_init.py", verdict="PASS",
+                        reason="env ok", artifacts_rel=[rel])
+        st = gl.load_state(self.pdir)
+        st["phases"][0]["status"] = "passed"
+        st["phases"][0]["manifest_ref"] = gl.entry_id(entry)
+        gl.save_state(self.pdir, st)
+        self.assertEqual(self._adv("reset", "--reason", "fix").returncode, 0)
+        cp = self._adv("verify-all")
+        self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+        self.assertEqual(gl.load_state(self.pdir)["phases"][0]["status"], "passed")
+
+    def test_verify_all_demotion_requires_fresh_gate_evidence(self):
+        rel = "evidence/phase4/build.log"
+        os.makedirs(os.path.dirname(os.path.join(self.pdir, rel)), exist_ok=True)
+        with open(os.path.join(self.pdir, rel), "w") as f:
+            f.write("good\n")
+        entry = gl.emit(self.pdir, 4, "gate_build.py", verdict="PASS",
+                        reason="build ok", artifacts_rel=[rel])
+        st = gl.load_state(self.pdir)
+        st["phases"][4]["status"] = "passed"
+        st["phases"][4]["manifest_ref"] = gl.entry_id(entry)
+        st["current_phase"] = 5
+        gl.save_state(self.pdir, st)
+        with open(os.path.join(self.pdir, rel), "w") as f:
+            f.write("tampered\n")
+        self.assertNotEqual(self._adv("verify-all").returncode, 0)
+        with open(os.path.join(self.pdir, rel), "w") as f:
+            f.write("good\n")
+        ok, reason, _ = gl.validate_closing_entry(self.pdir, 4)
+        self.assertFalse(ok)
+        self.assertIn("barrier", reason)
+
+    def test_verify_all_demotes_tampered_consent(self):
+        rel = "evidence/phase6/device.json"
+        os.makedirs(os.path.dirname(os.path.join(self.pdir, rel)), exist_ok=True)
+        with open(os.path.join(self.pdir, rel), "w") as f:
+            f.write("{}\n")
+        entry = gl.emit(self.pdir, 6, "gate_device_func.py", verdict="PASS",
+                        reason="device ok", artifacts_rel=[rel])
+        st = gl.load_state(self.pdir)
+        rec = gl.make_consent_record(self.run_id, 6, "reviewer", gl.entry_id(entry))
+        rec["token"] = "tampered"
+        st["consent_tokens"]["6"] = rec
+        st["phases"][6]["status"] = "passed"
+        st["phases"][6]["manifest_ref"] = gl.entry_id(entry)
+        st["current_phase"] = 7
+        gl.save_state(self.pdir, st)
+        cp = self._adv("verify-all")
+        self.assertNotEqual(cp.returncode, 0)
+        self.assertIn("consent HMAC mismatch", cp.stdout + cp.stderr)
+        self.assertEqual(gl.load_state(self.pdir)["phases"][6]["status"], "failed")
+
 
 if __name__ == "__main__":
     unittest.main()

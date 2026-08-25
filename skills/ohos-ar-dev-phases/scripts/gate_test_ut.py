@@ -20,8 +20,10 @@ AND every test_cases[].gtest declared in the signed ar-contract appears as a
 PASSED case in the fresh result xmls (full coverage of the AR_design test points).
 """
 import argparse
+from contextlib import contextmanager
 import glob
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -288,6 +290,32 @@ def _record_result(pdir, verdict, reason, arts, *, cmd, exit_code, test_target,
             cmd=cmd, exit_code=exit_code, artifacts_rel=arts)
 
 
+def _wsl_gateway():
+    """Resolve the Windows host reachable from WSL without guessing tokens.
+
+    `ip route` is normally `default via <IP> ...`; taking the token after
+    `default` returns the literal word `via`. Some sandboxes also deny netlink,
+    so fall back to WSL's auto-generated resolv.conf nameserver.
+    """
+    try:
+        tokens = subprocess.run(
+            ["ip", "route", "show", "default"], text=True, capture_output=True,
+            timeout=5).stdout.split()
+        if "via" in tokens and tokens.index("via") + 1 < len(tokens):
+            return tokens[tokens.index("via") + 1]
+    except Exception:
+        pass
+    try:
+        with open("/etc/resolv.conf", "r", encoding="utf-8") as f:
+            for line in f:
+                fields = line.split()
+                if len(fields) >= 2 and fields[0] == "nameserver":
+                    return fields[1]
+    except OSError:
+        pass
+    return ""
+
+
 def _xdevice_user_config(state):
     """Build the xdevice user_config.xml that makes developer_test reach the
     SAME device this run is pinned to (P0's remote hdc server).
@@ -321,13 +349,7 @@ def _xdevice_user_config(state):
         else:
             return ""  # no port -> cannot reach remote server
     elif conn.get("HDC_WIN_PORT"):
-        try:
-            ip = subprocess.run(
-                ["ip", "route", "show", "default"], text=True, capture_output=True,
-                timeout=5).stdout.split()
-            host = ip[ip.index("default") + 1] if "default" in ip else ""
-        except Exception:
-            host = ""
+        host = _wsl_gateway()
         port = conn["HDC_WIN_PORT"]
         if not host:
             return ""  # cannot resolve WSL gateway -> keep local default
@@ -342,6 +364,40 @@ def _xdevice_user_config(state):
         "%s%s"
         "  </device>\n"
         "</user_config>\n" % (ip_line, sn_line))
+
+
+@contextmanager
+def _temporary_xdevice_user_config(state, dt, pdir, arts):
+    """Install the run-specific remote-HDC config and always restore it."""
+    xdcfg = _xdevice_user_config(state)
+    if not xdcfg:
+        yield
+        return
+    cfg_dir = os.path.join(dt, "config")
+    cfg_path = os.path.join(cfg_dir, "user_config.xml")
+    backup_path = os.path.join(pdir, "evidence/phase5/user_config.xml.bak")
+    os.makedirs(cfg_dir, exist_ok=True)
+    existed = os.path.exists(cfg_path)
+    if existed:
+        shutil.copy2(cfg_path, backup_path)
+    try:
+        with open(cfg_path, "w", encoding="utf-8") as f:
+            f.write(xdcfg)
+        cfg_rel = "evidence/phase5/user_config.xml"
+        with open(os.path.join(pdir, cfg_rel), "w", encoding="utf-8") as f:
+            f.write(xdcfg)
+        arts.append(cfg_rel)
+        print("xdevice user_config.xml -> remote hdc server (%s)" %
+              os.path.basename(cfg_path))
+        yield
+    finally:
+        if existed:
+            shutil.copy2(backup_path, cfg_path)
+        else:
+            try:
+                os.remove(cfg_path)
+            except FileNotFoundError:
+                pass
 
 
 def passed_gtests(result_xml_paths):
@@ -391,13 +447,14 @@ def build_target(repo, target, pdir, state):
     """Build the test target; return (ok, tail_rel). Captures build.sh's own
     stdout as authoritative evidence (out/<product>/build.log can rotate/stay
     empty). Build command + success banner come from the environment profile."""
-    cmd = envs.build_command(state, target)
+    cmd_argv = envs.build_argv(state, target)
+    cmd = shlex.join(cmd_argv)
     success_re = envs.success_re(state)
     print("running: %s" % cmd)
     tail_rel = "evidence/phase5/test_build_stdout.log"
     path = os.path.join(pdir, tail_rel)
     with open(path, "w", encoding="utf-8") as logf:
-        proc = subprocess.Popen(cmd, shell=True, cwd=repo, text=True,
+        proc = subprocess.Popen(cmd_argv, cwd=repo, text=True,
                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=1)
         for line in proc.stdout:
             sys.stdout.write(line)
@@ -429,7 +486,7 @@ def _run_arkts(pdir, state, contract, arts):
     if not suite_ids:
         return True, [], [], ""
     try:
-        cmd_tmpl = envs.arkts_test_command(state, "{suite}")
+        envs.arkts_test_command(state, "probe-suite")
         report_root = envs.arkts_report_root(state)
         glob_pat = envs.arkts_report_glob(state)
     except envs.EnvironmentNotConfigured as exc:
@@ -456,9 +513,13 @@ def _run_arkts(pdir, state, contract, arts):
     report_root_abs = report_root if os.path.isabs(report_root) else os.path.join(state["repo"], report_root)
     before = set(glob.glob(os.path.join(report_root_abs, "**", "*.xml"), recursive=True))
     for suite in suite_ids:
-        cmd = cmd_tmpl.format(suite=suite)
+        # Suite ids came from the signed contract and were validated against the
+        # ArkTS identifier grammar. Split the trusted profile-rendered command
+        # into argv and execute without a shell.
+        cmd = envs.arkts_test_command(state, suite)
+        cmd_argv = shlex.split(cmd)
         print("running arkts suite: %s" % cmd)
-        proc = subprocess.run(cmd, shell=True, cwd=state["repo"], text=True,
+        proc = subprocess.run(cmd_argv, cwd=state["repo"], text=True,
                               capture_output=True)
         out_rel = "evidence/phase5/arkts_run_stdout_%s.txt" % suite.replace("/", "__")
         with open(os.path.join(pdir, out_rel), "w", encoding="utf-8") as f:
@@ -524,6 +585,7 @@ def main():
     args = ap.parse_args()
     pdir = gl.pipeline_dir(args.pipeline_dir)
     state = gl.load_state(pdir)
+    gl.require_current_phase(state, 5, "gate_test_ut.py")
     repo = state["repo"]
     part = args.part or state.get("test", {}).get("part")
     if not part:
@@ -558,22 +620,8 @@ def main():
     # Done AFTER the reports snapshot so this write can never be mistaken for a
     # fresh test report. No remote connection -> write nothing (native xdevice
     # behavior, unchanged).
-    xdcfg = _xdevice_user_config(state)
-    if xdcfg:
-        cfg_dir = os.path.join(dt, "config")
-        cfg_path = os.path.join(cfg_dir, "user_config.xml")
-        os.makedirs(cfg_dir, exist_ok=True)
-        if os.path.exists(cfg_path):
-            shutil.copy(cfg_path, os.path.join(pdir, "evidence/phase5/user_config.xml.bak"))
-        with open(cfg_path, "w", encoding="utf-8") as f:
-            f.write(xdcfg)
-        cfg_rel = "evidence/phase5/user_config.xml"
-        with open(os.path.join(pdir, cfg_rel), "w", encoding="utf-8") as f:
-            f.write(xdcfg)
-        arts.append(cfg_rel)
-        print("xdevice user_config.xml -> remote hdc server (%s)" %
-              os.path.basename(cfg_path))
-
+    # Resolve every value that can fail before touching developer_test's config.
+    product = envs.product_form(state)
     # 3. run the harness (remote device via the user_config.xml above)
 
     # (e.g. rk3568, NOT the harness default "phone"). developer_test defaults
@@ -582,10 +630,13 @@ def main():
     # from the environment profile; forward it as -p so out/<product>/tests
     # resolves. This only selects where the harness looks — verdict still comes
     # solely from the freshly-produced summary_report.xml below.
-    product = envs.product_form(state)
-    run_cmd = "./start.sh run -t UT -tp %s -ts %s -p %s" % (part, args.suite, product)
+    run_argv = ["./start.sh", "run", "-t", "UT", "-tp", part,
+                "-ts", args.suite, "-p", product]
+    run_cmd = shlex.join(run_argv)
     print("running: (cd %s && %s)" % (dt, run_cmd))
-    proc = subprocess.run(run_cmd, shell=True, cwd=dt, text=True, capture_output=True)
+    with _temporary_xdevice_user_config(state, dt, pdir, arts):
+        proc = subprocess.run(run_argv, cwd=dt, text=True,
+                              capture_output=True)
     stdout_rel = "evidence/phase5/start_sh_stdout.txt"
     with open(os.path.join(pdir, stdout_rel), "w", encoding="utf-8") as f:
         f.write(proc.stdout + "\n----stderr----\n" + proc.stderr)

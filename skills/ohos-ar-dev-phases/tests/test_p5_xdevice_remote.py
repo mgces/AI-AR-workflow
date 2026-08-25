@@ -12,7 +12,9 @@ the same connection_env gate_device_func uses. No remote connection -> "" (keep
 native xdevice behavior, unchanged from pre-change runs).
 """
 import os
+import subprocess
 import sys
+import tempfile
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -55,6 +57,15 @@ class TestXdeviceUserConfig(unittest.TestCase):
         # the WSL default-gateway IP appears as <ip> (windows host reachable)
         self.assertIn("<ip>", cfg)
 
+    def test_gateway_parser_uses_value_after_via(self):
+        original = subprocess.run
+        subprocess.run = lambda *args, **kwargs: type(
+            "P", (), {"stdout": "default via 172.20.0.1 dev eth0\n"})()
+        try:
+            self.assertEqual(gtu._wsl_gateway(), "172.20.0.1")
+        finally:
+            subprocess.run = original
+
     def test_no_remote_connection_returns_empty(self):
         self.assertEqual(gtu._xdevice_user_config(_state({})), "")
         self.assertEqual(gtu._xdevice_user_config(
@@ -64,6 +75,37 @@ class TestXdeviceUserConfig(unittest.TestCase):
         cfg = gtu._xdevice_user_config(
             _state({"HDC_HOST_OVERRIDE": "1.2.3.4:10086"}, device_serial="STATE-SN"))
         self.assertIn("<sn>STATE-SN</sn>", cfg)
+
+    def test_temporary_config_restores_existing_file_on_error(self):
+        with tempfile.TemporaryDirectory() as root:
+            dt = os.path.join(root, "developer_test")
+            pdir = os.path.join(root, "pdir")
+            os.makedirs(os.path.join(dt, "config"), exist_ok=True)
+            os.makedirs(os.path.join(pdir, "evidence", "phase5"), exist_ok=True)
+            cfg = os.path.join(dt, "config", "user_config.xml")
+            with open(cfg, "w", encoding="utf-8") as f:
+                f.write("original")
+            with self.assertRaises(RuntimeError):
+                with gtu._temporary_xdevice_user_config(
+                        _state({"HDC_HOST_OVERRIDE": "1.2.3.4:8710"}),
+                        dt, pdir, []):
+                    with open(cfg, encoding="utf-8") as f:
+                        self.assertIn("1.2.3.4", f.read())
+                    raise RuntimeError("harness failed")
+            with open(cfg, encoding="utf-8") as f:
+                self.assertEqual(f.read(), "original")
+
+    def test_temporary_config_removes_new_file(self):
+        with tempfile.TemporaryDirectory() as root:
+            dt = os.path.join(root, "developer_test")
+            pdir = os.path.join(root, "pdir")
+            os.makedirs(os.path.join(pdir, "evidence", "phase5"), exist_ok=True)
+            cfg = os.path.join(dt, "config", "user_config.xml")
+            with gtu._temporary_xdevice_user_config(
+                    _state({"HDC_HOST_OVERRIDE": "1.2.3.4:8710"}),
+                    dt, pdir, []):
+                self.assertTrue(os.path.exists(cfg))
+            self.assertFalse(os.path.exists(cfg))
 
 
 if __name__ == "__main__":

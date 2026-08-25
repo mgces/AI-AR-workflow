@@ -102,10 +102,10 @@ class TestB1DevelopSequence(unittest.TestCase):
             pass
         self.tmp.cleanup()
 
-    def _run(self, script, *extra):
+    def _run(self, script, *extra, env=None):
         return subprocess.run(
             [sys.executable, os.path.join(SCRIPTS, script), "--pipeline-dir", self.pdir, *extra],
-            text=True, capture_output=True)
+            text=True, capture_output=True, env=env)
 
     def _advance(self, phase):
         return subprocess.run(
@@ -179,14 +179,17 @@ class TestB1DevelopSequence(unittest.TestCase):
         self.assertEqual(payload["next_gate"], "gate_design.py")
 
     def test_gate_develop_refused_without_design_consent(self):
-        # hazard #3: design consent (advance.py consent --phase 1) is enforced by
-        # gate_develop at phase 2, bound to the phase-1 design entry — not at the
-        # phase-1 close. gate_design passes, consent is skipped, phase 1 advances,
-        # then gate_develop (phase 2) must refuse for lack of design consent.
+        # Consent is enforced at the authoritative P1 close and again by P2.
+        # After a legitimate P1 close, simulate state tampering that removes the
+        # token; gate_develop must still refuse as defense-in-depth.
         with open(os.path.join(self.pdir, "AR_design.md"), "w", encoding="utf-8") as f:
             f.write(GOOD_DESIGN)
         self.assertEqual(self._run("gate_design.py").returncode, 0)
+        self.assertEqual(self._consent(1).returncode, 0)
         self.assertEqual(self._advance(1).returncode, 0)
+        state = gl.load_state(self.pdir)
+        state["consent_tokens"].pop("1", None)
+        gl.save_state(self.pdir, state)
         with open(os.path.join(self.repo, "notes.txt"), "w", encoding="utf-8") as f:
             f.write("some change\n")
         cp = self._run("gate_develop.py")
@@ -373,7 +376,10 @@ class TestB1DevelopSequence(unittest.TestCase):
         self.assertTrue(repair.get("suspect_files"))
 
     def test_p2_licensed_header_passes_h1(self):
-        # the same file WITH an Apache header clears H1 (no false positive).
+        # The same file WITH an Apache header clears H1 (no false positive).
+        # This is an H1 integration test, not a clang-format installation test;
+        # use a contract-shaped style stub so it remains hermetic on hosts where
+        # clang-format is intentionally absent (the real guard fails closed).
         self._close_design()
         # satisfy the contract's declared changed_file (notes.txt); the headered
         # .cpp is the H1 subject and must not add a hygiene finding.
@@ -384,7 +390,18 @@ class TestB1DevelopSequence(unittest.TestCase):
             f.write("/*\n * Copyright (c) 2026.\n"
                     " * Licensed under the Apache License, Version 2.0.\n */\n"
                     "int f() { return 0; }\n")
-        cp = self._run("gate_develop.py")
+        style_stub = os.path.join(self.repo, "style_stub.py")
+        with open(style_stub, "w", encoding="utf-8") as f:
+            f.write(
+                "#!/usr/bin/env python3\nimport json, sys\n"
+                "args=sys.argv[1:]\n"
+                "if '--json' in args:\n"
+                " p=args[args.index('--json')+1]\n"
+                " open(p,'w').write(json.dumps({'findings':[],"
+                "'clang_tidy_findings':[],'format_failures':[]}))\n")
+        env = os.environ.copy()
+        env["CODE_RULESET_GUARD"] = style_stub
+        cp = self._run("gate_develop.py", env=env)
         self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
 
     def test_p3_missing_license_header_on_authored_test_fails(self):

@@ -468,6 +468,17 @@ def _phase6_substate(pdir, substate, repair_packet):
     payload = _read_upload_substate(pdir)
     if payload:
         substate_id = payload.get("substate_id") or "precheck"
+        if substate == "awaiting_gate" and substate_id == "consent_await":
+            substate_id = "push_pr"
+            payload = dict(payload)
+            payload.update({
+                "substate_id": "push_pr",
+                "substate_name": P8_SUBSTATE_NAMES["push_pr"],
+                "substate_goal": "push the reviewed branch and create or verify its PR",
+                "next_substate_id": "pr_review",
+                "next_substate_name": P8_SUBSTATE_NAMES["pr_review"],
+                "human_gate_pending": False,
+            })
         return {
             "id": substate_id,
             "name": payload.get("substate_name") or P8_SUBSTATE_NAMES.get(substate_id, substate_id),
@@ -979,26 +990,49 @@ def _derive_next_action(pdir, state):
             resume_hint = _repair_resume_hint(repair_packet)
             required_inputs = _repair_required_inputs(repair_packet)
         else:
-            ok, reason, entry = gl.validate_closing_entry(pdir, cur)
-            if ok:
-                if cur in CONSENT_PHASES:
-                    ok_c, c_reason = gl.verify_consent(state, cur, gl.entry_id(entry))
+            handled_p8_precheck = False
+            if cur == 8:
+                ok_pre, _, pre_entry = gl.validate_upload_consent_entry(pdir)
+                if ok_pre:
+                    handled_p8_precheck = True
+                    ok_c, c_reason = gl.verify_consent(
+                        state, 8, gl.entry_id(pre_entry))
                     if not ok_c:
                         substate = "awaiting_consent"
-                        next_gate = "advance.py consent --phase %d --token <reviewer>" % cur
+                        next_gate = "advance.py consent --phase 8 --token <reviewer>"
                         resume_hint = _phase_resume_hint(cur, substate, c_reason)
+                    else:
+                        ok, reason, _ = gl.validate_closing_entry(pdir, cur)
+                        if ok:
+                            substate = "ready_to_advance"
+                            next_gate = "advance.py advance --phase 8"
+                            resume_hint = _phase_resume_hint(cur, substate)
+                        else:
+                            substate = "awaiting_gate"
+                            next_gate = PHASE_GATE_CMD.get(cur)
+                            resume_hint = _phase_resume_hint(cur, substate, reason)
+            if not handled_p8_precheck:
+                ok, reason, entry = gl.validate_closing_entry(pdir, cur)
+                if ok:
+                    if cur in CONSENT_PHASES:
+                        ok_c, c_reason = gl.verify_consent(
+                            state, cur, gl.entry_id(entry))
+                        if not ok_c:
+                            substate = "awaiting_consent"
+                            next_gate = "advance.py consent --phase %d --token <reviewer>" % cur
+                            resume_hint = _phase_resume_hint(cur, substate, c_reason)
+                        else:
+                            substate = "ready_to_advance"
+                            next_gate = "advance.py advance --phase %d" % cur
+                            resume_hint = _phase_resume_hint(cur, substate)
                     else:
                         substate = "ready_to_advance"
                         next_gate = "advance.py advance --phase %d" % cur
                         resume_hint = _phase_resume_hint(cur, substate)
                 else:
-                    substate = "ready_to_advance"
-                    next_gate = "advance.py advance --phase %d" % cur
-                    resume_hint = _phase_resume_hint(cur, substate)
-            else:
-                substate = "awaiting_gate"
-                next_gate = PHASE_GATE_CMD.get(cur)
-                resume_hint = _phase_resume_hint(cur, substate, reason)
+                    substate = "awaiting_gate"
+                    next_gate = PHASE_GATE_CMD.get(cur)
+                    resume_hint = _phase_resume_hint(cur, substate, reason)
             required_inputs = _phase_required_inputs(cur, substate)
 
     # A6: `inspect` must never be a dead-end. Any path that ends with the
@@ -1245,6 +1279,7 @@ def cmd_init(args):
         # refused by load_state until migrated (advance.py migrate).
         "phase_scheme": gl.PHASE_SCHEME,
         "current_phase": 0,
+        "phase_opened_seq": {"0": 0},
         "consent_tokens": {},
         "code_fingerprint": None,
         "functional_fingerprint": None,
@@ -1309,6 +1344,18 @@ def cmd_advance(args):
         sys.exit("ERROR: refusing to close phase %d; current_phase is %d "
                  "(phases must close in order)" % (phase, cur))
 
+    # P1 design review is a real human gate too. Navigation already exposed the
+    # hold, but direct `advance --phase 1` must enforce it at the authoritative
+    # state transition layer rather than relying on callers to follow hints.
+    if phase == 1:
+        design_entry = gl.latest_design_entry(pdir)
+        if design_entry is None:
+            sys.exit("REFUSED: cannot close phase 1 — no signed AR_design evidence")
+        ok_c, c_reason = gl.verify_consent(
+            state, 1, gl.entry_id(design_entry))
+        if not ok_c:
+            sys.exit("HOLD: phase 1 design needs human review — %s" % c_reason)
+
     # Phases that require an explicit human sign-off AFTER their evidence gate
     # passes: the pipeline must stop, show the real results/artifacts, and only
     # advance once a person reviewed them and recorded consent.
@@ -1321,7 +1368,12 @@ def cmd_advance(args):
         ok_ev, ev_reason, ev_entry = gl.validate_closing_entry(pdir, phase)
         if not ok_ev:
             sys.exit("REFUSED: cannot close phase %d — %s" % (phase, ev_reason))
-        ok_c, c_reason = gl.verify_consent(state, phase, gl.entry_id(ev_entry))
+        consent_entry = ev_entry
+        if phase == 8:
+            ok_pre, pre_reason, consent_entry = gl.validate_upload_consent_entry(pdir)
+            if not ok_pre:
+                sys.exit("REFUSED: cannot close phase 8 — %s" % pre_reason)
+        ok_c, c_reason = gl.verify_consent(state, phase, gl.entry_id(consent_entry))
         if not ok_c:
             ev = os.path.join(pdir, "evidence", "phase%d" % phase)
             sys.exit(
@@ -1364,6 +1416,8 @@ def cmd_advance(args):
     ok, reason, entry = gl.validate_closing_entry(pdir, phase)
     if not ok:
         sys.exit("REFUSED: cannot close phase %d — %s" % (phase, reason))
+    if phase == 1 and gl.entry_id(entry) != gl.entry_id(design_entry):
+        sys.exit("REFUSED: phase 1 closing PASS is not the consented gate_design.py evidence")
 
     pe = state["phases"][phase]
     pe["status"] = "passed"
@@ -1382,6 +1436,11 @@ def cmd_advance(args):
     if phase < gl.MAX_PHASE:
         state["current_phase"] = phase + 1
         state["phases"][phase + 1]["status"] = "pending"
+        # The next phase may only close on evidence emitted after it became
+        # current. This defeats an early future-phase PASS even on migrated
+        # manifests where gate-side phase checks did not yet exist.
+        state.setdefault("phase_opened_seq", {})[str(phase + 1)] = len(
+            gl.read_manifest(pdir))
     payload = _refresh_state_metadata(pdir, state)
     gl.save_state(pdir, state)
     print("ADVANCED: phase %d (%s) closed by signed evidence; reason: %s"
@@ -1443,12 +1502,13 @@ def cmd_consent(args):
     (P1 AR_design review, phase 6 device-test review, phase 7 quality/review
     report approval, phase 8 upload push).
 
-    Consent is only meaningful AFTER the relevant gate has produced its real
-    signed results for a human to inspect: we bind the consent to that exact
-    signed PASS entry (evidence_ref = its entry_id) and HMAC-sign the record.
+    Consent is only meaningful after reviewable signed evidence exists. P6/P7
+    bind to their result PASS; P8 binds to its signed pre-upload diff/target
+    precheck because the final PASS can only exist after the authorized push.
     Re-running the gate produces new evidence and invalidates this consent.
       * P1  -> bound to the gate_design PASS entry (enforced by gate_develop);
-      * phase 6/7/8 -> bound to the phase's closing PASS entry (enforced by advance)."""
+      * phase 6/7 -> bound to the phase's closing PASS entry;
+      * phase 8 -> bound to gate_upload_ci.py's signed consent-precheck entry."""
     pdir = gl.pipeline_dir(args.pipeline_dir)
     state = gl.load_state(pdir)
     if not args.token:
@@ -1480,6 +1540,23 @@ def cmd_consent(args):
         gl.save_state(pdir, state)
         print("recorded signed phase-1 design consent: token=%s bound to signed "
               "AR_design %s.." % (args.token, rec["evidence_ref"][:8]))
+        return
+
+    # P8 is a pre-action authorization: the human signs the dry-run's exact
+    # full diff + repo/branch/base/Issue packet before any push occurs. Binding
+    # it to the final closing PASS would be a deadlock (that PASS requires the
+    # already-authorized push). The final PASS is still mandatory for advance.
+    if args.phase == 8:
+        ok_ev, ev_reason, ev_entry = gl.validate_upload_consent_entry(pdir)
+        if not ok_ev:
+            sys.exit("ERROR: cannot record phase-8 upload consent — %s" % ev_reason)
+        rec = gl.make_consent_record(state["run_id"], 8, args.token,
+                                     gl.entry_id(ev_entry))
+        state.setdefault("consent_tokens", {})["8"] = rec
+        _refresh_state_metadata(pdir, state)
+        gl.save_state(pdir, state)
+        print("recorded signed phase-8 upload consent: token=%s bound to pre-upload "
+              "diff/target evidence %s.." % (args.token, rec["evidence_ref"][:8]))
         return
 
     if args.phase not in CONSENT_PHASES:
@@ -1522,6 +1599,8 @@ def cmd_reset(args):
     # with seq < epoch, forcing every rewalked phase to re-run its gate (whose
     # fresh PASS is appended after this point) before it can close again.
     state["evidence_epoch"] = len(gl.read_manifest(pdir))
+    state["evidence_epoch_min_phase"] = 1
+    state.setdefault("phase_opened_seq", {})["1"] = state["evidence_epoch"]
     # a stale repair packet would drive the wrong substate/next_gate on rewalk
     _clear_repair_packet(pdir)
     # …and so would every other P1..P8 navigation packet from the prior walk:
@@ -1624,6 +1703,8 @@ def cmd_verify_all(args):
         state["functional_fingerprint"] = None
         state["locked_all_paths"] = None
         state["evidence_epoch"] = len(gl.read_manifest(pdir))
+        state["evidence_epoch_min_phase"] = 1
+        state.setdefault("phase_opened_seq", {})["1"] = state["evidence_epoch"]
         _clear_repair_packet(pdir)
         _clear_stale_controls(pdir)
         _refresh_state_metadata(pdir, state)
@@ -1634,7 +1715,25 @@ def cmd_verify_all(args):
     for pe in state["phases"]:
         if pe["status"] != "passed":
             continue
-        ok, reason, _ = gl.validate_closing_entry(pdir, pe["id"])
+        ok, reason, closing_entry = gl.validate_closing_entry(pdir, pe["id"])
+        if ok and pe["id"] == 1:
+            design_entry = gl.latest_design_entry(pdir)
+            if design_entry is None:
+                ok, reason = False, "no signed phase-1 design evidence"
+            elif gl.entry_id(closing_entry) != gl.entry_id(design_entry):
+                ok, reason = False, "phase-1 closing PASS is not gate_design.py evidence"
+            else:
+                ok, reason = gl.verify_consent(
+                    state, 1, gl.entry_id(design_entry))
+        elif ok and pe["id"] in CONSENT_PHASES:
+            consent_entry = closing_entry
+            if pe["id"] == 8:
+                ok_pre, pre_reason, consent_entry = gl.validate_upload_consent_entry(pdir)
+                if not ok_pre:
+                    ok, reason = False, pre_reason
+            if ok:
+                ok, reason = gl.verify_consent(
+                    state, pe["id"], gl.entry_id(consent_entry))
         if not ok:
             bad += 1
             pe["status"] = "failed"
@@ -1658,6 +1757,14 @@ def cmd_verify_all(args):
                 pe["status"] = "pending"
                 pe["manifest_ref"] = None
                 pe["closed_at_utc"] = None
+        # All evidence for the demoted phase and its downstream dependants must
+        # be regenerated. Without this barrier, restoring altered bytes would
+        # make an old PASS reusable without executing its gate again.
+        state["evidence_epoch"] = len(gl.read_manifest(pdir))
+        state["evidence_epoch_min_phase"] = earliest_failed
+        opened = state.setdefault("phase_opened_seq", {})
+        for pid in range(earliest_failed, gl.MAX_PHASE + 1):
+            opened[str(pid)] = state["evidence_epoch"]
     _refresh_state_metadata(pdir, state)
     if bad:
         gl.save_state(pdir, state)

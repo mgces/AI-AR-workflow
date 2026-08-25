@@ -29,6 +29,9 @@
 - `seq + prev` 一并签名，形成哈希链：
   - 篡改任一字段 / artifact → HMAC 或 sha256 不符
   - 把历史 PASS 记录复制到末尾 → `seq/prev` 对不上，`verify_chain()` 失败
+- 为兼容旧 run，只允许 manifest 开头存在连续的 legacy 无 `seq` 前缀；第一条链式记录出现后，任何无 `seq` 记录都会按 replay 拒绝。
+- gate 只能在自己的 `current_phase` 执行；`phase_opened_seq` 还会在关闭时拒绝阶段打开之前生成的 PASS。
+- reset/verify-all 使用带 `min_phase` 的 evidence epoch，只让回退点及下游证据失效；恢复旧 artifact 字节也不能复用旧 PASS。
 - `advance.py` / `verify-all` 永远先验 manifest，再决定是否可推进。
 
 ## 2. 导航层 JSON（非真相源）
@@ -116,6 +119,7 @@
 - 直接捕获本次 `build.sh` 的 stdout 作为权威 fresh build 证据;
 - 通过条件:`rc==0` + success banner present + error banner absent;
 - 额外硬门控:签名 contract 的 `build_artifacts[]` 必须全部产出。
+- `build_artifacts[]` / `changed_files[]` 必须是无 `..` 的仓库相对 POSIX 路径；绝对路径、盘符、UNC、反斜杠与逃逸 symlink 均拒绝。
 
 相关导航摘要:
 
@@ -270,15 +274,16 @@ P8 的真实不可逆动作是 push + create PR。
 
 ## 7. consent 绑定(P1 / P6 / P7 / P8)
 
-consent 不是普通字符串标记,而是 `advance.py` 写入的、绑定到某条 PASS 证据 entry 的签名对象:
+consent 不是普通字符串标记,而是 `advance.py` 写入的、绑定到指定签名证据 entry 的签名对象:
 
 - P1:设计人工批准,供 **P2 `gate_develop.py`** 校验(绑 phase1 设计条目)
-- P6/P7/P8:结果人工批准,供 `advance.py advance` 校验
+- P6/P7:结果 PASS 人工批准,供 `advance.py advance` 校验
+- P8:push 前完整 diff + repo/branch/base/Issue 预检批准；上传 gate 与最终 `advance` 都校验
 
 性质：
 
-- 没有当前 PASS 证据时不能盖章；
-- 重跑 gate 产生新 PASS 后，旧 consent 自动失效；
+- 没有当前可审核签名证据时不能盖章；
+- P6/P7 新 PASS 或 P8 新预检产生后，旧 consent 自动失效；
 - 手改 `pipeline.json` 中的 consent 内容会破坏其 HMAC。
 
 ## 8. 弱模型恢复路径（强制窗口启动顺序）

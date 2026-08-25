@@ -265,6 +265,21 @@ class GateDevelopStrongControlTest(unittest.TestCase):
         self.assertEqual([], missing)
         self.assertEqual(["a.cpp"], present)
 
+    def test_changed_line_ranges_exclude_legacy_lines(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            self.init_repo(repo)
+            base = subprocess.run(
+                ["git", "-C", str(repo), "rev-parse", "HEAD"], check=True,
+                text=True, capture_output=True).stdout.strip()
+            (repo / "tracked.cpp").write_text(
+                "int OldValue() { return 1; }\nint Added() { return 2; }\n",
+                encoding="utf-8")
+
+            ranges = gate_develop.changed_line_ranges(str(repo), base, ["tracked.cpp"], [])
+
+        self.assertEqual([[2, 2]], ranges[str((repo / "tracked.cpp").resolve())])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -168,6 +168,20 @@ class TestParseContractV2(unittest.TestCase):
         self.assertTrue(ok, detail)
         self.assertEqual(c["changed_files"], ["foundation/a/src/mgr.cpp"])
 
+    def test_contract_rejects_absolute_and_traversal_repo_paths(self):
+        import json as _json
+        import re as _re
+        body = _re.search(r"```ar-contract\n(.*)\n```", V2_BLOCK, _re.DOTALL).group(1)
+        for field, bad in (("build_artifacts", "/etc/passwd"),
+                           ("changed_files", "../outside.cpp"),
+                           ("build_artifacts", "C:\\outside.dll")):
+            data = _json.loads(body)
+            data[field][0]["path"] = bad
+            text = "```ar-contract\n%s\n```" % _json.dumps(data)
+            ok, _, detail = gl.parse_ar_contract(text)
+            self.assertFalse(ok, "%s unexpectedly accepted" % bad)
+            self.assertIn(field, detail)
+
     def test_v2_absent_before_trigger_must_be_bool(self):
         text = V2_BLOCK.replace('"absent_before_trigger": true',
                                 '"absent_before_trigger": "yes"')

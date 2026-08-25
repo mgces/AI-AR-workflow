@@ -18,6 +18,7 @@ signed AR_design (advance.py consent --phase 1): AR_design must be human-reviewe
 between design fix (P1a) and code development (P1b).
 """
 import argparse
+import json
 import os
 import re
 import subprocess
@@ -137,6 +138,41 @@ def collect_changed_files(gdir, base):
     return unique_ordered(tracked + untracked), unique_ordered(tracked), unique_ordered(untracked)
 
 
+_DIFF_HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
+
+
+def changed_line_ranges(gdir, base, changed, untracked):
+    """Return absolute-path -> added/modified current-line ranges.
+
+    P2 content/style rules are author-time rules, so an old violation elsewhere
+    in a touched legacy file must not be reclassified as part of this change.
+    New files are wholly in scope; tracked files use zero-context diff hunks.
+    """
+    untracked_set = set(untracked)
+    result = {}
+    for rel in changed:
+        path = os.path.abspath(os.path.join(gdir, rel))
+        if not os.path.isfile(path):
+            continue
+        if rel in untracked_set:
+            with open(path, "r", encoding="utf-8", errors="replace") as f:
+                count = sum(1 for _ in f)
+            result[path] = [[1, count]] if count else []
+            continue
+        cp = git(gdir, "diff", "--unified=0", base, "--", rel)
+        ranges = []
+        for line in cp.stdout.splitlines():
+            match = _DIFF_HUNK_RE.match(line)
+            if not match:
+                continue
+            start = int(match.group(1))
+            count = int(match.group(2) or "1")
+            if count:
+                ranges.append([start, start + count - 1])
+        result[path] = ranges
+    return result
+
+
 def build_diff_evidence(gdir, base, untracked):
     diff = git(gdir, "diff", base).stdout
     if not untracked:
@@ -190,7 +226,7 @@ def static_rule_checks(gdir, source_relpaths):
     return checked, issues
 
 
-def file_hygiene_checks(pdir, gdir, changed, phase, guard_path):
+def file_hygiene_checks(pdir, gdir, changed, phase, guard_path, line_filter_path=None):
     """H1: run the deterministic file-hygiene guard (license header today) over
     the changed files. Returns (problems, evidence_rel). A missing guard fails
     closed — like the content guard — so a silent bypass cannot look clean. The
@@ -205,8 +241,11 @@ def file_hygiene_checks(pdir, gdir, changed, phase, guard_path):
             f.write("BLOCKER: file_hygiene guard not found at %s\n" % guard_path)
         return ["file-hygiene guard missing: %s" % guard_path], rel
     json_rel = "evidence/phase%d/file_hygiene_findings.json" % phase
+    cmd = [sys.executable, guard_path, "--cross-file-root", gdir]
+    if line_filter_path:
+        cmd += ["--line-filter-json", line_filter_path]
     cp = subprocess.run(
-        [sys.executable, guard_path, "--json", os.path.join(pdir, json_rel), *abs_paths],
+        [*cmd, "--json", os.path.join(pdir, json_rel), *abs_paths],
         text=True, capture_output=True)
     with open(out, "w", encoding="utf-8") as f:
         f.write("file-hygiene guard over %d changed file(s):\nrc=%d\n%s\n%s"
@@ -275,6 +314,7 @@ def main():
     args = ap.parse_args()
     pdir = gl.pipeline_dir(args.pipeline_dir)
     state = gl.load_state(pdir)
+    gl.require_current_phase(state, 2, "gate_develop.py")
     repo = state["repo"]
     gdir = state.get("git_dir", repo)
     if not os.path.isabs(gdir):
@@ -338,6 +378,11 @@ def main():
     # source must be visible to the gate; otherwise newly-created C++ files can
     # bypass both evidence and style checks.
     changed, tracked_changed, untracked = collect_changed_files(gdir, base)
+    line_ranges = changed_line_ranges(gdir, base, changed, untracked)
+    line_scope_rel = "evidence/phase2/changed_line_ranges.json"
+    line_scope_path = os.path.join(pdir, line_scope_rel)
+    with open(line_scope_path, "w", encoding="utf-8") as f:
+        json.dump(line_ranges, f, ensure_ascii=False, indent=2)
     diff_text = build_diff_evidence(gdir, base, untracked)
     diff_rel = "evidence/phase2/diff.patch"
     with open(os.path.join(pdir, diff_rel), "w", encoding="utf-8") as f:
@@ -346,7 +391,7 @@ def main():
     with open(os.path.join(pdir, files_rel), "w") as f:
         f.write("base=%s\nhead=%s\n\n[tracked]\n%s\n\n[untracked]\n%s\n"
                 % (base, head, "\n".join(tracked_changed), "\n".join(untracked)))
-    arts = [diff_rel, files_rel]
+    arts = [diff_rel, files_rel, line_scope_rel]
 
     if not changed:
         gl.emit(pdir, 2, "gate_develop.py", verdict="FAIL",
@@ -384,7 +429,8 @@ def main():
         # sensitive strings from slipping past P2 into the CI gate. `--json`
         # captures the same findings structurally (S3 suspect_locations backfill).
         cp = subprocess.run(
-            [sys.executable, STYLE_GUARD, "--json",
+            [sys.executable, STYLE_GUARD, "--line-filter-json", line_scope_path,
+             "--baseline-git-dir", gdir, "--baseline-commit", base, "--json",
              os.path.join(pdir, style_findings_rel), *abs_cxx],
             text=True, capture_output=True)
         style_ok = cp.returncode == 0
@@ -415,7 +461,7 @@ def main():
     # extensions). Blocking, fail-closed — pulls the CI header check to author
     # time so it never first surfaces at the CI gate.
     hygiene_problems, hygiene_rel = file_hygiene_checks(
-        pdir, gdir, changed, 2, HYGIENE_GUARD)
+        pdir, gdir, changed, 2, HYGIENE_GUARD, line_scope_path)
     arts.append(hygiene_rel)
     hygiene_ok = not hygiene_problems
 

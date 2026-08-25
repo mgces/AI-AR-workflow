@@ -45,25 +45,25 @@ gate_upload_ci.py --pipeline-dir P --repo-slug owner/repo --branch B [--base mas
 
 流程:
 
-1. A 本地自检==0(commit 前硬控)
-2. `git commit -s`(DCO 签名)
-3. push
-4. 建绑定 Issue 的 PR(`--issue N` 必填,CI 门禁只对绑定 Issue 的 PR 触发)
-5. B PR review==0(建 PR 后、CI 前硬控)
-6. consent --phase 8(人工确认上库)
-7. CI `overall∈{success,passed}` + PR head SHA==push SHA
+1. DRY RUN 生成并签名完整 diff + repo/branch/base/Issue 上库目标
+2. consent --phase 8(人工确认签名预检内容，发生在 push 前)
+3. A 本地自检==0(commit 前硬控)
+4. `git commit -s`(DCO 签名)并 push
+5. 建绑定 Issue 的 PR(`--issue N` 必填,CI 门禁只对绑定 Issue 的 PR 触发)
+6. B PR review==0(建 PR 后、CI 前硬控)
+7. CI `overall∈{success,passed}` + PR head SHA==push SHA，产生最终 PASS
 
 `render_report --kind summary` 渲染 `reports/summary.md` + `pr_description.md` 注入 PR(背景/设计/修改/用例/结果)。
 
 ## 不可逆动作的边界
 
-P8 的 push 是**唯一对外不可逆动作**——一旦 push,代码就到了远端。所以 P8 证据 PASS 后**不自动放行**:
+P8 的 push 是**唯一对外不可逆动作**——一旦 push,代码就到了远端。所以必须先运行不推送的 DRY RUN，人工核对签名的完整 diff 与上传目标后再授权:
 
 ```bash
 python3 $S/advance.py --pipeline-dir "$PDIR" consent --phase 8 --token <人>
 ```
 
-没令牌时 `advance` 会 HOLD。这是最后一次人工确认,确保上库真实被人工核对。
+没有绑定当前预检条目的令牌时，`gate_upload_ci.py --allow-push` 会在任何 commit/push 前拒绝。最终 `advance --phase 8` 还会同时复验该预检 consent 与上传 PASS。
 
 ## GitCode skill 组合方式
 
@@ -85,7 +85,7 @@ P8(物理 phase 8)含 7 子状态:`precheck / local-review / consent-await / pus
 P8 是最后一阶段,在 P7 质量之后:
 
 ```
-P7 质量验证 → consent → P8 上库 → consent → 完成 ✅
+P7 质量验证 → consent → P8 DRY 预检 → consent → push/PR/CI/PASS → 完成 ✅
 ```
 
 P8 通过(`advance --phase 8` 成功)即流水线完成。
