@@ -23,8 +23,9 @@ python3 $S/gate_build.py --pipeline-dir "$PDIR"   # target 默认取 pipeline.js
 脚本逻辑:记录 `build.log` 启动前字节偏移 → 跑**环境 profile 解析出的编译命令**
 (openharmony 为 `./build.sh --product-name rk3568 --ccache --build-target <target>`;
 HarmonyOS 系统/芯片组件为各自命令,**占位未填时门控硬失败并提示在 `lib/environments.py` 填充**)→
-只在**新追加的尾部**找该环境的成功横幅(openharmony:`=====build rk3568 successful=====`),且无 error 横幅,
-且 build.sh exit 0。成功后从签名 AR_design 取契约 `build_artifacts`,**逐个校验产物文件真的已编译出**
+在本次输出中记录成功/错误横幅；**exit code + 新产物是权威证据，成功横幅仅作辅助诊断**，避免工具链
+文案变化把真实成功误判为失败；error 横幅仍与 rc=0 矛盾并阻塞。随后从签名 AR_design 取契约
+`build_artifacts`,**逐个校验产物文件真的已编译出**
 (路径先按相对仓根找,再回退环境产物目录 `<out_dir>/<rel>`,openharmony 为 `out/rk3568/`),缺任一即 FAIL,
 写 `evidence/phase4/artifact_check.txt` 列出命中/缺失。失败时从新尾部蒸馏
 `ninja: build stopped`/`FAILED:`/`ERROR at`/`[OHOS ERROR]` 到 `error_distill.txt`。
@@ -43,8 +44,11 @@ HarmonyOS 系统/芯片组件为各自命令,**占位未填时门控硬失败并
   P4 仍 PASS(fail-open),note 里明说"clang-tidy 未执行,CI 仍会扫此类问题"。
 证据:`evidence/phase4/clang_tidy_findings.json` + `clang_tidy_note.txt`。
 
+`phase_summary.json` 分别输出 `compile_execution`、`artifact_verification`、`static_analysis` 和
+`phase_verdict`，因此“BUILD PASS; STATIC ANALYSIS FAIL”不会再显示成含糊的“构建失败”。
+
 ## 通过条件
-build.sh exit 0 **且** 成功横幅在本次启动后的尾部出现 **且** 无 error 横幅(防旧日志冒充)
+build.sh exit 0 **且** 无 error 横幅
 **且** 契约声明的全部 `build_artifacts` 都在产物中存在(全量覆盖硬门控)
 **且** clang-tidy 子步通过(有 compdb 时 findings 为空;compdb/工具缺失时降级放行并在证据里标注)。
 

@@ -278,6 +278,26 @@ def changed_files_coverage(declared, touched):
     return present, missing
 
 
+def changed_files_within_scope(allowed_paths, touched):
+    """Return touched paths outside the v3 semantic change boundary.
+
+    An allowed path may name a file or a directory. Suffix matching keeps the
+    check usable whether the component git root or the source root was used in
+    the design. P1 therefore freezes ownership/scope, while P2 freezes the exact
+    files actually discovered during implementation.
+    """
+    allowed = [_norm(path).rstrip("/") for path in allowed_paths]
+    outside = []
+    for path in touched:
+        norm = _norm(path)
+        if not any(norm == scope or norm.startswith(scope + "/")
+                   or norm.endswith("/" + scope)
+                   or ("/" + scope + "/") in ("/" + norm + "/")
+                   for scope in allowed):
+            outside.append(path)
+    return outside
+
+
 # Path B1: these two helpers moved to gatelib so gate_test_develop.py can reuse
 # them without importing this sibling gate. Thin aliases kept for back-compat
 # (prepare_test_bundle.py references gd._collect_test_intent_matrix).
@@ -465,14 +485,30 @@ def main():
     arts.append(hygiene_rel)
     hygiene_ok = not hygiene_problems
 
-    # CHANGED-FILES COVERAGE (P1 hard gate for v2 contracts): every changed_files[]
-    # declared in the signed ar-contract must correspond to an actually-touched
-    # file. Recovered from the SIGNED design only (never the working-tree design).
-    # v1 / absent contract -> nothing to enforce; tampered -> FAIL.
+    # CHANGE BOUNDARY: v3 checks every actual file stays inside P1 allowed_paths
+    # and freezes the exact P2 list; v2 retains legacy exact planned-file coverage.
+    # Recovered from the SIGNED design only. v1/absent -> no enforcement.
     cov_ok, cov_missing, cov_note = True, [], ""
     present_declared = []
     c_ok, contract, c_detail = gl.load_signed_contract(pdir)
-    if c_ok and contract.get("changed_files"):
+    if c_ok and contract.get("version", 1) >= 3:
+        allowed_paths = (contract.get("change_scope") or {}).get("allowed_paths") or []
+        outside_scope = changed_files_within_scope(allowed_paths, changed)
+        cov_ok = not outside_scope
+        cov_missing = outside_scope
+        cov_rel = "evidence/phase2/changed_files_coverage.txt"
+        with open(os.path.join(pdir, cov_rel), "w", encoding="utf-8") as f:
+            f.write("v3 semantic scope (P1): %d allowed path(s)\n"
+                    "actual files frozen at P2: %d\n\n" % (len(allowed_paths), len(changed)))
+            for scope in allowed_paths:
+                f.write("[ALLOW] %s\n" % scope)
+            for path in changed:
+                f.write("[%s] %s\n" % ("OUT" if path in outside_scope else "OK ", path))
+        arts.append(cov_rel)
+        present_declared = list(changed)
+        cov_note = " change_scope=%d/%d inside" % (
+            len(changed) - len(outside_scope), len(changed))
+    elif c_ok and contract.get("changed_files"):
         declared = contract["changed_files"]
         present_declared, cov_missing = changed_files_coverage(declared, changed)
         cov_ok = not cov_missing
@@ -500,7 +536,10 @@ def main():
         base[:12], head[:12], len(changed), len(untracked), style_ok, strict_ok,
         hygiene_ok, cov_note, design_bypass)
     if cov_missing:
-        reason += "; MISSING changed_files: %s" % ", ".join(cov_missing)
+        if c_ok and contract.get("version", 1) >= 3:
+            reason += "; OUTSIDE change_scope: %s" % ", ".join(cov_missing)
+        else:
+            reason += "; MISSING changed_files: %s" % ", ".join(cov_missing)
     print(reason)
     verdict = "PASS" if (style_ok and strict_ok and hygiene_ok and cov_ok) else "FAIL"
 
@@ -512,7 +551,10 @@ def main():
     if not hygiene_ok:
         problems += hygiene_problems
     if cov_missing:
-        problems += ["declared changed_file not touched: %s" % m for m in cov_missing]
+        if c_ok and contract.get("version", 1) >= 3:
+            problems += ["touched file outside change_scope: %s" % m for m in cov_missing]
+        else:
+            problems += ["declared changed_file not touched: %s" % m for m in cov_missing]
     if verdict == "PASS":
         freeze_snapshot = write_development_freeze_snapshot(
             pdir, state, contract or {}, changed, tracked_changed, untracked,

@@ -99,7 +99,7 @@ bash <skill_dir>/scripts/ohos_env_bootstrap.sh --help     # 全部用法
 
 | 你做 | workflow 做 | 预计 |
 |---|---|---|
-| 把已澄清的架构需求（AR）准备好——一段说明"在哪个组件下、做什么、阈值、调用什么能力、产物落哪"的需求文本 | — | 1 分钟 |
+| 用普通语言说明“什么时候发生、希望看到什么、不能出现什么”，最好给一个正常例和异常例；不知道组件、接口、GN target、部署路径可以不写 | workflow 从当前源码发现代码事实，生成 Given/When/Then 验收矩阵并向你确认产品语义 | 1–5 分钟 |
 
 ### 步骤 3：调用编排器
 
@@ -142,6 +142,10 @@ python3 $S/advance.py --pipeline-dir "$PDIR" status
 | P8 上库 | push 是唯一对外不可逆动作；consent 绑定完整 diff 与上传目标 | `consent --phase 8` |
 
 其余阶段（P0/P2/P3/P4/P5）由门控脚本自动放行。
+
+所有正常 consent 会自动计入 `$PDIR/workflow_metrics.json` 的 `required_workflow`。如果流程在非设计停点
+必须靠人工解阻，记录为 `blocked_unplanned`；如果你主动纠正需求或预期，记录为 `user_correction`。
+同一文件还统一保存 agent、模型、实际使用的 skills、各阶段每轮及累计耗时和 gate 重试次数。
 
 ## 跑通了？下一步去哪
 

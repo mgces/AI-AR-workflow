@@ -340,9 +340,12 @@ def _clear_repair_packet(pdir):
 # (controls/packets/<id>.json).
 _RESET_LOGICAL_IDS = tuple(
     row[1] for row in gl.LOGICAL_PHASES if row[3] >= 1)
+_LOGICAL_ID_TO_PHYSICAL = {
+    row[1]: row[3] for row in gl.LOGICAL_PHASES if row[3] >= 1
+}
 
 
-def _clear_stale_controls(pdir):
+def _clear_stale_controls(pdir, min_phase=1):
     """On a rewind, invalidate every P1..P8 navigation packet the reset just
     made obsolete. reset already sets the evidence-epoch barrier, but that only
     guards the SIGNED manifest — these unsigned control packets are read
@@ -378,13 +381,15 @@ def _clear_stale_controls(pdir):
 
     # 1) Phase-scoped subdirs are 100% P1..P8 (handoffs, receipts, scope,
     #    matrix, status, freeze, failure packets) — wipe wholesale.
-    for lid in _RESET_LOGICAL_IDS:
+    target_ids = tuple(lid for lid in _RESET_LOGICAL_IDS
+                       if _LOGICAL_ID_TO_PHYSICAL.get(lid, 1) >= min_phase)
+    for lid in target_ids:
         _rm_tree(lid)
     # 2) Shared dirs mix P0 with P1..P8 — delete only the P1..P8 + derived
     #    "current" entries, never the P0 (phase0 / bootstrap) footprint.
-    for lid in _RESET_LOGICAL_IDS:
+    for lid in target_ids:
         _rm_file("packets", "%s.json" % lid)
-    for phase in range(1, gl.MAX_PHASE + 1):
+    for phase in range(min_phase, gl.MAX_PHASE + 1):
         _rm_file("memory_cards", "phase%d.json" % phase)
     _rm_file("memory_cards", "current.json")
     _rm_file("packets", "current.json")
@@ -1294,6 +1299,9 @@ def cmd_init(args):
     # validate_closing_entry, which reads pipeline.json back off disk. Then
     # re-save so the derived navigation metadata lands in pipeline.json too.
     gl.save_state(pdir, state)
+    gl.init_workflow_metrics(
+        pdir, run_id, agent=getattr(args, "agent", ""),
+        model=getattr(args, "model", ""), skills=getattr(args, "skill", []))
     _refresh_state_metadata(pdir, state)
     gl.save_state(pdir, state)
     # Active-run pointer: write the PDIR into <repo>/specs/pipeline/ACTIVE so a
@@ -1423,6 +1431,7 @@ def cmd_advance(args):
     pe["status"] = "passed"
     pe["manifest_ref"] = gl.entry_id(entry)
     pe["closed_at_utc"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    gl.observe_phase_closed(pdir, phase, pe["closed_at_utc"])
     # Phase 2 (feature_develop close) locks the fingerprints that later phases
     # must keep matching — the feature code is now complete and frozen before
     # any test code is authored (phase 3+):
@@ -1441,6 +1450,7 @@ def cmd_advance(args):
         # manifests where gate-side phase checks did not yet exist.
         state.setdefault("phase_opened_seq", {})[str(phase + 1)] = len(
             gl.read_manifest(pdir))
+        gl.observe_phase_opened(pdir, phase + 1)
     payload = _refresh_state_metadata(pdir, state)
     gl.save_state(pdir, state)
     print("ADVANCED: phase %d (%s) closed by signed evidence; reason: %s"
@@ -1538,6 +1548,12 @@ def cmd_consent(args):
         state.setdefault("consent_tokens", {})["1"] = rec
         _refresh_state_metadata(pdir, state)
         gl.save_state(pdir, state)
+        wait = gl.end_human_wait(
+            pdir, 1, category="required_workflow",
+            actor="consent:%s" % rec["hmac"][:12], reason="consent recorded")
+        gl.record_human_intervention(
+            pdir, 1, "required_workflow", "P1 signed design review",
+            actor="consent:%s" % rec["hmac"][:12], source="consent", wait=wait)
         print("recorded signed phase-1 design consent: token=%s bound to signed "
               "AR_design %s.." % (args.token, rec["evidence_ref"][:8]))
         return
@@ -1555,6 +1571,12 @@ def cmd_consent(args):
         state.setdefault("consent_tokens", {})["8"] = rec
         _refresh_state_metadata(pdir, state)
         gl.save_state(pdir, state)
+        wait = gl.end_human_wait(
+            pdir, 8, category="required_workflow",
+            actor="consent:%s" % rec["hmac"][:12], reason="consent recorded")
+        gl.record_human_intervention(
+            pdir, 8, "required_workflow", "P8 pre-upload diff and target review",
+            actor="consent:%s" % rec["hmac"][:12], source="consent", wait=wait)
         print("recorded signed phase-8 upload consent: token=%s bound to pre-upload "
               "diff/target evidence %s.." % (args.token, rec["evidence_ref"][:8]))
         return
@@ -1572,6 +1594,13 @@ def cmd_consent(args):
     state.setdefault("consent_tokens", {})[str(args.phase)] = rec
     _refresh_state_metadata(pdir, state)
     gl.save_state(pdir, state)
+    wait = gl.end_human_wait(
+        pdir, args.phase, category="required_workflow",
+        actor="consent:%s" % rec["hmac"][:12], reason="consent recorded")
+    gl.record_human_intervention(
+        pdir, args.phase, "required_workflow",
+        "%s review" % CONSENT_PHASES[args.phase],
+        actor="consent:%s" % rec["hmac"][:12], source="consent", wait=wait)
     print("recorded signed consent for phase %d (%s): token=%s bound to evidence %s.."
           % (args.phase, CONSENT_PHASES[args.phase], args.token,
              rec["evidence_ref"][:8]))
@@ -1610,6 +1639,7 @@ def cmd_reset(args):
     _clear_stale_controls(pdir)
     _refresh_state_metadata(pdir, state)
     gl.save_state(pdir, state)
+    gl.observe_phase_opened(pdir, 1)
     # leave an audit trail (unsigned info entry is fine; it grants no progress)
     try:
         gl.emit(pdir, 1, "advance.py:reset", verdict="INFO",
@@ -1619,6 +1649,123 @@ def cmd_reset(args):
         pass
     print("RESET → P1 (design_orchestrate). Reason: %s" % (args.reason or "code change"))
     print("Redo P1→P8 in order; downstream evidence was invalidated.")
+
+
+def cmd_repair(args):
+    """Rewalk from P2 for an implementation-only amendment.
+
+    The signed v3 acceptance/dependency/scope contract and its P1 consent stay
+    valid. This command must not be used for behavior, public API, dependency,
+    or acceptance changes; those require `reset` and fresh design review.
+    """
+    pdir = gl.pipeline_dir(args.pipeline_dir)
+    state = gl.load_state(pdir)
+    ok, contract, detail = gl.load_signed_contract(pdir)
+    if not ok or contract.get("version", 1) < 3:
+        sys.exit("REFUSED: implementation repair requires a signed v3 contract (%s)" % detail)
+    design_entry = gl.latest_design_entry(pdir)
+    consent_ok, consent_reason = gl.verify_consent(
+        state, 1, gl.entry_id(design_entry) if design_entry else "")
+    if state.get("current_phase", 0) < 2 or not consent_ok:
+        sys.exit("REFUSED: implementation repair requires completed, consented P1 (%s)"
+                 % consent_reason)
+    for pe in state["phases"]:
+        if pe["id"] >= 2:
+            pe["status"] = "pending"
+            pe["manifest_ref"] = None
+            pe["closed_at_utc"] = None
+    state["current_phase"] = 2
+    state["code_fingerprint"] = None
+    state["functional_fingerprint"] = None
+    state["locked_all_paths"] = None
+    state["evidence_epoch"] = len(gl.read_manifest(pdir))
+    state["evidence_epoch_min_phase"] = 2
+    state.setdefault("phase_opened_seq", {})["2"] = state["evidence_epoch"]
+    _clear_repair_packet(pdir)
+    _clear_stale_controls(pdir, min_phase=2)
+    _refresh_state_metadata(pdir, state)
+    gl.save_state(pdir, state)
+    gl.observe_phase_opened(pdir, 2)
+    gl.emit(pdir, 2, "advance.py:repair", verdict="INFO",
+            reason="implementation-only rewalk from P2: %s" % args.reason,
+            artifacts_rel=[])
+    print("REPAIR → P2. P1 v3 behavior/dependency/scope contract remains signed.")
+    print("If acceptance, dependency, public API or behavior changed, stop and use reset.")
+
+
+def cmd_intervene(args):
+    """Record a human touch that is not already captured by `consent`."""
+    pdir = gl.pipeline_dir(args.pipeline_dir)
+    state = gl.load_state(pdir)
+    phase = state.get("current_phase") if args.phase is None else args.phase
+    if phase < 0 or phase > gl.MAX_PHASE:
+        sys.exit("ERROR: --phase must be between 0 and %d" % gl.MAX_PHASE)
+    gl.record_human_intervention(
+        pdir, phase, args.category, args.reason,
+        actor=args.actor, source="advance.py:intervene")
+    print("recorded human intervention: phase=%d category=%s reason=%s"
+          % (phase, args.category, args.reason))
+
+
+def cmd_human_wait(args):
+    """Start/end excluded human waiting time for non-consent interactions."""
+    pdir = gl.pipeline_dir(args.pipeline_dir)
+    state = gl.load_state(pdir)
+    phase = state.get("current_phase") if args.phase is None else args.phase
+    if phase < 0 or phase > gl.MAX_PHASE:
+        sys.exit("ERROR: --phase must be between 0 and %d" % gl.MAX_PHASE)
+    if args.wait_action == "start":
+        wait_id = gl.start_human_wait(
+            pdir, phase, args.category, args.reason,
+            actor=args.actor, source="advance.py:human-wait", record_intervention=True)
+        print("human wait started: id=%s phase=%d category=%s"
+              % (wait_id, phase, args.category))
+        return
+    wait = gl.end_human_wait(
+        pdir, phase, category=args.category,
+        actor=args.actor, reason=args.reason)
+    if not wait:
+        sys.exit("ERROR: no open human wait matches phase=%d category=%s"
+                 % (phase, args.category or "<any>"))
+    print("human wait ended: id=%s excluded_seconds=%s"
+          % (wait["id"], wait["duration_seconds"]))
+
+
+def cmd_use_skill(args):
+    """Record skills actually used in the current or selected phase."""
+    pdir = gl.pipeline_dir(args.pipeline_dir)
+    state = gl.load_state(pdir)
+    phase = state.get("current_phase") if args.phase is None else args.phase
+    if phase < 0 or phase > gl.MAX_PHASE:
+        sys.exit("ERROR: --phase must be between 0 and %d" % gl.MAX_PHASE)
+    gl.record_phase_skills(pdir, phase, args.name)
+    print("recorded phase %d skill(s): %s" % (phase, ", ".join(args.name)))
+
+
+def cmd_context(args):
+    """Add or correct agent/model/skills metadata without editing JSON."""
+    pdir = gl.pipeline_dir(args.pipeline_dir)
+    state = gl.load_state(pdir)
+    if not gl.read_workflow_metrics(pdir):
+        # Backfill support for a run created before observability existed.
+        # Historical durations are unknowable; timing begins at the current
+        # phase instead of fabricating timestamps for already-closed phases.
+        gl.init_workflow_metrics(
+            pdir, state["run_id"], agent=args.agent,
+            model=args.model, skills=args.skill)
+        data = gl.read_workflow_metrics(pdir)
+        for item in (data.get("phases") or {}).values():
+            item["opened_at_utc"] = None
+            item["closed_at_utc"] = None
+            item["runs"] = []
+        data.setdefault("execution_context", {})["historical_timing_available"] = False
+        gl.write_workflow_metrics(pdir, data)
+        gl.observe_phase_opened(pdir, state.get("current_phase", 0))
+    else:
+        gl.update_execution_context(
+            pdir, agent=args.agent, model=args.model, skills=args.skill)
+    print("updated workflow execution context in %s"
+          % os.path.join(pdir, gl.WORKFLOW_METRICS_FILE))
 
 
 def cmd_migrate(args):
@@ -1709,6 +1856,7 @@ def cmd_verify_all(args):
         _clear_stale_controls(pdir)
         _refresh_state_metadata(pdir, state)
         gl.save_state(pdir, state)
+        gl.observe_phase_opened(pdir, 1)
         sys.exit("verify-all: functional code changed since P1 — pipeline rewound "
                  "to P1, rewalk from development.")
     earliest_failed = None
@@ -1768,6 +1916,7 @@ def cmd_verify_all(args):
     _refresh_state_metadata(pdir, state)
     if bad:
         gl.save_state(pdir, state)
+        gl.observe_phase_opened(pdir, state["current_phase"])
         sys.exit("verify-all: %d phase(s) failed re-validation; pipeline rewound "
                  "to phase %d" % (bad, state["current_phase"]))
     gl.save_state(pdir, state)
@@ -1777,6 +1926,9 @@ def cmd_verify_all(args):
 def cmd_status(args):
     pdir = gl.pipeline_dir(args.pipeline_dir)
     state = gl.load_state(pdir)
+    metrics = gl.read_workflow_metrics(pdir)
+    if metrics:
+        gl.write_workflow_metrics(pdir, metrics)  # refresh live elapsed/excluded totals
     payload = _state_payload(pdir, state)
     if args.json:
         print(json.dumps(payload, indent=2, ensure_ascii=False))
@@ -1948,6 +2100,12 @@ def main():
                         "(芯片组件); REQUIRED when --environment harmonyos (their "
                         "build commands differ). Ignored for openharmony.")
     p.add_argument("--base-commit", default="")
+    p.add_argument("--agent", default=os.environ.get("WORKFLOW_AGENT", ""),
+                   help="agent/client name recorded at the top of workflow_metrics.json")
+    p.add_argument("--model", default=os.environ.get("WORKFLOW_MODEL", ""),
+                   help="model name recorded at the top of workflow_metrics.json")
+    p.add_argument("--skill", action="append", default=[],
+                   help="skill used by the run; repeat for every skill")
     p.add_argument("--force", action="store_true")
     p.set_defaults(func=cmd_init)
 
@@ -1966,6 +2124,38 @@ def main():
                                      "a fix touches code; invalidates downstream phases")
     p.add_argument("--reason", default="", help="what was fixed (audit trail)")
     p.set_defaults(func=cmd_reset)
+
+    p = sub.add_parser("intervene", help="record an unplanned or user-initiated human intervention")
+    p.add_argument("--phase", type=int, help="default: current phase")
+    p.add_argument("--category", required=True, choices=list(gl.INTERVENTION_CATEGORIES))
+    p.add_argument("--reason", required=True)
+    p.add_argument("--actor", default="")
+    p.set_defaults(func=cmd_intervene)
+
+    p = sub.add_parser("human-wait", help="start/end human wait excluded from effective time")
+    p.add_argument("wait_action", choices=("start", "end"))
+    p.add_argument("--phase", type=int, help="default: current phase")
+    p.add_argument("--category", choices=list(gl.INTERVENTION_CATEGORIES),
+                   required=True)
+    p.add_argument("--reason", required=True)
+    p.add_argument("--actor", default="")
+    p.set_defaults(func=cmd_human_wait)
+
+    p = sub.add_parser("use-skill", help="record a skill actually used in one phase")
+    p.add_argument("--phase", type=int, help="default: current phase")
+    p.add_argument("--name", action="append", required=True,
+                   help="skill name; repeat when several skills are used together")
+    p.set_defaults(func=cmd_use_skill)
+
+    p = sub.add_parser("repair", help="rewalk from P2 for implementation-only changes under signed v3 scope")
+    p.add_argument("--reason", required=True)
+    p.set_defaults(func=cmd_repair)
+
+    p = sub.add_parser("context", help="update agent/model/skills in workflow_metrics.json")
+    p.add_argument("--agent", default="")
+    p.add_argument("--model", default="")
+    p.add_argument("--skill", action="append", default=[])
+    p.set_defaults(func=cmd_context)
 
     p = sub.add_parser("migrate", help="one-time Path B1 migration of a pre-9-phase "
                                        "pipeline.json (only if current_phase <= 1)")

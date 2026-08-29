@@ -1,7 +1,7 @@
 ---
 name: ohos-ar-dev-workflow
 description: >
-  端到端编排 OHOS(rk3568)研发生命周期:从已澄清的 AR(架构需求)出发,自动推进
+  端到端编排 OHOS(rk3568)研发生命周期:从可能尚未澄清的自然语言需求出发,先形成可观察验收基线并验证源码依赖,再推进
   设计固化→代码开发→测试用例编写→编译验证→单元测试→端到端功能测试→功能/覆盖率/性能/功耗/稳定性验证→代码上库review。
   每个阶段只能由确定性门控脚本基于真实证据(构建日志成功横幅/真机 hdc+hilog 抓取/
   gtest+xdevice 报告/CI 绿状态)判定通过,绝不能用模型自由文本当作阶段结束。
@@ -17,9 +17,10 @@ description: >
 
 ## 输入
 
-一个已澄清的 AR(架构需求),通常是一段描述或一个 md 文件;以及目标 C/C++ 组件信息:
-GN 构建目标(`build_target`)、测试 `testpart` 与套件名、目标二进制部署路径、功能验证标记字符串。
-若缺失,用 `AskUserQuestion` 问清后再开始——**不要默认假设**。
+用户可以只提供不完整的自然语言需求。用户负责说明场景、期望结果、不可接受结果、示例和业务约束；
+Agent 必须从当前源码发现组件、接口、SA ID、GN target、测试框架、部署路径和 marker，不得把代码事实问题
+反问给新人。只有产品语义、破坏性副作用、性能阈值和兼容性取舍需要用户确认。详细的输入分工、v3
+契约、变更分级及维测规则见 [需求、变更与维测](references/requirements-and-observability.md)。
 
 ## 全局护栏(必须遵守)
 
@@ -46,8 +47,10 @@ GN 构建目标(`build_target`)、测试 `testpart` 与套件名、目标二进�
      生成签名的完整 diff + repo/branch/base/Issue 预检，在任何 push 前停下确认并执行
      `advance.py consent --phase 8 --token <人>`；上传完成后的最终 PASS 再由 `advance` 复验。没令牌时
      `advance` 会 HOLD。P8 的 push 仍是唯一对外不可逆动作。
-6. **任何阶段发现要改代码 → 回 P1 重走**。不管走到 P2..P8,只要发现 bug 需要改代码,
-   就**必须** `advance.py reset --reason "<改了什么>"` 回到 P1,从设计/代码开发踏踏实实重走一遍
+6. **先分类变化再回退**。若签名 v3 契约的验收、依赖、公开接口和允许范围都没变，只是目录范围内
+   拆文件、重命名或私有实现修复，用 `advance.py repair --reason "<改了什么>"` 回 P2；若依赖、公开接口、
+   用户可见行为或验收预期改变，必须 `advance.py reset --reason "<改了什么>"` 回 P1 并重新 consent。
+   旧 v1/v2 run 不支持窄修复，只能 reset。两条路径都由功能指纹阻止复用旧代码证据。
    P1→P8。这是硬控制:**P2(feature-develop)闭合时锁定功能指纹**(只对**非测试路径**内容计算,
    `git diff base_commit` + `untracked`,相对 base、与是否已 commit 无关)。改了**功能代码/配置内容**后
    `advance P3..P8` 会被以"功能指纹漂移"拒绝(`check_code_drift` 从 phase3 起生效);`verify-all` 也会因漂移
@@ -89,6 +92,7 @@ GN 构建目标(`build_target`)、测试 `testpart` 与套件名、目标二进�
       --repo "$OHOS_ROOT" --run-id "$RUN" \
       --environment openharmony \
       --git-dir <组件路径> --build-target <gn_target> --part <testpart> \
+      --agent <agent名称> --model <模型名称> --skill ohos-ar-dev-workflow \
       --base-commit "$(git -C $OHOS_ROOT rev-parse HEAD)" \
       | sed -n 's/^PDIR=//p')
   printf '%s\n' "<AR 原文>" > "$PDIR/ar.md"
@@ -96,6 +100,11 @@ GN 构建目标(`build_target`)、测试 `testpart` 与套件名、目标二进�
   > ⚠️ PDIR **必须**从 init 的 `PDIR=` 行取(它保证在 `<repo>/specs/pipeline/` 下)。
   > 若你显式传 `--pipeline-dir`,它必须落在 `<repo>/specs/pipeline/<run>` 之内,否则 init **硬失败**
   > (防止弱模型把证据/文档写到源码根之外)。
+- init 自动创建 `$PDIR/workflow_metrics.json`；每阶段实际调用 skill 时立即执行
+  `advance.py use-skill --name <skill>`。文件统一记录阶段各轮墙钟耗时、人工等待排除时间、有效耗时、
+  gate 尝试及三类人工介入。正常 consent 自动开闭等待并记为 `required_workflow`；流程意外卡死和用户主动
+  纠偏若需等回复，用 `human-wait start/end`，等待期间不累计有效耗时；当场介入才用 `intervene`。
+  完整使用口径见 `docs/workflow/observability-usage.md`。
 - 跑 P0 预检并推进:
   ```bash
   python3 $S/gate_env_init.py --pipeline-dir "$PDIR"
@@ -109,7 +118,7 @@ GN 构建目标(`build_target`)、测试 `testpart` 与套件名、目标二进�
 > 尤其 **P2 闭合会打印"功能指纹已锁定/功能代码冻结"**,那只是"开发写完、进入写测试",**绝不是收工**。
 > `advance` 成功后会打印 `!! PIPELINE NOT DONE ... DO NOT STOP` 横幅并给出下一阶段门控命令——
 > **看到它就继续下一轮**,直到 `advance --phase 8` 打印 `pipeline COMPLETE.` 才算完。中途只有
-> P6/P7/P8 的**人工 consent** 是合法暂停点(停下问用户拿令牌);P2→P3、P3→P4… **没有任何暂停理由**。
+> P1/P6/P7/P8 的**人工 consent** 是合法暂停点(停下问用户拿令牌);P2→P3、P3→P4… **没有任何暂停理由**。
 
 读 `advance.py --pipeline-dir "$PDIR" status` 得到 `current_phase`,从那一阶段开始,
 对每个阶段执行【做事 → 跑门控 → advance】。**每轮循环开头先刷新 todo**(依 AR_design 派生细项):

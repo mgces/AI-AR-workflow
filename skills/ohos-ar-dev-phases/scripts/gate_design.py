@@ -18,8 +18,9 @@ can verify by SECTION PRESENCE + non-empty body:
 
 It must ALSO carry a machine-readable ```ar-contract``` JSON block (build_artifacts
 / test_cases[].gtest / device_cases[].marker) — the single source of truth the P2
-build / P3 test / P4 device gates verify full coverage against. New runs require a
-v2 contract (requirements + changed_files + reference closure); --allow-contract-v1
+build / P3 test / P4 device gates verify full coverage against. The parser remains
+compatible with v2, while the workflow authors v3 contracts (acceptance cases,
+dependency evidence and change scope); --allow-contract-v1
 is a legacy escape. A missing/invalid contract FAILs P1a unless
 --allow-missing-contract (legacy bypass). The design is also rejected if it still
 contains placeholder tokens (TODO/TBD/占位/…) outside the contract block.
@@ -199,7 +200,7 @@ def main():
                          "downstream P2/P3/P4 coverage checks then have nothing to enforce)")
     ap.add_argument("--allow-contract-v1", action="store_true",
                     help="legacy escape: accept a v1 contract (no requirements/"
-                         "changed_files closure). New runs should ship a v2 contract; "
+                         "changed_files closure). New workflow runs should ship v3; "
                          "recorded as AR-CONTRACT-V1-LEGACY in the signed reason")
     ap.add_argument("--allow-weak-device-anchors", action="store_true",
                     help="explicit downgrade: accept v2 device_cases that declare no "
@@ -253,7 +254,7 @@ def main():
         closure_ok, closure_problems = gl.check_contract_closure(contract)
         if contract.get("version") == 1 and not args.allow_contract_v1:
             c_ok = False
-            c_detail = "v1 contract requires --allow-contract-v1 (new runs need v2)"
+            c_detail = "v1 contract requires --allow-contract-v1 (new runs need v3)"
         elif contract.get("version") == 1:
             version_note = " AR-CONTRACT-V1-LEGACY"
         if c_ok:
@@ -299,8 +300,8 @@ def main():
             f.write("  downgrade accepted: %s\n" % bool(args.allow_weak_device_anchors))
 
     # PASS requires: sections AND a valid contract (unless legacy contract bypass)
-    # AND no placeholders AND (for a real v2 contract) reference closure AND every
-    # v2 device_case declaring at least one strong P4 anchor (unless explicitly
+    # AND no placeholders AND (for a real v2/v3 contract) reference closure AND every
+    # v2/v3 device_case declaring at least one strong P4 anchor (unless explicitly
     # downgraded with --allow-weak-device-anchors).
     contract_gate_ok = c_ok or args.allow_missing_contract
     closure_gate_ok = (not c_ok) or (not closure_problems)

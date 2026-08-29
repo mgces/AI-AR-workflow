@@ -226,7 +226,8 @@ def _write_completion_controls(pdir, *, target, artifacts_present, contract_stat
 def _record_result(pdir, verdict, reason, arts, *, cmd, exit_code, target,
                    banner_ok=None, banner_err=None, artifacts_missing=None,
                    contract_status=None, failure_class=None, problems=None,
-                   resume_hint=None, suspect_locations=None):
+                   resume_hint=None, suspect_locations=None,
+                   static_analysis_status="NOT_RUN"):
     checks = [
         "target=%s" % target,
         "exit_code=%s" % exit_code,
@@ -249,6 +250,13 @@ def _record_result(pdir, verdict, reason, arts, *, cmd, exit_code, target,
             "contract_status": contract_status,
             "build_artifacts_missing": artifacts_missing or [],
             "failure_class": failure_class,
+            "compile_execution": (
+                "PASS" if exit_code == 0 and not banner_err else "FAIL"),
+            "artifact_verification": (
+                "FAIL" if artifacts_missing else
+                ("PASS" if contract_status == "ok" else "NOT_APPLICABLE")),
+            "static_analysis": static_analysis_status,
+            "phase_verdict": verdict,
         })
     if verdict == "PASS":
         gl.clear_failure_report(pdir, 4)
@@ -550,7 +558,11 @@ def main():
                         "(改了功能代码则先 advance.py reset 回 P1),再重跑 gate_build.py")
         sys.exit("PHASE 4 FAIL: ar-contract unrecoverable: %s" % c_detail)
 
-    if rc == 0 and banner_ok and not banner_err and not artifacts_missing:
+    # Exit status + fresh artifacts are authoritative. The success banner is a
+    # diagnostic hint only: toolchain wording changes must not turn a successful
+    # build into a false FAIL. An explicit error banner remains contradictory and
+    # therefore blocking even with rc=0.
+    if rc == 0 and not banner_err and not artifacts_missing:
         # Post-build clang-tidy substep (user decision: run it at P4, right after
         # the build succeeds, so AST-level defects are caught before P5/P6 waste
         # work). Hard-fails when a compdb + clang-tidy are available; degrades to
@@ -570,6 +582,7 @@ def main():
                 problems=["metric: %s:%s %s" % (f.get("file"), f.get("line"),
                                                     f.get("rule_id"))
                           for f in metric_findings[:100]],
+                static_analysis_status="FAIL",
                 resume_hint="修复 metric 报告的函数/文件规模问题后回 P2 重走并重跑 gate_build.py")
             sys.exit("PHASE 4 FAIL: %s" % reason)
         ct_findings, ct_rels, ct_note = clang_tidy_substep(pdir, repo, changed_cxx, out_dir_rel)
@@ -585,15 +598,18 @@ def main():
                 problems=["clang-tidy: %s:%s %s" % (f.get("file"), f.get("line"),
                                                     f.get("rule_id"))
                           for f in ct_findings[:100]],
+                static_analysis_status="FAIL",
                 resume_hint="修复 clang-tidy 报告的 AST 级问题后回 P2 重走并重跑 gate_build.py")
             sys.exit("PHASE 4 FAIL: %s" % reason)
         _record_result(
             pdir, "PASS",
-            "exit=0 and success banner in build output (target=%s)%s [metric: PASS; clang-tidy: %s]"
-            % (target, contract_note, ct_note),
+            "exit=0, no error banner, artifacts verified (target=%s)%s "
+            "[success_banner=%s advisory; metric: PASS; clang-tidy: %s]"
+            % (target, contract_note, banner_ok, ct_note),
             arts, cmd=cmd, exit_code=rc, target=target,
             banner_ok=banner_ok, banner_err=banner_err,
-            artifacts_missing=artifacts_missing, contract_status=contract_status)
+            artifacts_missing=artifacts_missing, contract_status=contract_status,
+            static_analysis_status="PASS")
         print("PHASE 4 PASS — advance.py advance --phase 4")
         return
 
@@ -612,7 +628,7 @@ def main():
     if rc != 0:
         problems.append("build exited with rc=%d" % rc)
     if not banner_ok:
-        problems.append("success banner missing from fresh build output")
+        problems.append("success banner missing (diagnostic only; another blocker caused FAIL)")
     if banner_err:
         problems.append("error banner present in build output")
     if artifacts_missing:

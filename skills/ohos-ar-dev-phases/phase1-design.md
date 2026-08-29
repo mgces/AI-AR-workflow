@@ -20,7 +20,9 @@ python3 openharmony-knowledge-base/tools/search/kb_search.py \
 
 ## 设计固化(gate_design.py)
 
-先写 `$PDIR/AR_design.md`,**必须包含 7 个章节**(标题存在 + body 非空,门控确定性校验):
+先把用户输入整理成 Given/When/Then 验收矩阵，再读取当前源码、BUILD.gn 和已有调用点完成依赖调查。
+不要要求新人提供 GN target、SA 接口和部署路径。随后写 `$PDIR/AR_design.md`,**必须包含 7 个章节**
+(标题存在 + body 非空,门控确定性校验):
 目标组件 / 详细功能需求 / 完整代码框架(其下含"文件清单""每文件功能""每文件代码框架"三小节)/
 完整测试框架 / 需测试的功能点 / 真机测试用例构造 / **DFX设计**。
 
@@ -30,18 +32,33 @@ python3 openharmony-knowledge-base/tools/search/kb_search.py \
 > 没 hilog"的问题**左移到设计阶段**——designer 在此就得想清楚 marker 来源。详见
 > `phase6-device-functional.md` 的"组件没有 hilog 输出怎么办"决策树。
 
-**并且必须内嵌一个机器可读的 ```ar-contract``` 围栏 JSON 块**(恰好一个;下游 P3/P4/P5/P6
+**新 run 使用 v3，并且必须内嵌一个机器可读的 ```ar-contract``` 围栏 JSON 块**(恰好一个;下游 P3/P4/P5/P6
 据此做全量覆盖硬门控,让"编译路径"清晰、测试点/真机用例可逐项校验):
 ````markdown
 ```ar-contract
 {
-  "build_artifacts": ["out/rk3568/.../libfoo.z.so"],
-  "test_cases":   [{"point": "处理超时", "gtest": "FooTest.HandleTimeout_001"}],
-  "device_cases": [{"desc": "注入事件", "marker": "AR_DEV_CASE1_OK", "observability": "component_log"}]
+  "contract_version": "3.0",
+  "requirements": [{"id": "REQ-1", "desc": "处理超时"}],
+  "acceptance_cases": [{"id": "AC-1", "given": "依赖 SA 未启动", "when": "执行功能",
+    "then": "按需加载或返回明确错误", "forbidden": "静默返回空结果", "for_requirements": ["REQ-1"]}],
+  "dependencies": [{"id": "DEP-1", "provider_repo": "base/hiviewdfx/hidumper",
+    "interface": "LoadSystemAbility", "header": "isystem_ability_manager.h",
+    "build_target": "//base/hiviewdfx/hidumper:hidumper_service", "lifecycle": "on-demand SA",
+    "failure_behavior": "返回 unavailable", "critical": true, "status": "verified",
+    "evidence": {"type": "existing_call_site", "source": "src/caller.cpp:42"}}],
+  "change_scope": {"allowed_paths": ["base/hiviewdfx/hiview/plugins/foo"],
+    "public_api_change": false, "behavior_change": true},
+  "changed_files": [{"path": "base/hiviewdfx/hiview/plugins/foo/plan.cpp", "for_requirements": ["REQ-1"]}],
+  "build_artifacts": [{"path": "out/rk3568/libfoo.z.so", "for_requirements": ["REQ-1"]}],
+  "test_cases": [{"point": "处理超时", "gtest": "FooTest.HandleTimeout_001", "for_requirements": ["REQ-1"]}],
+  "device_cases": [{"desc": "注入事件", "marker": "AR_DEV_CASE1_OK", "process": "hiview",
+    "for_requirements": ["REQ-1"]}]
 }
 ```
 ````
-三个键均为**非空数组**:`build_artifacts` 为编译产物路径(相对仓根,或相对 `out/rk3568`);
+v3 中 `acceptance_cases` 必须非空；`dependencies` 无外部依赖时写 `[]`，关键依赖未验证会直接阻塞 P1；
+`change_scope.allowed_paths` 冻结允许修改范围，精确文件到 P2 根据真实 diff 再冻结，避免 P1 猜 `a.h` 后因
+静态检查合理拆成 `b.h/c.h` 就重写方案。`build_artifacts` 为编译产物路径(相对仓根,或相对 `out/rk3568`);
 `test_cases[].gtest` 形如 `Suite.Case`(允许 `/` 支持参数化名 `Suite/0.Case`);
 `device_cases[].marker` 为真机日志里只会在该用例真实成功时出现的标记字符串。
 

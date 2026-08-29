@@ -16,6 +16,7 @@ Design invariants:
     trusted — device freshness comes from nonces + /proc/uptime in the gates.
 """
 import argparse
+import calendar
 import hashlib
 import hmac
 import json
@@ -1722,6 +1723,357 @@ def save_state(pdir, state):
 
 
 # ----------------------------------------------------------------------------
+# workflow observability (advisory, never grants phase progress)
+# ----------------------------------------------------------------------------
+WORKFLOW_METRICS_FILE = "workflow_metrics.json"
+INTERVENTION_CATEGORIES = (
+    "required_workflow",   # consent/review explicitly designed into the flow
+    "blocked_unplanned",   # a person had to unblock something the flow could not
+    "user_correction",     # the user proactively corrected intent/expectation
+)
+
+
+def _utc_now():
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def _metrics_path(pdir):
+    return os.path.join(pdir, WORKFLOW_METRICS_FILE)
+
+
+def read_workflow_metrics(pdir):
+    try:
+        with open(_metrics_path(pdir), encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except (OSError, ValueError, TypeError):
+        return {}
+
+
+def _seconds_between(start, end):
+    try:
+        a = calendar.timegm(time.strptime(start, "%Y-%m-%dT%H:%M:%SZ"))
+        b = calendar.timegm(time.strptime(end, "%Y-%m-%dT%H:%M:%SZ"))
+        return max(0, int(b - a))
+    except (TypeError, ValueError, OverflowError):
+        return None
+
+
+def _excluded_wait_seconds(waits, phase_id, now):
+    """Union overlapping waits so two human reasons never double-deduct time."""
+    ranges = []
+    for wait in waits:
+        if str(wait.get("phase")) != str(phase_id) or not wait.get(
+                "exclude_from_effective_time", True):
+            continue
+        try:
+            start = calendar.timegm(time.strptime(
+                wait.get("started_at_utc"), "%Y-%m-%dT%H:%M:%SZ"))
+            end = calendar.timegm(time.strptime(
+                wait.get("ended_at_utc") or now, "%Y-%m-%dT%H:%M:%SZ"))
+        except (TypeError, ValueError, OverflowError):
+            continue
+        ranges.append((start, max(start, end)))
+    total = 0
+    merged = []
+    for start, end in sorted(ranges):
+        if not merged or start > merged[-1][1]:
+            merged.append([start, end])
+        else:
+            merged[-1][1] = max(merged[-1][1], end)
+    for start, end in merged:
+        total += end - start
+    return int(total)
+
+
+def _refresh_metrics_totals(data):
+    now = _utc_now()
+    phases = data.get("phases") or {}
+    waits = data.get("human_wait_intervals") or []
+    for phase in phases.values():
+        phase.setdefault("skills_used", [])
+        runs = phase.get("runs") or []
+        if runs:
+            elapsed = [_seconds_between(run.get("opened_at_utc"),
+                                        run.get("closed_at_utc") or now)
+                       for run in runs]
+            phase["elapsed_seconds"] = sum(x for x in elapsed if x is not None)
+        else:
+            start = phase.get("opened_at_utc")
+            end = phase.get("closed_at_utc") or now
+            phase["elapsed_seconds"] = _seconds_between(start, end)
+        phase_id = next((key for key, value in phases.items() if value is phase), None)
+        excluded = _excluded_wait_seconds(waits, phase_id, now)
+        wall = phase.get("elapsed_seconds")
+        if wall is not None:
+            excluded = min(excluded, wall)
+        phase["human_wait_excluded_seconds"] = excluded
+        phase["effective_elapsed_seconds"] = (
+            max(0, wall - excluded) if wall is not None else None)
+    interventions = data.get("human_interventions") or []
+    by_category = {key: 0 for key in INTERVENTION_CATEGORIES}
+    for item in interventions:
+        category = item.get("category")
+        if category in by_category:
+            by_category[category] += 1
+    data["summary"] = {
+        "phase_wall_elapsed_seconds": {
+            key: value.get("elapsed_seconds") for key, value in phases.items()
+        },
+        "phase_human_wait_excluded_seconds": {
+            key: value.get("human_wait_excluded_seconds") for key, value in phases.items()
+        },
+        "phase_effective_elapsed_seconds": {
+            key: value.get("effective_elapsed_seconds") for key, value in phases.items()
+        },
+        "workflow_wall_elapsed_seconds": sum(
+            value.get("elapsed_seconds") or 0 for value in phases.values()),
+        "workflow_human_wait_excluded_seconds": sum(
+            value.get("human_wait_excluded_seconds") or 0 for value in phases.values()),
+        "workflow_effective_elapsed_seconds": sum(
+            value.get("effective_elapsed_seconds") or 0 for value in phases.values()),
+        "human_interventions_total": len(interventions),
+            "human_interventions_by_category": by_category,
+        "human_wait_intervals_total": len(waits),
+        "human_wait_open_count": sum(1 for wait in waits if not wait.get("ended_at_utc")),
+        "gate_attempts_total": sum(
+            int(value.get("gate_attempts", 0)) for value in phases.values()),
+    }
+    data["updated_at_utc"] = now
+    return data
+
+
+def write_workflow_metrics(pdir, data):
+    """Atomically write the single per-run observability file.
+
+    The `execution_context` object is deliberately inserted first so a human
+    opening the JSON immediately sees agent/model/skills. This file is advisory:
+    corruption or write failure can never turn a failed gate into PASS.
+    """
+    try:
+        ordered = {
+            "execution_context": data.get("execution_context") or {},
+            "schema_version": 2,
+            "run_id": data.get("run_id"),
+            "started_at_utc": data.get("started_at_utc"),
+            "updated_at_utc": data.get("updated_at_utc"),
+            "phases": data.get("phases") or {},
+            "human_interventions": data.get("human_interventions") or [],
+            "human_wait_intervals": data.get("human_wait_intervals") or [],
+            "summary": data.get("summary") or {},
+        }
+        _refresh_metrics_totals(ordered)
+        tmp = _metrics_path(pdir) + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(ordered, f, ensure_ascii=False, indent=2)
+        os.replace(tmp, _metrics_path(pdir))
+        return _metrics_path(pdir)
+    except Exception:
+        return None
+
+
+def init_workflow_metrics(pdir, run_id, *, agent="", model="", skills=None):
+    now = _utc_now()
+    phases = {
+        str(i): {
+            "name": name, "opened_at_utc": now if i == 0 else None,
+            "closed_at_utc": None, "elapsed_seconds": None,
+            "runs": ([{"opened_at_utc": now, "closed_at_utc": None}]
+                     if i == 0 else []),
+            "gate_attempts": 0, "pass_attempts": 0, "fail_attempts": 0,
+            "skills_used": (list(dict.fromkeys(skills or [])) if i == 0 else []),
+        }
+        for i, name in PHASES
+    }
+    return write_workflow_metrics(pdir, {
+        "execution_context": {
+            "agent": agent or "unknown",
+            "model": model or "unknown",
+            "skills": list(dict.fromkeys(skills or [])),
+        },
+        "run_id": run_id, "started_at_utc": now,
+        "phases": phases, "human_interventions": [], "human_wait_intervals": [],
+    })
+
+
+def update_execution_context(pdir, *, agent=None, model=None, skills=None):
+    data = read_workflow_metrics(pdir)
+    if not data:
+        return None
+    context = data.setdefault("execution_context", {})
+    if agent:
+        context["agent"] = agent
+    if model:
+        context["model"] = model
+    if skills:
+        context["skills"] = list(dict.fromkeys(
+            list(context.get("skills") or []) + list(skills)))
+    return write_workflow_metrics(pdir, data)
+
+
+def record_phase_skills(pdir, phase, skills):
+    """Record skills actually used in one phase and maintain the run-wide union."""
+    data = read_workflow_metrics(pdir)
+    item = (data.get("phases") or {}).get(str(phase))
+    if item is None:
+        raise ValueError("unknown phase: %s" % phase)
+    names = [str(name).strip() for name in (skills or []) if str(name).strip()]
+    item["skills_used"] = list(dict.fromkeys(
+        list(item.get("skills_used") or []) + names))
+    context = data.setdefault("execution_context", {})
+    context["skills"] = list(dict.fromkeys(
+        list(context.get("skills") or []) + names))
+    return write_workflow_metrics(pdir, data)
+
+
+def observe_phase_opened(pdir, phase):
+    data = read_workflow_metrics(pdir)
+    item = (data.get("phases") or {}).get(str(phase))
+    if item is not None:
+        now = _utc_now()
+        runs = item.setdefault("runs", [])
+        if not runs or runs[-1].get("closed_at_utc"):
+            runs.append({"opened_at_utc": now, "closed_at_utc": None})
+        item["opened_at_utc"] = runs[-1]["opened_at_utc"]
+        item["closed_at_utc"] = None
+    return write_workflow_metrics(pdir, data) if data else None
+
+
+def observe_phase_closed(pdir, phase, closed_at=None):
+    data = read_workflow_metrics(pdir)
+    item = (data.get("phases") or {}).get(str(phase))
+    if item is not None:
+        ended = closed_at or _utc_now()
+        item["closed_at_utc"] = ended
+        runs = item.setdefault("runs", [])
+        if not runs:
+            runs.append({"opened_at_utc": item.get("opened_at_utc"),
+                         "closed_at_utc": ended})
+        else:
+            runs[-1]["closed_at_utc"] = ended
+    return write_workflow_metrics(pdir, data) if data else None
+
+
+def observe_gate_attempt(pdir, phase, verdict, gate):
+    data = read_workflow_metrics(pdir)
+    item = (data.get("phases") or {}).get(str(phase))
+    if item is not None:
+        if not item.get("opened_at_utc"):
+            item["opened_at_utc"] = _utc_now()
+        runs = item.setdefault("runs", [])
+        if not runs:
+            runs.append({"opened_at_utc": item["opened_at_utc"],
+                         "closed_at_utc": None})
+        if verdict in ("PASS", "FAIL"):
+            item["gate_attempts"] = int(item.get("gate_attempts", 0)) + 1
+            key = "pass_attempts" if verdict == "PASS" else "fail_attempts"
+            item[key] = int(item.get(key, 0)) + 1
+        item["last_gate"] = gate
+        item["last_verdict"] = verdict
+        item["last_attempt_at_utc"] = _utc_now()
+    result = write_workflow_metrics(pdir, data) if data else None
+    # Opening the intentional review wait here makes non-response time grow in
+    # the excluded bucket automatically. P8's dry-run is a signed FAIL hold, so
+    # it is recognized by its dedicated consent-precheck gate rather than PASS.
+    wait_reason = None
+    if phase == 1 and gate == "gate_design.py" and verdict == "PASS":
+        wait_reason = "awaiting P1 signed design review"
+    elif phase == 6 and gate == "gate_device_func.py" and verdict == "PASS":
+        wait_reason = "awaiting P6 device result review"
+    elif phase == 7 and gate == "gate_integration.py" and verdict == "PASS":
+        wait_reason = "awaiting P7 quality and review confirmation"
+    elif phase == 8 and gate == "gate_upload_ci.py:consent-precheck":
+        wait_reason = "awaiting P8 pre-upload diff and target review"
+    if wait_reason:
+        start_human_wait(
+            pdir, phase, "required_workflow", wait_reason,
+            source="gate:auto-wait", record_intervention=False)
+    return result
+
+
+def record_human_intervention(pdir, phase, category, reason, *, actor="", source="manual",
+                              wait=None):
+    if category not in INTERVENTION_CATEGORIES:
+        raise ValueError("unknown intervention category: %s" % category)
+    data = read_workflow_metrics(pdir)
+    if not data:
+        return None
+    event = {
+        "ts_utc": _utc_now(), "phase": phase, "category": category,
+        "reason": reason, "actor": actor or "unknown", "source": source,
+    }
+    if wait:
+        event["wait_id"] = wait.get("id")
+        event["duration_seconds"] = wait.get("duration_seconds")
+        event["resolved_at_utc"] = wait.get("ended_at_utc")
+    data.setdefault("human_interventions", []).append(event)
+    return write_workflow_metrics(pdir, data)
+
+
+def start_human_wait(pdir, phase, category, reason, *, actor="", source="manual",
+                     record_intervention=True):
+    """Open an excluded human-wait interval; idempotent per open phase/category."""
+    if category not in INTERVENTION_CATEGORIES:
+        raise ValueError("unknown intervention category: %s" % category)
+    data = read_workflow_metrics(pdir)
+    if not data:
+        return None
+    waits = data.setdefault("human_wait_intervals", [])
+    for wait in reversed(waits):
+        if (wait.get("phase") == phase and wait.get("category") == category
+                and not wait.get("ended_at_utc")):
+            return wait.get("id")
+    wait_id = "human-wait-%04d" % (len(waits) + 1)
+    wait = {
+        "id": wait_id, "phase": phase, "category": category,
+        "reason": reason, "actor": actor or "unknown", "source": source,
+        "started_at_utc": _utc_now(), "ended_at_utc": None,
+        "duration_seconds": None, "status": "waiting",
+        "exclude_from_effective_time": True,
+    }
+    waits.append(wait)
+    if record_intervention:
+        data.setdefault("human_interventions", []).append({
+            "ts_utc": wait["started_at_utc"], "phase": phase,
+            "category": category, "reason": reason,
+            "actor": actor or "unknown", "source": source,
+            "wait_id": wait_id, "duration_seconds": None,
+        })
+    write_workflow_metrics(pdir, data)
+    return wait_id
+
+
+def end_human_wait(pdir, phase, *, category=None, actor="", reason=""):
+    """Close the newest matching wait and return its final payload, or None."""
+    data = read_workflow_metrics(pdir)
+    waits = data.get("human_wait_intervals") or []
+    match = None
+    for wait in reversed(waits):
+        if wait.get("phase") == phase and not wait.get("ended_at_utc") \
+                and (category is None or wait.get("category") == category):
+            match = wait
+            break
+    if match is None:
+        return None
+    ended = _utc_now()
+    match["ended_at_utc"] = ended
+    match["duration_seconds"] = _seconds_between(match.get("started_at_utc"), ended)
+    match["status"] = "completed"
+    if actor:
+        match["actor"] = actor
+    if reason:
+        match["resolution"] = reason
+    for event in data.get("human_interventions") or []:
+        if event.get("wait_id") == match.get("id"):
+            event["duration_seconds"] = match["duration_seconds"]
+            event["resolved_at_utc"] = ended
+            if actor:
+                event["actor"] = actor
+    write_workflow_metrics(pdir, data)
+    return dict(match)
+
+
+# ----------------------------------------------------------------------------
 # secret + hmac
 # ----------------------------------------------------------------------------
 def load_secret(run_id):
@@ -2155,7 +2507,8 @@ def parse_ar_contract(text):
     parse_review_report_zero_issues. Returns (ok, contract, detail).
 
     Parse-compatible across two schema versions (the *gate* decides which is
-    required; new runs demand v2 at gate_design, legacy v1 still parses):
+    required; workflow-authored runs use v3, while v2 remains parse-compatible
+    and legacy v1 still parses):
 
       v1 (all three arrays non-empty):
         build_artifacts : [non-empty str]
@@ -2192,7 +2545,11 @@ def parse_ar_contract(text):
 
     # ---- version detection (structural, not just the declared field) --------
     declared = str(data.get("contract_version", "")).strip()
-    is_v2 = bool(data.get("requirements") is not None
+    is_v3 = bool(declared.startswith("3")
+                 or data.get("acceptance_cases") is not None
+                 or data.get("dependencies") is not None
+                 or data.get("change_scope") is not None)
+    is_v2 = bool(is_v3 or data.get("requirements") is not None
                  or data.get("changed_files") is not None
                  or declared.startswith("2"))
 
@@ -2378,10 +2735,95 @@ def parse_ar_contract(text):
             else:
                 return False, None, "%s must be a string or object" % where
 
-    version = 2 if is_v2 else 1
+    # ---- v3: observable acceptance + dependency viability + semantic scope --
+    acceptance_cases, dependencies, change_scope = [], [], {}
+    if is_v3:
+        raw_acceptance = data.get("acceptance_cases")
+        if not isinstance(raw_acceptance, list) or not raw_acceptance:
+            return False, None, "v3 acceptance_cases must be a non-empty array"
+        for i, case in enumerate(raw_acceptance):
+            where = "acceptance_cases[%d]" % i
+            if not isinstance(case, dict):
+                return False, None, "%s must be an object" % where
+            for field in ("id", "given", "when", "then"):
+                if not _nonempty_str(case.get(field)):
+                    return False, None, "%s.%s must be a non-empty string" % (where, field)
+            ok, fr, det = _for_requirements(case)
+            if not ok:
+                return False, None, "%s.%s" % (where, det)
+            acceptance_cases.append({
+                "id": case["id"].strip(), "given": case["given"].strip(),
+                "when": case["when"].strip(), "then": case["then"].strip(),
+                "forbidden": str(case.get("forbidden") or "").strip(),
+                "for_requirements": fr,
+            })
+
+        raw_dependencies = data.get("dependencies")
+        if not isinstance(raw_dependencies, list):
+            return False, None, "v3 dependencies must be an array (use [] when none)"
+        dep_ids = set()
+        for i, dep in enumerate(raw_dependencies):
+            where = "dependencies[%d]" % i
+            if not isinstance(dep, dict):
+                return False, None, "%s must be an object" % where
+            for field in ("id", "provider_repo", "interface", "header",
+                          "build_target", "lifecycle", "failure_behavior"):
+                if not _nonempty_str(dep.get(field)):
+                    return False, None, "%s.%s must be a non-empty string" % (where, field)
+            dep_id = dep["id"].strip()
+            if dep_id in dep_ids:
+                return False, None, "%s.id duplicate: %s" % (where, dep_id)
+            dep_ids.add(dep_id)
+            critical = dep.get("critical", True)
+            if not isinstance(critical, bool):
+                return False, None, "%s.critical must be a boolean" % where
+            status = dep.get("status")
+            if status not in ("verified", "blocked"):
+                return False, None, "%s.status must be verified or blocked" % where
+            evidence = dep.get("evidence")
+            if not isinstance(evidence, dict) or not _nonempty_str(evidence.get("type")) \
+                    or not _nonempty_str(evidence.get("source")):
+                return False, None, "%s.evidence requires non-empty type and source" % where
+            if critical and status != "verified":
+                return False, None, "%s is critical but not verified; P1 must stop" % where
+            dependencies.append({
+                "id": dep_id, "provider_repo": dep["provider_repo"].strip(),
+                "interface": dep["interface"].strip(), "header": dep["header"].strip(),
+                "build_target": dep["build_target"].strip(),
+                "lifecycle": dep["lifecycle"].strip(),
+                "failure_behavior": dep["failure_behavior"].strip(),
+                "critical": critical, "status": status,
+                "evidence": {"type": evidence["type"].strip(),
+                             "source": evidence["source"].strip()},
+            })
+
+        raw_scope = data.get("change_scope")
+        if not isinstance(raw_scope, dict):
+            return False, None, "v3 change_scope must be an object"
+        allowed = raw_scope.get("allowed_paths")
+        if not isinstance(allowed, list) or not allowed:
+            return False, None, "v3 change_scope.allowed_paths must be non-empty"
+        norm_allowed = []
+        for i, path in enumerate(allowed):
+            if not _nonempty_str(path):
+                return False, None, "change_scope.allowed_paths[%d] must be non-empty" % i
+            err = repo_relative_path_error(path)
+            if err:
+                return False, None, "change_scope.allowed_paths[%d] %s" % (i, err)
+            norm_allowed.append(path.strip().rstrip("/"))
+        for flag in ("public_api_change", "behavior_change"):
+            if not isinstance(raw_scope.get(flag), bool):
+                return False, None, "change_scope.%s must be boolean" % flag
+        change_scope = {
+            "allowed_paths": norm_allowed,
+            "public_api_change": raw_scope["public_api_change"],
+            "behavior_change": raw_scope["behavior_change"],
+        }
+
+    version = 3 if is_v3 else (2 if is_v2 else 1)
     detail = "v%d build_artifacts=%d test_cases=%d device_cases=%d" % (
         version, len(ba_paths), len(tc), len(dc))
-    if version == 2:
+    if version >= 2:
         detail += " requirements=%d changed_files=%d" % (
             len(requirements), len(cf_paths))
     contract = {
@@ -2393,6 +2835,9 @@ def parse_ar_contract(text):
         "device_cases": dc,
         "changed_files": cf_paths,
         "changed_files_meta": cf_meta,
+        "acceptance_cases": acceptance_cases,
+        "dependencies": dependencies,
+        "change_scope": change_scope,
     }
     return True, contract, detail
 
@@ -2431,17 +2876,17 @@ def find_placeholders(text, limit=20):
 
 
 def check_contract_closure(contract):
-    """v2 reference-closure: every requirement is covered by >=1 of
+    """v2/v3 reference-closure: every requirement is covered by >=1 of
     changed_files / test_cases / device_cases, and every for_requirements ref
     points at a real requirement id. Returns (ok, problems:list[str]).
 
     v1 contracts (no requirements) have nothing to close -> (True, [])."""
-    if not contract or contract.get("version") != 2:
+    if not contract or contract.get("version", 1) < 2:
         return True, []
     problems = []
     req_ids = {r["id"] for r in contract.get("requirements", [])}
     if not req_ids:
-        problems.append("v2 contract has no requirements")
+        problems.append("v2/v3 contract has no requirements")
 
     def _refs(items):
         out = set()
@@ -2454,14 +2899,15 @@ def check_contract_closure(contract):
     ba_refs = _refs(contract.get("build_artifacts_meta", []))
     tc_refs = _refs(contract.get("test_cases", []))
     dc_refs = _refs(contract.get("device_cases", []))
-    all_refs = cf_refs | ba_refs | tc_refs | dc_refs
+    ac_refs = _refs(contract.get("acceptance_cases", []))
+    all_refs = cf_refs | ba_refs | tc_refs | dc_refs | ac_refs
 
     # dangling references (point at a requirement that doesn't exist)
     for r in sorted(all_refs - req_ids):
         problems.append("for_requirements references unknown requirement '%s'" % r)
 
     # uncovered requirements (no changed_files/test/device pins it)
-    covering = cf_refs | tc_refs | dc_refs
+    covering = cf_refs | tc_refs | dc_refs | ac_refs
     for rid in sorted(req_ids - covering):
         problems.append("requirement '%s' not covered by any changed_files/"
                         "test_cases/device_cases" % rid)
@@ -2705,6 +3151,9 @@ def emit(pdir, phase, gate, *, verdict, reason, cmd="", argv=None,
     os.makedirs(os.path.dirname(manifest_path(pdir)), exist_ok=True)
     with open(manifest_path(pdir), "a", encoding="utf-8") as f:
         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    # Observability is intentionally downstream of the signed truth write and
+    # best-effort: metrics can describe a gate, never authorize it.
+    observe_gate_attempt(pdir, phase, verdict, gate)
     return entry
 
 

@@ -45,7 +45,7 @@
 - 校验 `AR_design.md` 的必需章节;
 - 拒绝 `TODO` / `TBD` / `占位` 等 placeholder;
 - 解析唯一一个内嵌的 ````ar-contract` fenced JSON;
-- 新 run 默认要求 **contract v2**;legacy 可显式放宽;
+- 新 workflow run 编写 **contract v3**（验收场景、依赖证据、变更范围）；解析器继续兼容 v2，legacy v1 需显式放宽；
 - 对 v2 做 requirement / file / test / device 的引用闭环校验;
 - 把签名设计副本写入:
   - `evidence/phase1/AR_design.md`
