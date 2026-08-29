@@ -1,54 +1,44 @@
-# HiviewDFX 组件索引
+# components 导航
 
-[返回 HiviewDFX](../README.md)
+> 本页属于 `stable-navigation`：只记录层级、名称和源码定位入口。
+> 它不声明当前文件、接口、GN target、依赖、产品选入或运行行为；这些事实必须
+> 在当前 `$OHOS_ROOT` 对应代码仓中验证。
 
-全部 16 个部件（包括 rk3568 未选入的 lite 与仓颉封装部件）见：
+## 导航身份
 
-- [部件功能全景](../functional-overview.md)
-- [部件机器索引](../../../generated/hiviewdfx/components.tsv)
-- [完整模块索引](../hiviewdfx-index.md)
+- 类型：`subsystem`
+- 节点：`components`
+- 层级：`hiviewdfx`
+- 上级：[返回上级](../README.md)
 
-## 当前产品组件
+## 当前源码定位（必须执行）
 
-```text
-api_metrics
-faultloggerd
-hiappevent
-hichecker
-hicollie
-hidumper
-hilog
-hisysevent
-hitrace
-hiview
-```
-
-查询组件元数据：
+知识库只给出候选关键词。以当前源码仓输出为准：
 
 ```bash
-awk -F '\t' '$1 == "hiviewdfx"' \
-  specs/knowledge-base/generated/hiviewdfx/components.tsv
+test -d "$OHOS_ROOT/.repo"
+repo list | rg -i hiviewdfx
+rg -n components "$OHOS_ROOT" -g 'bundle.json' -g 'BUILD.gn' -g '*.gni'
 ```
 
-查询 rk3568 实际选入：
+定位候选仓后，必须读取其当前 `bundle.json`、`BUILD.gn`、接口、测试和运行配置，
+并记录仓路径与 `git rev-parse HEAD`；不得把本页内容直接写入代码契约。
 
-```bash
-awk -F '\t' '$1 == "hiviewdfx"' \
-  specs/knowledge-base/generated/rk3568-parts.tsv
-```
+## 下级导航
 
-## 继续细分方式
-
-当需要深度分析某个组件时新增：
-
-```text
-components/<component>/README.md
-```
-
-如果功能是库/API 能力，再建立：
-
-```text
-components/<component>/capabilities/<domain>/features/<feature>/
-```
-
-如果功能主要运行在独立进程，应改放到 `processes/<process>/`，组件节点只保留构建和接口边界。
+- [api metrics](api_metrics/README.md)
+- [blackbox lite](blackbox_lite/README.md)
+- [faultloggerd](faultloggerd/README.md)
+- [hiappevent](hiappevent/README.md)
+- [hichecker](hichecker/README.md)
+- [hicollie](hicollie/README.md)
+- [hidumper](hidumper/README.md)
+- [hidumper lite](hidumper_lite/README.md)
+- [hievent lite](hievent_lite/README.md)
+- [hilog](hilog/README.md)
+- [hilog lite](hilog_lite/README.md)
+- [hisysevent](hisysevent/README.md)
+- [hitrace](hitrace/README.md)
+- [hiview](hiview/README.md)
+- [hiview lite](hiview_lite/README.md)
+- [hiviewdfx cangjie wrapper](hiviewdfx_cangjie_wrapper/README.md)

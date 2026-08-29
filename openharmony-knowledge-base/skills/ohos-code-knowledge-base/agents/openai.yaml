@@ -1,4 +1,4 @@
 interface:
-  display_name: "OpenHarmony Code Knowledge Base"
-  short_description: "Generate and update full OpenHarmony code knowledge bases"
-  default_prompt: "Use $ohos-code-knowledge-base to generate or update a complete code knowledge base for the provided OpenHarmony source path."
+  display_name: "OpenHarmony Source Navigator"
+  short_description: "Navigate ownership, then verify current source"
+  default_prompt: "Use $ohos-code-knowledge-base to locate the responsible OpenHarmony repository and verify every implementation fact in the current source checkout."

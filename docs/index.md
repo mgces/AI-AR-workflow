@@ -56,7 +56,7 @@ features:
 
   - icon: 📚
     title: OpenHarmony 知识库支撑
-    details: 知识库为 workflow 提供代码定位、依赖分析、构建目标和验证边界支撑——在开发前、验证前、评审前三个时机辅助决策，但不替代当前源码与真实运行证据。
+    details: 稳定导航帮助定位候选子系统、组件和进程；文件、接口、target、依赖与行为必须在当前源码仓验证。
     link: /knowledge-base/how-it-supports-workflow
     linkText: 查看知识库如何支撑 workflow
 ---
@@ -138,7 +138,7 @@ features:
 
 ## 关于知识库
 
-OpenHarmony 知识库为 workflow 提供代码定位、依赖分析、构建目标和验证边界支撑，但不替代当前源码与真实运行证据。知识库作为辅助能力与二级入口展示，不与主线并列争夺首页重心——详见 [知识库栏目](/knowledge-base/)。
+OpenHarmony 知识库只提供稳定所有权导航。代码事实全部回到当前源码仓、构建、测试和运行证据确认——详见 [知识库栏目](/knowledge-base/)。
 
 ## 仓库地址
 

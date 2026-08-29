@@ -34,7 +34,7 @@
 2. 调用 `/ohos-ar-dev-workflow <AR 文本>`
 
 ### workflow 做什么
-1. `kb_search.py` 检索知识库生成 `design_refs.md`(advisory)
+1. `kb_search.py --source-root "$OHOS_ROOT"` 获取稳定导航，再在当前源码仓验证并生成 `design_refs.md`(advisory)
 2. 写 `AR_design.md`(6 必含章节 + 内嵌 ar-contract 契约块)
 3. 跑 `gate_design.py`(emit 1)
 

@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 # Copyright (c) 2026. Licensed under the Apache License, Version 2.0.
 """
-build_index.py — 构建/增量更新知识库 BM25 倒排索引。
+build_index.py — 构建/增量更新稳定导航层 BM25 倒排索引。
 
-首次全量;之后**增量**:按整文件 sha 比对 manifest,只重切/重嵌变更或新增的文件,
+只索引根导航、architecture 与 subsystems/**/README.md。源码事实、工作区快照、
+产品配置和机器生成文档不进入语料。首次全量;之后**增量**:按整文件 sha 比对,
 未变文件复用旧 postings,删除的文件丢弃其单元。这样"补/改任何 KB md 后重跑本脚本"
 即只处理变更文件 —— 满足"不断补充检索库"的诉求。
 
@@ -30,6 +31,8 @@ def build(kb_root, rebuild=False, quiet=False):
         raise SystemExit("ERROR: kb-root 不存在: %s" % kb_root)
 
     old_idx, old_manifest = (None, None) if rebuild else B.load_index(kb_root)
+    if old_manifest and old_manifest.get("index_policy") != B.INDEX_POLICY:
+        old_idx, old_manifest = None, None
     if old_idx is None:
         idx = B.Bm25Index()
         old_files = {}
@@ -69,10 +72,11 @@ def build(kb_root, rebuild=False, quiet=False):
         reparsed += 1
 
     manifest = {
+        "index_policy": B.INDEX_POLICY,
         "files": new_files,
         "n_docs": len(idx.docs),
         "n_files": len(new_files),
-        "built_note": "BM25 lexical index; regenerate with build_index.py (gitignored).",
+        "built_note": "Stable navigation only; code facts must be verified in current source.",
     }
     B.save_index(kb_root, idx, manifest)
     if not quiet:

@@ -58,11 +58,12 @@ PHASE_GUIDE = {
                 "确认编译部件(git_dir/build_target/part)或 --confirm-defaults",
                 "跑 gate_env_init.py 真实探测能力(不是纸面校验)",
                 "真机连不上时:让用户在有设备的电脑跑 hdc -m -s 0.0.0.0:10086 start,报 IP:端口"]},
-    1: {"skill": "kb_search → 写 AR_design.md",
+    1: {"skill": "kb_search 导航 → 当前源码验证 → 写 AR_design.md",
         "gate": "gate_design.py", "consent": True,
         "doc": "ohos-ar-dev-phases/phase1-design.md",
         "pass": "签名 AR_design(7 章节含 DFX设计 + ```ar-contract``` 契约块)+ 人工 consent",
-        "how": ["先 kb_search.py 检索知识库生成 design_refs.md(advisory)",
+        "how": ["先 kb_search.py --source-root $OHOS_ROOT 获取稳定导航与当前 repo 候选(advisory)",
+                "在候选仓验证当前 bundle.json/BUILD.gn/接口/测试/运行配置;知识库不得作为代码事实",
                 "写 AR_design.md:7 章节(含 DFX设计:可测试/可维护/可观测,marker 来源)+ "
                 "ar-contract 契约(changed_files/build_artifacts/"
                 "test_cases[].gtest/device_cases[].marker+observability)",

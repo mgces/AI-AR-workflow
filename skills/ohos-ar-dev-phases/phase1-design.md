@@ -5,17 +5,18 @@
 
 ## 设计前:检索知识库(可选输入,不进门控)
 
-写 `AR_design.md` 前,先对 `openharmony-knowledge-base` 做一次 BM25 词法检索,把与本次 AR
-最相关的子系统/feature 事实文档摘要拉出来,作为设计参考(如已有同类 feature 专题、目标组件
-所在子系统的能力域/进程/构建目标):
+写 `AR_design.md` 前,先对 `openharmony-knowledge-base` 的稳定导航层做一次 BM25 词法检索,
+只用它缩小候选子系统/组件/进程/feature。**知识库不是代码事实**;文件、接口、GN target、
+依赖、产品配置和运行行为必须在当前 `$OHOS_ROOT` 对应仓中重新验证:
 ```bash
 python3 openharmony-knowledge-base/tools/search/kb_search.py \
+    --source-root "$OHOS_ROOT" \
     --query-file "$PDIR/ar.md" --k 8 --out "$PDIR/design_refs.md" || true
 ```
-产出 `$PDIR/design_refs.md`(命中文档路径 + 章节 + 预览 + BM25 分数),写 7 章节时可据此复用
-既有事实、对齐命名与目录。**这是 advisory 输入,不是门控输入**:`gate_design.py` 不校验
-`design_refs.md`,检索失败(索引缺失会自动增量重建;仍失败则写占位)也不阻挡 P1。首次运行会
-自动建索引,无需手动预建;知识库更新后重跑 `kb_search.py` 会自动增量刷新索引。
+产出 `$PDIR/design_refs.md`(稳定导航节点 + 当前 repo 候选 + repo HEAD)。随后必须读取候选仓的
+当前 `bundle.json`/`BUILD.gn`/接口/测试/运行配置,再把已验证事实写入 7 章节和契约。
+不得把导航摘要直接写进 `ar-contract`。这是 advisory 输入,不是门控输入:`gate_design.py`
+不校验 `design_refs.md`;检索失败也不阻挡 P1,但仍需直接在当前源码中完成定位。
 
 ## 设计固化(gate_design.py)
 

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # Copyright (c) 2026. Licensed under the Apache License, Version 2.0.
 """
-bm25_lib.py — 知识库的**纯词法(BM25)**检索核心,零第三方依赖(只用标准库)。
+bm25_lib.py — 稳定导航层的**纯词法(BM25)**检索核心,零第三方依赖。
 
 为什么是词法而不是向量:向量化会把库锁定到单一外部 embedding 模型 + key,查询必须与
 索引同模型,换模型要全量重嵌,断网即失效。BM25 完全离线、确定性、不锁任何模型,契合本仓
-"检索只是 P1 的 advisory 输入、门控只认确定性证据"的定位。
+"检索只负责导航、代码事实只认当前源码与确定性证据"的定位。
 
 中文免分词方案:知识库大量为中文 md 且环境无 jieba。ASCII/标识符按整词入库
 (hiview / libfoo.z.so / FooTest.HandleTimeout / 路径),中文连续块发**相邻 bigram**
@@ -36,6 +36,13 @@ _WS = re.compile(r"\s+")
 
 # 单文档单元(超长 body)的硬切阈值,防止 1MB+ 的 foundation-index.md 变成一个巨块。
 MAX_UNIT_CHARS = 1500
+INDEX_POLICY = "stable-navigation-v1"
+
+_ROOT_NAV_DOCS = {
+    "README.md",
+    "USAGE.md",
+    "INFORMATION_ARCHITECTURE.md",
+}
 
 
 def tokenize(text):
@@ -153,20 +160,33 @@ def iter_file_units(kb_root, rel_path):
             }
 
 
+def is_navigation_doc(rel_path):
+    """只允许稳定导航文档进入检索语料。
+
+    动态源码事实、工作区快照、产品配置和机器索引不得被 BM25 摘要当成
+    当前代码事实。子系统树只索引 README 导航节点；更深事实必须在当前
+    OHOS 源码仓中重新定位和验证。
+    """
+    rel = rel_path.replace(os.sep, "/").lstrip("./")
+    if rel in _ROOT_NAV_DOCS:
+        return True
+    parts = rel.split("/")
+    if parts[0] == "architecture" and rel.endswith(".md"):
+        return True
+    return parts[0] == "subsystems" and parts[-1] == "README.md"
+
+
 def iter_md_files(kb_root):
-    """相对 kb_root 的所有 *.md 路径(跳过 generated/ 派生产物),排序稳定。"""
+    """返回稳定导航层 Markdown；动态事实层永不进入搜索索引。"""
     out = []
-    for dirpath, dirnames, filenames in os.walk(kb_root):
-        # 不索引派生产物目录(含检索索引自身、生成的 index 文档)
-        rel_dir = os.path.relpath(dirpath, kb_root)
-        top = rel_dir.split(os.sep, 1)[0]
-        if top == "generated":
-            dirnames[:] = []
-            continue
+    for dirpath, _dirnames, filenames in os.walk(kb_root):
         for fn in filenames:
-            if fn.endswith(".md"):
-                rel = os.path.relpath(os.path.join(dirpath, fn), kb_root)
-                out.append(rel.replace(os.sep, "/"))
+            if not fn.endswith(".md"):
+                continue
+            rel = os.path.relpath(os.path.join(dirpath, fn), kb_root)
+            rel = rel.replace(os.sep, "/")
+            if is_navigation_doc(rel):
+                out.append(rel)
     out.sort()
     return out
 

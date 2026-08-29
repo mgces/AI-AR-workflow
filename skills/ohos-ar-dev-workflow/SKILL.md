@@ -121,7 +121,7 @@ python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-workflow/scripts/refresh_todo.py" --pipel
 
 | 阶段 | 做事(调用技能) | 门控脚本 | 结束证据 |
 |---|---|---|---|
-| P1 设计 | **(设计前)** `kb_search.py` 检索知识库生成 `design_refs.md`(advisory,失败不阻断)→ 写 AR_design.md(7 章节含 DFX设计 + ```ar-contract``` 契约块)→ **人工 consent**(P2 门内校验) | `gate_design.py`(`emit 1`) | 签名 AR_design(7 章节 + 契约)+ **P1 设计 consent**(绑签名条目) |
+| P1 设计 | **(设计前)** `kb_search.py --source-root "$OHOS_ROOT"` 获取稳定导航 → 当前源码验证 → 写 `design_refs.md`(advisory)与 AR_design.md(7 章节含 DFX设计 + ```ar-contract``` 契约块)→ **人工 consent** | `gate_design.py`(`emit 1`) | 签名 AR_design(7 章节 + 契约)+ **P1 设计 consent**(绑签名条目) |
 | P2 开发 | **先加载** `code-ruleset-style-check` 写码前契约 + `cpp-coding-style`，再用 sa-codegen / napi-module / security-code-review(安全左移,advisory) / tdd-enforcer / code-skeletons 写码 | `gate_develop.py`(`emit 2`,强制依赖签名 AR_design + P1 consent；共享 guard 是唯一 PASS 来源) | git/untracked diff 非空 + C++ 强门控报告;**闭合时锁定功能指纹** |
 | P3 测试开发 | **先加载**同一写码前契约 + `cpp-coding-style`，再用 test-ut-generation / tdd-enforcer / code-ruleset-style-check(**只增独立测试**,编译前写完测试代码) | `gate_test_develop.py`(`emit 3`,对新增测试源强制 `--rules-only` 规则门控) | 契约每个 `test_cases[].gtest` 的 suite 出现在新测试文件中(**编写**覆盖)+ 测试源签名快照 + 测试代码规则检测报告 |
 | P4 编译 | build-execution-diagnosis / build-flash / code-ruleset-style-check(编译后 clang-tidy) | `gate_build.py`(`emit 4`) | build.log 成功横幅 + 契约 `build_artifacts` 全部编译出 + clang-tidy 子步(有 compdb 硬控/缺失降级) |
@@ -169,11 +169,11 @@ python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-workflow/scripts/archive_product.py" \
 `reports/*.md` 脱敏后一并归档。原始可验签证据留在本地 run-state 目录(已 gitignore)。`.gitignore`
 已封禁 `products/**/evidence/`、`pipeline.json`、`*_manifest.jsonl`、`*.log` 等原始产物。
 
-**沉淀 feature 专题回填知识库(按需,非每次)**:回填**不是**流水线常规完成步骤——只在你确实
-想把某次 run 沉淀成知识库 feature 专题时,**手动**跑归档器加 `--sink-feature <subsystem>/<component>/<feature>`
-(把事实骨架脱敏写到 `openharmony-knowledge-base/subsystems/.../features/<feature>/README.md`,
-目标已存在则写 `README.generated.md` 不覆盖)。详见 `../ohos-ar-dev-phases/phase8-upload-review.md`。
-知识库更新后,P1 的 `kb_search.py` 会在下次检索时自动增量刷新索引。
+**新增 feature 导航节点(按需,非每次)**:只在需要补充稳定所有权导航时,手动跑归档器加
+`--sink-feature <subsystem>/<component>/<feature>`。它只写名称、层级和当前源码定位命令到
+`openharmony-knowledge-base/subsystems/.../features/<feature>/README.md`(已存在则写
+`README.generated.md` 不覆盖),不会复制本次 run 的文件、target、测试、运行或实现事实。
+详见 `../ohos-ar-dev-phases/phase8-upload-review.md`。
 
 参考:`references/gate-contract.md`(门控契约)、`references/evidence-protocol.md`(防伪协议)、
 `references/pipeline-schema.md`(状态结构)。

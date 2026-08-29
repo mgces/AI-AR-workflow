@@ -34,7 +34,7 @@ OHOS(rk3568,C/C++ 系统组件)的完整研发生命周期,直到代码上库:
    └──────────────────────────────────────────────┼──────────────────────────────────────────────┘
                                                   ▼
    ┌──────────── P1 设计固化 gate_design.py ── AR_design.md 6 必含章节 + ar-contract 契约块,HMAC 签名 ┐
-   │      (设计前:kb_search.py 检索知识库 → design_refs.md 供参考,advisory 不进门控)              │
+   │      (设计前:稳定导航 → 当前源码仓验证 → design_refs.md,advisory 不进门控)                 │
    │      目标组件 / 功能需求 / 完整代码框架 / 完整测试框架 / 需测试功能点 / 真机用例构造              │
    │      PASS(emit 1)─▶ advance --phase 1;需人工 consent --phase 1(在 P2 开发门内校验)             │
    └──────────────────────────────────────────────┼──────────────────────────────────────────────┘
@@ -224,7 +224,7 @@ P0 会把探测到的序列号回填进 `pipeline.json` 与 `evidence/phase0/env
 | 阶段 | 做事(调用的技能) | 门控脚本 | 通过条件 | 落盘证据(`evidence/phaseN/`) |
 |---|---|---|---|---|
 | **P0** | ohos-ar-dev-init | `gate_env_init.py` | build/compile/git/testfwk/hdc 二进制/真机(自动探测并记录序列号)全部就绪;oh-gc + gitcode token 为 SOFT 告警 | `env.json` |
-| **P1 设计** | (设计前 kb_search 检索知识库,advisory)写 AR_design.md(6 章节 + ar-contract 契约块) | `gate_design.py`(emit 1) | AR_design.md 6 必含章节齐全 + ar-contract 三非空数组并签名 | `AR_design.md`、`design_check.txt` |
+| **P1 设计** | kb_search 稳定导航 → 当前源码仓验证 → 写 AR_design.md(7 章节 + ar-contract 契约块) | `gate_design.py`(emit 1) | AR_design.md 7 必含章节齐全 + ar-contract 三非空数组并签名 | `AR_design.md`、`design_check.txt` |
 | **P2 开发** | ohos-dev-sa-codegen / -napi-module / code-ruleset-style-check / ohos-dev-cpp-coding-style(OHOS C++ 约定,可选) / ohos-dev-security-code-review(安全左移,advisory) / tdd-enforcer / ohos-code-skeletons | `gate_develop.py`(emit 2) | 已有签名 AR_design **且** 已有绑定的 P1 设计 consent **且** 相对 `base_commit` 有 tracked/untracked 改动 **且** C/C++ 格式 guard + 强规则检查通过;**闭合时锁功能指纹** | `diff.patch`、`changed_files.txt`、`style_report.txt`、`strict_cpp_report.txt` |
 | **P3 测试开发** | ohos-test-ut-generation / tdd-enforcer(**只增独立测试**) | `gate_test_develop.py`(emit 3) | phase2 冻结快照存在 **且** 无新增非测试路径 **且** 契约每个 `test_cases[].gtest` 的 suite 被某个**新测试文件**引用(编写覆盖) | `new_test_files.txt`、`authorship_coverage.txt`、`authored/*`(签名快照) |
 | **P4 编译** | ohos-dev-build-execution-diagnosis / ohos-build-flash / code-ruleset-style-check(编译后 clang-tidy) | `gate_build.py`(emit 4) | build.sh exit 0 **且** 输出含 `=====build…successful=====` 且无 error 横幅 **且** 契约 `build_artifacts` 全部编译出 **且** clang-tidy 子步(有 compdb 则 findings 为空硬控;compdb/工具缺失则降级放行并标注) | `build_tail.log`、`build_banner.txt`、`artifact_check.txt`、`clang_tidy_findings.json`、`clang_tidy_note.txt`(失败再加 `error_distill.txt`) |

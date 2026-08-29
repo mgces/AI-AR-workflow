@@ -1,35 +1,17 @@
-# <Subsystem Name>
+# <subsystem> 导航
 
-## 边界
+> `stable-navigation`，不包含当前代码事实。
 
-- 负责什么。
-- 不负责什么。
-- 在产品中的部件数量。
+## 导航身份
 
-## 组件
+- 类型：`subsystem`
+- 节点：`<subsystem>`
 
-| 组件 | 职责 | bundle.json |
-| --- | --- | --- |
+## 当前源码定位
 
-## 运行实体
+```bash
+repo list | rg -i '<subsystem>'
+rg -n '<subsystem>' "$OHOS_ROOT" -g 'bundle.json' -g 'BUILD.gn'
+```
 
-| 进程/SA | 启动方式 | 组件 | 职责 |
-| --- | --- | --- | --- |
-
-## 能力域
-
-- `capabilities/<domain>/`
-- `processes/<process>/`
-- `components/<component>/`
-
-## 依赖与接口
-
-- 上游调用者。
-- 下游依赖。
-- Inner API、IPC、HDI、NAPI/ANI。
-
-## 产品与验证
-
-- 产品 feature。
-- 构建入口。
-- 测试入口。
+记录真实仓路径与 HEAD 后，再读取当前组件、接口、配置和测试。

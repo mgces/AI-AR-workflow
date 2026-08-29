@@ -32,7 +32,7 @@ AR → [P0 环境] → [P1 设计] →consent→ [P2 开发] → [P3 测试开�
 - **停下**:否,自动推进
 
 ### P1 设计固化
-- **输入**:已澄清的 AR 原文、kb_search 检索的 design_refs.md(advisory)
+- **输入**:已澄清的 AR 原文、稳定导航 + 当前源码验证形成的 design_refs.md(advisory)
 - **产物**:`AR_design.md`(6 章节 + ar-contract 契约块)、`design_check.txt`
 - **停下**:**是**,等人工 consent 设计契约
 

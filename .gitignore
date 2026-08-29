@@ -17,9 +17,17 @@ products/**/*_manifest.jsonl
 products/**/*.log
 skills/code-ruleset-style-check/s/
 
-# knowledge-base BM25 lexical search index — derived output, rebuild locally
-# with openharmony-knowledge-base/tools/search/build_index.py (never commit).
-openharmony-knowledge-base/generated/search-index/
+# knowledge base persists stable navigation only. Dynamic source snapshots and
+# the local BM25 index are rebuilt/queried from the active OHOS checkout.
+openharmony-knowledge-base/generated/
+openharmony-knowledge-base/workspace/
+openharmony-knowledge-base/source-domains/
+openharmony-knowledge-base/products/
+openharmony-knowledge-base/subsystems/**/foundation-*.md
+openharmony-knowledge-base/subsystems/**/functional-overview.md
+openharmony-knowledge-base/subsystems/**/developtools-*.md
+openharmony-knowledge-base/subsystems/**/hiviewdfx-index.md
+openharmony-knowledge-base/subsystems/**/README.generated.md
 
 # docs site (VitePress) — commit source only; deps + build output are derived.
 node_modules/

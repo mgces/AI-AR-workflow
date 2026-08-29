@@ -1,201 +1,74 @@
 ---
 name: ohos-code-knowledge-base
-description: Generate, refine, verify, and incrementally update a full OpenHarmony code knowledge base for any provided workspace path, source domain, subsystem, component, or repository. Use when users ask to analyze a code directory globally, build a code knowledge base, generate repository/component/GN target indexes, document subsystem and component functions, model real processes/init/System Abilities and cross-component hosts, refresh documentation after code changes, compare knowledge-base changes, or continue drilling into capabilities and features. Triggers include “生成代码知识库”, “全局索引”, “功能说明”, “进程维度”, “分析这个目录/子系统”, “更新知识库”, and equivalent requests.
+description: Navigate the stable OpenHarmony subsystem/component/process hierarchy, then verify every code fact in the user's current OpenHarmony source checkout. Use for locating the responsible repository or narrowing where to inspect; do not use the knowledge base as evidence for current files, APIs, GN targets, dependencies, product configuration, tests, or runtime behavior.
 ---
 
-# OpenHarmony Code Knowledge Base
+# OpenHarmony Source Navigation
 
-Build a two-view knowledge base:
+Use this skill as a map to the current source, never as a mirror of the source.
 
-```text
-physical source domain -> repositories/components/targets
-ownership tree -> subsystem -> component or process -> capability -> feature
-```
+## Non-Negotiable Boundary
 
-Do not treat a physical directory such as `foundation/` or `base/` as a subsystem.
+- The knowledge base may suggest a subsystem, component, process, capability, feature, or search term.
+- Current code facts come only from the active source checkout and its build/config/test/runtime evidence.
+- Never copy a path, API, target, dependency, product selection, process property, or behavior from a knowledge page into a design or patch without verifying it in the current source.
+- Record the verified repository path and `git rev-parse HEAD` when a code fact affects implementation.
 
-## Select The Workflow
+Read [references/architecture.md](references/architecture.md) when changing navigation hierarchy.
+Read [references/semantic-analysis.md](references/semantic-analysis.md) before making implementation claims.
+Read [references/incremental-update.md](references/incremental-update.md) when updating navigation nodes.
 
-1. Resolve the workspace root, source path, domain name, product context, and knowledge-base path.
-2. Check for an existing domain-specific generator under `specs/knowledge-base/tools/`.
-3. Reuse a proven domain generator when it covers the requested path and output architecture.
-4. Otherwise run the bundled generic pipeline.
-5. For an update, reuse the previous domain name and source path from `generated/<domain>/summary.json` unless the user overrides them.
+## Navigate Then Verify
 
-Read [references/architecture.md](references/architecture.md) before changing hierarchy or mapping rules.
-Read [references/semantic-analysis.md](references/semantic-analysis.md) before writing or refining functional documentation.
-Read [references/incremental-update.md](references/incremental-update.md) for update and removal handling.
+1. Resolve the current source root from `--source-root`, `$OHOS_ROOT`, or the active pipeline state. If it is unavailable, return navigation candidates only and state that code facts remain unverified.
+2. Query the stable navigation layer:
 
-## Gather Inputs
+   ```bash
+   python3 openharmony-knowledge-base/tools/search/kb_search.py \
+     --source-root "$OHOS_ROOT" --query "<requirement>" --k 8
+   ```
 
-Determine without unnecessary questions when the workspace provides the answer:
+3. Use the returned current repository candidates as starting points, not conclusions.
+4. In the current checkout, inspect `repo list`, `bundle.json`, `BUILD.gn`/`.gni`, public and internal interfaces, production configuration, tests, and representative callers.
+5. Prefer current runtime/build/test evidence over documentation. If current source contradicts navigation text, update or remove the navigation node; never bend the source conclusion to match the knowledge base.
 
-- `workspace-root`: multi-repository checkout root.
-- `source-path`: path to scan, inside the workspace.
-- `domain-name`: stable physical source-domain identifier.
-- `knowledge-base`: default `specs/knowledge-base`.
-- `product-parts`: optional product selection file such as `out/preloader/<product>/parts.json`.
-- excludes: default `.git`, `.repo`, `out`, `prebuilts`, and `node_modules`.
-- focus: optional runtime, security, performance, API, build, or reliability deep dive.
+## Two Layers
 
-Never clean, reset, checkout, or rewrite source repositories. Record dirty repositories as input facts.
+`stable-navigation` is repository-owned and searchable:
 
-## Run The Generic Pipeline
+- system architecture concepts;
+- ownership hierarchy and durable names;
+- subsystem -> component/process -> capability -> feature navigation;
+- instructions for finding and validating the current source.
 
-Set `SKILL_DIR` to this skill directory, then run:
+`dynamic-source` is not copied into this repository:
 
-```bash
-python3 "$SKILL_DIR/scripts/build_knowledge_base.py" \
-  --workspace-root <workspace-root> \
-  --source-path <source-path> \
-  --domain-name <domain-name> \
-  --knowledge-base <knowledge-base> \
-  --product-parts <optional-parts.json>
-```
+- checkout/branch/dirty state;
+- file and API inventories;
+- GN targets, dependencies, build artifacts, test parts;
+- product selection and feature switches;
+- init/SA/process/runtime facts;
+- generated source scans and pipeline evidence.
 
-Omit `--product-parts` when no current product evidence exists. Pass additional excluded directory names with repeated `--exclude`.
+Resolve `dynamic-source` on demand in the corresponding current code repository.
 
-The pipeline executes:
+## Maintain Navigation
 
-```text
-scan repositories/components/BUILD.gn/runtime configs
-  -> write TSV/JSON indexes and changes.json
-    -> generate source-domain/subsystem/component/process pages
-      -> verify equations, document coverage, links, and whitespace
-```
+- Add only navigation nodes under `subsystems/**/README.md`.
+- Do not commit generated TSV/JSON inventories, workspace snapshots, source-domain mirrors, product snapshots, or generated implementation analyses.
+- A feature sink may record ownership terms and current-source lookup instructions, but not build/test/runtime results or copied implementation facts.
+- Normalize and validate navigation after hierarchy changes:
 
-Use `--skip-docs` only when the user explicitly requests indexes without documentation.
-
-## Expected Machine Outputs
-
-Require these under `generated/<domain>/`:
-
-- `repositories.tsv`
-- `components.tsv`
-- `modules.tsv`
-- `unmapped-modules.tsv`
-- `processes.tsv`
-- `runtime-entities.tsv`
-- `subsystems.tsv`
-- `summary.json`
-- `changes.json`
-- `generated-documents.json`
-- `verification.json`
-- `verification.md`
-
-Treat `changes.json` as the update worklist, not as a substitute for reading source diffs.
-
-## Expected Document Outputs
-
-Generate domain-specific files to avoid overwriting other source-domain views:
-
-```text
-source-domains/<domain>/README.md
-subsystems/<subsystem>/<domain>-functional-overview.md
-subsystems/<subsystem>/<domain>-processes.md
-subsystems/<subsystem>/<domain>-index.md
-subsystems/<subsystem>/components/<component>/<domain>-functional-overview.md
-subsystems/<subsystem>/components/<component>/<domain>-index.md
-subsystems/<host-subsystem>/processes/<process>/<domain>-runtime.md
-```
-
-Create entry `README.md` files only when absent. Never overwrite an existing manual README.
-
-## Model Processes Correctly
-
-Use production init/service configuration and SA profiles as strong evidence.
-
-- Assign the init configuration owner as `init-owner` and primary host subsystem.
-- Assign a matching production executable target as `executable-owner`.
-- Assign the component containing an SA profile as `sa-provider`.
-- Preserve cross-component and cross-subsystem hosting.
-- Allow one process to host many components and one component to contribute to many processes.
-- Exclude tests, examples, demos, benchmarks, and CLI tools from the production process tree.
-- Mark SA-only host inference as medium confidence and require runtime confirmation.
-
-Use [assets/templates/process.md](assets/templates/process.md) for manual process refinement.
-
-## Refine Semantic Quality
-
-The generic generator creates a factual baseline. After it passes verification:
-
-1. Inspect weak component descriptions and high-risk/high-dependency components.
-2. Read source README, public/inner interfaces, service entry points, init/SA profiles, and representative tests.
-3. Replace shallow summaries with problem, caller, capability, interface, runtime, and risk explanations.
-4. Add actual call chains for important services and processes.
-5. Put durable manual analysis in capability/feature nodes, not generated files.
-
-Do not claim a detailed feature explanation by only humanizing a feature flag, directory, target, or library name.
-
-Use the bundled templates when creating manual nodes:
-
-- [assets/templates/capability.md](assets/templates/capability.md)
-- [assets/templates/feature.md](assets/templates/feature.md)
-- [assets/templates/process.md](assets/templates/process.md)
-
-## Update Existing Knowledge
-
-For a refresh:
-
-1. Run the same pipeline with the same domain name.
-2. Read `changes.json` for added, removed, and changed repositories, components, modules, processes, and runtime evidence.
-3. Inspect actual Git diffs for changed source repositories.
-4. Regenerate domain-specific generated pages.
-5. Update manual capability/feature pages affected by API, process, configuration, or behavior changes.
-6. Do not delete stale manual directories automatically. Report candidates and remove only with clear evidence or user approval.
-7. Re-run verification and update visible workspace counts only after generation completes.
-
-## Validation Gates
-
-Do not report completion unless:
-
-- repository/component/target/process summary counts equal TSV row counts;
-- mapped targets plus unmapped targets equal all targets;
-- component target totals equal mapped targets;
-- subsystem target totals equal all targets;
-- init and SA summary counts equal runtime evidence rows;
-- every component and strong-evidence process has its domain page;
-- local Markdown links resolve;
-- generated Markdown has no trailing whitespace;
-- generator scripts pass syntax checks;
-- source repositories were not modified by generation.
-
-If the generic scanner cannot parse a repository's metadata or build system, extend the scanner or add a domain-specific generator. Do not fabricate coverage.
-
-## Final Report
-
-Report:
-
-- source path and domain;
-- repository, component, subsystem, build file, target, process, init, SA, and document counts;
-- product-selected component count when available;
-- added/removed/changed counts from `changes.json`;
-- source-domain entry, machine summary, and verification links;
-- dynamic target, invalid config, product-context, and runtime-confirmation limitations;
-- source repository status confirmation.
-
-## Lexical Search Index (BM25) — build & incremental refresh
-
-The knowledge base ships a **dependency-free BM25 lexical search** under `tools/search/`, used by
-the P1 design phase (`ohos-ar-dev-phases/phase1-design.md`) to pull relevant subsystem/feature
-docs as advisory design input. It is pure-Python (standard library only), fully offline, and locks
-to no model. The index is derived output under `generated/search-index/` and is **gitignored** —
-rebuild locally after cloning.
-
-- **Build / full rebuild**:
   ```bash
-  python3 openharmony-knowledge-base/tools/search/build_index.py          # incremental (full if absent)
-  python3 openharmony-knowledge-base/tools/search/build_index.py --rebuild # discard cache, full rebuild
+  python3 openharmony-knowledge-base/tools/rebuild_navigation.py
+  python3 openharmony-knowledge-base/tools/rebuild_navigation.py --check
+  python3 openharmony-knowledge-base/tools/search/build_index.py --rebuild
   ```
-- **Incremental refresh (核心)**: after adding or editing ANY `*.md` (e.g. a new
-  `subsystems/.../features/<feature>/README.md`), just rerun `build_index.py` — it compares each
-  file's sha against the manifest and only re-chunks changed/new files, reusing the rest. This is
-  how the search corpus keeps growing without a full re-index.
-- **Query**:
-  ```bash
-  python3 openharmony-knowledge-base/tools/search/kb_search.py \
-      --query-file <text> --k 8 --out <out.md>
-  ```
-  `kb_search.py` also auto-detects a stale/missing index and triggers an incremental rebuild before
-  searching, so callers never see an out-of-date or absent index. All failures degrade to a
-  placeholder + exit 0 (advisory, never blocks P1).
+
+## Report
+
+Separate the result explicitly:
+
+- `Navigation candidates`: knowledge-base paths and ownership terms.
+- `Verified current-source facts`: source repository, HEAD, files/config read, and the conclusion.
+- `Unverified`: anything that could not be checked in the active checkout.

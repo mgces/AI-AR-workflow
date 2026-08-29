@@ -1,6 +1,25 @@
-# media_service 进程
+# media service 导航
 
-- [Foundation 运行时说明](foundation-runtime.md)
-- [返回 multimedia 进程清单](../../foundation-processes.md)
+> 本页属于 `stable-navigation`：只记录层级、名称和源码定位入口。
+> 它不声明当前文件、接口、GN target、依赖、产品选入或运行行为；这些事实必须
+> 在当前 `$OHOS_ROOT` 对应代码仓中验证。
 
-后续能力继续放入 `capabilities/<domain>/features/<feature>/`。
+## 导航身份
+
+- 类型：`process`
+- 节点：`media_service`
+- 层级：`multimedia -> media_service`
+- 上级：[返回上级](../README.md)
+
+## 当前源码定位（必须执行）
+
+知识库只给出候选关键词。以当前源码仓输出为准：
+
+```bash
+test -d "$OHOS_ROOT/.repo"
+repo list | rg -i 'multimedia|media_service'
+rg -n media_service "$OHOS_ROOT" -g 'bundle.json' -g 'BUILD.gn' -g '*.gni'
+```
+
+定位候选仓后，必须读取其当前 `bundle.json`、`BUILD.gn`、接口、测试和运行配置，
+并记录仓路径与 `git rev-parse HEAD`；不得把本页内容直接写入代码契约。

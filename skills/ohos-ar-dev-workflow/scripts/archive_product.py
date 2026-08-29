@@ -50,6 +50,8 @@ _REDACTIONS = (
     (re.compile(r"\bHDC_WIN_PORT=\d+"), "HDC_WIN_PORT=<REDACTED>"),
 )
 
+_NAV_SEGMENT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
+
 
 def redact(text):
     """Replace every known secret shape with a stable placeholder. Idempotent:
@@ -106,133 +108,42 @@ def build_manifest_summary(state, entries):
 
 
 # ----------------------------------------------------------------------------
-# feature spec sink — turn a finished pipeline run into a knowledge-base feature
-# doc (fact skeleton). We produce ONLY facts the evidence reliably yields (target
-# component, changed files, build/test targets, per-phase verdicts, device
-# markers); deep analysis (data model / state machine) is left as an explicit
-# TODO placeholder — never fabricated. All text passes through redact().
+# feature navigation sink — preserve only stable ownership terms and current-
+# source lookup instructions. Pipeline evidence and implementation facts stay in
+# the run/product artifacts; they are never copied into the navigation library.
 # ----------------------------------------------------------------------------
-def _split_md_sections(text):
-    """(heading_line, body_text) per markdown heading; body spans until the next
-    heading of equal-or-higher level (so a parent includes its subsections)."""
-    lines = text.splitlines()
-    heads = [(i, len(m.group(1)), ln) for i, ln in enumerate(lines)
-             for m in [re.match(r"^\s*(#{1,6})\s+\S", ln)] if m]
-    out = []
-    for hi, (idx, level, line) in enumerate(heads):
-        end = len(lines)
-        for j in range(hi + 1, len(heads)):
-            if heads[j][1] <= level:
-                end = heads[j][0]
-                break
-        out.append((line, "\n".join(lines[idx + 1:end])))
-    return out
-
-
-def _section_body(text, keywords):
-    for head, body in _split_md_sections(text or ""):
-        if any(k in head for k in keywords):
-            return body.strip()
-    return ""
-
-
-def read_ev(pdir, rel, limit=4000):
-    p = os.path.join(pdir, rel)
-    if not os.path.isfile(p):
-        return ""
-    with open(p, "r", encoding="utf-8", errors="replace") as f:
-        return f.read()[:limit]
-
-
-def phase_verdict(entries, phase):
-    hits = [e for e in entries if e.get("phase") == phase
-            and e.get("verdict") in ("PASS", "FAIL")]
-    return hits[-1] if hits else None
-
-
-def build_feature_spec(pdir, state, entries, subsys, comp, feat):
-    """Return a redacted feature-spec markdown (fact skeleton + TODO placeholders)."""
-    design = read_ev(pdir, "evidence/phase1/AR_design.md", 100000) \
-        or read_ev(pdir, "AR_design.md", 100000)
-    changed = read_ev(pdir, "evidence/phase1/changed_files.txt", 8000)
-    run_meta = read_ev(pdir, "evidence/phase6/run_meta.txt", 2000)
-
-    def sec(kw, fallback="> TODO(人工补充):证据不足,读源码补充。"):
-        b = _section_body(design, kw)
-        return redact(b) if b else fallback
-
-    def verdict_line(ph, name):
-        e = phase_verdict(entries, ph)
-        return "- %s:%s — %s" % (name, e.get("verdict") if e else "N/A",
-                                 redact(e.get("reason", "")) if e else "—")
-
+def build_feature_navigation(subsys, comp, feat):
+    """Return a navigation-only feature node with no copied code facts."""
+    for label, value in (("subsystem", subsys), ("component", comp),
+                         ("feature", feat)):
+        if not _NAV_SEGMENT.fullmatch(value):
+            raise ValueError("unsafe %s navigation segment: %r" % (label, value))
+    subsys, comp, feat = map(redact, (subsys, comp, feat))
+    repo_query = "%s|%s" % (subsys.replace("-", "[-_]"),
+                            comp.replace("-", "[-_]"))
+    feature_query = feat.replace("-", "[-_]")
     L = []
-    L.append("# %s" % redact(feat))
+    L.append("# %s 导航" % feat.replace("_", " ").replace("-", " "))
     L.append("")
-    L.append("> **本文件由流水线 `archive_product.py --sink-feature` 自动沉淀的事实骨架。**")
-    L.append("> 深度分析(数据模型/状态机等)标 `TODO(人工补充)`,需读源码补全后再并入知识库。")
+    L.append("> 本页属于 `stable-navigation`，由 `archive_product.py --sink-feature` 创建。")
+    L.append("> 它只记录归属关键词，不复制本次流水线的文件、target、测试、运行或实现事实。")
     L.append("")
-    L.append("## 归属")
+    L.append("## 导航身份")
     L.append("")
-    L.append("```text")
-    L.append("subsystem -> component -> feature")
-    L.append("%s -> %s -> %s" % (redact(subsys), redact(comp), redact(feat)))
+    L.append("- 类型：`feature`")
+    L.append("- 节点：`%s`" % feat)
+    L.append("- 层级：`%s -> %s -> %s`" % (subsys, comp, feat))
+    L.append("")
+    L.append("## 当前源码定位（必须执行）")
+    L.append("")
+    L.append("```bash")
+    L.append("repo list | rg -i '%s'" % repo_query)
+    L.append("git -C \"$OHOS_ROOT/<candidate-repo>\" rev-parse HEAD")
+    L.append("rg -n '%s' \"$OHOS_ROOT/<candidate-repo>\"" % feature_query)
     L.append("```")
     L.append("")
-    L.append("## 目标与当前实现")
-    L.append("")
-    L.append(sec(["目标组件", "详细功能需求", "功能需求"]))
-    L.append("")
-    L.append("## 文件职责")
-    L.append("")
-    file_list = _section_body(design, ["文件清单", "文件列表", "file list"])
-    if file_list:
-        L.append(redact(file_list))
-    elif changed:
-        L.append("变更文件(来自 P1 changed_files.txt):")
-        L.append("")
-        L.append("```")
-        L.append(redact(changed.strip()))
-        L.append("```")
-    else:
-        L.append("> TODO(人工补充):文件清单缺失。")
-    L.append("")
-    L.append("## 构建与测试")
-    L.append("")
-    L.append("- build_target: `%s`" % redact(str(state.get("build_target", ""))))
-    L.append("- testpart: `%s`" % redact(str((state.get("test") or {}).get("part", ""))))
-    L.append("")
-    L.append("测试结果(来自签名证据):")
-    L.append(verdict_line(5, "P5 单元测试"))
-    L.append(verdict_line(6, "P6 端到端功能测试"))
-    L.append(verdict_line(7, "P7 质量验证"))
-    L.append("")
-    L.append("## 装载 / 运行链")
-    L.append("")
-    L.append(sec(["代码框架", "code framework", "装载", "运行链"]))
-    if run_meta:
-        L.append("")
-        L.append("真机运行标记(P6 run_meta,已脱敏):")
-        L.append("")
-        L.append("```")
-        L.append(redact(run_meta.strip()))
-        L.append("```")
-    L.append("")
-    L.append("## 数据模型")
-    L.append("")
-    L.append("> TODO(人工补充):证据不含数据结构定义,读源码补充关键类型。")
-    L.append("")
-    L.append("## 状态机 / 核心流程")
-    L.append("")
-    L.append("> TODO(人工补充):读源码补充状态转移与主流程。")
-    L.append("")
-    L.append("## 需测试的功能点")
-    L.append("")
-    L.append(sec(["需测试", "功能点", "test point"]))
-    L.append("")
-    L.append("## 风险 / 安全")
-    L.append("")
-    L.append(sec(["风险", "安全"], "> TODO(人工补充):结合 P5 review 结果补风险清单。"))
+    L.append("在当前仓读取 `bundle.json`、`BUILD.gn`、接口、测试和运行配置后，")
+    L.append("才能形成代码结论；本导航节点不得作为代码证据。")
     L.append("")
     return "\n".join(L).rstrip() + "\n"
 
@@ -269,10 +180,9 @@ def main():
                     help="also copy <pipeline-dir>/reports/*.md into the product, "
                          "redacted (human-readable audit reports)")
     ap.add_argument("--sink-feature", metavar="SUBSYS/COMPONENT/FEATURE",
-                    help="also sink a knowledge-base feature spec (fact skeleton) for "
-                         "this run into <kb-root>/subsystems/.../features/<feature>/. "
-                         "Give the path explicitly (orchestrator knows git_dir/target); "
-                         "not guessed from AR_design.")
+                    help="also create a stable knowledge-base navigation node in "
+                         "<kb-root>/subsystems/.../features/<feature>/. It never "
+                         "copies code facts; give the ownership path explicitly.")
     ap.add_argument("--kb-root", default="openharmony-knowledge-base",
                     help="knowledge-base root for --sink-feature (default: "
                          "openharmony-knowledge-base)")
@@ -328,28 +238,29 @@ def main():
                 n += 1
         print("wrote %d redacted report file(s) to %s/reports" % (n, outdir))
 
-    # 5. optional: sink a knowledge-base feature spec (fact skeleton)
+    # 5. optional: sink a stable navigation node (never copy code facts)
     if args.sink_feature:
-        parts = [p for p in args.sink_feature.split("/") if p]
-        if len(parts) != 3:
+        parts = args.sink_feature.split("/")
+        if len(parts) != 3 or any(not p for p in parts):
             sys.exit("ERROR: --sink-feature expects SUBSYS/COMPONENT/FEATURE, got %r"
                      % args.sink_feature)
         subsys, comp, feat = parts
-        entries = read_manifest(pdir)
-        spec = build_feature_spec(pdir, state, entries, subsys, comp, feat)
+        try:
+            spec = build_feature_navigation(subsys, comp, feat)
+        except ValueError as exc:
+            sys.exit("ERROR: %s" % exc)
         feat_dir = os.path.join(os.path.abspath(args.kb_root),
                                 "subsystems", subsys, "features", feat)
         os.makedirs(feat_dir, exist_ok=True)
         target = os.path.join(feat_dir, "README.md")
-        # never clobber a human-authored/deepened spec
+        # Never clobber an existing navigation node and do not create a stale
+        # generated sidecar that the stable-navigation index intentionally ignores.
         if os.path.exists(target):
-            target = os.path.join(feat_dir, "README.generated.md")
-            note = " (README.md exists — wrote README.generated.md for manual merge)"
+            print("feature navigation exists; skipped -> %s" % target)
         else:
-            note = ""
-        with open(target, "w", encoding="utf-8") as f:
-            f.write(spec)
-        print("sank feature spec -> %s%s" % (target, note))
+            with open(target, "w", encoding="utf-8") as f:
+                f.write(spec)
+            print("sank feature navigation -> %s" % target)
 
     print("\nDONE. Product is redacted; commit only %s." % outdir)
     print("Raw signed evidence stays in the local run-state dir (gitignored).")

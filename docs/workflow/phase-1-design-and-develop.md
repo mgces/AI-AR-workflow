@@ -8,7 +8,9 @@ P1 在物理层面是两个独立签名阶段(phase1 设计 + phase2 开发),逻
 
 ### P1a 设计固化(物理 phase 1)
 
-设计前编排器先用 `kb_search.py` 检索知识库生成 `design_refs.md`(advisory,失败不阻断),然后写 `AR_design.md`——必须含 **6 必含章节** + 内嵌 ```ar-contract``` JSON 契约块。
+设计前编排器先用 `kb_search.py --source-root "$OHOS_ROOT"` 获取稳定导航和当前 repo 候选，
+再到候选仓验证当前源码事实并生成 `design_refs.md`(advisory,失败不阻断)。随后写
+`AR_design.md`——必须含 **7 必含章节** + 内嵌 ```ar-contract``` JSON 契约块。
 
 跑 `gate_design.py`(emit 1)校验:
 - 6 必含章节齐全

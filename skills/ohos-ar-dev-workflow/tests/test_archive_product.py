@@ -76,6 +76,10 @@ class TestIncludeReports(unittest.TestCase):
 
 
 class TestSinkFeature(unittest.TestCase):
+    def test_rejects_unsafe_navigation_segment(self):
+        with self.assertRaises(ValueError):
+            ap.build_feature_navigation("hiviewdfx", "hiview'", "demo")
+
     def _run(self, with_design=True, pre_existing=False):
         import json
         import tempfile
@@ -112,36 +116,36 @@ class TestSinkFeature(unittest.TestCase):
         ap.main()
         return feat_dir
 
-    def test_fact_skeleton_and_todo(self):
+    def test_navigation_node_contains_no_dynamic_facts(self):
         feat_dir = self._run()
         with open(os.path.join(feat_dir, "README.md")) as f:
             spec = f.read()
-        for sec in ("## 目标与当前实现", "## 文件职责", "## 构建与测试", "## 装载 / 运行链"):
-            self.assertIn(sec, spec)
-        self.assertIn("P5 单元测试:PASS", spec)
-        self.assertIn("TODO(人工补充)", spec)  # deep analysis placeholder
-        self.assertIn("build_target: `hiview_package`", spec)
+        self.assertIn("stable-navigation", spec)
+        self.assertIn("hiviewdfx -> hiview -> demo", spec)
+        self.assertIn("repo list", spec)
+        self.assertIn("git -C", spec)
+        for dynamic in ("P5 单元测试", "build_target", "demo.cpp", "tests=5"):
+            self.assertNotIn(dynamic, spec)
 
-    def test_redacts_serial(self):
+    def test_does_not_copy_runtime_evidence(self):
         feat_dir = self._run()
         with open(os.path.join(feat_dir, "README.md")) as f:
             spec = f.read()
         self.assertNotIn("deadbeefcafef00d0123456789abcdef", spec)
-        self.assertIn("<REDACTED-SERIAL>", spec)
+        self.assertNotIn("<REDACTED-SERIAL>", spec)
 
     def test_no_clobber_existing(self):
         feat_dir = self._run(pre_existing=True)
         with open(os.path.join(feat_dir, "README.md")) as f:
             self.assertIn("HUMAN AUTHORED", f.read())  # untouched
-        self.assertTrue(os.path.isfile(os.path.join(feat_dir, "README.generated.md")))
+        self.assertFalse(os.path.exists(os.path.join(feat_dir, "README.generated.md")))
 
-    def test_legacy_no_design_degrades(self):
+    def test_legacy_no_design_produces_same_navigation(self):
         feat_dir = self._run(with_design=False)
         with open(os.path.join(feat_dir, "README.md")) as f:
             spec = f.read()
-        # still produces evidence-based sections + falls back to changed_files
-        self.assertIn("demo.cpp", spec)
-        self.assertIn("P5 单元测试:PASS", spec)
+        self.assertIn("stable-navigation", spec)
+        self.assertNotIn("demo.cpp", spec)
 
 
 if __name__ == "__main__":

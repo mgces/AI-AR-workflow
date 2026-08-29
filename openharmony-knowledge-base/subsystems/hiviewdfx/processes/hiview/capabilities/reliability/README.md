@@ -1,34 +1,25 @@
-# Hiview Reliability 能力域
+# reliability 导航
 
-[返回 Hiview 进程](../../README.md)
+> 本页属于 `stable-navigation`：只记录层级、名称和源码定位入口。
+> 它不声明当前文件、接口、GN target、依赖、产品选入或运行行为；这些事实必须
+> 在当前 `$OHOS_ROOT` 对应代码仓中验证。
 
-## 边界
+## 导航身份
 
-本能力域承载 Hiview 进程内与故障检测、可靠性诊断、结论生成和故障处置相关的插件能力。
+- 类型：`capability`
+- 节点：`reliability`
+- 层级：`hiviewdfx -> hiview -> reliability`
+- 上级：[返回上级](../README.md)
 
-## 当前代码区域
+## 当前源码定位（必须执行）
 
-| 能力 | 代码入口 | 状态 |
-| --- | --- | --- |
-| Fault Logger 插件 | `plugins/faultlogger` | 已有能力 |
-| Event Logger | `plugins/eventlogger` | 已有能力 |
-| Freeze Detector | `plugins/freeze_detector` | 已有能力 |
-| Crash Validator | `plugins/crash_validator` | 已有能力 |
-| BBox Detector | `plugins/reliability/bbox_detectors` | 已有能力 |
-| Native Leak Detector | `plugins/reliability/leak_detectors` | 已有能力 |
-| Thread Leak Detector | `plugins/reliability/thread_leak_detector` | 当前功能分支新增 |
+知识库只给出候选关键词。以当前源码仓输出为准：
 
-## 功能节点
-
-- [Thread Leak Detector](features/thread-leak-detector/README.md)
-
-后续可以继续增加：
-
-```text
-features/native-memory-leak/
-features/bbox-detector/
-features/freeze-detector/
-features/crash-validator/
+```bash
+test -d "$OHOS_ROOT/.repo"
+repo list | rg -i 'hiviewdfx|hiview|reliability'
+rg -n reliability "$OHOS_ROOT" -g 'bundle.json' -g 'BUILD.gn' -g '*.gni'
 ```
 
-每个功能节点记录自身状态机、数据采集、产物、事件、控制动作、测试和风险。跨功能的公共限流、目录治理或故障策略应写在本能力域，不要复制到每个 feature。
+定位候选仓后，必须读取其当前 `bundle.json`、`BUILD.gn`、接口、测试和运行配置，
+并记录仓路径与 `git rev-parse HEAD`；不得把本页内容直接写入代码契约。

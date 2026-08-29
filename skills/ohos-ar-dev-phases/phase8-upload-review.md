@@ -105,15 +105,15 @@ python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-workflow/scripts/render_report.py" \
 用例概要 / 用例结果总结**(背景取 ar.md,设计/用例取 AR_design.md,修改取 full_diff.stat,
 结果取 P4/P5/P7 verdict);全部经脱敏。
 
-## 沉淀 feature 专题回填知识库(按需手动,非每次)
-回填**不是**流水线常规步骤,不必每次跑。仅当你想把本次 run 沉淀成知识库 feature 专题时,
-**手动**执行归档器并加 `--sink-feature <subsystem>/<component>/<feature>`:
+## 新增 feature 导航节点(按需手动,非每次)
+这不是流水线常规步骤。仅当需要补充稳定所有权导航时,手动执行归档器并加
+`--sink-feature <subsystem>/<component>/<feature>`:
 ```bash
 python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-workflow/scripts/archive_product.py" \
     --pipeline-dir "$PDIR" --product-dir products/<run> --include-reports \
     --sink-feature <subsystem>/<component>/<feature>
 ```
-它把本次 run 的事实骨架(目标组件/文件职责/构建测试目标/各阶段 verdict/真机标记)脱敏写到
+它只把 subsystem/component/feature 名称、层级和当前源码定位命令写到
 `openharmony-knowledge-base/subsystems/<subsystem>/features/<feature>/README.md`(已存在则写
-`README.generated.md` 不覆盖,人工核对后 merge);深度分析留 `TODO(人工补充)` 占位。沉淀后
-P1 检索(`kb_search.py`)会在下次自动增量刷新索引收纳该专题。
+`README.generated.md` 不覆盖)。不得复制本次 run 的文件、build target、测试结论、真机标记
+或实现分析;这些动态事实只保留在当前源码仓和流水线证据中。
