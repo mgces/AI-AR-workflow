@@ -1,3 +1,0 @@
-total 10240
--rw-rw-r-- 1 hiview system 196 2026-08-19 14:54 resmon_cpu_20260819145439.log
--rw-rw-r-- 1 hiview system 198 2026-08-19 14:54 resmon_cpu_20260819145437.log

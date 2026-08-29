@@ -1,4 +1,0 @@
-host_artifact=/home/qaq/openharmony/code/out/rk3568/hiviewdfx/hiview/libresmon.z.so
-host_sha256=0aa00d0b859ce1eec899e36cbe19437e2b6673211cd964f8d4296d5f99dfaf66
-device_artifact=/system/lib/libresmon.z.so
-device_sha256=0aa00d0b859ce1eec899e36cbe19437e2b6673211cd964f8d4296d5f99dfaf66

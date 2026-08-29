@@ -1,6 +1,0 @@
-
-----
- ›   Error: API error 409: 
- ›   {"error_code":409,"error_code_name":"UN_KNOW","error_message":"Another 
- ›   open merge request already exists for this source branch: 
- ›   !4485","trace_id":"3906c8b1e022593adf21e7e8b74be0f4"}

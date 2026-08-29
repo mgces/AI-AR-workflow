@@ -1,8 +1,0 @@
-{
-  "phase": 3,
-  "logical_phase_id": "test_develop",
-  "active": false,
-  "cleared_by": "prepare_test_bundle.py",
-  "bundle_revision": "7e6455fa8d29",
-  "control_protocol_version": 1
-}
