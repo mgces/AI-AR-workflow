@@ -34,6 +34,18 @@
 | F-014 | TC-020 | static | automated | catalog/source/doc consistency | yes |
 | F-014 | TC-021 | unit mutation | automated | focused mapper reverse validation | yes |
 | F-014 | TC-022 | build | automated | production and UT build | yes |
+| F-001 | TC-023 | unit/static | automated | existing descriptor snapshot and catalog append check | yes |
+| F-013 | TC-023 | unit/static | automated | existing descriptor/mapper compatibility check | yes |
+| F-013 | TC-028 | component/e2e | automated | missing metadata old-server compatibility | yes |
+| F-014 | TC-027 | e2e | automated | isolated alternate-port executable scenario | yes |
+| F-015 | TC-023 | unit/static | automated | append-only specification check | yes |
+| F-015 | TC-025 | unit | automated | endpoint relation parameter table | yes |
+| F-015 | TC-026 | component | automated | preflight stop/candidate lifecycle | yes |
+| F-015 | TC-027 | e2e | automated | server 8711/client 8710 executable scenario | yes |
+| F-016 | TC-023 | unit/static | automated | append-only specification check | yes |
+| F-016 | TC-024 | unit | automated | metadata parser/PID classifier | yes |
+| F-016 | TC-026 | component | automated | invalid candidate and success clearing | yes |
+| F-016 | TC-028 | component/e2e | automated | missing metadata compatibility | yes |
 
 ## Coverage Summary
 
@@ -53,10 +65,12 @@
 | F-012 | 2 | 2 | covered |
 | F-013 | 1 | 1 | covered |
 | F-014 | 3 | 3 | covered |
+| F-015 | 4 | 4 | covered |
+| F-016 | 4 | 4 | covered |
 
 ## Development Gate
 
-- All F-001 through F-014 appear in the matrix.
+- All F-001 through F-016 appear in the matrix.
 - Every matrix TC is defined with Given/When/Then in `test-cases.md`.
 - Mapper and call-site tests are distinct; formatter-only tests cannot satisfy transport mapping features.
 - Status: `PASS — development may start after tasks.md declares every pair`.

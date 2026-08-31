@@ -133,12 +133,40 @@
 - Implementation: source/test/doc consistency, mutation check, real build/test commands and AR validator evidence.
 - Acceptance: TC-020, TC-021 and TC-022 pass; apply report records commands and results.
 
+### TASK-015: Freeze existing specifications and append instance codes
+
+- Feature IDs: F-001, F-013, F-015, F-016
+- Test Case IDs: TC-023, TC-028
+- Depends on: TASK-001, TASK-013
+- Files: `connection_error.h/.cpp`, catalog compatibility tests and error reference.
+- Implementation: append `E002116/E002117` and their descriptors; retain every existing value, descriptor field and mapper result; model metadata missing as no fault.
+- Acceptance: TC-023 and TC-028 pass; catalog has exactly 61 entries without changing an existing row.
+
+### TASK-016: Implement versioned instance metadata and conservative preflight
+
+- Feature IDs: F-015, F-016
+- Test Case IDs: TC-024, TC-025, TC-026
+- Depends on: TASK-015
+- Files: `connection_error.*`, `server.cpp`, `main.cpp`, `client.h/.cpp`, unit/component tests.
+- Implementation: write metadata after server readiness, validate format/PID, classify endpoint relation, stop only definite conflict and clear candidate diagnostics after successful connect.
+- Acceptance: TC-024, TC-025 and TC-026 pass; old server without metadata retains current behavior.
+
+### TASK-017: Build and reproduce alternate-port conflict
+
+- Feature IDs: F-014, F-015
+- Test Case IDs: TC-027
+- Depends on: TASK-016
+- Files: production HDC executable, test runner, AR report and Windows artifact.
+- Implementation: compile/link Linux and Windows host binaries; run isolated server-8711/client-8710 scenario; deploy matching `hdc.exe` and `libusb_shared.dll` to `E:\\temp`.
+- Acceptance: TC-027 passes and Windows artifact version/hash are recorded.
+
 ## 3. Development Order
 
 ```text
 TASK-001 -> TASK-002 -> TASK-003
 TASK-004 + TASK-005 + TASK-006 + TASK-007 + TASK-008
 -> TASK-009 -> TASK-010 -> TASK-011 -> TASK-012 -> TASK-013 -> TASK-014
+-> TASK-015 -> TASK-016 -> TASK-017
 ```
 
 ## 4. Execution Status
@@ -149,3 +177,6 @@ TASK-004 + TASK-005 + TASK-006 + TASK-007 + TASK-008
 | TASK-004～TASK-008 | completed | local/target/TCP/USB/UART mapper and production integration |
 | TASK-009～TASK-013 | completed | lifecycle propagation, CLI output and compatibility tests |
 | TASK-014 | completed | build, coverage, mutation, CLI evidence and AR validator passed |
+| TASK-015 | completed | 11-row existing local descriptor snapshot unchanged; 61-entry append-only catalog passes |
+| TASK-016 | completed | metadata parser/PID/endpoint preflight and connect-success clearing pass |
+| TASK-017 | completed | Linux and MinGW 50-TU builds plus isolated E002116/E002117/legacy scenarios pass |

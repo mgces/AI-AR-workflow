@@ -6,7 +6,8 @@
 - workflow: `REQUIREMENT_CLARIFYING -> ARCHITECTURE_DESIGNING -> TESTCASE_DESIGNING -> DEVELOPING`
 - source_repo: `openharmony/developtools_hdc`
 - source_base: `7a47ffb4b74b8b44ebf801c98e352e020427ce06`
-- source_head: `276162dd5159c2a7aae81c96f0c39e27d752428c`
+- source_head: `fe699bdfdced1cc08128737790a49b4fb76e3f96`
+- source_commits: `276162dd5159c2a7aae81c96f0c39e27d752428c`, `fe699bdfdced1cc08128737790a49b4fb76e3f96`
 - source_pr: `https://gitcode.com/openharmony/developtools_hdc/merge_requests/2514`
 - linked_issue: `https://gitcode.com/openharmony/developtools_hdc/issues/1955`
 
@@ -14,56 +15,56 @@
 
 - reason: 需求范围、兼容边界、隐私约束和物理故障构造边界已收敛。
 - artifacts:
-  - `workflow/clarification.md` : `79c535bcdb02846bf2f0e5d58d452f92258430be034940e58bd2529e17234ed9`
-  - `workflow/requirement-spec.md` : `628a0f224fe086cafc76241764f45ad9a8e7159f0266d7061cfee8ab0f4bcb2b`
+  - `workflow/clarification.md` : `1cfeaf7e938e4fc22073e0a3dc59740c2ae65f203da3f226aa12a03597a86dca`
+  - `workflow/requirement-spec.md` : `8d75aa8fa9c063fc48b83dbf3f7ec60a111e21e658a2df097101e519288e85d6`
 
 ## ARCHITECTURE_DESIGNING — PASS
 
-- reason: F-001～F-014 已映射到模块、接口、数据流、风险和回滚策略。
+- reason: F-001～F-016 已映射到模块、接口、数据流、风险和回滚策略，包含追加码兼容约束。
 - artifacts:
-  - `workflow/architecture.md` : `072f15d355f1d5a02bc63a8c990992a07c43b7640e57fe9f1bfaeca510fb67d8`
+  - `workflow/architecture.md` : `067074d5981667ca11aaf1ba2db2f306e37935aa12a32c37acd8e9f686b1f965`
 
 ## TESTCASE_DESIGNING — PASS
 
-- reason: 14 个功能点均有测试，30 组 F/TC pair 完整，TC-001～TC-022 均有 Given/When/Then。
+- reason: 16 个功能点均有测试，42 组 F/TC pair 完整，TC-001～TC-028 均有 Given/When/Then。
 - artifacts:
-  - `workflow/test-cases.md` : `5cf1dcd5f9d45e7a1feb71621c157f29335e6988b70d12c045841234cc696a90`
-  - `workflow/feature-test-matrix.md` : `08e8561090b3f9207a1018c569b9c455691208b2fe052e49f019f5ca14a5b28b`
+  - `workflow/test-cases.md` : `14b7a27680a29cd2af52743d70feda2b886f972ccb9a267da5435ceed4e42809`
+  - `workflow/feature-test-matrix.md` : `f639edd617d874f70a360ef738a7c1e4c6f9645b20704a9510a770d92205fe91`
 
 ## DEVELOPING — PASS
 
 - reason: 每个开发任务声明关联 F/TC；实现、测试、跨平台构建和上游 PR 已完成。
 - artifacts:
-  - `workflow/tasks.md` : `781a95c505bbb6f8b73da21ba792dc3bfcb60b2caa2c3ddf85966749c5a66b5c`
-  - `workflow/apply-report.md` : `b6d12401be574f8cfc8bad813c20cd3b0aa3adb9c62dc9623555334873c61f60`
-  - `workflow/todo.md` : `e40810edc296dbf90dedd3297445685982ef590bdf446b18235a2920faa4795e`
+  - `workflow/tasks.md` : `69f71443718f6cc0d3c90ee86f11efba5938e352e41631ee4de4692fa9fd3f8c`
+  - `workflow/apply-report.md` : `50c3fbc1cfab1f6b80abb9a80f3a739c5695acf25179896b083b76f808843907`
+  - `workflow/todo.md` : `936333a21e59ebc9ca091d235e8b85c7d1932ed1c960ff041779235bf4bf37e1`
 
 ## PAIR VALIDATION — PASS
 
 - command: `powershell -ExecutionPolicy Bypass -File workflow/validate-change.ps1 -ChangeDir workflow`
-- result: 14/14 features covered；30/30 F/TC pairs verified。
+- result: 16/16 features covered；42/42 F/TC pairs verified。
 - validator:
   - `workflow/validate-change.ps1` : `18a3be0ee47f6a5b535762b79df628052673cc5e8965f807e0954f40a9960b5e`
 
 ## 人读归档
 
-- `README.md` : `0dc68a5346656108d062d4978c6af983ea5bb4783a892a3c80217326fbea485f`
-- `AR_design.md` : `072f15d355f1d5a02bc63a8c990992a07c43b7640e57fe9f1bfaeca510fb67d8`
-- `ar.md` : `628a0f224fe086cafc76241764f45ad9a8e7159f0266d7061cfee8ab0f4bcb2b`
-- `todo.md` : `e40810edc296dbf90dedd3297445685982ef590bdf446b18235a2920faa4795e`
-- `reports/summary.md` : `8523e02a09c8ff1c08cfb2818685232ebe2caadb90f1e3650e79fbd538b680fb`
-- `reports/quality.md` : `9e510a8b7c1db207609ba349afbfe6e88ae1b21f01ac28e1e4a4cd93b329faa3`
-- `reports/pr_description.md` : `0eba764f52873f16c1faf62c661ae8c56581d254db92b64c3e96f627068fd2d5`
+- `README.md` : `f2d25054f6696888a5a1485db81773d65a6e445e1035fb7debae4ae13281aed2`
+- `AR_design.md` : `067074d5981667ca11aaf1ba2db2f306e37935aa12a32c37acd8e9f686b1f965`
+- `ar.md` : `8d75aa8fa9c063fc48b83dbf3f7ec60a111e21e658a2df097101e519288e85d6`
+- `todo.md` : `936333a21e59ebc9ca091d235e8b85c7d1932ed1c960ff041779235bf4bf37e1`
+- `reports/summary.md` : `046899d96d90d1b1bdc17e5226b3f89c3e00e712d99bec8a89bd2f31524282bb`
+- `reports/quality.md` : `aa0d0c2773d6031cdc8c6af23460df072569bf4dba2b8434d604a4a112b3ce71`
+- `reports/pr_description.md` : `f414daacc9873904ebbe4aafaf44c7ac48a80a8536fa54e1af1869d599cb3e30`
 
 ## 外部验证锚点
 
-- HDC source commit: `276162dd5159c2a7aae81c96f0c39e27d752428c`
-- DCP runlist: `6a9270b764650f998b565dc9`
-- PR labels at archive time: `dco检查成功`, `编译成功`
-- mapper/catalog tests: `18/18 Pass`
+- HDC source head: `fe699bdfdced1cc08128737790a49b4fb76e3f96`
+- first-stage DCP runlist: `6a9270b764650f998b565dc9`
+- first-stage PR labels: `dco检查成功`, `编译成功`; addendum CI retriggered for new head
+- mapper/catalog/instance tests: `23/23 Pass`
 - session lifecycle tests: `2/2 Pass`
 - mapper executable lines: `274/274 (100%)`
-- Windows `hdc.exe`: `150474d14f39c32cbce481ca3c490fe3cb5efe08f46bf55af240dc46627ee975`
+- Windows `hdc.exe`: `e9c04fe0159403e8a2915ddb4bc4c181252be9b6c22d7fb2aeb7207b602963b5`
 - Windows `libusb_shared.dll`: `6604cfc9f4d7e85d8127e651f61ab5279376cc759f0bebfa8dc24a6c4ef32f26`
 
 ## 脱敏说明

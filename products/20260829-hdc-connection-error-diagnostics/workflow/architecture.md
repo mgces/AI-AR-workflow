@@ -4,8 +4,8 @@
 
 - Change: `20260829-requirement-add-hdc-connection-error-diagnostics`
 - Architecture impact: `medium`
-- Decision: 在 host 层新增无 I/O 的连接错误目录、mapper 和 `ConnectionFault` 值对象；现有 client/server/TCP/USB/UART call site 只负责采集原始状态并发布 fault，不再各自拼接不稳定字符串。
-- Compatibility: 不修改 host–hdcd wire protocol，不改变成功输出，不删除既有码。
+- Decision: 在 host 层新增连接错误目录、mapper、`ConnectionFault` 值对象和版本化 server 实例元数据；现有 client/server/TCP/USB/UART call site 采集原始状态并发布 fault。
+- Compatibility: 不修改 host–hdcd wire protocol，不改变成功输出，不删除、重命名、合并、扩义或重新映射既有码；旧 server 缺少实例元数据时继续原连接路径。
 
 ## 2. Current Context
 
@@ -31,6 +31,7 @@ flowchart LR
 - target 不存在、offline、session null/dead 和 handshake false 使用通用文案。
 - session 释放前没有把结构化根因复制到 daemon map，历史 fault 容易丢失。
 - USB/UART 的多个确定错误归并为 `ERR_GENERIC/ERR_IO_FAIL`。
+- 全局 `HDCServer` mutex/PID 文件只表达“某实例存在”，不记录其监听端点；server 在 `8711` 时，默认 `8710` client 不会再拉起 server，最终只能得到普通连接失败甚至无输出。
 
 ## 3. Target Design
 
@@ -44,6 +45,22 @@ flowchart LR
     SessionFault --> LastFault["HdcDaemonInformation::lastFault"]
     LastFault --> Formatter["ConnectionErrorFormatter"]
     Formatter --> Client["CLI stable [Exxxxxx]"]
+```
+
+本机 server 单例补充路径：
+
+```mermaid
+flowchart LR
+    Server["HdcServer ready"] -->|write v1, pid, endpoint| Info[".HDCServer.info"]
+    Mutex["ProgramMutex says exists"] --> Inspect["InspectServerInstance"]
+    Info --> Inspect
+    Pid["unchanged .HDCServer.pid"] --> Inspect
+    Inspect -->|definite port/type mismatch| Conflict["E002116 and stop"]
+    Inspect -->|address mismatch or invalid state| Candidate["candidate fault"]
+    Candidate --> Connect["run existing connect path"]
+    Connect -->|success| Clear["clear candidate"]
+    Connect -->|failure| Output["E002116 or E002117"]
+    Inspect -->|metadata missing| Legacy["existing behavior"]
 ```
 
 ### 3.1 模块边界
@@ -61,7 +78,7 @@ src/host/connection_error.cpp
 - 提供 descriptor 查询和短格式输出；
 - 提供纯函数 `MapUvError`、`MapLibusbError`、`MapUsbTransferStatus`、`MapUartError`、`ClassifyTargetState`；
 - 提供 primary fault 优先级和 first-fault 合并；
-- 不直接访问 socket、USB device、session map 或日志系统。
+- 提供 server 实例元数据的序列化、解析、端点关系分类、受限文件读写和诊断格式化；不访问设备 socket、USB device 或 session map。
 
 现有模块职责保持：
 
@@ -85,6 +102,12 @@ src/host/connection_error.cpp
 | `E0021xx` | local server/channel | 新增 process/libuv/channel mapper |
 
 编号以显式 `enum class ConnectionErrorCode : uint32_t` 声明。注册表 descriptor 至少包含 symbol、message、retryable 和 priority。未知编号查询返回 `UNKNOWN_ERROR`，不抛异常。
+
+兼容增量仅追加：
+
+- `E002116 SERVER_ENDPOINT_CONFLICT`：活动 server 端点与本次请求不兼容；
+- `E002117 SERVER_INSTANCE_STATE_INVALID`：实例元数据存在但无法可信使用；
+- `E001100～E002115` 的 descriptor 和 mapper 保持逐项不变。
 
 ## 4. Core Data Model
 
@@ -130,6 +153,25 @@ bool PublishPrimaryFault(ConnectionFault &current, const ConnectionFault &candid
 ```
 
 所有 mapper 接受原始条件，测试不得直接注入最终 stable code 来证明 mapper 分支。
+
+server 实例接口为 host 内部接口：
+
+```cpp
+struct ServerInstanceInfo { uint32_t pid; std::string endpoint; };
+struct ServerInstanceDiagnostic {
+    ConnectionFault fault;
+    std::string requestedEndpoint;
+    std::string activeEndpoint;
+    ServerInstanceReason reason;
+    bool stopBeforeConnect;
+};
+
+bool WriteServerInstanceInfo(const std::string &endpoint);
+ServerInstanceDiagnostic InspectServerInstance(const std::string &requestedEndpoint);
+std::string FormatServerInstanceDiagnostic(const ServerInstanceDiagnostic &diagnostic);
+```
+
+磁盘格式固定为单行 `1|<pid>|<endpoint>`，最大长度受限；`.HDCServer.pid` 的旧格式不修改。`MISSING` 明确表示旧 server 兼容路径，不等价于 `INVALID`。
 
 ## 6. Mapping Rules
 
@@ -207,6 +249,22 @@ sequenceDiagram
 
 本次不改变 `ExecuteCommand`/host main 的进程退出契约，避免把错误码细化与脚本返回值兼容风险耦合到一个 PR。
 
+### 8.1 Server instance preflight
+
+仅当 `ProgramMutex(true) > 0` 时检查实例元数据：
+
+1. 元数据缺失：不生成 fault，继续既有连接流程；
+2. 元数据格式/PID 无效：生成 `E002117` 候选，但仍尝试连接；连接成功清除候选；
+3. TCP/UDS 类型不同或 TCP 端口不同：确定不可达，立即输出 `E002116`，不重复启动 server；
+4. 同端口但地址不同：生成 `E002116` 候选并尝试连接；活动地址为 `0.0.0.0`/`::` 等通配地址时视为覆盖请求，不生成候选；
+5. 实际连接成功：清空全部 preflight 候选，保证不会改变正常命令。
+
+默认诊断示例：
+
+```text
+[E002116] Active HDC server endpoint conflicts with the requested endpoint requested=::ffff:127.0.0.1:8710 active=::ffff:0.0.0.0:8711 reason=port_mismatch action=Use "-s <active-endpoint>", or stop the active server before changing the endpoint.
+```
+
 ## 9. Feature to Component Mapping
 
 | Feature ID | Component/Module | Design Action | Interface/Data Impact | Risk |
@@ -225,6 +283,8 @@ sequenceDiagram
 | F-012 | formatter、target list | change | 短格式和 verbose fault | 输出兼容/隐私 |
 | F-013 | catalog、现有错误输出 | change | legacy fallback | 已有码被误改义 |
 | F-014 | `test/BUILD.gn`、UT、docs/specs | add/change | 测试和资料 | 文档漂移 |
+| F-015 | `main.cpp`、`client.*`、`connection_error.*` | change | 单例 preflight、候选 fault 和详细输出 | 地址等价关系误判 |
+| F-016 | `server.cpp`、`connection_error.*` | change | 新增 `.HDCServer.info`，PID 文件不变 | 旧 server/写失败兼容 |
 
 ## 10. API and Data Changes
 
@@ -235,6 +295,8 @@ sequenceDiagram
 | F-009 | `HdcDaemonInformation` host-only field | 新增 lastFault | 仅进程内数据 |
 | F-012 | 失败 CLI 文本 | 通用字符串替换为稳定 code + message | legacy code 仍保留；成功不变 |
 | F-013 | host–hdcd data | none | wire protocol 零变化 |
+| F-015/F-016 | host-local `.HDCServer.info` | add | 版本、PID、监听端点；旧实例可完全缺失 |
+| F-015/F-016 | existing error descriptor/mapping | none | `E001100～E002115` 逐项不变，只追加两个 descriptor |
 
 ## 11. Testability Design
 
@@ -244,6 +306,8 @@ sequenceDiagram
 - clock-dependent deadline 作为 snapshot 输入，不在 UT sleep；
 - call-site component test 注入 native status，断言 session fault 和输出；
 - mutation check 临时把一个具体 native 映射改为 generic，新增测试必须失败。
+- 元数据 parser/endpoint relation 为纯函数，覆盖 missing/invalid/PID mismatch、TCP/UDS、端口、地址和 wildcard。
+- 端到端测试使用隔离 `TMPDIR` 启动 `8711` server，再用默认 `8710` client 断言 `E002116`，不触碰用户默认 HDC server。
 
 ## 12. Risks and Mitigations
 
@@ -256,10 +320,13 @@ sequenceDiagram
 | R-005 | F-012 | 失败文本变化影响脚本 | 保留稳定旧编号；不同时改变 exit status；发布说明 |
 | R-006 | F-013 | 新 host 与旧 hdcd 不兼容 | 不修改任何 wire field 或 handshake command |
 | R-007 | F-008 | UART 构建未启用导致漏编译 | mapper 不依赖宏；UART target 编译验证 |
+| R-008 | F-015 | 同端口不同地址可能实际仍可达 | 仅端口/传输类型确定冲突立即失败；地址差异先作为候选，连接成功清除 |
+| R-009 | F-016 | 旧 server 无 `.info` 被误判异常 | missing 单独建模并回退旧路径；仅 present-but-invalid 产生候选 |
+| R-010 | F-016 | 元数据写失败影响 server 可用性 | 写失败只记录日志，不让 server 初始化失败；client 走 missing/legacy 路径 |
 
 ## 13. Rollback
 
 - 回滚 call-site 接入即可恢复旧文本，新增 host-only catalog 不影响线协议。
 - 如 session fault 生命周期引入问题，可先保留 mapper/UT，撤回 session/daemon map 字段接入。
 - 已发布编号即使暂时停止输出也保持 reserved，不复用于其他语义。
-- 不涉及数据文件或数据库，重启 HDC server 即清理内存态 fault。
+- 删除 `.HDCServer.info` 即可关闭新增 preflight，client 自动回退既有行为；`.HDCServer.pid` 和 mutex 无需迁移。

@@ -10,7 +10,7 @@
 
 ## 2. Catalog Coverage Set
 
-TC-001 的参数集合必须包含以下59个不同 code：
+TC-001 的参数集合必须包含以下61个不同 code：
 
 | Group | Codes |
 |------|-------|
@@ -20,7 +20,7 @@ TC-001 的参数集合必须包含以下59个不同 code：
 | TCP | `E001100 E001101 E001102 E001103 E001104 E001107 E001108 E001109 E001110 E001111` |
 | USB | `E001201 E001202 E001203 E001204 E001205 E001206 E001207 E001208 E001209 E001210 E001211 E001212 E001213` |
 | UART | `E001400 E001401 E001402 E001403 E001404 E001405 E001406 E001407 E001408` |
-| local server/channel | `E002103 E002106 E002107 E002108 E002109 E002110 E002111 E002112 E002113 E002114 E002115` |
+| local server/channel | `E002103 E002106 E002107 E002108 E002109 E002110 E002111 E002112 E002113 E002114 E002115 E002116 E002117` |
 
 ## 3. Test Cases
 
@@ -30,7 +30,7 @@ TC-001 的参数集合必须包含以下59个不同 code：
 - Level: unit
 - Type: positive/boundary
 - Preconditions: connection error catalog compiled into host test target.
-- Given: the 59-code coverage set above.
+- Given: the 61-code coverage set above.
 - When: descriptors are enumerated and queried by code.
 - Then: each code has one unique symbol, non-empty message, valid priority/retryable metadata and six-digit formatted value; no duplicate code/symbol exists.
 - Data: all codes in section 2.
@@ -288,6 +288,78 @@ TC-001 的参数集合必须包含以下59个不同 code：
 - Data: GN targets resolved from repository build definition.
 - Automation: automated.
 
+### TC-023: Existing local-server error specifications remain byte-for-byte compatible
+
+- Feature IDs: F-001, F-013, F-015, F-016
+- Level: unit/static
+- Type: compatibility/regression
+- Preconditions: original `E001100～E002115` descriptor and mapper expectations are captured before the addendum.
+- Given: the existing numeric value, symbol, message, retryable, priority and mapper case table.
+- When: `E002116/E002117` are appended to the catalog.
+- Then: every captured existing field and mapper result is unchanged; catalog count becomes 61 only by appending the two new codes.
+- Data: all existing catalog rows and local libuv mapper rows.
+- Automation: automated.
+
+### TC-024: Server instance metadata round-trip and invalid-state classification
+
+- Feature ID: F-016
+- Level: unit
+- Type: positive/boundary/negative
+- Preconditions: metadata serializer/parser and classifier available.
+- Given: valid `1|pid|endpoint`, missing data, malformed version/PID/endpoint, oversize input, missing PID record and mismatched PID.
+- When: metadata is parsed and compared with the existing mutex PID record.
+- Then: valid data round-trips; missing returns no fault for old-server compatibility; present-but-invalid or PID mismatch yields an `E002117` candidate with a stable reason.
+- Data: TCP and UDS endpoints, PID 1/42, invalid strings and boundary lengths.
+- Automation: automated.
+
+### TC-025: Requested and active server endpoint relation is classified conservatively
+
+- Feature ID: F-015
+- Level: unit
+- Type: parameterized boundary/negative
+- Preconditions: endpoint relation classifier available.
+- Given: equal endpoints, different TCP ports, TCP versus UDS, different UDS values, IPv4-mapped versus IPv4, wildcard listener and same-port distinct specific addresses.
+- When: requested and active endpoints are compared.
+- Then: port/type/UDS mismatch is definite `E002116`; wildcard and normalized-equivalent addresses match; same-port specific-address mismatch is a non-terminal `E002116` candidate.
+- Data: default `::ffff:127.0.0.1:8710`, `::ffff:0.0.0.0:8711`, `0.0.0.0:8710`, `uds`.
+- Automation: automated.
+
+### TC-026: Client preflight fault stops only definite conflicts and clears on success
+
+- Feature IDs: F-015, F-016
+- Level: component
+- Type: state/lifecycle regression
+- Preconditions: client accepts an inspected instance diagnostic.
+- Given: definite port conflict, potential address conflict, invalid metadata and a successful connect callback.
+- When: main/client preflight and connection lifecycle execute.
+- Then: definite conflict formats `E002116` with requested/active/reason/action and stops before connect; potential/invalid candidates participate in primary-fault selection only if connect fails; success clears them.
+- Data: `8710` requested versus `8711` active, address mismatch, PID mismatch, connect status 0/refused.
+- Automation: automated.
+
+### TC-027: Isolated executable reproduces the alternate-port singleton failure
+
+- Feature IDs: F-014, F-015
+- Level: e2e
+- Type: regression
+- Preconditions: Linux host executable linked; isolated temporary directory available.
+- Given: server starts with `-m -s 0.0.0.0:8711` under an isolated `TMPDIR` and owns the global/file singleton for that directory.
+- When: a client under the same `TMPDIR` runs `list targets` using default `8710`.
+- Then: client emits `E002116`, requested `8710`, active `8711` and an action; it does not pull a second server or wait for generic retry exhaustion.
+- Data: loopback/wildcard ports 8710 and 8711.
+- Automation: automated.
+
+### TC-028: Missing metadata keeps old-server behavior
+
+- Feature IDs: F-013, F-016
+- Level: component/e2e
+- Type: backward compatibility
+- Preconditions: server singleton can be present while `.HDCServer.info` is absent.
+- Given: a compatible server or simulated old server owns the mutex/PID record without the new metadata file.
+- When: new client inspects the instance and connects.
+- Then: inspection returns no new fault; normal connection can succeed, and failure retains the pre-existing `E002110/E002111/E002114` behavior rather than `E002117`.
+- Data: missing metadata with valid PID/mutex.
+- Automation: automated.
+
 ## 4. Regression Tests
 
 | Test Case ID | Related Feature | Regression Area | Notes |
@@ -300,3 +372,7 @@ TC-001 的参数集合必须包含以下59个不同 code：
 | TC-017 | F-009 | lifecycle | 防止释放后 fault 悬空或丢失 |
 | TC-019 | F-013 | compatibility | 既有码不改值，known 不落 generic |
 | TC-021 | F-014 | test quality | 测试必须能杀死旧/突变行为 |
+| TC-023 | F-001/F-013/F-015/F-016 | public specification | 既有码 descriptor 和 mapper 不变 |
+| TC-024/TC-028 | F-016 | old/new instance interoperability | missing 与 invalid 严格分开 |
+| TC-025/TC-026 | F-015/F-016 | preflight lifecycle | 只提前终止确定冲突，成功清除候选 |
+| TC-027 | F-014/F-015 | reported alternate-port scenario | 隔离 TMPDIR 复现截图等价路径 |

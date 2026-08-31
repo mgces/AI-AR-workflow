@@ -20,7 +20,7 @@
 
 | Feature ID | Name | User Value | Input | Output | Business Rules | Acceptance Criteria |
 |------------|------|------------|-------|--------|----------------|---------------------|
-| F-001 | 稳定错误码目录 | 错误编号可检索、可长期解析 | 59 个现有/建议错误码 | 唯一的 code/symbol/message/retryable 描述 | 显式十六进制赋值；既有码不改义；未知编号有安全兜底 | 全部编号和 symbol 唯一；格式固定为六位；59 项均可查询 |
+| F-001 | 稳定错误码目录 | 错误编号可检索、可长期解析 | 61 个现有/建议错误码 | 唯一的 code/symbol/message/retryable 描述 | 显式十六进制赋值；既有码不改义；未知编号有安全兜底 | 全部编号和 symbol 唯一；格式固定为六位；61 项均可查询 |
 | F-002 | 结构化连接故障 | 调试信息不再只剩字符串 | code、stage、transport、native domain/code | `ConnectionFault` | 默认无错误；detail 不含 payload/secret；结构可按值复制 | 构造、格式化、脱敏和无错误路径测试通过 |
 | F-003 | 主错误优先级 | 清理回调不覆盖真正根因 | 当前 fault、候选 fault | 选定 primary fault | 参数/认证/确定不可重试/open/终态/protocol/timeout/I/O/fallback 依序；cancel 清理不得覆盖 | 所有优先级和 first-fault 反例通过 |
 | F-004 | 本机 server/channel 映射 | 区分 server 未起、端口、权限、超时和协议问题 | process/libuv/channel 状态 | `E002103/E002107～E002115` 或 `E002106` | 阶段参与映射；同一 native code 在 bind/connect/I/O 可得到不同码 | 表驱动 mapper 和本机 channel 集成测试通过 |
@@ -34,6 +34,8 @@
 | F-012 | CLI 与 target 诊断输出 | 用户获得稳定码和可执行事实 | `ConnectionFault`、list targets 详细模式 | 短格式/详细格式 | 成功输出不变；默认不暴露完整序列号、路径、payload、token | golden、隐私和兼容测试通过 |
 | F-013 | legacy 和协议兼容 | 老版本及脚本不会因线协议变化失效 | 旧码、旧 server/hdcd 行为 | legacy fallback | `E001003/E001005/E002106` 仅未知条件使用；不修改 host–hdcd 协议 | 既有码数值测试、fallback 负例和版本组合测试通过 |
 | F-014 | 可追踪验证与资料 | 维护者能证明每个功能和错误分支有效 | F/TC 矩阵、执行命令、错误目录 | 测试报告和参考资料 | 每个 F/TC 对有真实 Pass；每个 code 至少一个检测源用例；多来源 code 逐来源展开 | AR validator、构建、单测和文档一致性检查通过 |
+| F-015 | server 活动端点冲突诊断 | client 不再因其他端口的 server 单例而静默失败 | 请求端点、活动实例元数据、单例存在状态 | `E002116 SERVER_ENDPOINT_CONFLICT` 及 requested/active/reason/action | TCP/UDS 类型或端口确定不兼容时立即失败；同端口地址差异仅作为候选，实际连接成功即清除 | 端口、类型、地址、通配监听和截图等价场景测试通过 |
+| F-016 | server 实例状态诊断与兼容 | 区分损坏实例记录，同时允许连接旧 server | 版本化元数据、PID 文件、连接结果 | `E002117 SERVER_INSTANCE_STATE_INVALID` 或原有连接结果 | 元数据缺失按旧 server 兼容处理；存在但损坏/PID 不一致只在连接失败时成为主错误；不进入 host–hdcd 线协议 | round-trip、缺失、损坏、PID mismatch、成功清除和旧版兼容测试通过 |
 
 ## 4. Boundary Conditions
 
@@ -51,6 +53,10 @@
 | F-009 | session 释放与读写 callback 并发 | primary fault 只写一次，复制后不引用已释放 session |
 | F-012 | native detail 含设备序列号或路径 | 默认格式不输出未经白名单允许的 detail |
 | F-013 | 已知 native error | 必须映射细分码，不得落入 legacy generic |
+| F-015 | 活动 server 为 `0.0.0.0:8711`，client 请求默认 `127.0.0.1:8710` | 立即输出 `E002116`，包含 requested/active 和可执行 action，不重复拉起 server |
+| F-015 | 活动 server 为 `0.0.0.0:8710`，client 请求 `127.0.0.1:8710` | 通配监听覆盖请求地址，不误报冲突 |
+| F-016 | 全局单例存在但 `.info` 文件不存在 | 视为旧 server；继续原连接路径，不输出 `E002117` |
+| F-016 | `.info` 损坏或 PID 与 `.pid` 不一致，但请求端点实际可连接 | 连接成功清除候选故障，不影响命令成功 |
 
 ## 5. Non-Functional Requirements
 
@@ -64,6 +70,8 @@
 | F-009 | memory | fault 按值保存，无裸指针指向 native buffer/session 生命周期外对象 |
 | F-013 | compatibility | 第一阶段 host–hdcd wire format 零变化 |
 | F-014 | quality | mapper 每个分支 100% 用例覆盖，完整构建和 AR pair validator 通过 |
+| F-015/F-016 | compatibility | `E001100～E002115` 的数值、symbol、message、retryable、priority 和既有映射断言保持不变 |
+| F-016 | security | 元数据只包含格式版本、PID 和本机 server 端点，不包含 connectKey、设备序列号、命令或认证数据 |
 
 ## 6. Dependencies
 
@@ -74,6 +82,7 @@
 | F-008 | HDC_SUPPORT_UART | internal | mapper 始终可测试，实际接入受可选构建控制 |
 | F-009 | HdcSession/HdcDaemonInformation | internal | 需要安全复制 fault 并维护生命周期 |
 | F-014 | googletest/gmock、GN | internal | 复用 `hdc_host_base_unittest` 测试目标 |
+| F-015/F-016 | OS temp/home directory and existing ProgramMutex PID file | internal | 新增旁路 `.HDCServer.info`；不改变 `.HDCServer.pid` 格式和全局互斥语义 |
 
 ## 7. Open Items
 

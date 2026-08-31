@@ -7,17 +7,17 @@
 | 工作流 | standalone `AR-Workflow` |
 | 阶段 | REQUIREMENT_CLARIFYING → ARCHITECTURE_DESIGNING → TESTCASE_DESIGNING → DEVELOPING |
 | 状态 | Completed |
-| 功能点 | F-001～F-014，共 14 项 |
-| 追踪关系 | 30 组 F/TC pair |
+| 功能点 | F-001～F-016，共 16 项 |
+| 追踪关系 | 42 组 F/TC pair |
 | HDC 源分支 | `feat/connection-error-diagnostics` |
-| HDC 提交 | `276162dd5159c2a7aae81c96f0c39e27d752428c` |
+| HDC 提交 | `276162dd5159c2a7aae81c96f0c39e27d752428c`、`fe699bdfdced1cc08128737790a49b4fb76e3f96` |
 | 上游 PR | [openharmony/developtools_hdc !2514](https://gitcode.com/openharmony/developtools_hdc/merge_requests/2514) |
 | 关联 Issue | [openharmony/developtools_hdc #1955](https://gitcode.com/openharmony/developtools_hdc/issues/1955) |
 
 ## 目录说明
 
 - `AR_design.md`：架构设计归档，包含系统上下文、模块边界、数据模型、映射接口、数据流和回滚设计。
-- `ar.md`：需求规格归档，包含 F-001～F-014、边界条件、非功能需求和依赖。
+- `ar.md`：需求规格归档，包含 F-001～F-016、边界条件、非功能需求和依赖。
 - `workflow/`：独立 AR Workflow 的 8 份必备原始产物及复核脚本。
 - `manifest_summary.md`：脱敏文件清单、SHA-256 和阶段结论。
 - `reports/summary.md`：实现、验证和上库结果汇总。
@@ -38,8 +38,10 @@ powershell -ExecutionPolicy Bypass `
 
 ```text
 Validation passed.
-Features covered: F-001 ... F-014
-Feature-test pairs verified: 30
+Features covered: F-001 ... F-016
+Feature-test pairs verified: 42
 ```
 
 本归档采用 standalone AR Workflow 的 F/TC 对级校验，不声称具备目标仓库另一套 P0～P8 流水线的 HMAC 证据链。实现和 CI 结果通过提交 SHA、PR、门禁运行编号及本目录哈希进行复核。
+
+本次补充专门覆盖“已有 server 在非默认端口、client 请求默认 8710”的实例冲突：只追加 `E002116/E002117`，不修改既有错误码规格。Windows 测试产物位于 `E:\temp\hdc.exe`，SHA-256 为 `e9c04fe0159403e8a2915ddb4bc4c181252be9b6c22d7fb2aeb7207b602963b5`。

@@ -5,23 +5,27 @@
 - Change: `20260829-requirement-add-hdc-connection-error-diagnostics`
 - Date: `2026-08-29`
 - Implementation branch: `feat/connection-error-diagnostics`
-- Production build: OpenHarmony `clang_x64` HDC target flags, all 48 existing HDC translation units plus `connection_error.cpp`
-- Unit test: 18 mapper/catalog tests and 2 session lifecycle tests
+- Implementation commits: `276162dd5159c2a7aae81c96f0c39e27d752428c`, `fe699bdfdced1cc08128737790a49b4fb76e3f96`
+- Production build: OpenHarmony `clang_x64` and `mingw_x86_64` target flags, all 50 HDC translation units including `connection_error.cpp` and `server_instance.cpp`
+- Unit test: 23 mapper/catalog tests and 2 session lifecycle tests
 
 ## 2. Implemented Scope
 
-- Added a 59-entry stable connection-error catalog, structured fault metadata, formatter and priority selector.
+- Added a 61-entry stable connection-error catalog, structured fault metadata, formatter and priority selector; the original 59 entries remain unchanged.
 - Added local server/channel, target/session, TCP, USB and UART native/state mapping.
 - Propagated the selected fault through client retry state, channel/session state and daemon-map lifecycle.
 - Preserved host-hdcd wire structures and existing numeric codes; legacy generic codes remain fallbacks.
 - Added USB submit-vs-callback separation, host-cancel suppression and evidence-gated link-flapping detection.
 - Added four isolated-process CLI checks without touching the default user HDC server.
+- Appended `E002116/E002117` without modifying any existing descriptor or mapper result.
+- Added atomic, versioned `.HDCServer.info` metadata after server readiness while preserving `.HDCServer.pid` and mutex formats.
+- Added conservative instance preflight: definite port/type conflict stops early; invalid/address candidates are cleared on successful connection and become visible only when connection fails.
 
 ## 3. Feature Test Results
 
 | Feature ID | Test Case ID | Result | Evidence |
 |------------|--------------|--------|----------|
-| F-001 | TC-001 | Pass | `CatalogIsCompleteAndUnique`; 59 unique code/symbol entries |
+| F-001 | TC-001 | Pass | `CatalogIsCompleteAndUnique`; 61 unique code/symbol entries |
 | F-002 | TC-002 | Pass | stable short/verbose/unknown formatting and metadata whitelist |
 | F-003 | TC-003 | Pass | priority table and equal-priority first-fault retention |
 | F-003 | TC-004 | Pass | session component test plus host-cancel mapping |
@@ -51,29 +55,51 @@
 | F-014 | TC-020 | Pass | catalog/source/test consistency and duplicate checks |
 | F-014 | TC-021 | Pass | temporary ACCESS→USB_IO mutation made focused test fail; restoration passes |
 | F-014 | TC-022 | Pass | exact OpenHarmony production compile/link and executable smoke test |
+| F-001 | TC-023 | Pass | 11 existing local descriptor rows and all existing mapper expectations unchanged; catalog only appends 2 rows |
+| F-013 | TC-023 | Pass | numeric values, symbols, messages, retryable, priority and fallback mapping compatibility assertions pass |
+| F-013 | TC-028 | Pass | absent metadata produced no new fault and client completed the existing server handshake |
+| F-014 | TC-027 | Pass | isolated executable server-8711/client-8710 scenario emitted actionable E002116 |
+| F-015 | TC-023 | Pass | E002116/E002117 occupy only new explicit values 0x002116/0x002117 |
+| F-015 | TC-025 | Pass | 7-case endpoint table covers equal, port/type/address mismatch, IPv4 mapping and wildcard listener |
+| F-015 | TC-026 | Pass | definite conflict stopped before connect; address/invalid candidates are non-terminal and clear on success |
+| F-015 | TC-027 | Pass | `[E002116] ... requested=...8710 active=...8711 reason=port_mismatch action=...` |
+| F-016 | TC-023 | Pass | no existing local server/channel code specification changed |
+| F-016 | TC-024 | Pass | round-trip, version/PID/endpoint/length/injection rejection and PID-state classification pass |
+| F-016 | TC-026 | Pass | invalid metadata + refused connect emitted E002117; invalid metadata + successful handshake emitted no E002117 |
+| F-016 | TC-028 | Pass | missing `.HDCServer.info` preserved old-server behavior and existing response path |
 
 ## 4. Executed Verification
 
 | Verification | Result | Actual evidence |
 |--------------|--------|-----------------|
-| Catalog/mapper unit test | Pass | 18/18 tests |
+| Catalog/mapper unit test | Pass | 23/23 tests |
 | Session lifecycle component test | Pass | 2/2 tests |
 | Mapper source coverage | Pass | 274/274 executable lines, 100% line coverage after DCP refactoring; all stable-code decision outcomes have test data |
 | Mutation/reverse validation | Pass | focused libusb test exited 1 on intentional wrong mapping and passed after restore |
-| Production compilation | Pass | Linux host full target plus all 9 affected MinGW TUs compiled with upstream Clang flags |
+| Production compilation | Pass | all 50 Linux and all 50 MinGW HDC TUs compiled with generated upstream Clang flags |
 | Production link/smoke | Pass | x86_64 PIE linked; `hdc -v` returned `Ver: 3.2.0f` |
 | Isolated CLI: refused TCP | Pass | `[Fail][E001101] TCP connection was refused` |
 | Isolated CLI: missing target | Pass | `[Fail][E001006] Specified target was not found` |
 | Isolated CLI: invalid UART key | Pass | `[Fail][E001400] UART connect key is invalid` |
 | Isolated CLI: USB backend | Pass | `[Fail][E001201] USB backend initialization failed` |
 | Whitespace/static hygiene | Pass | `git -c core.whitespace=cr-at-eol diff --check` |
-| AR pair validator | Pass | 14 features and 30 F/TC pairs verified through Windows PowerShell entry |
+| AR pair validator | Pass | 16 features and 42 F/TC pairs verified through Windows PowerShell entry |
+| Existing-spec compatibility | Pass | all 11 existing E002103/E002106～E002115 descriptor rows and original libuv mappings unchanged |
+| Linux production build | Pass | 50/50 HDC host/common TUs rebuilt with generated `clang_x64` flags and linked; `Ver: 3.2.0f` |
+| Windows production build | Pass | 50/50 HDC host/common TUs rebuilt with generated MinGW flags; PE32+ x86-64 linked and launched |
+| Alternate-port instance E2E | Pass | isolated `0.0.0.0:8711` server plus default `8710` client emitted E002116 immediately |
+| Invalid instance state E2E | Pass | invalid metadata plus refused connect emitted E002117 with `metadata_invalid` action |
+| Candidate clear E2E | Pass | invalid metadata plus successful local handshake cleared E002117; stderr remained empty |
+| Old-server metadata compatibility | Pass | removed `.HDCServer.info`; client reached existing server and emitted no E002116/E002117 |
+| Existing local refused output | Pass | `-p -s 127.0.0.1:54321` emitted unchanged E002110 |
+| Windows deploy | Pass | `E:\temp\hdc.exe`, SHA-256 `e9c04fe0159403e8a2915ddb4bc4c181252be9b6c22d7fb2aeb7207b602963b5`; DLL SHA-256 `6604cfc9f4d7e85d8127e651f61ab5279376cc759f0bebfa8dc24a6c4ef32f26` |
+| AR pair validator addendum | Pass | 16 features and 42 F/TC pairs verified through Windows PowerShell entry |
 
 The raw gcov branch percentage includes C++ string construction/exception edges and short-circuit compiler edges. It is therefore not used as the claim that real hardware causes are all reproduced. The stronger scoped claim is: every catalog entry is constructible, every mapper/state outcome has injected test data, and the mapper implementation has 100% executable-line coverage.
 
 ## 5. Constructability Boundary
 
-All 59 stable-code construction/format branches and every pure native/state classifier outcome can be automated. This does **not** mean every physical root cause can be deterministically produced on one software-only host.
+All 61 stable-code construction/format branches and every pure native/state classifier outcome can be automated. This does **not** mean every physical root cause can be deterministically produced on one software-only host.
 
 | Layer | Can be fully constructed? | Verification |
 |-------|---------------------------|--------------|
