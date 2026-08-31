@@ -38,7 +38,7 @@ features:
 
   - icon: 📋
     title: 需求分析与设计工作流
-    details: 需要先收敛原始需求时，使用 OHOS SDD 完成澄清、可行性、方案决策、Feature Gate、IR 和 SR，再生成 AR.md。
+    details: 需要先收敛原始需求时，使用需求分析与设计工作流（Requirement workflow）完成澄清、可行性、方案决策、Feature Gate、IR 和 SR，再生成 AR.md。
     link: /sdd/
     linkText: 查看需求分析与设计 →
 
@@ -140,14 +140,14 @@ features:
 
 | 作业阶段 | 工作流入口 | 适用场景 | 出口 |
 |---|---|---|---|
-| 需求分析与设计工作流（OHOS SDD） | `ohos-req-intake-orchestration` | 原始需求尚需澄清、分析和设计评审 | `AR.md` |
+| 需求分析与设计工作流（Requirement workflow） | `ohos-req-intake-orchestration` | 原始需求尚需澄清、分析和设计评审 | `AR.md` |
 | 需求开发工作流 | `ohos-ar-dev-workflow` | 已有可开发 AR，需要推进 P0-P8 | PR + CI + 签名证据 |
 
 ```text
-原始需求 → 需求分析与设计（按需）→ AR.md ──显式交接──→ 需求开发 P0 → … → P8
+原始需求 → 需求分析与设计工作流（按需）→ AR.md ──显式交接──→ 需求开发 P0 → … → P8
 ```
 
-需求分析与设计是作业线的按需前置阶段；已有明确 AR 时可以直接进入需求开发。交接前后的门禁状态相互隔离，需求开发在 P1 会基于当前源码 HEAD 复核动态事实。所有可安装能力只从根 [`skills/`](/reference/skill-map) 同步。
+需求分析与设计工作流是作业线的按需前置阶段；已有明确 AR 时可以直接进入需求开发。交接前后的门禁状态相互隔离，需求开发在 P1 会基于当前源码 HEAD 复核动态事实。所有可安装能力只从根 [`skills/`](/reference/skill-map) 同步。
 
 ## 推荐入口
 

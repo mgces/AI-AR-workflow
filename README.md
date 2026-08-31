@@ -2,14 +2,14 @@
 
 本仓库提供一条完整的 OpenHarmony 需求分析与开发作业线，内部按职责分为：
 
-1. **需求分析与设计工作流（OHOS SDD）**：入口 `ohos-req-intake-orchestration`，完成需求导入与评审，产出 `AR.md`。
+1. **需求分析与设计工作流（Requirement workflow）**：入口 `ohos-req-intake-orchestration`，完成需求导入与评审，产出 `AR.md`。
 2. **需求开发工作流**：入口 `ohos-ar-dev-workflow`，以自然语言 AR 或上述 `AR.md` 为输入，推进 OHOS
    系统组件的设计固化、开发、测试、真机验证和上库。
 
 作业线通过 AR 文件串行交接；交接前后的门禁状态和 PASS 结论相互隔离：
 
 ```text
-原始需求 → 需求分析与设计（OHOS SDD）→ AR.md → 需求开发 P0-P8 → PR/CI
+原始需求 → 需求分析与设计工作流（Requirement workflow）→ AR.md → 需求开发 P0-P8 → PR/CI
 ```
 
 需求开发工作流的研发生命周期为：
@@ -39,7 +39,7 @@
 原始需求
   │
   ▼
-ohos-req-intake-orchestration          # 需求分析与设计工作流
+ohos-req-intake-orchestration          # 需求分析与设计工作流（Requirement workflow）
   └── 01-05 / IR / SR / handoff / AR.md
   │                                   # 显式传入，不自动连跑
   ▼
@@ -47,7 +47,7 @@ ohos-ar-dev-workflow                  # 需求开发工作流
   └── P0 环境 → P1 设计 → … → P8 上库
 ```
 
-SDD 中的源码路径和技术判断只是下游输入；需求开发工作流 P1 仍必须从当前 OHOS 源码 HEAD
+需求分析与设计工作流中的源码路径和技术判断只是下游输入；需求开发工作流 P1 仍必须从当前 OHOS 源码 HEAD
 重新验证，并由 `gate_design.py` 生成和签名自己的 `ar-contract`。
 
 ### 需求开发工作流 P0-P8
@@ -129,7 +129,7 @@ SDD 中的源码路径和技术判断只是下游输入；需求开发工作流 
 | **编译前测试代码已写(Finding 1)** | P3 测试开发门 `gate_test_develop.py`(`emit 3`)是"先写完功能+测试代码再编译"的**真签名门**——不闭合 phase3 就到不了 phase4(build)。它证明测试**编写**(契约每个 `test_cases[].gtest` 的 suite 出现在新测试文件),测试**执行**留到 P5(`gate_test_ut.py`)。 |
 | **签名且绑定证据的 consent** | P6/P7 人工确认令牌绑定当前 PASS；P8 在不可逆 push **之前**绑定签名的完整 diff + repo/branch/base/Issue 预检条目，最终推进再同时复验该 consent 与上传 PASS。P1 设计 consent 绑定签名设计条目。证据变化后旧 consent 都会失效。 |
 | **按影响范围重走** | P2 闭合时锁定功能指纹。v3 契约内、无行为/依赖/公开接口变化的私有实现修复可 `advance.py repair` 回 P2；验收、依赖、公开接口或行为变化必须 `reset` 回 P1 并重新确认。P3/P5/P6/P7 仍只允许新增独立测试文件。 |
-| **workflow 维测** | 每个 run 的 `workflow_metrics.json` 记录 agent/model、每阶段实际 skills、分轮墙钟/人工等待排除/有效耗时、gate 尝试，以及正常 consent、意外解阻、用户主动纠偏三类介入。人工不回复期间不增加有效耗时。使用见 [`docs/workflow/observability-usage.md`](docs/workflow/observability-usage.md)。 |
+| **作业线维测** | 需求开发 run 和需求分析与设计工作流（Requirement workflow）都写一份同 schema 的 `workflow_metrics.json`，记录 agent/model、每阶段实际 skills、分轮墙钟/人工等待排除/有效耗时、尝试，以及正常交互、意外解阻、用户主动纠偏三类介入。人工不回复期间不增加有效耗时。使用见 [`docs/workflow/observability-usage.md`](docs/workflow/observability-usage.md)。 |
 | **真机抗伪造三层证明(P6)** | 真机功能不再只认"日志里出现过 marker",而是叠加:①**进程溯源**——marker 命中行绑定 PID,校验进程名与契约 `device_cases[].process` 一致、且 `/proc/<pid>/exe\|maps` 真加载了 `artifact_loaded`;②**副作用断言**——`side_effect` 的 `shell_assert` 命令实跑并比对期望;③**负对照差分**——按 `absent_before_trigger` 切 baseline/trigger 窗口,marker 若在触发前已出现即 FAIL。证据优先级:进程溯源 > artifact_loaded > side_effect > baseline/trigger 差分 > runtime/e2e marker > 纯文本 marker。 |
 | **失败三分回路 + 双熔断 + 人工升级** | 失败按 `Retry / Repair / Regenerate` 三分(§10 判定矩阵机械化):Retry 同阶段重试不动 bundle;Repair 新窗口修复、bundle revision 升级、显式声明 `downstream_revalidate_scope`;越设计边界才 Regenerate 回 P1/P2/P3。`MAX_RETRY_ROUNDS`/`MAX_REPAIR_ROUNDS`(默认各 2)超预算即 `human_escalation_needed`。外部 API/网络瞬时不可用(`external_api_unstable`)与"真红 CI"区分,前者直接升级人工而非空转 repair。 |
 
@@ -145,7 +145,7 @@ AI-AR-workflow/
 ├── README.md                              ← 本文件
 └── skills/
     ├── ohos-req-intake-orchestration/     ← 需求分析与设计入口，最终生成 AR.md
-    ├── ohos-req-*/                        ← SDD 需求、可行性、决策、Gate、IR/SR 技能
+    ├── ohos-req-*/                        ← 需求分析与设计工作流的需求、可行性、决策、Gate、IR/SR 技能
     ├── ohos-ar-dev-workflow/           ← thin 入口(编排器):路由/init/调度/断点恢复
     │   ├── SKILL.md
     │   ├── README.md                      ← 架构图
@@ -204,7 +204,7 @@ bash sync-skills.sh --target "$HOME/.my-agent/skills"  # 任意 Agent
 
 之后**重启 Agent 会话**：
 
-- 说「执行 OHOS SDD / 需求导入 / 生成 AR」触发 `ohos-req-intake-orchestration`。
+- 说「执行 Requirement workflow / 需求导入 / 生成 AR」触发 `ohos-req-intake-orchestration`。
 - 说「跑流水线 / 从这个 AR 自动开发到上库」触发 `ohos-ar-dev-workflow`。
 
 `sync-skills.sh` 是单向拷贝，根 `skills/` 是整条作业线及其关联技能的唯一可安装真源。

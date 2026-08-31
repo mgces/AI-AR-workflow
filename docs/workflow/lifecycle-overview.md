@@ -4,7 +4,7 @@
 
 ## OpenHarmony 需求分析与开发作业线
 
-作业线由“需求分析与设计工作流（OHOS SDD）”和“需求开发工作流”串行组成。需求开发也可以直接接收用户提供的自然语言 AR：
+需求分析与设计工作流（Requirement workflow）与需求开发工作流组成串行作业线。需求开发也可以直接接收用户提供的自然语言 AR：
 
 ```text
 分析设计：原始需求 → 澄清 → 可行性 → 决策 → Feature Gate → IR/Proposal/SR → AR.md
@@ -12,8 +12,8 @@
 需求开发：                                           显式交接 → P0 → P1 → … → P8
 ```
 
-交接前后的门禁状态相互隔离：SDD Gate 不代表需求开发工作流的任何 phase 已 PASS。
-详见 [需求分析与设计](/sdd/) 和 [AR 交接](/sdd/ar-handoff)。
+交接前后的门禁状态相互隔离：Requirement Gate 不代表需求开发工作流的任何 phase 已 PASS。
+详见 [需求分析与设计工作流](/sdd/) 和 [AR 交接](/sdd/ar-handoff)。
 
 ## 一张总图
 

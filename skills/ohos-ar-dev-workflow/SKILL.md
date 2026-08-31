@@ -24,7 +24,7 @@ Agent 必须从当前源码发现组件、接口、SA ID、GN target、测试框
 
 输入也可以是 `ohos-req-intake-orchestration` 独立生成的 `AR.md` 绝对路径。这只是两个
 workflow 的串行文件交接：本 workflow 仍需独立初始化 P0-P8，并在 P1 从当前源码 HEAD
-重新验证 SDD AR 中的仓、文件、API、GN target、依赖、测试和运行行为。SDD Gate/handoff 不是
+重新验证需求分析与设计工作流（Requirement workflow）AR 中的仓、文件、API、GN target、依赖、测试和运行行为。Requirement Gate/handoff 不是
 本 workflow 的 PASS 证据，不能代替 `gate_design.py` 和签名 `ar-contract`。
 
 ## 全局护栏(必须遵守)
@@ -101,7 +101,7 @@ workflow 的串行文件交接：本 workflow 仍需独立初始化 P0-P8，并�
       --base-commit "$(git -C $OHOS_ROOT rev-parse HEAD)" \
       | sed -n 's/^PDIR=//p')
   # 自然语言 AR：将原文写入 "$PDIR/ar.md"
-  # SDD AR：将 ohos-req-intake-orchestration 产出的 AR.md 拷贝为 "$PDIR/ar.md"
+  # 需求分析与设计工作流（Requirement workflow）AR：将 ohos-req-intake-orchestration 产出的 AR.md 拷贝为 "$PDIR/ar.md"
   ```
   > ⚠️ PDIR **必须**从 init 的 `PDIR=` 行取(它保证在 `<repo>/specs/pipeline/` 下)。
   > 若你显式传 `--pipeline-dir`,它必须落在 `<repo>/specs/pipeline/<run>` 之内,否则 init **硬失败**

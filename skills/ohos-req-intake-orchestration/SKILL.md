@@ -1,21 +1,25 @@
 ---
 name: ohos-req-intake-orchestration
 description: >-
-  Use when orchestrating the standalone OHOS SDD requirement-intake workflow,
-  from raw requirement through review, IR, proposal, SR, and a final AR.md for
-  the downstream ohos-ar-dev-workflow. Triggers include OHOS SDD, requirement
-  intake, Phase 0, requirement review, generate IR, 需求导入, 需求评审,
-  生成IR, and 生成AR. Do not use for code delivery, the P0-P8 AR development
-  workflow, or ad-hoc document generation.
+  Use when orchestrating the Requirement workflow (the requirement-analysis
+  and design entry formerly called OHOS SDD), from raw requirement through
+  review, IR, proposal, SR, and a final AR.md for the downstream
+  ohos-ar-dev-workflow. Triggers include Requirement workflow, OHOS SDD
+  (legacy alias), requirement intake, Phase 0, requirement review, generate IR,
+  需求导入, 需求评审, 生成IR, and 生成AR. Do not use for code delivery, the
+  P0-P8 AR development workflow, or ad-hoc document generation.
 metadata:
   author: openharmony
+  display_name: Requirement workflow
+  legacy_name: OHOS SDD
   scope: common
   stage: requirements
   capability: intake-orchestration
   version: 0.3.0
   status: draft
   tags:
-    - sdd
+    - requirement-workflow
+    - sdd-legacy
     - requirements
   related-skills:
     - name: ohos-req-requirement-intake
@@ -47,13 +51,13 @@ metadata:
       min_version: 0.1.0
 ---
 
-**Announce at start:** "我正在使用 ohos-req-intake-orchestration skill 编排 Phase 0 需求导入流程。"
+**Announce at start:** "我正在使用 ohos-req-intake-orchestration skill 编排需求分析与设计工作流（Requirement workflow）流程。"
 
-# OHOS 需求导入工作流（Phase 0）
+# 需求分析与设计工作流（Requirement workflow，Phase 0）
 
 ## 定位
 
-OHOS SDD 需求导入全流程编排入口，串联 9 个 subagent skill（requirement→feasibility→decision→feature→gate→IR→proposal→SR→handoff→AR）。它与 `ohos-ar-dev-workflow` 是两个独立 workflow：本 workflow 仅完成需求基线和 AR 生成，不初始化、推进或修改下游 P0-P8 状态机。RR单号（rr_id）从 01-requirement.md frontmatter 继承到 IR/SR/handoff/AR 全链路。Token 经济性规则（spawn 四要素+隔离上下文+摘要≤15行+扇出≤4）是所有 subagent 调用的绑定契约。模式 A（subagent 编排）和模式 B（主 session 串行）根据运行时 subagent 能力自动切换。
+需求分析与设计工作流（Requirement workflow）是需求分析与设计入口，串联 9 个 subagent skill（requirement→feasibility→decision→feature→gate→IR→proposal→SR→handoff→AR）。它与 `ohos-ar-dev-workflow` 通过 `AR.md` 串行交接：本 workflow 仅完成需求基线和 AR 生成，不初始化、推进或修改下游 P0-P8 状态机。RR单号（rr_id）从 01-requirement.md frontmatter 继承到 IR/SR/handoff/AR 全链路。Token 经济性规则（spawn 四要素+隔离上下文+摘要≤15行+扇出≤4）是所有 subagent 调用的绑定契约。模式 A（subagent 编排）和模式 B（主 session 串行）根据运行时 subagent 能力自动切换。
 
 ## NEVER
 
@@ -76,8 +80,9 @@ OHOS SDD 需求导入全流程编排入口，串联 9 个 subagent skill（requi
 - `IR.md`（Phase 0 正式出口）
 - `05-proposal*.md`（拆分后）
 - `SR-*.md`（每个 GA-Approved proposal 对应一个 SR）
-- `handoff.md`（SDD 内部交接摘要）
+- `handoff.md`（需求分析与设计工作流内部交接摘要）
 - `AR.md`（本 workflow 最终产物，作为 `ohos-ar-dev-workflow` 的输入）
+- `workflow_metrics.json`（R1-R9 时间、skill 和人工介入的 advisory 记录，不是 Gate 证据）
 
 ## 模板与产物命名约定
 
@@ -87,6 +92,16 @@ OHOS SDD 需求导入全流程编排入口，串联 9 个 subagent skill（requi
 
 路径解析逻辑见 `reference/env-vars.md`。`SKILLS_DIR`、`WORK_HOME`、`DOCS_REPO` 职责分离，详见参考文件。
 
+## 需求分析与设计工作流（Requirement workflow）维测
+
+需求分析与设计工作流使用与需求开发工作流相同口径的 `workflow_metrics.json`，但不依赖下游
+P0-P8 状态机。`docs_dir` 确定后，先用 `scripts/requirement_metrics.py init` 创建
+`{docs_dir}/workflow_metrics.json`；每个 R1-R9 阶段按“stage-open → 实际调用 skill 的
+`use-skill` → stage-close”记录。R1/R2/R3/R4/R6 的用户澄清、决策和评审等待用
+`human-wait start/end --category required_workflow` 记录；意外解阻和用户主动纠偏分别使用
+`blocked_unplanned`、`user_correction`。维测文件只用于时间和介入统计，不参与 Gate、AR 生成或
+需求决策。完整命令、阶段映射和 JSON 口径见 `reference/observability.md`。
+
 ## 核心原则
 
 **决策结论由用户提供，AI 不代行。** Step 0.3.2 为强制交互点。
@@ -95,6 +110,25 @@ OHOS SDD 需求导入全流程编排入口，串联 9 个 subagent skill（requi
 **Phase 0 串行无环，不可跳步。**
 
 ## 流程
+
+### 维测初始化与阶段记录（与流程并行执行）
+
+在 `docs_dir` 确定后初始化需求分析与设计工作流（Requirement workflow）维测文件；如果从已有 `docs_dir` 续跑，沿用其中
+的 `run_id`，不要覆盖历史记录：
+
+```bash
+METRICS="{docs_dir}/workflow_metrics.json"
+METRICS_TOOL="{SKILLS_DIR}/ohos-req-intake-orchestration/scripts/requirement_metrics.py"
+python3 "$METRICS_TOOL" --metrics "$METRICS" init \
+  --run-id "{change-id}" --agent <agent> --model <model> \
+  --skill ohos-req-intake-orchestration
+```
+
+R1-R9 每个阶段都必须按“`stage-open` → 实际调用的每个 skill 执行 `use-skill` → 产物完成后
+`stage-close`”记录。R1/R2/R3/R4/R6 的强制人工交互，提问前 `human-wait start`，收到回复后
+`human-wait end`；意外解阻或用户纠偏按 `blocked_unplanned` / `user_correction` 分类。维测写入
+失败只记录告警，不得把它当作 Gate 或文档完成结论。阶段映射、命令和提交前检查见
+`reference/observability.md`。
 
 ### Step 0: 启动预检 ⭐ 强制
 
@@ -164,7 +198,7 @@ python3 {SKILLS_DIR}/ohos-req-intake-orchestration/scripts/install_related_skill
 3. 对每个关键仓库执行 `grep` 检索（限定咨询路径给出的目录），取 top-10 命中
 4. 落盘到 `kb_precheck_path = {DOCS_REPO}/tmp/ohos_kb_precheck_{feature}.md`
 
-**预检范围限定：≤3 个关键词，≤2 个仓库，每仓库 ≤10 条命中。** 目标是让 feasibility 有代码级证据，不是做全面分析（全面的当前源码复核由下游 AR workflow P1 完成）。
+**预检范围限定：≤3 个关键词，≤2 个仓库，每仓库 ≤10 条命中。** 目标是让 feasibility 有代码级证据，不是做全面分析（全面的当前源码复核由下游需求开发工作流 P1 完成）。
 
 > 若无可访问的代码仓或知识库，预检可跳过；`ohos-req-feasibility-analysis` 按其 Fallback 规则（Read 工具读取实际代码 / 降级为 `warn`）处理，不硬 fail。
 
@@ -290,7 +324,7 @@ Feature 已通过 Review Ready Gate。如需生成需求评审 PPT 供评审会�
 
 ### Step 0.9.1: 生成 handoff.md ⭐ 强制
 
-SDD 主体产物完成时，主 Session **必须**生成 handoff.md 交接摘要。详见 `reference/handoff.md` 模板。
+需求分析与设计工作流主体产物完成时，主 Session **必须**生成 handoff.md 交接摘要。详见 `reference/handoff.md` 模板。
 
 handoff.md 是生成下游 AR 的结构化输入摘要，包含：
 - Gate 状态、decision 状态、IR 路径、feature 路径
@@ -327,7 +361,7 @@ handoff.md 完整性校验通过后，读取 `reference/ar.md` 生成 `{docs_dir
 
 ## 详细 spawn 指令
 
-本 SKILL.md 的 Step 0.1→0.9.2 即 OHOS SDD 完整 spawn 编排规范。主 Session 按本文步骤执行，产出 AR.md 后停止，**不进入、不自动调用** `ohos-ar-dev-workflow`。
+本 SKILL.md 的 Step 0.1→0.9.2 即需求分析与设计工作流（Requirement workflow）完整 spawn 编排规范。主 Session 按本文步骤执行，产出 AR.md 后停止，**不进入、不自动调用** `ohos-ar-dev-workflow`。
 
 spawn 时遵循下节「Token 经济性 & Context 工程」的绑定契约：task 描述只含四要素（角色 / 输入路径 / 输出路径 / 任务简述），证据传路径不传内容（见 NEVER §1-§2），回传 ≤15 行。
 
@@ -360,4 +394,4 @@ spawn 时遵循下节「Token 经济性 & Context 工程」的绑定契约：tas
 
 ## 回传
 
-≤15 行：SDD 产物路径清单 + RR单号 + IR 状态 + proposal 数量 + SR 数量 + Gate 结论 + handoff.md 路径 + AR.md 路径 + 下一步建议（“可将 AR.md 作为输入显式启动 ohos-ar-dev-workflow”）。不回传正式文档全文。
+≤15 行：需求分析与设计工作流（Requirement workflow）产物路径清单 + RR单号 + IR 状态 + proposal 数量 + SR 数量 + Gate 结论 + handoff.md 路径 + AR.md 路径 + 下一步建议（“可将 AR.md 作为输入显式启动 ohos-ar-dev-workflow”）。不回传正式文档全文。

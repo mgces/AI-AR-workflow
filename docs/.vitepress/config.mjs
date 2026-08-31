@@ -3,7 +3,7 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 // AI-AR Workflow documentation site configuration
-// 顶层导航按设计方案 §5 排序：开始使用 → 开发 Workflow → Skill 实战 → 示例 → 知识库 → 参考 → 案例归档
+// 顶层导航按设计方案 §5 排序：开始使用 → 需求分析与设计工作流 → 需求开发 → Skill 实战 → 示例 → 知识库 → 参考 → 案例归档
 export default defineConfig({
   extends: resolve(dirname(fileURLToPath(import.meta.url)), 'theme'),
   title: 'AI-AR Workflow',
@@ -25,7 +25,7 @@ export default defineConfig({
 
     nav: [
       { text: '开始使用', link: '/getting-started/' },
-      { text: '需求分析与设计', link: '/sdd/' },
+      { text: '需求分析与设计工作流', link: '/sdd/' },
       { text: '需求开发', link: '/workflow/' },
       { text: 'Skill 实战', link: '/skill-playbooks/' },
       { text: '示例', link: '/examples/' },
@@ -72,7 +72,7 @@ export default defineConfig({
           text: '需求分析与设计工作流',
           items: [
             { text: '概览', link: '/sdd/' },
-            { text: 'SDD 到 AR 交接', link: '/sdd/ar-handoff' },
+            { text: '需求分析与设计工作流到 AR 交接', link: '/sdd/ar-handoff' },
           ],
         },
       ],

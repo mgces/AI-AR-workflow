@@ -19,7 +19,7 @@ metadata:
 
 ## 定位
 
-OHOS Review Ready Gate 是 SDD 需求导入 workflow 唯一的独立 subagent 结构化判定——主 session 已持有 01-04 全文上下文，自行推算 Gate 会产生确认偏差，必须由隔离上下文的 subagent 执行判定。Gate JSON 输出的 observations 字段（PIR #152 P1）将性能/功耗/内存等需实测的指标归类为观测项，不阻塞 Ready 判定，而是通过 AR.md 交给下游 AR workflow P5-P7 跟踪闭环。
+OHOS Review Ready Gate 是需求分析与设计工作流（Requirement workflow）唯一的独立 subagent 结构化判定——主 session 已持有 01-04 全文上下文，自行推算 Gate 会产生确认偏差，必须由隔离上下文的 subagent 执行判定。Gate JSON 输出的 observations 字段（PIR #152 P1）将性能/功耗/内存等需实测的指标归类为观测项，不阻塞 Ready 判定，而是通过 AR.md 交给下游需求开发工作流 P5-P7 跟踪闭环。
 
 ## 适用边界
 
@@ -82,7 +82,7 @@ OHOS Review Ready Gate 是 SDD 需求导入 workflow 唯一的独立 subagent �
 | 条件项类型 | 判定依据 | Gate 影响 | 跟踪方式 |
 |-----------|---------|----------|---------|
 | **Phase 0 可关闭条件项** | 所需信息在 Phase 0 范围内可获取（如 AC 缺验证方式、模块覆盖有排除理由等） | 缺 Owner/动作/时点 → 升级为 fail，阻塞 Gate | 条件项清单 |
-| **SDD 观测项** | 关闭依赖下游 AR workflow P5-P7 实测数据（性能基准、功耗实测、内存基线、稳定性测试等） | **不阻塞 Gate Ready/Not Ready 判定**；Gate 结论按其他检查项判定 | 独立观测项字段，通过 AR.md 交给下游跟踪闭环 |
+| **需求分析与设计工作流观测项** | 关闭依赖下游需求开发工作流 P5-P7 实测数据（性能基准、功耗实测、内存基线、稳定性测试等） | **不阻塞 Gate Ready/Not Ready 判定**；Gate 结论按其他检查项判定 | 独立观测项字段，通过 AR.md 交给下游跟踪闭环 |
 
 **观测项识别规则**：条件项描述中含"性能基准""功耗实测""内存占用基线""稳定性测试""压力测试"等需实际运行才能获取的量化指标时，自动归类为观测项。观测项仍需记录 Owner 和目标关闭时点（指向 Phase 5-7 对应阶段），但不影响 Gate 结论。
 

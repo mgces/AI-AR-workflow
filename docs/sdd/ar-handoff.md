@@ -1,11 +1,11 @@
-# SDD 到 AR 交接
+# 需求分析与设计工作流到 AR 交接
 
 ## 交接边界
 
-需求分析与设计工作流的最后一步产出 `AR.md`。该文件是需求基线，不是开发设计，也不是需求开发工作流的 PASS 证据。
+需求分析与设计工作流（Requirement workflow）的最后一步产出 `AR.md`。该文件是需求基线，不是开发设计，也不是需求开发工作流的 PASS 证据。
 
 ```text
-SDD Gate / IR / SR
+Requirement Gate / IR / SR
         │
         └── AR.md          # 需求输入
               │
@@ -24,11 +24,11 @@ SDD Gate / IR / SR
 AR.md 不应包含或声称：
 
 - P0-P8 已初始化或已通过。
-- SDD Gate 可以代替 `gate_design.py`。
+- Requirement Gate 可以代替 `gate_design.py`。
 - 尚未在当前源码验证的文件、API 和 GN target 是确定事实。
-- 未经 SDD 评审的新需求范围。
+- 未经需求分析与设计工作流评审的新需求范围。
 
-## 启动第二个 workflow
+## 交接到需求开发工作流
 
 ```text
 /ohos-ar-dev-workflow /absolute/path/to/AR.md

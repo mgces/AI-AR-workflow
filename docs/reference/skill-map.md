@@ -6,7 +6,7 @@
 
 | 阶段 | 常用 skill | 作用 |
 |---|---|---|
-| SDD 需求导入 | `ohos-req-intake-orchestration`（编排）+ `ohos-req-*` 关联技能 | 原始需求→01-05/IR/SR→AR.md |
+| 需求分析与设计工作流（Requirement workflow）需求导入 | `ohos-req-intake-orchestration`（编排）+ `ohos-req-*` 关联技能 | 原始需求→01-05/IR/SR→AR.md |
 | P0 | `ohos-ar-dev-init` | 初始化环境与能力校验 |
 | P1 设计 | `ohos-ar-dev-workflow`（编排） / `ohos-dev-sa-codegen` / `ohos-dev-napi-module` / `code-ruleset-style-check` | 设计固化与代码骨架 |
 | P2 开发 | `ohos-dev-sa-codegen` / `ohos-dev-napi-module` / `code-ruleset-style-check` / `tdd-enforcer` / `ohos-code-skeletons` | 代码开发与门控 |
@@ -21,7 +21,7 @@
 
 | 任务 | skill |
 |---|---|
-| 编排 OHOS SDD 需求导入 | `ohos-req-intake-orchestration` |
+| 编排需求分析与设计工作流（Requirement workflow） | `ohos-req-intake-orchestration` |
 | 需求/可行性/决策/Feature 基线 | `ohos-req-requirement-intake` / `ohos-req-feasibility-analysis` / `ohos-req-arch-decision` / `ohos-req-feature-baseline` |
 | Review Ready Gate / 评审纪要 | `ohos-req-review-gate` / `ohos-req-value-decision` |
 | Feature 转 IR / Proposal 转 SR | `ohos-req-feature-to-ir` / `ohos-req-proposal-to-sr` |
@@ -53,7 +53,7 @@
 | 输入类型 | skill |
 |---|---|
 | 原始需求 / RR / PRD / 评审材料 | `ohos-req-intake-orchestration` |
-| 自然语言 AR 或 SDD 生成的 AR.md | `ohos-ar-dev-workflow` |
+| 自然语言 AR 或需求分析与设计工作流生成的 AR.md | `ohos-ar-dev-workflow` |
 | 组件路径 + build_target + testpart | `ohos-ar-dev-init` |
 | C/C++ 源文件 | `ohos-dev-sa-codegen` / `ohos-dev-napi-module` / `code-ruleset-style-check` / `ohos-code-skeletons` |
 | 测试目标 + suite + part | `ohos-test-ut-generation` / `ohos-test-xts` / `check-test-code-quality` |

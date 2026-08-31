@@ -1,7 +1,13 @@
-# Workflow 维测使用说明
+# OpenHarmony 作业线维测使用说明
 
-本说明用于收集可横向比较的 workflow 运行数据。每个 run 只提交一份
-`$PDIR/workflow_metrics.json`。不要手改统计文件；通过 `advance.py` 记录，避免不同使用者采用不同口径。
+本说明用于收集可横向比较的作业线运行数据。需求开发入口每个 run 只提交一份
+`$PDIR/workflow_metrics.json`；需求分析与设计工作流（Requirement workflow）每个需求目录只提交一份
+`{docs_dir}/workflow_metrics.json`。不要手改统计文件：需求开发通过 `advance.py`，需求分析与设计工作流
+（Requirement workflow）通过 `requirement_metrics.py` 记录，避免不同使用者采用不同口径。
+
+需求分析与设计工作流（Requirement workflow）的阶段映射和命令详见 [需求分析与设计工作流](/sdd/)，以及仓内
+`skills/ohos-req-intake-orchestration/reference/observability.md`。
+两个入口的 JSON 都使用 schema version 2；汇总时按 `workflow` 字段区分来源。
 
 ## 1. 统一时间口径
 
@@ -14,6 +20,24 @@
 
 后续汇总性能时使用 `workflow_effective_elapsed_seconds`，不要用墙钟时间评价模型或 workflow。
 墙钟时间只用于观察真实交付周期。
+
+## 需求分析与设计工作流（Requirement workflow）初始化
+
+需求分析与设计工作流不创建 `$PDIR` 或 P0-P8 状态机；在 `docs_dir` 创建一次指标文件，并用 R1-R9
+记录需求分析与设计阶段：
+
+```bash
+M="$SKILLS_DIR/ohos-req-intake-orchestration/scripts/requirement_metrics.py"
+METRICS="$DOCS_DIR/workflow_metrics.json"
+python3 "$M" --metrics "$METRICS" init \
+  --run-id "$CHANGE_ID" --agent codex --model "$MODEL" \
+  --skill ohos-req-intake-orchestration
+python3 "$M" --metrics "$METRICS" stage-open --phase R1
+```
+
+阶段完成后执行 `stage-close`；实际调用的每个关联 skill 执行 `use-skill`。R1/R2/R3/R4/R6 的
+人工交互遵循本页同样的 `human-wait start/end` 和三类介入分类。完整 R1-R9 映射及示例见
+`skills/ohos-req-intake-orchestration/reference/observability.md`。
 
 ## 2. 初始化 Agent、模型和 P0 skills
 

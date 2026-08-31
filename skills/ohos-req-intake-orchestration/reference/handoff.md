@@ -6,10 +6,10 @@ date: ""
 status: Draft
 ---
 
-# Handoff 摘要 — OHOS SDD → AR 生成
+# Handoff 摘要 — 需求分析与设计工作流（Requirement workflow）→ AR 生成
 
-> 本文档汇总 OHOS SDD 的已评审需求基线，供同一 workflow 生成 `AR.md`。
-> `AR.md` 生成后 SDD workflow 结束；用户或上层编排再将 AR 显式传给独立的 `ohos-ar-dev-workflow`。
+> 本文档汇总需求分析与设计工作流（Requirement workflow）的已评审需求基线，供同一入口生成 `AR.md`。
+> `AR.md` 生成后需求分析与设计工作流结束；用户或上层编排再将 AR 显式传给需求开发工作流 `ohos-ar-dev-workflow`。
 
 ## Phase 0 完成状态
 
@@ -45,6 +45,7 @@ status: Draft
 | IR | `{docs_dir}/IR.md` |
 | SR | `{docs_dir}/SR.md`（单一 proposal）或 `{docs_dir}/SR-*.md`（多 proposal，每个一个） |
 | 下游 AR | `{docs_dir}/AR.md`（handoff 校验通过后生成） |
+| 需求分析与设计工作流维测 | `{docs_dir}/workflow_metrics.json`（advisory，不参与 Gate） |
 
 ## 关键决策摘要
 
@@ -77,12 +78,12 @@ status: Draft
 - [ ] 至少一个 proposal 文件存在
 - [ ] GA-Approved 的 proposal 均有对应 SR 文件
 
-**任一检查不通过 → 阻断 AR 生成，提示用户回到对应 SDD 步骤补齐。**
+**任一检查不通过 → 阻断 AR 生成，提示用户回到对应需求分析与设计工作流步骤补齐。**
 
 ## 交接说明
 
 - AR 以 `05-proposal*.md` 和 `SR-*.md` 的已批准边界为交付范围，IR 和 feature 作为需求上下文。
-- SDD 产物（01-05/IR/SR/handoff）是 AR 的溯源基线，生成 AR 时不得扩展未评审范围。
+- 需求分析与设计工作流产物（01-05/IR/SR/handoff）是 AR 的溯源基线，生成 AR 时不得扩展未评审范围。
 - `ohos-ar-dev-workflow` 读取 AR 后独立初始化 P0-P8，并在 P1 从当前源码 HEAD 重新验证动态代码事实。
 
 ## 状态流转
@@ -90,6 +91,6 @@ status: Draft
 | handoff.md status | 含义 | 允许动作 |
 |-------------------|------|----------|
 | Draft | Phase 0 流程进行中 | 仅 ohos-req-intake-orchestration 可更新 |
-| Ready | SDD 完成，所有前置检查通过 | 可生成 AR.md |
-| ConditionalReady | SDD 有条件完成 | 可生成 AR.md，但必须携带条件项 |
-| Blocked | SDD 前置检查不通过 | 禁止生成 AR.md |
+| Ready | 需求分析与设计工作流完成，所有前置检查通过 | 可生成 AR.md |
+| ConditionalReady | 需求分析与设计工作流有条件完成 | 可生成 AR.md，但必须携带条件项 |
+| Blocked | 需求分析与设计工作流前置检查不通过 | 禁止生成 AR.md |

@@ -10,9 +10,9 @@ gate_a: ""           # GA 审视记录链接
 ---
 # Proposal
 
-> 模板定位：SDD 入口 proposal，归档到对应代码仓，过 GATE A(GA: Proposal Gate)。
+> 模板定位：需求分析与设计工作流（Requirement workflow）入口 proposal，归档到对应代码仓，过 GATE A(GA: Proposal Gate)。
 > 以 ODK `core/templates/ai/proposal.md` 为基，融合 OpenSpec(Why) + MatrixSpec(User Stories/DFX)。
-> 本文档是 OHOS SDD Gate A 的 GA 输入交付件，通过后由 `ohos-req-proposal-to-sr` 生成 SR。
+> 本文档是需求分析与设计工作流 Gate A 的 GA 输入交付件，通过后由 `ohos-req-proposal-to-sr` 生成 SR。
 
 ## 基本信息
 

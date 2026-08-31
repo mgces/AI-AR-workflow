@@ -28,7 +28,7 @@ metadata:
 
 ## 定位
 
-SR.md 作为 OHOS 电子流 GA 后基线附件提交，SR 的 status=GA-Approved 是 SDD 生成下游 AR.md 的前置条件。SR 的维度确认继承自 IR（PIR #152 P0），不重新逐条交互。SR §二责任人表的分析责任人/SE/TSE/测试责任人必须在 handoff 前指定（PIR #152 P2），缺失则阻断 AR 生成。
+SR.md 作为 OHOS 电子流 GA 后基线附件提交，SR 的 status=GA-Approved 是需求分析与设计工作流（Requirement workflow）生成下游 AR.md 的前置条件。SR 的维度确认继承自 IR（PIR #152 P0），不重新逐条交互。SR §二责任人表的分析责任人/SE/TSE/测试责任人必须在 handoff 前指定（PIR #152 P2），缺失则阻断 AR 生成。
 
 ## 适用边界
 
@@ -102,7 +102,7 @@ SR.md 作为 OHOS 电子流 GA 后基线附件提交，SR 的 status=GA-Approved
 
 ## NEVER
 
-- **NEVER 在 SR 中新增 proposal 未批准的需求范围**：SR 是 GA 后的基线，只能从已批准 proposal 提取，不可自行扩大范围（原因：SR 是 GA 后锁定的基线，新增范围绕过了 GA 审批，未批准的需求会经 AR.md 进入下游 AR workflow，导致实现返工）
+- **NEVER 在 SR 中新增 proposal 未批准的需求范围**：SR 是 GA 后的基线，只能从已批准 proposal 提取，不可自行扩大范围（原因：SR 是 GA 后锁定的基线，新增范围绕过了 GA 审批，未批准的需求会经 AR.md 进入下游需求开发工作流，导致实现返工）
 - **NEVER 在 SR 中写实现签名**：SR 定义接口责任和语义约束，不包含方法签名、类设计、时序设计（这些属于 spec/design 阶段）（原因：SR 是系统需求基线附件，方法签名/类设计属于 spec/design 阶段产物，提前写入会与后续设计产生冲突）
 - **NEVER 合并多个 proposal 的 SR**：一个 proposal 对应一个 SR（1:1 关系），跨 proposal 依赖仅记录依赖关系，不合并文件（原因：合并会模糊 GA 审批边界，导致部分 proposal 未批准的需求混入 SR 基线，电子流无法追溯单个 proposal 的验收状态）
 - **NEVER 忽略 P0/P1 AC 到 IR 的可追溯性**：每条 P0/P1 AC 必须能在 IR 矩阵中找到对应行，缺失时拒绝生成 SR（原因：断链的 AC 在 Phase 5 测试阶段无法验证，导致 SR 验收无法闭环）

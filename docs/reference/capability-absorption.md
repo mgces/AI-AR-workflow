@@ -29,4 +29,4 @@
 
 ## Workflow 路由
 
-能力 Skills 服务于统一的“OpenHarmony 需求分析与开发作业线”：需求分析与设计工作流（OHOS SDD）负责需求收敛并生成 `AR.md`，再显式交接给需求开发工作流，由后者在 P2-P8 调用开发、测试、质量与 CI 能力。
+能力 Skills 服务于统一的“OpenHarmony 需求分析与开发作业线”：需求分析与设计工作流（Requirement workflow）负责需求收敛并生成 `AR.md`，再显式交接给需求开发工作流，由后者在 P2-P8 调用开发、测试、质量与 CI 能力。

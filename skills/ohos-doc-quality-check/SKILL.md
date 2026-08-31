@@ -11,7 +11,7 @@ Review documentation against the current repository state rather than treating e
 
 - Every mentioned Skill, script, option, phase and output path exists in `skills/`, the unique installable source.
 - Workflow changes are synchronized across the entry Skill, phase docs, gate contract, skill map, examples and knowledge-base routing.
-- OHOS SDD and AR remain distinct workflows; SDD produces `AR.md`, which is the AR workflow input.
+- The requirement-analysis and design workflow (Requirement workflow) and the demand-development workflow remain separate entry points; Requirement workflow produces `AR.md`, which is the demand-development input.
 - Commands state their working directory, prerequisites, mutation scope and evidence of success.
 - Links and VitePress navigation resolve; generated `dist/` is not used as the source.
 - Claims such as “CI equivalent”, “full coverage” and “PASS” name the backend and evidence. Missing or advisory tooling is not presented as success.

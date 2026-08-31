@@ -5,7 +5,7 @@
 
 ```
                          ┌─────────────────────────────────────────┐
-   AR(自然语言或 SDD 生成的 AR.md) ─▶ │  ohos-ar-dev-workflow/SKILL.md (编排)  │
+   AR(自然语言或需求分析与设计工作流（Requirement workflow）生成的 AR.md) ─▶ │  ohos-ar-dev-workflow/SKILL.md (编排)  │
                          │  路由 → init → 调度循环 → 断点恢复         │
                          └───────────────┬─────────────────────────┘
                                          │ 每阶段:做事 → 跑门控 → advance
