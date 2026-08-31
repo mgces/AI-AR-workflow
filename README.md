@@ -1,7 +1,18 @@
-# AI-AR-workflow — OHOS AR→上库 证据门控自动化流水线
+# AI-AR-workflow — OpenHarmony 需求分析与开发作业线
 
-一套基于通用 Agent 技能协议的编排流程:从**已澄清的 AR(架构需求)**出发,自动推进
-OHOS(rk3568,C/C++ 系统组件)的完整研发生命周期,直到代码上库:
+本仓库提供一条完整的 OpenHarmony 需求分析与开发作业线，内部按职责分为：
+
+1. **需求分析与设计工作流（OHOS SDD）**：入口 `ohos-req-intake-orchestration`，完成需求导入与评审，产出 `AR.md`。
+2. **需求开发工作流**：入口 `ohos-ar-dev-workflow`，以自然语言 AR 或上述 `AR.md` 为输入，推进 OHOS
+   系统组件的设计固化、开发、测试、真机验证和上库。
+
+作业线通过 AR 文件串行交接；交接前后的门禁状态和 PASS 结论相互隔离：
+
+```text
+原始需求 → 需求分析与设计（OHOS SDD）→ AR.md → 需求开发 P0-P8 → PR/CI
+```
+
+需求开发工作流的研发生命周期为：
 
 ```
 设计固化 → 代码开发 → 测试用例编写 → 编译验证 → 单元测试 → 端到端功能测试 → 功能/覆盖率/性能/功耗/稳定性验证 → 代码上库review
@@ -22,6 +33,25 @@ OHOS(rk3568,C/C++ 系统组件)的完整研发生命周期,直到代码上库:
 
 ## 0. 流程图(端到端)
 
+### OpenHarmony 需求分析与开发作业线
+
+```text
+原始需求
+  │
+  ▼
+ohos-req-intake-orchestration          # 需求分析与设计工作流
+  └── 01-05 / IR / SR / handoff / AR.md
+  │                                   # 显式传入，不自动连跑
+  ▼
+ohos-ar-dev-workflow                  # 需求开发工作流
+  └── P0 环境 → P1 设计 → … → P8 上库
+```
+
+SDD 中的源码路径和技术判断只是下游输入；需求开发工作流 P1 仍必须从当前 OHOS 源码 HEAD
+重新验证，并由 `gate_design.py` 生成和签名自己的 `ar-contract`。
+
+### 需求开发工作流 P0-P8
+
 ```
                           ┌─────────────────────────────────────────────┐
       已澄清的 AR ───────▶│  ohos-ar-dev-workflow(编排器 / 唯一大脑)   │
@@ -33,7 +63,7 @@ OHOS(rk3568,C/C++ 系统组件)的完整研发生命周期,直到代码上库:
    │      build/compile/git/testfwk/hdc/真机(自动探测序列号) 全就绪 ── PASS ─▶ advance --phase 0  │
    └──────────────────────────────────────────────┼──────────────────────────────────────────────┘
                                                   ▼
-   ┌──────────── P1 设计固化 gate_design.py ── AR_design.md 6 必含章节 + ar-contract 契约块,HMAC 签名 ┐
+   ┌──────────── P1 设计固化 gate_design.py ── AR_design.md 7 必含章节(含 DFX) + ar-contract 契约块,HMAC 签名 ┐
    │      (设计前:稳定导航 → 当前源码仓验证 → design_refs.md,advisory 不进门控)                 │
    │      目标组件 / 功能需求 / 完整代码框架 / 完整测试框架 / 需测试功能点 / 真机用例构造              │
    │      PASS(emit 1)─▶ advance --phase 1;需人工 consent --phase 1(在 P2 开发门内校验)             │
@@ -114,6 +144,8 @@ OHOS(rk3568,C/C++ 系统组件)的完整研发生命周期,直到代码上库:
 AI-AR-workflow/
 ├── README.md                              ← 本文件
 └── skills/
+    ├── ohos-req-intake-orchestration/     ← 需求分析与设计入口，最终生成 AR.md
+    ├── ohos-req-*/                        ← SDD 需求、可行性、决策、Gate、IR/SR 技能
     ├── ohos-ar-dev-workflow/           ← thin 入口(编排器):路由/init/调度/断点恢复
     │   ├── SKILL.md
     │   ├── README.md                      ← 架构图
@@ -128,7 +160,7 @@ AI-AR-workflow/
     │   └── scripts/                        ★ 系统承重核心
     │       ├── advance.py                  ← 唯一状态写入器(init/advance/consent/reset/verify-all/migrate/status/next)
     │       ├── gate_env_init.py            ← P0 环境+真机预检
-    │       ├── gate_design.py              ← P1 设计固化(校验 AR_design.md 6 章节 + ar-contract 契约并签名;派生 bundle;emit 1)
+    │       ├── gate_design.py              ← P1 设计固化(校验 AR_design.md 7 章节含 DFX 设计 + ar-contract 契约并签名;派生 bundle;emit 1)
     │       ├── gate_develop.py             ← P2 git/untracked diff + C++ 强门控(依赖签名 AR_design + P1 consent;emit 2;闭合锁功能指纹)
     │       ├── gate_test_develop.py        ← P3 测试开发真签名门(★Finding 1:编译前测试代码已写;契约 gtest suite 出现在新测试文件;emit 3)
     │       ├── prepare_test_bundle.py      ← P3 控制层薄层(test_intent_matrix + bundle revision;非真相门,由 gate_test_develop 调用)
@@ -141,11 +173,14 @@ AI-AR-workflow/
     │       └── lib/{gatelib.py, device.sh} ← 签名账本(HMAC 链+指纹分层)+ 控制层 helper + hdc-over-WSL helper
     ├── ohos-ar-dev-init/               ← 一次性环境配置
     │
-    └── (被各阶段调用的现有能力技能,随包携带)
+    └── (被各阶段调用的能力技能,随包携带)
         ohos-dev-sa-codegen/  ohos-dev-napi-module/  code-ruleset-style-check/
         ohos-code-skeletons/  ← 写码脚手架:hiview 插件/单测/模块测试/模糊测试 占位符骨架
         tdd-enforcer/  ohos-dev-build-execution-diagnosis/  ohos-build-flash/
-        ohos-test-ut-generation/  ohos-dev-hdc-command-usage/
+        ohos-test-ut-generation/  ohos-test-xts/  check-test-code-quality/
+        ohos-test-fuzz-generation/  ohos-test-coverage/
+        ohos-ci-local-precheck/  ohos-doc-quality-check/
+        ohos-dev-hdc-command-usage/
         ohos-ci-gitcode-cli-usage/  ohos-ci-openharmony-ci-analysis/
         ohos-dev-gitcode-pr-review/  ohos-dev-security-code-review/
         ohos-committer-review/  ohos-dev-cpp-coding-style/
@@ -167,8 +202,12 @@ bash sync-skills.sh --agent codex        # ~/.codex/skills/
 bash sync-skills.sh --target "$HOME/.my-agent/skills"  # 任意 Agent
 ```
 
-之后**重启 Agent 会话**,说「跑流水线 / 从这个 AR 自动开发到上库」即可触发
-`ohos-ar-dev-workflow`。(`sync-skills.sh` 是单向拷贝,不会删除目标目录下的其他技能。)
+之后**重启 Agent 会话**：
+
+- 说「执行 OHOS SDD / 需求导入 / 生成 AR」触发 `ohos-req-intake-orchestration`。
+- 说「跑流水线 / 从这个 AR 自动开发到上库」触发 `ohos-ar-dev-workflow`。
+
+`sync-skills.sh` 是单向拷贝，根 `skills/` 是整条作业线及其关联技能的唯一可安装真源。
 
 > 依赖技能的脚本路径会自动解析:按 `环境变量 → 包内同级技能 → 旧版 Claude 技能目录`
 > 顺序查找所需脚本。复制到任意 Agent 的完整技能目录后，依赖技能会优先从当前安装位置查找。
@@ -231,7 +270,7 @@ P0 会把探测到的序列号回填进 `pipeline.json` 与 `evidence/phase0/env
 | **P4 编译** | ohos-dev-build-execution-diagnosis / ohos-build-flash / code-ruleset-style-check(编译后 clang-tidy) | `gate_build.py`(emit 4) | exit=0 + 无 error 横幅 + 契约产物齐全；成功横幅仅辅助诊断；summary 分列编译/产物/静态分析/阶段结论 | `build_stdout.log`、`build_banner.txt`、`artifact_check.txt`、`clang_tidy_findings.json`、`clang_tidy_note.txt`(失败再加 `error_distill.txt`) |
 | **P5 单元测试** | ohos-test-ut-generation / tdd-enforcer | `gate_test_ut.py`(emit 5) | 编出测试二进制 + developer_test 本次**新建**报告 + `tests>0 && failures==0 && errors==0` **且** 契约每个 `test_cases[].gtest` 通过(执行覆盖) | `summary_report.xml`、`result_*.xml`、`gtest_coverage.txt`、`start_sh_stdout.txt`、`report_dir.txt` |
 | **P6 端到端功能测试** | ohos-build-flash / ohos-dev-hdc-command-usage | `gate_device_func.py`(emit 6) | 部署命令全 exit 0 + 主机/设备产物 sha256 一致 + hilog 含**本次 nonce**、功能 marker、运行时 marker、端到端 marker + 契约每个 `device_cases[].marker` 命中 + uptime 单调 + **抗伪造三层**(进程溯源 `process` / `artifact_loaded` 加载证明 / `side_effect` shell 断言 / `absent_before_trigger` 负对照差分);**证据 PASS 后停下,人工核对真机真实结果并 `consent --phase 6` 才推进** | `hilog_capture.txt`、`device_cmds.txt`、`run_meta.txt`、`artifact_runtime_proof.txt`、`device_marker_coverage.txt` |
-| **P7 质量验证** | ohos-build-flash / developer_test(MST) / ohos-test-ut-generation / coverage / performance / power / stability / code-ruleset-style-check / ohos-dev-security-code-review | `gate_integration.py`(emit 7;或 `gate_device_func.py --phase 7` + `gate_integration.py`) | 功能 summary `failures==0 && errors==0 && tests>0` **且 覆盖率、性能、功耗、稳定性报告全部生成并签名,代码 review 问题数为 0;证据 PASS 后需人工确认并 `consent --phase 7` 才进入 P8** | `summary_report.xml`、`coverage_report.*`、`performance_report.*`、`power_report.*`、`stability_report.*`、`code_review_report.txt`、`report_dir.txt` |
+| **P7 质量验证** | ohos-build-flash / developer_test(MST) / ohos-test-ut-generation / ohos-test-xts / check-test-code-quality / ohos-test-fuzz-generation / ohos-test-coverage / code-ruleset-style-check / ohos-ci-local-precheck(引擎可用时) / ohos-dev-security-code-review | `gate_integration.py`(emit 7;或 `gate_device_func.py --phase 7` + `gate_integration.py`) | 功能 summary `failures==0 && errors==0 && tests>0` **且 覆盖率、性能、功耗、稳定性报告全部生成并签名,代码 review 问题数为 0;证据 PASS 后需人工确认并 `consent --phase 7` 才进入 P8** | `summary_report.xml`、`coverage_report.*`、`performance_report.*`、`power_report.*`、`stability_report.*`、`code_review_report.txt`、`report_dir.txt` |
 | **P8 上库** | ohos-ci-gitcode-cli-usage / -gitcode-pr-review / ohos-committer-review(P8-A 补充维度) / -security-code-review / -openharmony-ci-analysis | `gate_upload_ci.py`(emit 8) | P1–P7 全过 + 上库前落全部代码 diff 供人工确认 + **A 本地自检零问题报告(commit 前硬控)** + `git commit -s`(DCO 签名)+ push + **`--issue` 绑定的 PR**(CI 门禁只对绑定 Issue 的 PR 触发)+ **B PR review 零问题报告(建 PR 后、CI 前硬控)** + consent --phase 8 + CI `overall∈{success,passed}` + PR head SHA==push SHA | `full_diff.patch`、`full_diff.stat.txt`、`local_code_review_report.*`、`pr.json`、`pr_create.txt`、`pr_review_report.*`、`ci_status.json` |
 
 每个阶段在 Agent 里的"做事"细节见 `skills/ohos-ar-dev-phases/phaseN-*.md`。
@@ -246,7 +285,7 @@ P0 会把探测到的序列号回填进 `pipeline.json` 与 `evidence/phase0/env
 $REPO/specs/pipeline/{YYYYMMDD}-{slug}/
 ├── pipeline.json        # 规范状态(只有 advance.py 写;含 functional_fingerprint/locked_all_paths)
 ├── ar.md                # 输入的已澄清 AR 原文
-├── AR_design.md         # P1 固化的设计文档(6 必含章节;签名副本在 evidence/phase1/)
+├── AR_design.md         # P1 固化的设计文档(7 必含章节含 DFX;签名副本在 evidence/phase1/)
 ├── todo.md              # 人读镜像(由 refresh_todo.py 依 AR_design 重写,与 TodoWrite 双轨)
 ├── next_action.json     # 导航层:当前逻辑阶段/物理 phase/substate/下一步(controls/ 内有镜像)
 ├── evidence/            # ← 机器证据(签名,gitignore),真相所在
@@ -307,7 +346,7 @@ advance.py  init        --git-dir <组件> --build-target <t> --part <p> [--base
             next                                # 导航层:输出当前逻辑阶段+下一步(retry/repair/regenerate/escalate),并写 next_action.json
 gate_env_init.py    --pipeline-dir P
 gate_design.py      --pipeline-dir P [--design F] [--allow-contract-v1]
-                    # P1:校验 AR_design.md 6 章节 + ar-contract 契约(v2:拒 TODO/TBD 占位 + 需求/文件/测试/设备引用闭环)并签名(emit 1);派生初始 bundle 定义
+                    # P1:校验 AR_design.md 7 章节含 DFX 设计 + ar-contract 契约(v3:拒 TODO/TBD 占位 + 需求/文件/测试/设备引用闭环)并签名(emit 1);派生初始 bundle 定义
 gate_develop.py     --pipeline-dir P [--no-style] [--allow-missing-design]
                     # P2:强制依赖签名 AR_design + P1 consent(emit 2,闭合锁功能指纹);--no-style 仅无 C/C++ 改动时兼容;--allow-missing-design 仅 legacy run 留痕放行
 gate_test_develop.py --pipeline-dir P [--allow-missing-contract]

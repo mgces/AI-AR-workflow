@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url'
 export default defineConfig({
   extends: resolve(dirname(fileURLToPath(import.meta.url)), 'theme'),
   title: 'AI-AR Workflow',
-  description: '面向 OpenHarmony 研发的证据门控代码开发流水线',
+  description: 'OpenHarmony 需求分析与开发作业线',
   lang: 'zh-CN',
   lastUpdated: true,
   cleanUrls: true,
@@ -25,7 +25,8 @@ export default defineConfig({
 
     nav: [
       { text: '开始使用', link: '/getting-started/' },
-      { text: '开发 Workflow', link: '/workflow/' },
+      { text: '需求分析与设计', link: '/sdd/' },
+      { text: '需求开发', link: '/workflow/' },
       { text: 'Skill 实战', link: '/skill-playbooks/' },
       { text: '示例', link: '/examples/' },
       { text: '知识库', link: '/knowledge-base/' },
@@ -48,7 +49,7 @@ export default defineConfig({
       ],
       '/workflow/': [
         {
-          text: '开发 Workflow',
+          text: '需求开发工作流',
           items: [
             { text: '概览', link: '/workflow/' },
             { text: '生命周期总览', link: '/workflow/lifecycle-overview' },
@@ -63,6 +64,15 @@ export default defineConfig({
             { text: 'P8 上库', link: '/workflow/phase-8-upload' },
             { text: 'Consent 与 Reset', link: '/workflow/consent-and-reset' },
             { text: 'Evidence 与 Gates', link: '/workflow/evidence-and-gates' },
+          ],
+        },
+      ],
+      '/sdd/': [
+        {
+          text: '需求分析与设计工作流',
+          items: [
+            { text: '概览', link: '/sdd/' },
+            { text: 'SDD 到 AR 交接', link: '/sdd/ar-handoff' },
           ],
         },
       ],
@@ -118,6 +128,7 @@ export default defineConfig({
             { text: 'run 目录结构', link: '/reference/pipeline-layout' },
             { text: '关键命令', link: '/reference/key-commands' },
             { text: 'Skill 映射', link: '/reference/skill-map' },
+            { text: 'Skills 能力吸收基线', link: '/reference/capability-absorption' },
             { text: 'FAQ', link: '/reference/faq' },
             { text: '文档站部署与双仓库同步', link: '/reference/docs-deployment' },
           ],

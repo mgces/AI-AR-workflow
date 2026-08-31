@@ -5,24 +5,30 @@ layout: home
 hero:
   name: "AI-AR Workflow"
   text: "证据门控开发流水线"
-  tagline: 面向 OpenHarmony 研发的端到端自动化代码开发流水线——从已澄清的 AR 出发，自动推进设计、开发、编译、测试、真机验证、质量验证与上库 review，每阶段只能由真实证据与门控脚本判定通过。
+  tagline: OpenHarmony 需求分析与开发作业线——从需求分析、设计基线到证据门控开发与上库。
   image:
     src: /logo.svg
     alt: AI-AR Workflow
   actions:
+    - theme: brand
+      text: 5 分钟快速开始
+      link: /getting-started/quick-start
     - theme: alt
-      text: 查看完整开发流程
+      text: 进入需求开发
       link: /workflow/
-    - theme: alt
-      text: 查看 Skill 实战示例
-      link: /skill-playbooks/
 
 features:
   - icon: 🚀
     title: 5 分钟快速开始
-    details: 第一次使用？从这里进。给一个最短可执行路径：同步 skills → 初始化环境 → 准备 AR → 调用编排器 → 看状态推进 → 知道哪几处停下等人工确认。6 步跑通整条流水线，适合第一次使用。
+    details: 第一次使用？从这里进。根据当前输入选择起点，并了解安装、状态推进和人工确认点。
     link: /getting-started/quick-start
     linkText: 立即开始 →
+
+  - icon: 🚀
+    title: 需求开发工作流
+    details: 以自然语言 AR 或分析设计产出的 AR.md 为输入，按 P0-P8 完成设计固化、代码开发、构建、测试、质量验证和上库。
+    link: /workflow/
+    linkText: 查看需求开发 →
 
   - icon: 🛡️
     title: 证据门控
@@ -30,11 +36,11 @@ features:
     link: /workflow/evidence-and-gates
     linkText: 查看证据与门控机制
 
-  - icon: 🔄
-    title: 端到端开发流程
-    details: 从已澄清的 AR 出发，自动推进设计、开发、编译、测试、真机验证、质量验证与上库 review。每一步都有明确的输入、动作、门控与产物。
-    link: /workflow/lifecycle-overview
-    linkText: 查看生命周期总览
+  - icon: 📋
+    title: 需求分析与设计工作流
+    details: 需要先收敛原始需求时，使用 OHOS SDD 完成澄清、可行性、方案决策、Feature Gate、IR 和 SR，再生成 AR.md。
+    link: /sdd/
+    linkText: 查看需求分析与设计 →
 
   - icon: 🧩
     title: Skill 编排协作
@@ -129,6 +135,19 @@ features:
     <p style="opacity: 0.8; margin-bottom: 0;">查 build skill → test skill → hdc / flash / PR review skill</p>
   </a>
 </div>
+
+## OpenHarmony 需求分析与开发作业线
+
+| 作业阶段 | 工作流入口 | 适用场景 | 出口 |
+|---|---|---|---|
+| 需求分析与设计工作流（OHOS SDD） | `ohos-req-intake-orchestration` | 原始需求尚需澄清、分析和设计评审 | `AR.md` |
+| 需求开发工作流 | `ohos-ar-dev-workflow` | 已有可开发 AR，需要推进 P0-P8 | PR + CI + 签名证据 |
+
+```text
+原始需求 → 需求分析与设计（按需）→ AR.md ──显式交接──→ 需求开发 P0 → … → P8
+```
+
+需求分析与设计是作业线的按需前置阶段；已有明确 AR 时可以直接进入需求开发。交接前后的门禁状态相互隔离，需求开发在 P1 会基于当前源码 HEAD 复核动态事实。所有可安装能力只从根 [`skills/`](/reference/skill-map) 同步。
 
 ## 推荐入口
 

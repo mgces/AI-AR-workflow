@@ -9,12 +9,13 @@
 - [run 目录结构](/reference/pipeline-layout) — pipeline.json / AR_design.md / todo.md / evidence / reports
 - [关键命令](/reference/key-commands) — 按场景列关键命令
 - [Skill 映射](/reference/skill-map) — 阶段→技能 / 任务→技能 / 输入类型→技能 查表
+- [Skills 能力吸收基线](/reference/capability-absorption) — 上游能力取舍与 backend 可信度分层
 - [FAQ](/reference/faq) — 高频误解速查
 - [文档站部署与双仓库同步](/reference/docs-deployment) — GitCode/GitHub 双仓、双推、Pages 自动部署
 
 ## 与其他栏目的关系
 
-- 想理解**怎么做**,看 [开发 Workflow](/workflow/)
+- 想理解**怎么做**,看 [需求开发工作流](/workflow/)
 - 想理解**用什么 skill**,看 [Skill 实战](/skill-playbooks/)
 - 想查**具体命令/契约/结构**,看本栏目
 - 想看**能模仿的例子**,看 [示例](/examples/)

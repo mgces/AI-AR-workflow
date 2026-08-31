@@ -22,6 +22,11 @@ Agent 必须从当前源码发现组件、接口、SA ID、GN target、测试框
 反问给新人。只有产品语义、破坏性副作用、性能阈值和兼容性取舍需要用户确认。详细的输入分工、v3
 契约、变更分级及维测规则见 [需求、变更与维测](references/requirements-and-observability.md)。
 
+输入也可以是 `ohos-req-intake-orchestration` 独立生成的 `AR.md` 绝对路径。这只是两个
+workflow 的串行文件交接：本 workflow 仍需独立初始化 P0-P8，并在 P1 从当前源码 HEAD
+重新验证 SDD AR 中的仓、文件、API、GN target、依赖、测试和运行行为。SDD Gate/handoff 不是
+本 workflow 的 PASS 证据，不能代替 `gate_design.py` 和签名 `ar-contract`。
+
 ## 全局护栏(必须遵守)
 
 1. **门控脚本是唯一 PASS 来源**。每个阶段:先用对应 ohos-* 技能"做事",然后**必须运行该阶段的
@@ -95,7 +100,8 @@ Agent 必须从当前源码发现组件、接口、SA ID、GN target、测试框
       --agent <agent名称> --model <模型名称> --skill ohos-ar-dev-workflow \
       --base-commit "$(git -C $OHOS_ROOT rev-parse HEAD)" \
       | sed -n 's/^PDIR=//p')
-  printf '%s\n' "<AR 原文>" > "$PDIR/ar.md"
+  # 自然语言 AR：将原文写入 "$PDIR/ar.md"
+  # SDD AR：将 ohos-req-intake-orchestration 产出的 AR.md 拷贝为 "$PDIR/ar.md"
   ```
   > ⚠️ PDIR **必须**从 init 的 `PDIR=` 行取(它保证在 `<repo>/specs/pipeline/` 下)。
   > 若你显式传 `--pipeline-dir`,它必须落在 `<repo>/specs/pipeline/<run>` 之内,否则 init **硬失败**
@@ -131,13 +137,13 @@ python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-workflow/scripts/refresh_todo.py" --pipel
 | 阶段 | 做事(调用技能) | 门控脚本 | 结束证据 |
 |---|---|---|---|
 | P1 设计 | **(设计前)** `kb_search.py --source-root "$OHOS_ROOT"` 获取稳定导航 → 当前源码验证 → 写 `design_refs.md`(advisory)与 AR_design.md(7 章节含 DFX设计 + ```ar-contract``` 契约块)→ **人工 consent** | `gate_design.py`(`emit 1`) | 签名 AR_design(7 章节 + 契约)+ **P1 设计 consent**(绑签名条目) |
-| P2 开发 | **先加载** `code-ruleset-style-check` 写码前契约 + `cpp-coding-style`，再用 sa-codegen / napi-module / security-code-review(安全左移,advisory) / tdd-enforcer / code-skeletons 写码 | `gate_develop.py`(`emit 2`,强制依赖签名 AR_design + P1 consent；共享 guard 是唯一 PASS 来源) | git/untracked diff 非空 + C++ 强门控报告;**闭合时锁定功能指纹** |
-| P3 测试开发 | **先加载**同一写码前契约 + `cpp-coding-style`，再用 test-ut-generation / tdd-enforcer / code-ruleset-style-check(**只增独立测试**,编译前写完测试代码) | `gate_test_develop.py`(`emit 3`,对新增测试源强制 `--rules-only` 规则门控) | 契约每个 `test_cases[].gtest` 的 suite 出现在新测试文件中(**编写**覆盖)+ 测试源签名快照 + 测试代码规则检测报告 |
-| P4 编译 | build-execution-diagnosis / build-flash / code-ruleset-style-check(编译后 clang-tidy) | `gate_build.py`(`emit 4`) | build.log 成功横幅 + 契约 `build_artifacts` 全部编译出 + clang-tidy 子步(有 compdb 硬控/缺失降级) |
-| P5 单元测试 | test-ut-generation / tdd-enforcer(**只增独立测试**) | `gate_test_ut.py`(`emit 5`) | developer_test summary_report.xml + 契约每个 `test_cases[].gtest` 通过(**执行**覆盖) |
-| P6 端到端功能测试 | build-flash / hdc-command-usage | `gate_device_func.py`(`emit 6`) | 主机/设备产物 sha256 一致 + 含 nonce/功能 marker/运行时 marker/端到端 marker 的真机 hilog + 契约每个 `device_cases[].marker` 命中 **+ 人工确认(consent --phase 6)**;渲染 `reports/device_functional.md` + `reports/test_report.md`(P5 单元测试 + P6 端到端关键证据聚合) |
-| P7 质量验证 | build-flash / developer_test MST / coverage / performance / power / stability / code-ruleset-style-check / security-code-review | `gate_integration.py`(`emit 7`;或 `gate_device_func.py --phase 7` + `gate_integration.py`) | 功能 summary + 覆盖率 + 性能 + 功耗 + 稳定性 + 代码 review 零问题 **+ 人工确认(consent --phase 7)**;渲染 `reports/quality.md`(六段聚合含 review) |
-| P8 上库 | gitcode-cli / gitcode-pr-review / committer-review(P8-A 补充维度) / security-code-review / openharmony-ci-analysis | `gate_upload_ci.py`(`emit 8`) | A 本地自检零问题 + B PR review 零问题 + PR + CI 绿(SHA 绑定)**+ 人工确认(consent --phase 8)**;渲染 `reports/summary.md` + PR 描述注入 |
+| P2 开发 | **先加载** `code-ruleset-style-check` 写码前契约 + `ohos-dev-cpp-coding-style`，再用 `ohos-dev-sa-codegen` / `ohos-dev-napi-module` / `ohos-dev-security-code-review`(安全左移,advisory) / `tdd-enforcer` / `ohos-code-skeletons` 写码 | `gate_develop.py`(`emit 2`,强制依赖签名 AR_design + P1 consent；共享 guard 是唯一 PASS 来源) | git/untracked diff 非空 + C++ 强门控报告;**闭合时锁定功能指纹** |
+| P3 测试开发 | **先加载**同一写码前契约 + `ohos-dev-cpp-coding-style`，再用 `ohos-test-ut-generation` / `tdd-enforcer` / `code-ruleset-style-check`(**只增独立测试**,编译前写完测试代码) | `gate_test_develop.py`(`emit 3`,对新增测试源强制 `--rules-only` 规则门控) | 契约每个 `test_cases[].gtest` 的 suite 出现在新测试文件中(**编写**覆盖)+ 测试源签名快照 + 测试代码规则检测报告 |
+| P4 编译 | `ohos-dev-build-execution-diagnosis` / `ohos-build-flash` / `code-ruleset-style-check`(编译后 clang-tidy) | `gate_build.py`(`emit 4`) | build.log 成功横幅 + 契约 `build_artifacts` 全部编译出 + clang-tidy 子步(有 compdb 硬控/缺失降级) |
+| P5 单元测试 | `ohos-test-ut-generation` / `tdd-enforcer`(**只增独立测试**) | `gate_test_ut.py`(`emit 5`) | developer_test summary_report.xml + 契约每个 `test_cases[].gtest` 通过(**执行**覆盖) |
+| P6 端到端功能测试 | `ohos-build-flash` / `ohos-dev-hdc-command-usage` | `gate_device_func.py`(`emit 6`) | 主机/设备产物 sha256 一致 + 含 nonce/功能 marker/运行时 marker/端到端 marker 的真机 hilog + 契约每个 `device_cases[].marker` 命中 **+ 人工确认(consent --phase 6)**;渲染 `reports/device_functional.md` + `reports/test_report.md`(P5 单元测试 + P6 端到端关键证据聚合) |
+| P7 质量验证 | `ohos-build-flash` / developer_test MST / `ohos-test-xts` / `check-test-code-quality` / `ohos-test-fuzz-generation` / `ohos-test-coverage` / `code-ruleset-style-check` / `ohos-ci-local-precheck`(可用时) / `ohos-dev-security-code-review` | `gate_integration.py`(`emit 7`;或 `gate_device_func.py --phase 7` + `gate_integration.py`) | 功能 summary + 覆盖率 + 性能 + 功耗 + 稳定性 + 代码 review 零问题 **+ 人工确认(consent --phase 7)**;渲染 `reports/quality.md`(六段聚合含 review) |
+| P8 上库 | `ohos-ci-local-precheck`(可选 CI-near) / `ohos-ci-gitcode-cli-usage` / `ohos-dev-gitcode-pr-review` / `ohos-committer-review`(P8-A 补充维度) / `ohos-dev-security-code-review` / `ohos-ci-openharmony-ci-analysis`(远端权威) | `gate_upload_ci.py`(`emit 8`) | A 本地自检零问题 + B PR review 零问题 + PR + CI 绿(SHA 绑定)**+ 人工确认(consent --phase 8)**;渲染 `reports/summary.md` + PR 描述注入 |
 
 每阶段成功后,同步更新 `TodoWrite` 与 `$PDIR/todo.md`(由 refresh_todo 重写,便于断点恢复)。
 

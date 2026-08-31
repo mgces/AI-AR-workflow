@@ -451,7 +451,8 @@ def main():
         cp = subprocess.run(
             [sys.executable, STYLE_GUARD, "--line-filter-json", line_scope_path,
              "--baseline-git-dir", gdir, "--baseline-commit", base, "--json",
-             os.path.join(pdir, style_findings_rel), *abs_cxx],
+             os.path.join(pdir, style_findings_rel), "--repository-root", gdir,
+             *abs_cxx],
             text=True, capture_output=True)
         style_ok = cp.returncode == 0
         style_detail = (cp.stdout + cp.stderr)[:4000]

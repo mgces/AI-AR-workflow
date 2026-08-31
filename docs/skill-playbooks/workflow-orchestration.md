@@ -72,6 +72,6 @@ python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-workflow/scripts/archive_product.py" \
 
 ## 延伸阅读
 
-- [开发 Workflow](/workflow/) — 完整生命周期与各阶段
+- [需求开发工作流](/workflow/) — 完整生命周期与各阶段
 - [Evidence 与 Gates](/workflow/evidence-and-gates) — 门控契约与防伪协议
 - [Skill 组合拳](/skill-playbooks/common-combinations) — 典型场景的 skill 组合

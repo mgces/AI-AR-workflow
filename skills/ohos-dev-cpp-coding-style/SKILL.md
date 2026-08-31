@@ -50,7 +50,7 @@ Treat [references/rules.md](references/rules.md) as the source of truth for conc
 1. Detect the task mode first: `implement`, `scaffold`, `document`, or `review`.
 2. Load [references/rules.md](references/rules.md) once before making OpenHarmony-specific decisions.
 3. For lifecycle P2/P3 work, load the shared [pre-write contract](../code-ruleset-style-check/references/pre-write-contract.md) before making the first edit.
-4. For `review`, also load [references/review-checklist.md](references/review-checklist.md).
+4. For `review`, also load [references/review-checklist.md](references/review-checklist.md). When ownership, lifetime, special members, type safety, or concurrency is in scope, also load [references/core-guidelines-review.md](references/core-guidelines-review.md).
 5. Do NOT load [references/tooling.md](references/tooling.md) for ordinary implementation, scaffolding, documentation, or review. The rules, contract, and checklist are enough for human judgment.
 6. Load [references/tooling.md](references/tooling.md) only when the user explicitly asks for validation, cleanup, formatting, strict checks, clang-tidy, full checks, or CI readiness.
 7. Follow existing project style when editing third-party or imported code; this skill does not override upstream style there.

@@ -14,8 +14,14 @@ code review 报告落到 `evidence/phase7/`,最终只看该阶段 manifest 最�
 - 执行覆盖率采集并输出覆盖率报告。
 - 增加性能和功耗测试,输出性能报告与功耗报告。
 - 执行稳定性影响测试,输出稳定性报告。
+- C/C++ 覆盖率使用 `ohos-test-coverage`;XTS/兼容性测试使用
+  `ohos-test-xts`，并用 `check-test-code-quality` 做静态质量扫描；需要
+  native Fuzz 时使用 `ohos-test-fuzz-generation` 生成、审查和准备 corpus。
 - 使用 `code-ruleset-style-check` 的规则做代码 review;涉及 IPC/权限/并发/
   隐私风险时同步用 `ohos-dev-security-code-review` 复核。review 问题必须清零。
+- 若有经批准且 SHA-256 固定的 CodeArts 引擎，追加运行
+  `ohos-ci-local-precheck` 并保存 `ci-near` 报告；缺失时记录 unavailable，
+  不得把本地规则 guard 描述为 CI 等价。
 
 门控:
 ```bash

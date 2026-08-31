@@ -1,6 +1,9 @@
 __pycache__/
 *.pyc
 
+# Local upstream staging copy. Installable skills must live under root skills/.
+/openharmony-skills/
+
 # pipeline run-state / evidence (machine-specific, never commit)
 specs/
 examples/specs/

@@ -21,9 +21,10 @@ METRIC = HERE / "code_ruleset_metric.py"
 
 MULTILINE_RULES = {
     "G.CTL.06", "G.OTH.01", "G.INC.05-CPP", "G.INC.08", "G.INC.08-CPP",
+    "G.NAM.03-CPP",
 }
 FILE_HYGIENE_RULES = {
-    "G.FIL.04-CPP", "G.PRE.05-CPP", "G.PRE.13", "OAT.1",
+    "G.FIL.04-CPP", "G.PRE.05-CPP", "G.PRE.13", "OAT.1", "OAT.3", "OAT.4",
 }
 STATIC_GATE_RULES = {"G.INC.02"}
 OAT_RULE_PREFIXES = ("OAT.", "FossScan.")
@@ -39,6 +40,33 @@ BACKEND_PHASES = {
     "static-gate": ["P2"],
     "repository-oat": ["P7", "CI"],
     "semantic-review": ["P2", "P3", "P7"],
+    "advisory-regex": ["P2", "P3", "P7"],
+}
+BACKEND_CAPABILITY = {
+    "sensitive-word": "deterministic-local",
+    "regex": "deterministic-local",
+    "multiline": "deterministic-local",
+    "clang-format": "tool-dependent-local",
+    "clang-tidy": "tool-dependent-local",
+    "metric": "tool-dependent-local",
+    "file-hygiene": "deterministic-local",
+    "static-gate": "deterministic-local",
+    "repository-oat": "ci-only",
+    "semantic-review": "advisory",
+    "advisory-regex": "advisory",
+}
+BACKEND_CLAIM = {
+    "sensitive-word": "executable",
+    "regex": "executable",
+    "multiline": "executable",
+    "clang-format": "tool-dependent",
+    "clang-tidy": "tool-dependent-partial",
+    "metric": "tool-dependent-partial",
+    "file-hygiene": "executable",
+    "static-gate": "executable",
+    "repository-oat": "owner-only",
+    "semantic-review": "owner-only",
+    "advisory-regex": "advisory",
 }
 AUTHOR_TIME_BACKENDS = {
     "sensitive-word", "regex", "multiline", "file-hygiene", "static-gate",
@@ -65,7 +93,12 @@ def _guard_ids():
     if not fmt_call or not fmt_call.args:
         raise ValueError("_CLANG_FORMAT_RULES must be a literal frozenset")
     format_ids = {ast.literal_eval(item) for item in fmt_call.args[0].elts}
-    return raw_ids, tidy_ids, format_ids
+    advisory = _assignment(tree, "_ADVISORY_RULE_IDS")
+    advisory_call = advisory if isinstance(advisory, ast.Call) else None
+    if not advisory_call or not advisory_call.args:
+        raise ValueError("_ADVISORY_RULE_IDS must be a literal frozenset")
+    advisory_ids = {ast.literal_eval(item) for item in advisory_call.args[0].elts}
+    return raw_ids, tidy_ids, format_ids, advisory_ids
 
 
 def _metric_ids():
@@ -82,11 +115,13 @@ def _sha256(path):
     return digest.hexdigest()
 
 
-def _backend_for(rule_id, raw_ids, tidy_ids, format_ids, metric_ids):
+def _backend_for(rule_id, raw_ids, tidy_ids, format_ids, metric_ids, advisory_ids):
     if rule_id.startswith("WordsTool."):
         return "sensitive-word"
     if rule_id in MULTILINE_RULES:
         return "multiline"
+    if rule_id in advisory_ids:
+        return "advisory-regex"
     if rule_id in raw_ids:
         return "regex"
     if rule_id in format_ids:
@@ -108,9 +143,10 @@ def build() -> dict:
     source = json.loads(SOURCE.read_text(encoding="utf-8"))
     if source.get("total_workbook_rows") != 545:
         raise ValueError("ruleset data must contain 545 workbook rows")
-    raw_ids, tidy_ids, format_ids = _guard_ids()
+    raw_ids, tidy_ids, format_ids, advisory_ids = _guard_ids()
     metric_ids = _metric_ids()
-    known_local_ids = raw_ids | tidy_ids | format_ids | metric_ids | MULTILINE_RULES
+    known_local_ids = (raw_ids | tidy_ids | format_ids | metric_ids |
+                       MULTILINE_RULES | advisory_ids)
     known_local_ids |= FILE_HYGIENE_RULES | STATIC_GATE_RULES
     workbook_ids = {rule["rule_id"] for rule in source["rules"]}
     unknown = sorted(known_local_ids - workbook_ids)
@@ -121,7 +157,8 @@ def build() -> dict:
     author_time_rows = 0
     for rule in source["rules"]:
         backend = _backend_for(
-            rule["rule_id"], raw_ids, tidy_ids, format_ids, metric_ids
+            rule["rule_id"], raw_ids, tidy_ids, format_ids, metric_ids,
+            advisory_ids
         )
         phases = BACKEND_PHASES[backend]
         author_time = backend in AUTHOR_TIME_BACKENDS
@@ -133,18 +170,31 @@ def build() -> dict:
             "backends": [backend],
             "phases": phases,
             "author_time": author_time,
+            "coverage_claim": BACKEND_CLAIM[backend],
         })
 
     return {
+        "schema_version": 2,
         "source": source.get("source", ""),
         "source_sha256": source.get("source_sha256", ""),
         "ruleset_data_sha256": _sha256(SOURCE),
+        "guard_sha256": _sha256(GUARD),
+        "metric_sha256": _sha256(METRIC),
+        "backend_capabilities": BACKEND_CAPABILITY,
         "rows": rows,
         "summary": {
             "workbook_rows": len(rows),
             "mapped_rows": len(rows),
             "author_time_rows": author_time_rows,
             "later_stage_rows": len(rows) - author_time_rows,
+            "executable_local_rows": sum(
+                row["coverage_claim"] == "executable" for row in rows),
+            "tool_dependent_rows": sum(
+                row["coverage_claim"].startswith("tool-dependent") for row in rows),
+            "owner_only_rows": sum(
+                row["coverage_claim"] == "owner-only" for row in rows),
+            "advisory_rows": sum(
+                row["coverage_claim"] == "advisory" for row in rows),
             "backend_counts": {
                 backend: sum(backend in row["backends"] for row in rows)
                 for backend in BACKEND_PHASES

@@ -15,8 +15,8 @@
 | P4 | [`ohos-dev-build-execution-diagnosis`](/skill-playbooks/build-and-diagnosis) | 真跑 build.sh,校验成功横幅 |
 | P5 | [`ohos-test-ut-generation`](/skill-playbooks/unit-test-generation) | developer_test 跑单测 |
 | P6 | [`ohos-build-flash`](/skill-playbooks/build-and-flash) / [`ohos-dev-hdc-command-usage`](/skill-playbooks/device-debug-and-hdc) | 部署到真机 + scenario 触发 + hilog 抓取 |
-| P7 | coverage / performance / power / stability / [`code-ruleset-style-check`](/skill-playbooks/build-and-diagnosis) / `ohos-dev-security-code-review` | 质量验证 + review |
-| P8 | [`ohos-ci-gitcode-cli-usage`](/skill-playbooks/gitcode-pr-and-review) / [`ohos-dev-gitcode-pr-review`](/skill-playbooks/gitcode-pr-and-review) | commit → PR → CI |
+| P7 | `ohos-test-xts` / `check-test-code-quality` / `ohos-test-fuzz-generation` / `ohos-test-coverage` / `code-ruleset-style-check` / `ohos-dev-security-code-review` | 质量验证 + review |
+| P8 | `ohos-ci-local-precheck`（可选）/ [`ohos-ci-gitcode-cli-usage`](/skill-playbooks/gitcode-pr-and-review) / [`ohos-dev-gitcode-pr-review`](/skill-playbooks/gitcode-pr-and-review) | CI-near → commit → PR → 远端 CI |
 
 详见 [新增功能端到端示例](/examples/new-feature-end-to-end)。
 
@@ -38,10 +38,11 @@
 
 | 步骤 | skill | 做什么 |
 |---|---|---|
-| 1 | `code-ruleset-style-check` | C/C++ 格式与强规则门控 |
+| 1 | `code-ruleset-style-check` | 确定性本地子集；输出 backend 状态并读取仓库 ignore |
 | 2 | `ohos-dev-security-code-review` | 安全 review(IPC Stub / MessageParcel / AccessToken / 隐私日志) |
-| 3 | [`ohos-ci-gitcode-cli-usage`](/skill-playbooks/gitcode-pr-and-review) | 建 issue / PR / 管 review / label / release |
-| 4 | [`ohos-dev-gitcode-pr-review`](/skill-playbooks/gitcode-pr-and-review) | PR review 草稿与显式确认提交 |
+| 3 | `ohos-ci-local-precheck`（引擎可用时） | 固定 SHA-256 的 CodeArts CI-near 预检，失败闭合 |
+| 4 | [`ohos-ci-gitcode-cli-usage`](/skill-playbooks/gitcode-pr-and-review) | 建 issue / PR / 管 review / label / release |
+| 5 | [`ohos-dev-gitcode-pr-review`](/skill-playbooks/gitcode-pr-and-review) | PR review 草稿与显式确认提交 |
 
 产出两道 review 报告(机器可读问题计数):
 

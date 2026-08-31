@@ -408,7 +408,8 @@ def clang_tidy_substep(pdir, repo, changed_cxx, out_dir_rel):
     #    from its JSON (clang_tidy_note) and degrade rather than hard-fail.
     cp = subprocess.run(
         [sys.executable, STYLE_GUARD, "--clang-tidy", out_dir,
-         "--json", os.path.join(pdir, ct_json_rel), *abs_cxx],
+         "--json", os.path.join(pdir, ct_json_rel), "--repository-root", repo,
+         "--ohos-root", repo, *abs_cxx],
         text=True, capture_output=True, timeout=600)
     rels.append(ct_json_rel)
     ct_note = ""

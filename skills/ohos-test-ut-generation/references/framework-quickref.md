@@ -161,4 +161,4 @@ HWTEST_F(CalculatorTest, Add_003, TestSize.Level2)  // 异常情况
 - [build-rules.md](build-rules.md) - BUILD.gn配置规则
 - [error-matrix.md](error-matrix.md) - 错误排查矩阵
 - [real-patterns.md](real-patterns.md) - 真实仓库示例
-- [test-strategy.md](test-strategy.md) - 测试策略设计方法
+- [test-strategy-method.md](test-strategy-method.md) - 测试策略设计方法

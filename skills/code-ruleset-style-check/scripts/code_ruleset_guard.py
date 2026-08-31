@@ -9,6 +9,8 @@ import argparse
 from collections import Counter
 import hashlib
 import json
+import os
+import platform
 import re
 import shutil
 import subprocess
@@ -117,7 +119,8 @@ _CLANG_FORMAT_RULES = frozenset({
     "G.FMT.14-CPP",                     # pointer/reference side
     "G.FMT.15-CPP",                     # type qualifier order
     "G.FMT.16-CPP",                     # keyword spacing
-    "G.FMT.17-CPP",                     # blank-line placement
+    # G.FMT.17-CPP also contains call/return-value-check adjacency semantics;
+    # clang-format cannot prove the full rule, so it remains semantic-review.
 })
 
 # (rule_id, severity, pattern, remediation, applies_to_exts|None).
@@ -353,7 +356,7 @@ _RAW_RULES = [
      "replace magic numeric literal with a named constant", None),
     # --- G.NAM.01: naming convention violation (camelCase vs snake_case) ---
     ("G.NAM.01", "一般", r"^(int|char|void|bool|long|float|double|size_t|struct)\s+[A-Z]",
-     "use snake_case for variable names, PascalCase for type names", None),
+     "use snake_case for variable names, PascalCase for type names", C_SOURCE_EXTS),
     # --- G.FUU.21-CPP: unsafe memory functions C++ (same as G.FUU.21) ---
     ("G.FUU.21-CPP", "一般", r"\b(memcpy|memmove|wcscpy|wcscat)\s*\(",
      "use the bounded _s variant (memcpy_s, wcscpy_s, ...) instead", None),
@@ -422,6 +425,51 @@ _TEXT_RULE_IDS = frozenset({
     "G.CMT.05-CPP", "G.CMT.06", "G.EXP.43-CPP", "G.OTH.05",
     "G.OTH.06-CPP",
 })
+# These rules need type, control-flow, paired-declaration, or comment-token
+# semantics that a line regex cannot prove. Keep their local hints visible, but
+# never block a change from the regex approximation alone.
+_ADVISORY_RULE_IDS = frozenset({
+    "G.AST.02", "G.CLS.05-CPP", "G.CMT.02", "G.CMT.02-CPP",
+    "G.CNS.04-CPP", "G.CTL.03", "G.EXP.36-CPP", "G.INT.04",
+    "G.RES.12-CPP", "G.STD.10-CPP",
+})
+
+
+def _find_ohos_root(files, explicit=None):
+    candidates = []
+    if explicit:
+        candidates.append(Path(explicit))
+    for name in ("OHOS_ROOT", "OHOS_BASE", "OPENHARMONY_ROOT"):
+        if os.environ.get(name):
+            candidates.append(Path(os.environ[name]))
+    candidates.extend(path.parent for path in files)
+    candidates.append(Path.cwd())
+    seen = set()
+    for start in candidates:
+        try:
+            start = start.resolve()
+        except OSError:
+            continue
+        for candidate in (start, *start.parents):
+            if candidate in seen:
+                continue
+            seen.add(candidate)
+            if (candidate / "prebuilts" / "clang").is_dir():
+                return candidate
+    return None
+
+
+def _resolve_clang_tool(name, files, explicit=None, ohos_root=None):
+    if explicit:
+        return explicit
+    root = _find_ohos_root(files, ohos_root)
+    if root:
+        executable = name + (".exe" if platform.system().lower() == "windows" else "")
+        clang_root = root / "prebuilts" / "clang"
+        for path in sorted(clang_root.glob("**/llvm/bin/" + executable)):
+            if path.is_file():
+                return str(path)
+    return shutil.which(name)
 
 
 def _validate_backend_manifest():
@@ -435,6 +483,13 @@ def _validate_backend_manifest():
         raise ValueError("ruleset data must contain 545 workbook rows")
     if coverage.get("ruleset_data_sha256") != _sha256(DATA_FILE):
         raise ValueError("ruleset coverage is stale; rebuild it from ruleset_c.json")
+    if coverage.get("schema_version") != 2:
+        raise ValueError("ruleset coverage schema is stale; rebuild it")
+    if coverage.get("guard_sha256") != _sha256(Path(__file__).resolve()):
+        raise ValueError("ruleset coverage does not match code_ruleset_guard.py; rebuild it")
+    metric = Path(__file__).resolve().parent / "code_ruleset_metric.py"
+    if coverage.get("metric_sha256") != _sha256(metric):
+        raise ValueError("ruleset coverage does not match code_ruleset_metric.py; rebuild it")
     expected_workbook_sha = source.get("source_sha256")
     if not expected_workbook_sha:
         raise ValueError("ruleset data has no workbook source hash")
@@ -749,15 +804,80 @@ def _rule_findings(files):
         # upstream sensitive-word detection. Report the rule_id only; use
         # file:line to locate it. See SECURITY-ISOLATION-PLAN.md (C1).
         for rid, sev, pat, _word in SENSITIVE_WORDS:
-            scan_lines = lines if rid in _TEXT_RULE_IDS else code_lines
-            for n, line in enumerate(scan_lines, 1):
+            # Sensitive terms are a text policy: identifiers, comments and
+            # string literals are all in scope, matching the author contract.
+            for n, line in enumerate(lines, 1):
                 if pat.search(line):
                     findings.append({
                         "file": str(path), "line": n, "rule_id": rid,
                         "severity": sev,
                         "remediation": "remove banned/sensitive term flagged by %s" % rid,
                     })
-    return findings
+    unique = []
+    seen = set()
+    for finding in findings:
+        key = (finding["file"], finding["line"], finding["rule_id"])
+        if key not in seen:
+            seen.add(key)
+            unique.append(finding)
+    return unique
+
+
+def _load_codecheck_ignore(path):
+    if not path:
+        return {}, None
+    ignore_path = Path(path)
+    try:
+        payload = json.loads(ignore_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError) as exc:
+        raise ValueError("cannot parse codecheck ignore file %s: %s" % (ignore_path, exc))
+    if not isinstance(payload, dict):
+        raise ValueError("codecheck ignore file must contain a JSON object")
+    return payload, ignore_path
+
+
+def _discover_codecheck_ignore(repository_root):
+    if not repository_root:
+        return None
+    root = Path(repository_root).resolve()
+    direct = root / "codecheck_ignore.json"
+    if direct.is_file():
+        return direct
+    nested = sorted(root.glob("*/codecheck_ignore.json"))
+    return nested[0] if len(nested) == 1 else None
+
+
+def _ignore_matches(spec, rule_id, line):
+    if spec == "*":
+        return True
+    if not isinstance(spec, dict) or rule_id not in spec:
+        return False
+    selected = spec[rule_id]
+    if selected == "*":
+        return True
+    return isinstance(selected, list) and line in selected
+
+
+def _apply_codecheck_ignore(findings, rules, ignore_path, repository_root):
+    if not rules:
+        return findings, []
+    root = Path(repository_root or ignore_path.parent).resolve()
+    kept = []
+    ignored = []
+    for finding in findings:
+        try:
+            relative = Path(finding["file"]).resolve().relative_to(root).as_posix()
+        except ValueError:
+            relative = Path(finding["file"]).as_posix()
+        matched = False
+        for configured, spec in rules.items():
+            normalized = str(configured).strip("/")
+            if relative == normalized or relative.startswith(normalized + "/"):
+                if _ignore_matches(spec, finding["rule_id"], finding["line"]):
+                    matched = True
+                    break
+        (ignored if matched else kept).append(finding)
+    return kept, ignored
 
 
 def _line_selected(path, line, line_filter):
@@ -848,10 +968,9 @@ def _git_baseline_findings(files, git_dir, commit):
         return findings
 
 
-def _format_failures(files, line_filter=None):
-    clang_format = shutil.which("clang-format")
+def _format_failures(files, line_filter=None, clang_format=None):
     if not clang_format:
-        return ["clang-format not found in PATH"]
+        return ["clang-format not found in OpenHarmony prebuilts or PATH"]
     if line_filter is None:
         cp = subprocess.run(
             [clang_format, "--dry-run", "--Werror", *map(str, files)], text=True)
@@ -872,12 +991,12 @@ def _format_failures(files, line_filter=None):
     return failures
 
 
-def _clang_tidy_findings(files, compile_commands_dir):
+def _clang_tidy_findings(files, compile_commands_dir, clang_tidy=None):
     """Run clang-tidy on *files* using a compilation database at
     *compile_commands_dir*, then map each warning to a workbook rule_id via
     _CLANG_TIDY_RULE_MAP.  Returns [] if clang-tidy is unavailable or the
     compilation database is missing (the caller logs those separately)."""
-    clang_tidy = shutil.which("clang-tidy")
+    clang_tidy = clang_tidy or shutil.which("clang-tidy")
     if not clang_tidy:
         return [], "clang-tidy not found in PATH"
     ccd = Path(compile_commands_dir) / "compile_commands.json"
@@ -888,7 +1007,7 @@ def _clang_tidy_findings(files, compile_commands_dir):
            "-p", str(ccd.parent), *map(str, files)]
     cp = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
     findings = []
-    for line in cp.stdout.splitlines():
+    for line in (cp.stdout + "\n" + cp.stderr).splitlines():
         # clang-tidy output: /path/file.cpp:42:5: warning: check-name [check-name]
         m = re.match(r'^(.*?):(\d+):(\d+):\s*(?:warning|error):\s+.*?\[([^\]]+)\]$', line)
         if not m:
@@ -907,6 +1026,9 @@ def _clang_tidy_findings(files, compile_commands_dir):
                     "remediation": "clang-tidy: %s" % line.strip(),
                 })
                 break
+    if cp.returncode != 0 and not findings:
+        detail = (cp.stderr or cp.stdout or "unknown clang-tidy error").strip()
+        return [], "clang-tidy failed with rc=%d: %s" % (cp.returncode, detail[:500])
     return findings, ""
 
 
@@ -928,6 +1050,13 @@ def main():
                     help="git work tree used to compare pre-existing findings")
     ap.add_argument("--baseline-commit", metavar="REV",
                     help="revision paired with --baseline-git-dir")
+    ap.add_argument("--clang-format-bin", metavar="PATH")
+    ap.add_argument("--clang-tidy-bin", metavar="PATH")
+    ap.add_argument("--ohos-root", metavar="PATH")
+    ap.add_argument("--codecheck-ignore", metavar="PATH",
+                    help="repository codecheck_ignore.json; matching findings are reported but not blocked")
+    ap.add_argument("--repository-root", metavar="PATH",
+                    help="root used to resolve paths in codecheck_ignore.json")
     ap.add_argument("files", nargs="*")
     args = ap.parse_args()
     if bool(args.baseline_git_dir) != bool(args.baseline_commit):
@@ -946,7 +1075,11 @@ def main():
         except (OSError, ValueError, TypeError) as exc:
             ap.error("cannot read --line-filter-json: %s" % exc)
 
-    format_failures = _format_failures(files, line_filter) if (files and run_format) else []
+    clang_format = _resolve_clang_tool(
+        "clang-format", files, args.clang_format_bin, args.ohos_root)
+    clang_tidy = _resolve_clang_tool(
+        "clang-tidy", files, args.clang_tidy_bin, args.ohos_root)
+    format_failures = _format_failures(files, line_filter, clang_format) if (files and run_format) else []
     findings = _rule_findings(files) if (files and run_rules) else []
     baseline_count = 0
     if findings and args.baseline_git_dir:
@@ -956,12 +1089,29 @@ def main():
         findings = _subtract_baseline_findings(findings, baseline_findings)
     else:
         findings = _filter_findings(findings, line_filter)
+    advisory_findings = [finding for finding in findings
+                         if finding["rule_id"] in _ADVISORY_RULE_IDS]
+    findings = [finding for finding in findings
+                if finding["rule_id"] not in _ADVISORY_RULE_IDS]
     clang_tidy_findings = []
     clang_tidy_note = ""
     if args.clang_tidy and files:
-        ct_findings, ct_note = _clang_tidy_findings(files, args.clang_tidy)
+        ct_findings, ct_note = _clang_tidy_findings(files, args.clang_tidy, clang_tidy)
         clang_tidy_findings = _filter_findings(ct_findings, line_filter)
         clang_tidy_note = ct_note
+
+    ignore_candidate = args.codecheck_ignore or _discover_codecheck_ignore(args.repository_root)
+    ignore_rules, ignore_path = _load_codecheck_ignore(ignore_candidate)
+    ignored_findings = []
+    ignored_tidy_findings = []
+    ignored_advisory_findings = []
+    if ignore_path:
+        findings, ignored_findings = _apply_codecheck_ignore(
+            findings, ignore_rules, ignore_path, args.repository_root)
+        clang_tidy_findings, ignored_tidy_findings = _apply_codecheck_ignore(
+            clang_tidy_findings, ignore_rules, ignore_path, args.repository_root)
+        advisory_findings, ignored_advisory_findings = _apply_codecheck_ignore(
+            advisory_findings, ignore_rules, ignore_path, args.repository_root)
 
     if args.json:
         Path(args.json).write_text(json.dumps({
@@ -972,7 +1122,11 @@ def main():
             "baseline_findings": baseline_count,
             "format_failures": format_failures,
             "findings": findings,
+            "advisory_findings": advisory_findings,
             "clang_tidy_findings": clang_tidy_findings,
+            "ignored_findings": (ignored_findings + ignored_tidy_findings +
+                                  ignored_advisory_findings),
+            "codecheck_ignore": str(ignore_path) if ignore_path else None,
             "clang_format_rules_covered": list(_CLANG_FORMAT_RULES),
         }, ensure_ascii=False, indent=2), encoding="utf-8")
 
@@ -981,6 +1135,9 @@ def main():
               for f in findings]
     lines += ["%(file)s:%(line)s: %(rule_id)s [%(severity)s] clang-tidy: %(remediation)s" % f
               for f in clang_tidy_findings]
+    advisory_lines = [
+        "ADVISORY %(file)s:%(line)s: %(rule_id)s %(remediation)s" % finding
+        for finding in advisory_findings]
     all_findings = findings + clang_tidy_findings
     # Every workbook row is 门禁级, so ANY finding blocks (no severity filter).
     if format_failures or all_findings:
@@ -989,6 +1146,8 @@ def main():
         if clang_tidy_note:
             print("clang-tidy note: %s" % clang_tidy_note, file=sys.stderr)
         return 1
+    if advisory_lines:
+        print("\n".join(advisory_lines), file=sys.stderr)
     if not files:
         return 0
     fmt_covered = " + %d clang-format" % len(_CLANG_FORMAT_RULES) if run_format else ""

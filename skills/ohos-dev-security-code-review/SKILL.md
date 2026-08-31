@@ -55,6 +55,11 @@ Load only the reference files needed for the code under review:
 | `IPCSkeleton`, `AccessTokenKit`, permissions, transaction codes, user/account/device ids | MANDATORY - read [`references/permission-authorization.md`](references/permission-authorization.md), then trace from public entry to final authorization decision | Concurrency/privacy refs unless touched |
 | Cross-System Ability calls, "internal caller", SA allowlist, confused-deputy risk | MANDATORY - read [`references/system-ability-trust-boundary.md`](references/system-ability-trust-boundary.md), then prove the caller trust boundary | Other refs unless touched |
 
+For a broad system-component review spanning several of these categories, first
+load [`references/openharmony-security-lens.md`](references/openharmony-security-lens.md)
+as the compact boundary checklist, then load only the detailed references matched
+by the inspected path.
+
 If several scenarios apply to the same path, load each matching reference. If none apply, use a general security review skill instead.
 
 ## Severity Calibration

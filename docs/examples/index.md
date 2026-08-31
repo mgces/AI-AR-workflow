@@ -25,6 +25,6 @@
 
 ## 延伸阅读
 
-- [开发 Workflow](/workflow/) — 各阶段的完整说明
+- [需求开发工作流](/workflow/) — 各阶段的完整说明
 - [Skill 组合拳](/skill-playbooks/common-combinations) — 典型场景的 skill 组合
 - [FAQ](/reference/faq) — 高频误解速查

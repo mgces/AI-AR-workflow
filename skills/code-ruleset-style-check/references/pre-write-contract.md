@@ -12,13 +12,17 @@ companion) run by the phase gate after the change is written.
 
 - `data/ruleset_c.json` contains every one of the 545 workbook rows.
 - `data/ruleset_coverage.json` maps every row to a backend and lifecycle owner.
-- The current author-time layer covers 423 rows: 307 sensitive-word rows, 105
-  regex rows, 6 multiline rows, 4 file-hygiene rows, and 1 static-gate row.
-- The remaining 122 rows are not deleted. They are owned by clang-format (P2),
+- The current deterministic author-time layer covers 414 rows: 307 sensitive-word
+  rows, 93 hard-regex rows, 7 multiline rows, 6 file-hygiene rows, and 1 static-gate row.
+- Another 11 rows run as non-blocking advisory regex hints because line matching
+  cannot prove their type/control-flow semantics.
+- The remaining 131 rows are not deleted. They are owned by advisory regex,
+  clang-format (P2),
   clang-tidy (P4), metrics (P4/P7), repository OAT (P7/CI), or semantic review.
 
 The counts and row-to-backend mapping are auditable in the coverage manifest;
-do not copy a second rule list into a skill or invent a local exception list.
+do not copy a second rule list into a skill. Repository exceptions come only
+from the target checkout's `codecheck_ignore.json` and are recorded in output.
 When the workbook changes, regenerate the data and coverage manifests before
 updating this contract.
 

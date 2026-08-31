@@ -329,14 +329,14 @@ int main(void)
         contract = PREWRITE_CONTRACT.read_text(encoding="utf-8")
         coverage = json.loads(COVERAGE.read_text(encoding="utf-8"))
         self.assertIn("545 workbook rows", contract)
-        self.assertIn("423 rows", contract)
+        self.assertIn("414 rows", contract)
         self.assertIn("clang-tidy AST rows", contract)
         self.assertIn("repository OAT rows", contract)
         self.assertIn("public:", contract)
         self.assertIn("G.OTH.01", contract)
         self.assertIn("G.INC.08-CPP", contract)
         self.assertEqual(coverage["summary"]["workbook_rows"], 545)
-        self.assertEqual(coverage["summary"]["author_time_rows"], 423)
+        self.assertEqual(coverage["summary"]["author_time_rows"], 414)
         self.assertGreater(coverage["summary"]["later_stage_rows"], 0)
 
     def test_clang_tidy_finding_keeps_diagnostic_file_path(self):
@@ -366,6 +366,38 @@ int main(void)
         self.assertEqual(note, "")
         self.assertEqual(findings[0]["file"], "/tmp/sample.cpp")
         self.assertEqual(findings[0]["line"], 7)
+
+    def test_repository_codecheck_ignore_suppresses_matching_rule(self):
+        path = self.dir / "legacy.cpp"
+        path.write_text("int *Legacy = NULL;\n", encoding="utf-8")
+        ignore = self.dir / "codecheck_ignore.json"
+        ignore.write_text(json.dumps({"legacy.cpp": {"G.EXP.35-CPP": "*"}}),
+                          encoding="utf-8")
+        report = self.dir / "ignored.json"
+        cp = subprocess.run(
+            [sys.executable, str(GUARD), "--rules-only",
+             "--repository-root", str(self.dir), "--codecheck-ignore", str(ignore),
+             "--json", str(report), str(path)], text=True, capture_output=True)
+        data = json.loads(report.read_text(encoding="utf-8"))
+        self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+        self.assertEqual(data["findings"], [])
+        self.assertEqual(data["ignored_findings"][0]["rule_id"], "G.EXP.35-CPP")
+
+    def test_sensitive_words_scan_comments_and_strings(self):
+        data = json.loads((SKILL / "data" / "ruleset_c.json").read_text(encoding="utf-8"))
+        word = next(item["word"] for item in data["sensitive_words"]
+                    if item.get("word") and item["word"].isascii() and " " not in item["word"])
+        cp, report = self._run("sensitive.cpp", '// %s\nconst char *s = "%s";\n' % (word, word))
+        self.assertNotEqual(cp.returncode, 0)
+        self.assertGreaterEqual(len([f for f in report["findings"]
+                                     if f["rule_id"].startswith("WordsTool.")]), 2)
+
+    def test_semantic_regex_hint_is_advisory_not_blocking(self):
+        cp, report = self._run("assertion.cpp", "void Check() { assert(true); }\n")
+        self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+        self.assertEqual(report["findings"], [])
+        self.assertIn("G.AST.02", [finding["rule_id"]
+                                   for finding in report["advisory_findings"]])
 
 
 if __name__ == "__main__":

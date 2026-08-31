@@ -35,11 +35,11 @@
 
 ### workflow 做什么
 1. `kb_search.py --source-root "$OHOS_ROOT"` 获取稳定导航，再在当前源码仓验证并生成 `design_refs.md`(advisory)
-2. 写 `AR_design.md`(6 必含章节 + 内嵌 ar-contract 契约块)
+2. 写 `AR_design.md`(7 必含章节含 DFX 设计 + 内嵌 ar-contract 契约块)
 3. 跑 `gate_design.py`(emit 1)
 
 ### gate 检查什么
-- AR_design.md 6 必含章节齐全
+- AR_design.md 7 必含章节（含 DFX 设计）齐全
 - ar-contract 三非空数组(`build_artifacts`/`test_cases`/`device_cases`)
 - v2 拒 TODO/TBD 占位 + 引用闭环
 - 并签名

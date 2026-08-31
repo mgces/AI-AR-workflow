@@ -190,7 +190,7 @@ group("unittest") {
 - `build.sub_component`：包含测试目录的 group 入口，确保 `--build-target` 可触发编译
 - `build.test`：列出所有测试目标路径，XTS 兼容性测试框架会据此收集用例
 
-详见 [build-gn-config.md](build-gn-config.md)。
+详见 [build-rules.md](build-rules.md)。
 
 ## 测试执行流程
 
@@ -217,7 +217,7 @@ OpenHarmony 扩展了 GTest 的测试宏：
 - `HWMTEST_F` - 多线程测试宏
 - `HWTEST_P` - 参数化测试宏
 
-详见 [test-macro.md](test-macro.md)。
+详见 [framework-quickref.md](framework-quickref.md)。
 
 ### 2. 编译配置模板
 
@@ -233,7 +233,7 @@ ohos_unittest("ModuleNameTest") {
 }
 ```
 
-详见 [build-gn-config.md](build-gn-config.md)。
+详见 [build-rules.md](build-rules.md)。
 
 ### 3. 测试等级系统
 
@@ -241,7 +241,7 @@ OpenHarmony 定义了 5 个测试等级：
 
 - Level0 - Level4
 
-详见 [test-macro.md](test-macro.md)。
+详见 [framework-quickref.md](framework-quickref.md)。
 
 ### 4. 测试用例注释规范
 
@@ -256,7 +256,7 @@ OpenHarmony 定义了 5 个测试等级：
  */
 ```
 
-详见 [comment-standard.md](comment-standard.md)。
+详见 [test-case-spec.md](test-case-spec.md)。
 
 ## 与 GTest 的关系
 
@@ -346,6 +346,6 @@ user_config.xml 配置测试执行环境：
 
 ## 相关文档
 
-- [test-macro.md](test-macro.md) - 测试宏详细用法
-- [build-gn-config.md](build-gn-config.md) - BUILD.gn 配置
-- [test-examples.md](test-examples.md) - 测试用例示例
+- [framework-quickref.md](framework-quickref.md) - 测试宏详细用法
+- [build-rules.md](build-rules.md) - BUILD.gn 配置
+- [real-patterns.md](real-patterns.md) - 测试用例示例

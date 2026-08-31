@@ -96,7 +96,7 @@ def _rule_check_new_tests(pdir, gdir, new_tests):
     json_rel = "evidence/phase3/test_style_findings.json"
     cp = subprocess.run(
         [sys.executable, STYLE_GUARD, "--rules-only", "--json",
-         os.path.join(pdir, json_rel), *abs_cxx],
+         os.path.join(pdir, json_rel), "--repository-root", gdir, *abs_cxx],
         text=True, capture_output=True)
     with open(out, "w", encoding="utf-8") as f:
         f.write("test files rule-checked (%d):\n%s\n\n"

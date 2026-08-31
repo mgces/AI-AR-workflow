@@ -9,12 +9,12 @@
 | 阶段 | 常用 skill | 作用 |
 |---|---|---|
 | P0 | [`ohos-ar-dev-init`](/skill-playbooks/environment-init) | 初始化环境 |
-| P1 | [`ohos-ar-dev-workflow`](/skill-playbooks/workflow-orchestration) / `ohos-dev-sa-codegen` / `ohos-dev-napi-module` / `code-ruleset-style-check` | 设计与开发 |
-| P2 | [`ohos-dev-build-execution-diagnosis`](/skill-playbooks/build-and-diagnosis) / [`ohos-build-flash`](/skill-playbooks/build-and-flash) | 编译与构建诊断 |
-| P3 | [`ohos-test-ut-generation`](/skill-playbooks/unit-test-generation) / `tdd-enforcer` | 单测生成与校验 |
-| P4 | [`ohos-dev-hdc-command-usage`](/skill-playbooks/device-debug-and-hdc) / [`ohos-build-flash`](/skill-playbooks/build-and-flash) | 真机部署与验证 |
-| P5 | `ohos-test-ut-generation` / `ohos-dev-security-code-review` / `code-ruleset-style-check` | 质量验证 |
-| P6 | [`ohos-ci-gitcode-cli-usage`](/skill-playbooks/gitcode-pr-and-review) / [`ohos-dev-gitcode-pr-review`](/skill-playbooks/gitcode-pr-and-review) | 上库与 review |
+| P1–P2 | [`ohos-ar-dev-workflow`](/skill-playbooks/workflow-orchestration) / `ohos-dev-sa-codegen` / `ohos-dev-napi-module` / `code-ruleset-style-check` | 设计与开发 |
+| P3/P5 | [`ohos-test-ut-generation`](/skill-playbooks/unit-test-generation) / `tdd-enforcer` | 单测生成与执行 |
+| P4 | [`ohos-dev-build-execution-diagnosis`](/skill-playbooks/build-and-diagnosis) | 编译、clang-tidy 与度量 |
+| P6 | [`ohos-dev-hdc-command-usage`](/skill-playbooks/device-debug-and-hdc) / [`ohos-build-flash`](/skill-playbooks/build-and-flash) | 真机部署与验证 |
+| P7 | `ohos-test-xts` / `check-test-code-quality` / `ohos-test-fuzz-generation` / `ohos-test-coverage` / `ohos-dev-security-code-review` | 质量验证 |
+| P8 | `ohos-ci-local-precheck` / [`ohos-ci-gitcode-cli-usage`](/skill-playbooks/gitcode-pr-and-review) / [`ohos-dev-gitcode-pr-review`](/skill-playbooks/gitcode-pr-and-review) | 本地预检、上库与远端 CI |
 
 ## 本栏目各页
 

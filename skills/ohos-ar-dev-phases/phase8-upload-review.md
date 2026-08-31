@@ -15,7 +15,9 @@
 JSON `issue_count/finding_count/...==0` 或 `issues/findings/...` 空数组,或文本 `review_issue_count=0`):
 
 - **A. 本地自检(commit 之前)**:对 `git diff base_commit` 的改动做 review。
-  `code-ruleset-style-check`(review 模式)+ `ohos-dev-security-code-review`(IPC/权限/并发/隐私)
+  `code-ruleset-style-check`(确定性本地子集)+ `ohos-dev-security-code-review`(IPC/权限/并发/隐私)。
+  有批准的固定版本 CodeArts 引擎时追加 `ohos-ci-local-precheck`，其结果标记
+  `ci-near`;远端 `openharmony-ci-analysis` 的 SHA 绑定结果才是权威 CI verdict。
   +(可选补充维度)`ohos-committer-review`(架构合规/设计一致性/线程安全,Committer 视角)。
   各技能均产出**机器可读零问题报告**(如 `local_review.txt` 含 `review_issue_count=0` /
   `local_review.json` / committer 的 `committer_review.json`);补充维度报告只要含合规计数即纳入 A 判定。

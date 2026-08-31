@@ -38,6 +38,10 @@ bash sync-skills.sh --target "$HOME/.my-agent/skills"  # 任意 Agent
 
 之后**重启 Agent 会话**，说「跑流水线」即可触发 `ohos-ar-dev-workflow`。
 
+如果要先走 OHOS SDD，说「执行 OHOS SDD，将这份需求生成 AR」触发
+`ohos-req-intake-orchestration`。SDD 完成后会返回 `AR.md` 路径，再将该路径显式传给
+`ohos-ar-dev-workflow` 进入需求开发工作流；分析设计完成后通过 `AR.md` 显式交接，不会自动连跑。
+
 ### 2. OHOS 代码下载与编译环境配置
 
 | 项 | 说明 | 新电脑没环境？ |
@@ -100,6 +104,8 @@ bash <skill_dir>/scripts/ohos_env_bootstrap.sh --help     # 全部用法
 | 你做 | workflow 做 | 预计 |
 |---|---|---|
 | 用普通语言说明“什么时候发生、希望看到什么、不能出现什么”，最好给一个正常例和异常例；不知道组件、接口、GN target、部署路径可以不写 | workflow 从当前源码发现代码事实，生成 Given/When/Then 验收矩阵并向你确认产品语义 | 1–5 分钟 |
+
+也可以直接使用需求分析与设计工作流（OHOS SDD）生成的 `AR.md`，详见 [需求分析与设计](/sdd/)。
 
 ### 步骤 3：调用编排器
 

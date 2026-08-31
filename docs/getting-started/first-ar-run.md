@@ -18,7 +18,7 @@ specs/pipeline/{YYYYMMDD}-{slug}/
 $REPO/specs/pipeline/{YYYYMMDD}-{slug}/
 ├── pipeline.json        # 规范状态(只有 advance.py 写;含 functional_fingerprint/locked_all_paths)
 ├── ar.md                # 输入的已澄清 AR 原文
-├── AR_design.md         # P1 固化的设计文档(6 必含章节;签名副本在 evidence/phase1/)
+├── AR_design.md         # P1 固化的设计文档(7 必含章节含 DFX;签名副本在 evidence/phase1/)
 ├── todo.md              # 人读镜像(由 refresh_todo.py 依 AR_design 重写,与 TodoWrite 双轨)
 ├── next_action.json     # 导航层:当前逻辑阶段/物理 phase/substate/下一步
 ├── evidence/            # ← 机器证据(签名,gitignore),真相所在
@@ -44,7 +44,7 @@ $REPO/specs/pipeline/{YYYYMMDD}-{slug}/
 
 1. **确认编译部件**:编排器会先问你本 AR 要编译哪个组件(默认 hiview)
 2. **P0 自动跑完**:环境校验通过后自动推进到 P1
-3. **P1 设计固化**:编排器写 `AR_design.md`,跑 `gate_design.py` 校验 6 章节 + ar-contract 契约,通过后**停下等你 consent**
+3. **P1 设计固化**:编排器写 `AR_design.md`,跑 `gate_design.py` 校验 7 章节含 DFX 设计 + ar-contract 契约,通过后**停下等你 consent**
 4. **你 consent 设计**:`advance.py consent --phase 1 --token <你的确认令牌>`
 5. **P2 开发**:编排器按签名设计写代码,跑 `gate_develop.py` 校验改动 + C++ 门控,通过后锁定功能指纹,自动推进
 6. **P3 测试开发**:只允许新增独立测试文件,契约每个 `test_cases[].gtest` 的 suite 出现在新测试文件

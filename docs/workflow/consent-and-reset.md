@@ -1,8 +1,8 @@
 # Consent 与 Reset
 
-> 这页单独存在,因为它是 workflow 思维最容易误解的部分——为什么 P1/P4/P5/P6 要人工确认、什么情况下必须 reset 回 P1、功能指纹意味着什么。
+> 这页单独存在,因为它是 workflow 思维最容易误解的部分——为什么 P1/P6/P7/P8 要人工确认、什么情况下必须 reset 回 P1、功能指纹意味着什么。
 
-## 为什么 P1/P4/P5/P6 要人工确认
+## 为什么 P1/P6/P7/P8 要人工确认
 
 四处人工确认点的设计原则:**不可逆或高代价动作必须人工签名**。
 
@@ -66,7 +66,7 @@ python3 $S/advance.py --pipeline-dir "$PDIR" verify-all
 | 改功能代码/配置内容 | `advance P3..P8` 因功能指纹漂移被拒 |
 | P3/P5/P6/P7 新增非测试路径 | 拒绝(`TEST_ONLY_PHASES=(3,5,6,7)`) |
 | 新增独立测试文件(test 路径) | **不触发**漂移 |
-| P6 的 `git commit -s` | 不算漂移(commit 无关) |
+| P8 的 `git commit -s` | 不算漂移(commit 无关) |
 | 旧 run 无功能指纹 | 回退到全量指纹旧行为 |
 
 ## 常见误区

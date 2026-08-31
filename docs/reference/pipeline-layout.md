@@ -10,7 +10,7 @@
 $REPO/specs/pipeline/{YYYYMMDD}-{slug}/
 ├── pipeline.json        # 规范状态(只有 advance.py 写)
 ├── ar.md                # 输入的已澄清 AR 原文
-├── AR_design.md         # P1 固化的设计文档(6 必含章节;签名副本在 evidence/phase1/)
+├── AR_design.md         # P1 固化的设计文档(7 必含章节含 DFX;签名副本在 evidence/phase1/)
 ├── todo.md              # 人读镜像(由 refresh_todo.py 依 AR_design 重写)
 ├── next_action.json     # 导航层:当前逻辑阶段/物理 phase/substate/下一步
 ├── evidence/            # ← 机器证据(签名,gitignore),真相所在
@@ -41,7 +41,7 @@ $REPO/specs/pipeline/{YYYYMMDD}-{slug}/
 
 ## AR_design.md
 
-P1 固化的设计文档,**6 必含章节**:
+P1 固化的设计文档,**7 必含章节**:
 
 1. 目标组件
 2. 功能需求
@@ -49,6 +49,7 @@ P1 固化的设计文档,**6 必含章节**:
 4. 完整测试框架
 5. 需测试功能点
 6. 真机用例构造
+7. DFX 设计（可观测性、可测试性、可维护性）
 
 内嵌 ```ar-contract``` JSON 契约块(三非空数组)。签名副本在 `evidence/phase1/`。
 

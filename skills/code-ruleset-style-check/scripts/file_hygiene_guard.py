@@ -7,8 +7,8 @@ Companion to code_ruleset_guard.py. That guard owns C/C++ *content* (format +
 banned APIs + sensitive words in code); this guard owns *file-level* hygiene that
 a CI gate would otherwise be the first to catch:
 
-  * H1 LICENSE  — every changed source file in a comment-capable, header-bearing
-    language must carry an Apache-2.0 / OpenHarmony copyright header near the top.
+  * OAT.3/OAT.4 — every changed source/config file in a comment-capable,
+    header-bearing format must carry license and copyright headers near the top.
   * H2 BYTES    — no UTF-8 BOM, no NUL byte, no CRLF/CR line endings in any text
     file (byte-level integrity; unambiguous regardless of comment syntax).
   * H3 JSON     — every changed .json file must parse as JSON. A malformed data
@@ -65,14 +65,15 @@ from code_ruleset_guard import SENSITIVE_WORDS, EXTS as _CXX_EXTS  # noqa: E402
 
 # Comment-capable, header-bearing source extensions. JSON is intentionally
 # absent (no comment syntax -> a header requirement would false-positive).
-LICENSE_EXTS = {".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx",
+LICENSE_EXTS = {"", ".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx",
                 ".gn", ".gni"}
+LICENSE_BASENAME_EXEMPT = {"LICENSE", "NOTICE", "README", "README.OpenSource"}
 
 # H2 byte-hygiene scope: any text-ish file. BOM/NUL/CRLF are byte-level and
 # false-positive-free regardless of a file's comment syntax, so the scope is
 # broader than the license check.
 TEXT_EXTS = _CXX_EXTS | {
-    ".gn", ".gni", ".json", ".md", ".markdown", ".txt", ".rst",
+    "", ".gn", ".gni", ".json", ".md", ".markdown", ".txt", ".rst",
     ".py", ".sh", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".cmake", ".xml",
 }
 BYTE_EXTS = set(TEXT_EXTS)
@@ -132,16 +133,22 @@ def _license_finding(path):
     try:
         text = path.read_text(encoding="utf-8", errors="replace")
     except OSError as exc:
-        return _finding(path, 1, "H1.LICENSE",
+        return [_finding(path, 1, "OAT.3",
                         "cannot read file for license check: %s" % exc)
+                ]
     window = "\n".join(text.splitlines()[:_HEADER_WINDOW])
-    if _APACHE_RE.search(window) and _COPYRIGHT_RE.search(window):
-        return None
-    return _finding(
-        path, 1, "H1.LICENSE",
-        "add the Apache-2.0 / OpenHarmony copyright header at the top of the "
-        "file (a 'Copyright ...' line and an 'Apache License, Version 2.0' line "
-        "within the first %d lines)" % _HEADER_WINDOW)
+    findings = []
+    if not _APACHE_RE.search(window):
+        findings.append(_finding(
+            path, 1, "OAT.3",
+            "add the Apache License, Version 2.0 header within the first %d lines"
+            % _HEADER_WINDOW))
+    if not _COPYRIGHT_RE.search(window):
+        findings.append(_finding(
+            path, 1, "OAT.4",
+            "add the OpenHarmony copyright header within the first %d lines"
+            % _HEADER_WINDOW))
+    return findings
 
 
 def _byte_findings(path):
@@ -334,10 +341,8 @@ def _findings(files, line_filter=None):
     out = []
     for path in files:
         ext = path.suffix.lower()
-        if ext in LICENSE_EXTS:
-            f = _license_finding(path)
-            if f:
-                out.append(f)
+        if ext in LICENSE_EXTS and path.name not in LICENSE_BASENAME_EXEMPT:
+            out.extend(_license_finding(path))
         if ext in BYTE_EXTS:
             out.extend(_byte_findings(path))
         if ext in JSON_EXTS:

@@ -22,6 +22,10 @@ metadata:
 ## Overview
 Use the bundled script first. It resolves the latest DCP event from an OpenHarmony PR, summarizes per-job CI status, fetches logs only for failed jobs unless explicitly told otherwise, and expands failed static-check gates into concrete defect details.
 
+For pre-upload local checking, route to `ohos-ci-local-precheck`. Keep the labels
+distinct: its result is `ci-near`; this skill reads the authoritative remote CI
+event bound to the uploaded commit SHA.
+
 ## Permission Preflight
 - Treat this workflow as network-required by default.
 - Before running the bundled script for `--pr`, `--pr-url`, `--event-id`, artifact paths, or CI log URLs, request network permission up front.

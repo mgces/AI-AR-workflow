@@ -67,11 +67,20 @@ class FileHygieneH1Test(unittest.TestCase):
         jout = os.path.join(self.dir, "f.json")
         cp = self._run(p, json_out=jout)
         self.assertNotEqual(cp.returncode, 0)
-        self.assertIn("H1.LICENSE", cp.stderr)
+        self.assertIn("OAT.3", cp.stderr)
+        self.assertIn("OAT.4", cp.stderr)
         with open(jout, encoding="utf-8") as f:
             data = json.load(f)
-        self.assertEqual(len(data["findings"]), 1)
-        self.assertEqual(data["findings"][0]["rule_id"], "H1.LICENSE")
+        self.assertEqual(len(data["findings"]), 2)
+        self.assertEqual({finding["rule_id"] for finding in data["findings"]},
+                         {"OAT.3", "OAT.4"})
+
+    def test_extensionless_config_requires_oat_headers(self):
+        p = self._write("thread_leak_threshold", "80\n")
+        cp = self._run(p)
+        self.assertNotEqual(cp.returncode, 0)
+        self.assertIn("OAT.3", cp.stderr)
+        self.assertIn("OAT.4", cp.stderr)
 
     def test_partial_header_flagged(self):
         # a bare "Copyright" without the Apache line does NOT satisfy H1

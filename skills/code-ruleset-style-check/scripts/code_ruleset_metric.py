@@ -4,7 +4,8 @@
 Readability gate rules (G.FUD.*, G.FUN.*) that require structural analysis:
 function length, cyclomatic complexity, nesting depth, parameter count, source
 file length, and header size.  Uses lizard when available (pip-installable) or
-falls back to a fast line-count / brace-depth heuristic.
+falls back only for file-size checks. Function metrics are reported unavailable
+when lizard cannot run; they must never be presented as covered or clean.
 
 Exit code is nonzero when any finding is present.
 
@@ -20,13 +21,12 @@ from pathlib import Path
 
 # ── thresholds (from the workbook's G.FUD.* rules) ─────────────────────────
 _THRESHOLDS = {
-    "G.FUD.05":       {"severity": "一般", "name": "函数过长",        "max_lines": 80,     "max_nesting": 5, "max_params": 8},
-    "G.FUD.05-CPP":   {"severity": "一般", "name": "超大函数[C++]",   "max_lines": 80,     "max_nesting": 5, "max_params": 8},
+    "G.FUD.05":       {"severity": "一般", "name": "函数过长",        "max_lines": 50,     "max_nesting": 4, "max_params": 5},
+    "G.FUD.05-CPP":   {"severity": "一般", "name": "超大函数[C++]",   "max_lines": 50,     "max_nesting": 4, "max_params": 5},
     "G.FUD.06":       {"severity": "一般", "name": "内联函数过长",    "max_lines": 10},
     "G.FUD.06-CPP":   {"severity": "一般", "name": "超大圈复杂度",   "max_complexity": 20},
     "G.FUD.07-CPP":   {"severity": "一般", "name": "超大源文件",     "max_file_lines": 3000},
-    "G.FUD.08-CPP":   {"severity": "一般", "name": "超大深度函数",   "max_nesting": 5},
-    "G.FUN.01-CPP":   {"severity": "一般", "name": "函数功能单一",   "max_nesting": 5, "max_params": 8, "max_lines": 80},
+    "G.FUN.01-CPP":   {"severity": "一般", "name": "函数功能单一",   "max_nesting": 4, "max_params": 5, "max_lines": 50},
     "G.INC.11-CPP":   {"severity": "一般", "name": "超大头文件",     "max_file_lines": 1500},
 }
 
@@ -60,6 +60,8 @@ def _findings_lizard(files):
             capture_output=True, text=True, timeout=60)
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return None  # signal fallback
+    if cp.returncode != 0:
+        return None
     out = []
     for line in cp.stdout.splitlines():
         if not line or line.startswith("NLOC"):
@@ -141,15 +143,21 @@ def main():
         return 0
 
     findings = _fallback_findings(files)
+    backend_status = "unavailable"
+    backend_note = "lizard was not run; function length/complexity/parameter/nesting rules are not evaluated"
     if not args.skip_lizard:
         lizard = _findings_lizard(files)
         if lizard is not None:
             findings.extend(lizard)
+            backend_status = "executed"
+            backend_note = ""
 
     if args.json:
         Path(args.json).write_text(json.dumps({
             "files": len(files),
             "findings": findings,
+            "function_metric_status": backend_status,
+            "function_metric_note": backend_note or None,
         }, ensure_ascii=False, indent=2), encoding="utf-8")
 
     if findings:
@@ -158,6 +166,9 @@ def main():
         print("\n".join(lines), file=sys.stderr)
         return 1
 
+    if backend_status != "executed":
+        print("code_ruleset_metric UNAVAILABLE: %s" % backend_note, file=sys.stderr)
+        return 2
     print("code_ruleset_metric PASS: %d file(s)" % len(files))
     return 0
 

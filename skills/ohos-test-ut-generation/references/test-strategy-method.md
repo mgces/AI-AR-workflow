@@ -58,5 +58,5 @@
 
 ## 相关文档
 
-- [test-macro.md](test-macro.md) - 测试框架速查表（含等级）
+- [framework-quickref.md](framework-quickref.md) - 测试框架速查表（含等级）
 - [test-case-spec.md](test-case-spec.md) - 测试用例规范

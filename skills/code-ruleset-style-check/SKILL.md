@@ -1,39 +1,39 @@
 ---
 name: code-ruleset-style-check
-description: Check and review OpenHarmony C/C++ code against the repository's code_ruleset C++ gate rules. Use for implementation, review, formatting, CI readiness, or lifecycle gate checks involving C/C++ style and security rules.
+description: Run the deterministic local subset of OpenHarmony C/C++ code_ruleset checks, record tool-dependent/advisory ownership, and honor repository codecheck ignores. Use during implementation and local quality gates; use ohos-ci-local-precheck or remote CI for CI-near/authoritative verdicts.
 metadata:
   source: code_ruleset/黄区C语言门禁规则集_OAT_敏感词 - 20260126.xlsx
   rule_count: 545
   language: C++
 ---
 
-# code_ruleset C++ style gate
+# code_ruleset C/C++ local precheck
 
-The workbook in `code_ruleset/黄区C语言门禁规则集_OAT_敏感词 - 20260126.xlsx` is the source of truth (545 rows). `data/ruleset_coverage.json` is the required audit map: every workbook row has a backend and lifecycle owner. Do not equate row coverage with P2/P3 execution coverage: deterministic author-time checks run there, while AST, metrics, repository OAT, and semantic checks run in P4/P7/CI or human review.
+The workbook in `code_ruleset/黄区C语言门禁规则集_OAT_敏感词 - 20260126.xlsx` is the rule catalog (545 rows). `data/ruleset_coverage.json` is an ownership map, not a claim that all rows were executed. Its backend capabilities distinguish `deterministic-local`, `tool-dependent-local`, `advisory`, and `ci-only`. Never call this skill CI-equivalent.
 
 Before writing code in P2 or P3, load [references/pre-write-contract.md](references/pre-write-contract.md). It is a concise authoring contract derived from the same manifest; it prepares the model to avoid violations before they are typed. It does not replace the guard, does not create a second rule source, and cannot be used as PASS evidence.
 
 ## Required workflow
 
 1. Identify **changed** `.c/.cpp/.h` files (only the workflow's changed code — never the whole tree, never non-code files) and preserve existing project conventions.
-2. Run `scripts/code_ruleset_guard.py` on those files. It runs the bundled formatter, all exported sensitive-word rows, and the executable regex/multiline subset. Use `scripts/build_ruleset_coverage.py` whenever the workbook or backend map changes; it must continue to report 545/545 mapped rows.
-3. Every workbook row is 门禁级 (gate-level), so the guard does **not** filter by severity — ANY finding blocks. Severity (一般/严重/致命) is still reported per finding for triage. Do not claim a pass when the guard or rule source is missing.
+2. Run `scripts/code_ruleset_guard.py` on those files. It resolves OpenHarmony prebuilt clang tools before PATH, scans sensitive terms in code/comments/strings, and executes the local regex/multiline subset. Pass `--repository-root` so an unambiguous `codecheck_ignore.json` is honored and recorded.
+3. A PASS applies only to executed deterministic/tool backends. Missing format tooling is a dependency failure; missing clang-tidy or metrics is `unavailable`, not clean. Remote CI remains the final verdict.
 4. Keep semantic review for ownership, API contracts, concurrency, validation, and rows owned by P4/P7/CI. The coverage map must name that owner; never delete a row merely because a line regex cannot prove it.
 
 ## Pre-write versus gate-time responsibilities
 
 - **Before editing**: apply the pre-write contract, load the OpenHarmony-specific
   guidance from `ohos-dev-cpp-coding-style`, and inspect nearby files.
-- **After editing**: run this skill's shared guard on changed files. The guard is
-  the only hard PASS source for code-style rules; a model's self-check or a
-  contract-loaded note is never a gate result.
+- **After editing**: run this skill's shared guard on changed files. It is the
+  hard PASS source only for its executed local subset; a model self-check,
+  ownership row, or unavailable backend is never a gate result.
 - **Later owners**: honor the coverage manifest for clang-tidy, metrics,
   repository OAT, and semantic review. Full workbook coverage means every row is
   owned and accounted for, not that every backend can run before the first edit.
 
 The rule data is regenerated from the workbook by `scripts/build_ruleset_data.py` (requires openpyxl; the guard itself does **not**). Re-run it only when the workbook changes.
 
-The lifecycle workflow must use this skill as its sole code-style gate dependency. `ohos-dev-cpp-coding-style` remains the OpenHarmony domain guidance and must be loaded for authoring, but it does not make an independent gate decision and must not be substituted for this guard.
+The lifecycle workflow uses this skill for deterministic local code-style checks. `ohos-dev-cpp-coding-style` supplies authoring guidance, `ohos-ci-local-precheck` optionally supplies a checksum-pinned CI-near run, and remote CI is authoritative.
 
 ## Mandatory phases: run at author time, not at CI
 
@@ -59,8 +59,10 @@ that first surfaces at CI when a compile database *was* available at P4 is likew
 integration defect.
 
 Metric rows (`G.FUD.*`, `G.FUN.*`, `G.INC.11-CPP`) run after a successful P4
-build through `scripts/code_ruleset_metric.py` as hard blockers. P7 re-runs the
-same backend during changed-file code review.
+build through `scripts/code_ruleset_metric.py`. Function metrics require
+`lizard`; without it the backend exits `unavailable` and the phase must not
+record a metric PASS. File-size checks still run but do not substitute for the
+missing function analysis.
 
 ### Guard modes
 
@@ -75,8 +77,9 @@ same backend during changed-file code review.
 
 ### clang-tidy at P4 (compile-database-gated, hard-block-or-degrade)
 
-`_CLANG_TIDY_RULE_MAP` covers ~50 AST-level `G.*` rules (override, member init,
-lifetime, type-safety, ...) that a single-line regex cannot judge. They need
+`_CLANG_TIDY_RULE_MAP` maps selected AST-level `G.*` rules (override, member init,
+lifetime, type-safety, ...). A mapping records intended ownership, not proof of
+semantic equivalence with CodeArts. They need
 `compile_commands.json`, so they are wired into **P4** (`gate_build.py`), not P2:
 
 - After the build success banner, `gate_build.py` generates a compile database
@@ -86,12 +89,19 @@ lifetime, type-safety, ...) that a single-line regex cannot judge. They need
   over the P2-locked changed C/C++ files.
 - **Compile database generated + clang-tidy on PATH → findings non-empty ⇒ P4 FAIL**
   (hard block, same tier as a build failure — fix the code and re-run from P2).
-- **compdb generation fails / clang-tidy not on PATH ⇒ degrade to advisory**: an
+- **compdb generation fails / clang-tidy unavailable ⇒ degrade to advisory**: an
   `evidence/phase4/clang_tidy_note.txt` note is written, P4 still PASSes (fail-open),
   and the note states plainly that clang-tidy did not run so CI may still flag these.
 
-This is best-effort by design: compdb generation can be expensive, so a missing tool
-must not stall the pipeline. When it *does* run, it is a real gate.
+This is best-effort by design. When clang-tidy exits abnormally or its output is
+unreadable, the guard records the execution error instead of returning a clean result.
+
+## CI-near precheck
+
+At P7/P8, use `ohos-ci-local-precheck` when an approved CodeArts engine JAR and
+its expected SHA-256 are available. That skill preserves logs and fails closed;
+it never downloads an engine automatically. If unavailable, record that state
+and rely on remote CI rather than claiming local parity.
 
 ### Repository-level OAT rules (external tooling required)
 

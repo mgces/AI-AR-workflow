@@ -17,7 +17,7 @@
 | 阶段 | 门控脚本 | emit | 通过条件摘要 |
 |---|---|---:|---|
 | P0 | `gate_env_init.py` | — | build/compile/git/testfwk/hdc/真机全就绪 |
-| P1 | `gate_design.py` | 1 | AR_design.md 6 章节 + ar-contract 契约并签名 |
+| P1 | `gate_design.py` | 1 | AR_design.md 7 章节（含 DFX 设计）+ ar-contract 契约并签名 |
 | P2 | `gate_develop.py` | 2 | 强制依赖签名 AR_design + P1 consent + diff 非空 + C++ 门控;闭合锁功能指纹 |
 | P3 | `gate_test_develop.py` | 3 | 契约每个 test_cases[].gtest 的 suite 出现在新测试文件;测试源签名快照 |
 | P4 | `gate_build.py` | 4 | build.sh exit0 + 成功横幅 + build_artifacts 覆盖 |

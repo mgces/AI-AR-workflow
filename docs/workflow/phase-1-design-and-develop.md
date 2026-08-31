@@ -13,7 +13,7 @@ P1 在物理层面是两个独立签名阶段(phase1 设计 + phase2 开发),逻
 `AR_design.md`——必须含 **7 必含章节** + 内嵌 ```ar-contract``` JSON 契约块。
 
 跑 `gate_design.py`(emit 1)校验:
-- 6 必含章节齐全
+- 7 必含章节（含 DFX 设计）齐全
 - ar-contract 三非空数组(`build_artifacts` / `test_cases` / `device_cases`)
 - v3 契约拒收 TODO/TBD 占位，并闭环需求、验收场景、依赖、变更范围、测试和设备证据
 - 并签名
@@ -43,7 +43,7 @@ python3 $S/advance.py --pipeline-dir "$PDIR" consent --phase 1 --token <你的�
 
 ## AR_design.md 与 ar-contract 是什么
 
-`AR_design.md` 是 P1 固化的设计文档,**6 必含章节**:
+`AR_design.md` 是 P1 固化的设计文档,**7 必含章节**:
 
 1. 目标组件
 2. 功能需求
@@ -51,6 +51,7 @@ python3 $S/advance.py --pipeline-dir "$PDIR" consent --phase 1 --token <你的�
 4. 完整测试框架
 5. 需测试功能点
 6. 真机用例构造
+7. DFX 设计（可观测性、可测试性、可维护性）
 
 内嵌的 ```ar-contract``` 是 JSON 契约块,三个非空数组:
 

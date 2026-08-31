@@ -572,7 +572,8 @@ def code_review(state, pdir, arts):
         arts.append(rel)
         return False, "auto_review_issues=1 guard missing"
     abs_cxx = [os.path.join(gdir, f) for f in cxx if os.path.exists(os.path.join(gdir, f))]
-    cp = subprocess.run([sys.executable, STYLE_GUARD, *abs_cxx],
+    cp = subprocess.run([sys.executable, STYLE_GUARD, "--repository-root", gdir,
+                         *abs_cxx],
                         text=True, capture_output=True)
     metric_rel = "evidence/phase7/metric_findings.json"
     metric_cp = subprocess.run(

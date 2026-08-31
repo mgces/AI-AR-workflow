@@ -2,10 +2,23 @@
 
 > 把根 README 的流程图重构成更适合官网展示的页面:一张总图 + 每个阶段一句话定义 + 输入/产物/是否停下人工确认。
 
+## OpenHarmony 需求分析与开发作业线
+
+作业线由“需求分析与设计工作流（OHOS SDD）”和“需求开发工作流”串行组成。需求开发也可以直接接收用户提供的自然语言 AR：
+
+```text
+分析设计：原始需求 → 澄清 → 可行性 → 决策 → Feature Gate → IR/Proposal/SR → AR.md
+                                                                          │
+需求开发：                                           显式交接 → P0 → P1 → … → P8
+```
+
+交接前后的门禁状态相互隔离：SDD Gate 不代表需求开发工作流的任何 phase 已 PASS。
+详见 [需求分析与设计](/sdd/) 和 [AR 交接](/sdd/ar-handoff)。
+
 ## 一张总图
 
 ```
-AR → [P0 环境] → [P1 设计] →consent→ [P2 开发] → [P3 测试开发] → [P4 编译] → [P5 单元测试] → [P6 端到端] →consent→ [P7 质量] →consent→ [P8 上库] →consent→ ✅
+自然语言 AR 或分析设计产出的 AR.md → [P0 环境] → [P1 设计] →consent→ [P2 开发] → [P3 测试开发] → [P4 编译] → [P5 单元测试] → [P6 端到端] →consent→ [P7 质量] →consent→ [P8 上库] →consent→ ✅
                                                                                                          │
                        └ 任一阶段发现要改功能代码 ── reset ── 打回 P1 重走(功能指纹漂移会被拒) ──────────────────────┘
 ```
@@ -15,7 +28,7 @@ AR → [P0 环境] → [P1 设计] →consent→ [P2 开发] → [P3 测试开�
 | 阶段 | 物理 phase | 一句话定义 | 主门控 |
 |---|---:|---|---|
 | P0 环境预检 | 0 | 校验 build/compile/git/testfwk/hdc/真机全部就绪 | `gate_env_init.py` |
-| P1 设计固化 | 1 | 校验 AR_design.md 6 章节 + ar-contract 契约并签名 | `gate_design.py` |
+| P1 设计固化 | 1 | 校验 AR_design.md 7 章节（含 DFX 设计）+ ar-contract 契约并签名 | `gate_design.py` |
 | P2 代码开发 | 2 | 强制依赖签名设计 + consent + diff 非空 + C++ 门控;闭合锁功能指纹 | `gate_develop.py` |
 | P3 测试开发 | 3 | 编译前测试代码已写(契约每个 gtest suite 出现在新测试文件) | `gate_test_develop.py` |
 | P4 编译 | 4 | build.sh exit0 + 成功横幅 + build_artifacts 覆盖 | `gate_build.py` |
@@ -33,7 +46,7 @@ AR → [P0 环境] → [P1 设计] →consent→ [P2 开发] → [P3 测试开�
 
 ### P1 设计固化
 - **输入**:已澄清的 AR 原文、稳定导航 + 当前源码验证形成的 design_refs.md(advisory)
-- **产物**:`AR_design.md`(6 章节 + ar-contract 契约块)、`design_check.txt`
+- **产物**:`AR_design.md`(7 章节含 DFX 设计 + ar-contract 契约块)、`design_check.txt`
 - **停下**:**是**,等人工 consent 设计契约
 
 ### P2 代码开发
@@ -73,6 +86,6 @@ AR → [P0 环境] → [P1 设计] →consent→ [P2 开发] → [P3 测试开�
 
 ## 延伸阅读
 
-- [Consent 与 Reset](/workflow/consent-and-reset) — 为什么 P1/P4/P5/P6 要人工确认
+- [Consent 与 Reset](/workflow/consent-and-reset) — 为什么 P1/P6/P7/P8 要人工确认
 - [Evidence 与 Gates](/workflow/evidence-and-gates) — 门控契约与防伪协议
 - [新增功能端到端示例](/examples/new-feature-end-to-end) — 完整路线演示
