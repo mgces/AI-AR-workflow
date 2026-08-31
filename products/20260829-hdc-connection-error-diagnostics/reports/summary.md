@@ -21,7 +21,7 @@ HDC 上位机 client 与 host 侧原有大量连接失败最终收敛为通用�
 - 更新 GN 构建和 host 单元测试目标。
 - 新增 mapper/catalog 测试和 session 生命周期组件测试。
 - 新增 `server_instance.{h,cpp}`、实例元数据/endpoint 分类测试和进程级兼容反例。
-- 两个实现提交相对基线共修改 24 个文件，新增 2820 行、删除 329 行。
+- 三个实现提交相对基线共修改 24 个文件，新增 2858 行、删除 339 行。
 
 ## 需求与用例追踪
 
@@ -44,18 +44,20 @@ HDC 上位机 client 与 host 侧原有大量连接失败最终收敛为通用�
 | CLI 代表分支 | E001101、E001006、E001400、E001201 均命中预期输出 |
 | server 实例分支 | E002116、E002117、成功清候选、缺元数据降级和原 E002110 均通过 |
 | AR pair validator | 16 个功能点、42 组关系全部通过 |
-| OpenHarmony PR 门禁 | 首阶段 DCO/编译成功；补充提交已推送并重新触发 |
+| OpenHarmony PR 门禁 | 当前 head codeCheck 通过（0 问题），HDC/直接目标成功；总门禁被重复出现的 Contacts HAP SDK 环境故障阻断 |
 
 ## 上库结果
 
 - 源提交：`276162dd5159c2a7aae81c96f0c39e27d752428c`
 - 补充提交：`fe699bdfdced1cc08128737790a49b4fb76e3f96`
+- 代码检查整改提交/当前 head：`2841ecd39bfe623466ce9b6019c241c106675d16`
 - Change-Id：`I7601033ddeb09e6244773375bac3f0522da770a3`
 - PR：[!2514](https://gitcode.com/openharmony/developtools_hdc/merge_requests/2514)
 - Issue：[#1955](https://gitcode.com/openharmony/developtools_hdc/issues/1955)
-- DCP runlist：`6a9270b764650f998b565dc9`
+- 当前 DCP runlist：`6a94f16b64650f998bf679aa`
+- 失败项重试 runlist：`6a94ff1764650f998bfbe531`
 
-首阶段直接构建/测试门禁均通过，PR 获得“DCO检查成功”“编译成功”标签。补充提交已经更新同一 PR，门禁状态以本次重新触发结果为准。
+当前 head 的 codeCheck 已以 0 问题通过，主轮中的 `dayu600_7885`、`ohos-host_mini_tdd`、`dayu200_tdd`、`ohos-sdk`、`dayu200`（含测试）和 `x86_64_virt` 均成功。失败项重试再次成功编译/链接 HDC，随后仍在 Contacts HAP 的 SDK 管理模式校验失败；该重复外部故障未触发 HDC 源码改动。
 
 ## 构造边界
 

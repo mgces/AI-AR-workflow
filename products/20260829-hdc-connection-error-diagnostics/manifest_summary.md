@@ -6,8 +6,8 @@
 - workflow: `REQUIREMENT_CLARIFYING -> ARCHITECTURE_DESIGNING -> TESTCASE_DESIGNING -> DEVELOPING`
 - source_repo: `openharmony/developtools_hdc`
 - source_base: `7a47ffb4b74b8b44ebf801c98e352e020427ce06`
-- source_head: `fe699bdfdced1cc08128737790a49b4fb76e3f96`
-- source_commits: `276162dd5159c2a7aae81c96f0c39e27d752428c`, `fe699bdfdced1cc08128737790a49b4fb76e3f96`
+- source_head: `2841ecd39bfe623466ce9b6019c241c106675d16`
+- source_commits: `276162dd5159c2a7aae81c96f0c39e27d752428c`, `fe699bdfdced1cc08128737790a49b4fb76e3f96`, `2841ecd39bfe623466ce9b6019c241c106675d16`
 - source_pr: `https://gitcode.com/openharmony/developtools_hdc/merge_requests/2514`
 - linked_issue: `https://gitcode.com/openharmony/developtools_hdc/issues/1955`
 
@@ -36,7 +36,7 @@
 - reason: 每个开发任务声明关联 F/TC；实现、测试、跨平台构建和上游 PR 已完成。
 - artifacts:
   - `workflow/tasks.md` : `69f71443718f6cc0d3c90ee86f11efba5938e352e41631ee4de4692fa9fd3f8c`
-  - `workflow/apply-report.md` : `50c3fbc1cfab1f6b80abb9a80f3a739c5695acf25179896b083b76f808843907`
+  - `workflow/apply-report.md` : `974bd1134b4f992b306762039c74ae0a47e26e8259c1c4bac2d9762abed9b581`
   - `workflow/todo.md` : `936333a21e59ebc9ca091d235e8b85c7d1932ed1c960ff041779235bf4bf37e1`
 
 ## PAIR VALIDATION — PASS
@@ -48,23 +48,25 @@
 
 ## 人读归档
 
-- `README.md` : `f2d25054f6696888a5a1485db81773d65a6e445e1035fb7debae4ae13281aed2`
+- `README.md` : `acbb170127d9580b50ac18e571b7c30d66a2c62a1160b032458a42f29db02146`
 - `AR_design.md` : `067074d5981667ca11aaf1ba2db2f306e37935aa12a32c37acd8e9f686b1f965`
 - `ar.md` : `8d75aa8fa9c063fc48b83dbf3f7ec60a111e21e658a2df097101e519288e85d6`
 - `todo.md` : `936333a21e59ebc9ca091d235e8b85c7d1932ed1c960ff041779235bf4bf37e1`
-- `reports/summary.md` : `046899d96d90d1b1bdc17e5226b3f89c3e00e712d99bec8a89bd2f31524282bb`
-- `reports/quality.md` : `aa0d0c2773d6031cdc8c6af23460df072569bf4dba2b8434d604a4a112b3ce71`
-- `reports/pr_description.md` : `f414daacc9873904ebbe4aafaf44c7ac48a80a8536fa54e1af1869d599cb3e30`
+- `reports/summary.md` : `0b4bd6e45142b009bf776e81d4aaa77024441f1977e954e2f2c71fd1f5173e4a`
+- `reports/quality.md` : `18855f3eb21445260b54e52a78c4f15f3d7e6de7db451fccafc483d02a49d649`
+- `reports/pr_description.md` : `e15fe66faa37e395668c090aa01207e071f75b72dd0e7524dae7bf7956728834`
 
 ## 外部验证锚点
 
-- HDC source head: `fe699bdfdced1cc08128737790a49b4fb76e3f96`
+- HDC source head: `2841ecd39bfe623466ce9b6019c241c106675d16`
 - first-stage DCP runlist: `6a9270b764650f998b565dc9`
-- first-stage PR labels: `dco检查成功`, `编译成功`; addendum CI retriggered for new head
+- current-head codeCheck: runlist `6a94f16b64650f998bf679aa`, 0 issues
+- current-head HDC compile: direct targets passed; retry runlist `6a94ff1764650f998bfbe531` linked HDC again
+- aggregate gate: blocked by repeated Contacts HAP SDK management-mode failure outside HDC
 - mapper/catalog/instance tests: `23/23 Pass`
 - session lifecycle tests: `2/2 Pass`
 - mapper executable lines: `274/274 (100%)`
-- Windows `hdc.exe`: `e9c04fe0159403e8a2915ddb4bc4c181252be9b6c22d7fb2aeb7207b602963b5`
+- Windows `hdc.exe`: `bf7263ce51ce40efb901b99489b82284b10ac330e466ce32d1d3003df9446056`
 - Windows `libusb_shared.dll`: `6604cfc9f4d7e85d8127e651f61ab5279376cc759f0bebfa8dc24a6c4ef32f26`
 
 ## 脱敏说明

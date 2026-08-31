@@ -4,7 +4,7 @@
 
 | 项目 | 值 |
 |---|---|
-| Source commits | `276162dd5159c2a7aae81c96f0c39e27d752428c`, `fe699bdfdced1cc08128737790a49b4fb76e3f96` |
+| Source commits | `276162dd5159c2a7aae81c96f0c39e27d752428c`, `fe699bdfdced1cc08128737790a49b4fb76e3f96`, `2841ecd39bfe623466ce9b6019c241c106675d16` |
 | Base commit | `7a47ffb4b74b8b44ebf801c98e352e020427ce06` |
 | Branch | `feat/connection-error-diagnostics` |
 | Unit suites | mapper/catalog/instance 23；session lifecycle 2 |
@@ -37,7 +37,7 @@ gcov 原始分支统计还包含 C++ 字符串构造、异常路径和短路编�
 
 Windows 运行产物校验：
 
-- `hdc.exe` SHA-256：`e9c04fe0159403e8a2915ddb4bc4c181252be9b6c22d7fb2aeb7207b602963b5`
+- `hdc.exe` SHA-256：`bf7263ce51ce40efb901b99489b82284b10ac330e466ce32d1d3003df9446056`
 - `libusb_shared.dll` SHA-256：`6604cfc9f4d7e85d8127e651f61ab5279376cc759f0bebfa8dc24a6c4ef32f26`
 - PE imports 包含配套 `libusb_shared.dll`；二进制包含 TCP refused、TLS handshake、USB access denied 等新增诊断文本。
 
@@ -67,7 +67,7 @@ DCP runlist `6a9270b764650f998b565dc9` 完成，以下直接任务通过：
 - `x86_64_virt`
 - docs format 与 code check
 
-首阶段 PR 标签包含“DCO检查成功”“编译成功”。补充提交 `fe699bdf` 已推送到同一 PR，并已请求新一轮门禁；最终结论只以新 head 的门禁状态为准。
+当前 head `2841ecd` 的 DCP runlist `6a94f16b64650f998bf679aa` 已以 0 问题通过 codeCheck，除 `hap_build` 及其聚合项外的直接构建/测试目标均成功。失败项重试 runlist `6a94ff1764650f998bfbe531` 再次成功链接 `clang_x64/developtools/hdc/hdc`，随后在 Contacts HAP 的 Hvigor SDK 管理模式校验重复报错 `The SDK management mode has changed`；日志未显示 HDC 编译错误。
 
 ## 6. 残余风险
 

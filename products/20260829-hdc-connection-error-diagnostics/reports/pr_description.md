@@ -17,7 +17,7 @@ HDC client/host 的本机 server、target/session、TCP、USB 和 UART 连接失
 - 修改 client/channel/TCP/USB/UART/server 生产调用点。
 - 新增 catalog/mapper 和 session 生命周期测试。
 - 新增 `server_instance.{h,cpp}` 及 metadata/endpoint 分类和真实进程分支测试。
-- 两个提交相对基线共 24 个文件，新增 2820 行、删除 329 行。
+- 三个提交相对基线共 24 个文件，新增 2858 行、删除 339 行。
 
 ## 用例概要
 
@@ -32,4 +32,4 @@ HDC client/host 的本机 server、target/session、TCP、USB 和 UART 连接失
 
 ## 用例结果总结
 
-所有软件可构造目录、mapper/state/实例分类分支和代表性传播路径均通过。补充提交 `fe699bdfdced1cc08128737790a49b4fb76e3f96` 已更新 OpenHarmony PR [!2514](https://gitcode.com/openharmony/developtools_hdc/merge_requests/2514)，关联 Issue 为 [#1955](https://gitcode.com/openharmony/developtools_hdc/issues/1955)。物理线缆、供电、Hub、EMI 和设备重启保留为 HIL 验证项。
+所有软件可构造目录、mapper/state/实例分类分支和代表性传播路径均通过。当前 head `2841ecd39bfe623466ce9b6019c241c106675d16` 已更新 OpenHarmony PR [!2514](https://gitcode.com/openharmony/developtools_hdc/merge_requests/2514)，关联 Issue 为 [#1955](https://gitcode.com/openharmony/developtools_hdc/issues/1955)，codeCheck 为 0 问题。物理线缆、供电、Hub、EMI 和设备重启保留为 HIL 验证项。

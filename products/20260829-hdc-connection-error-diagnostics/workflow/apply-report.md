@@ -5,7 +5,7 @@
 - Change: `20260829-requirement-add-hdc-connection-error-diagnostics`
 - Date: `2026-08-29`
 - Implementation branch: `feat/connection-error-diagnostics`
-- Implementation commits: `276162dd5159c2a7aae81c96f0c39e27d752428c`, `fe699bdfdced1cc08128737790a49b4fb76e3f96`
+- Implementation commits: `276162dd5159c2a7aae81c96f0c39e27d752428c`, `fe699bdfdced1cc08128737790a49b4fb76e3f96`, `2841ecd39bfe623466ce9b6019c241c106675d16`
 - Production build: OpenHarmony `clang_x64` and `mingw_x86_64` target flags, all 50 HDC translation units including `connection_error.cpp` and `server_instance.cpp`
 - Unit test: 23 mapper/catalog tests and 2 session lifecycle tests
 
@@ -92,7 +92,10 @@
 | Candidate clear E2E | Pass | invalid metadata plus successful local handshake cleared E002117; stderr remained empty |
 | Old-server metadata compatibility | Pass | removed `.HDCServer.info`; client reached existing server and emitted no E002116/E002117 |
 | Existing local refused output | Pass | `-p -s 127.0.0.1:54321` emitted unchanged E002110 |
-| Windows deploy | Pass | `E:\temp\hdc.exe`, SHA-256 `e9c04fe0159403e8a2915ddb4bc4c181252be9b6c22d7fb2aeb7207b602963b5`; DLL SHA-256 `6604cfc9f4d7e85d8127e651f61ab5279376cc759f0bebfa8dc24a6c4ef32f26` |
+| Windows deploy | Pass | `E:\temp\hdc.exe`, SHA-256 `bf7263ce51ce40efb901b99489b82284b10ac330e466ce32d1d3003df9446056`; DLL SHA-256 `6604cfc9f4d7e85d8127e651f61ab5279376cc759f0bebfa8dc24a6c4ef32f26` |
+| Current-head codeCheck | Pass | DCP runlist `6a94f16b64650f998bf679aa`; 0 issues after focused format/complexity refactoring |
+| Current-head HDC CI compile | Pass | main run direct targets passed; retry `6a94ff1764650f998bfbe531` again linked `clang_x64/developtools/hdc/hdc` |
+| Aggregate CI | External blocker | both main and retry runs failed later in Contacts HAP with `The SDK management mode has changed`; no HDC compile error |
 | AR pair validator addendum | Pass | 16 features and 42 F/TC pairs verified through Windows PowerShell entry |
 
 The raw gcov branch percentage includes C++ string construction/exception edges and short-circuit compiler edges. It is therefore not used as the claim that real hardware causes are all reproduced. The stronger scoped claim is: every catalog entry is constructible, every mapper/state outcome has injected test data, and the mapper implementation has 100% executable-line coverage.
