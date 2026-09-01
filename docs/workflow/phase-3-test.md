@@ -25,7 +25,7 @@ P3 是测试**编写**验证阶段——在编译前证明测试代码已写完,
 
 调用 [`ohos-test-ut-generation`](/skill-playbooks/unit-test-generation) 技能为 OpenHarmony C/C++ 代码生成单元测试用例,产出 HWTEST/HWTEST_F 测试 + ohos_unittest。
 
-配合 `tdd-enforcer` 约束测试质量,配合 `code-ruleset-style-check` 对新增测试源强制 `--rules-only` 规则门控。
+配合 `tdd-enforcer` 约束测试质量,配合 `code-ruleset-style-check` 对本次 run 的测试变更强制 `--rules-only` 规则门控。
 
 ## 如何验证 test_cases[].gtest
 
@@ -33,10 +33,11 @@ P3 是测试**编写**验证阶段——在编译前证明测试代码已写完,
 
 - phase2 冻结快照存在
 - 无新增非测试路径
-- 契约每个 `test_cases[].gtest` 的 suite 被某个**新测试文件**引用
+- 契约每个 `test_cases[].gtest` 的 suite 被本次 run 新增或修改的测试文件真实注册
 - 测试源签名快照(`authored/*`)
 
-产物:`new_test_files.txt`、`authorship_coverage.txt`、`authored/*` 签名快照。
+产物:`authored_test_files.txt`、`authorship_coverage.txt`、`authored/*` 签名快照。候选测试取本次
+run 相对 `base_commit` 新增或修改的测试文件，包含 P2 按 TDD 提前创建的测试，不包含未改历史测试。
 
 ### P5 执行覆盖(gate_test_ut.py)
 

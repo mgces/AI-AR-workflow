@@ -80,7 +80,14 @@ class TestB1DevelopSequence(unittest.TestCase):
         base = subprocess.run(
             ["git", "-C", self.repo, "rev-parse", "HEAD"],
             check=True, text=True, capture_output=True).stdout.strip()
-        self.run_id = "b1-develop-seq"
+        # This base TestCase is also inherited by the ArkTS suite.  Give every
+        # test instance its own secret namespace so an inherited test cannot
+        # remove or overwrite another run's HMAC key during full discovery.
+        self.run_id = "b1-%s-%s-%s" % (
+            self.__class__.__name__.lower(),
+            self._testMethodName.lower(),
+            os.path.basename(self.repo).lower(),
+        )
         self.secret = gl.create_secret(self.run_id)
         gl.save_state(self.pdir, {
             "run_id": self.run_id,
@@ -148,7 +155,10 @@ class TestB1DevelopSequence(unittest.TestCase):
             # the assertion exercises the signed design point "点一" so the
             # design-point semantic-coverage gate (P3) also passes, not just the
             # suite-name authorship check.
-            f.write("TEST(%s, Case001) { EXPECT_TRUE(true); ASSERT_STRNE(\"点一\", \"\"); }\n" % suite)
+            f.write("TEST(%s, Case001)\n{\n" % suite)
+            f.write("    EXPECT_TRUE(true);\n")
+            f.write("    ASSERT_STRNE(\"点一\", \"\");\n")
+            f.write("}\n")
 
     def _author_test_ignoring_point(self, suite="ATest"):
         """A suite-named test whose body never references the design point except
@@ -243,6 +253,40 @@ class TestB1DevelopSequence(unittest.TestCase):
         # best-effort downstream bundle is still produced
         scope = gl.read_control_json(self.pdir, "test_develop", "signed_test_scope.json")
         self.assertEqual(scope["expected_gtests"], ["ATest.Case001"])
+
+    def test_gate_test_develop_accepts_test_authored_during_phase2(self):
+        """TDD-compatible path: a test created before the P2 freeze is still
+        authored by this run and must satisfy P3 before build."""
+        self._close_design()
+        with open(os.path.join(self.repo, "notes.txt"), "w", encoding="utf-8") as f:
+            f.write("some change\n")
+        self._author_test()
+        # This test exercises P2/P3 ownership timing, not clang-format discovery.
+        # The test environment may not ship OHOS prebuilts, so provide a benign
+        # formatter executable and let the real rules/hygiene gates still run.
+        fake_tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(fake_tmp.cleanup)
+        fake_bin = fake_tmp.name
+        fake_format = os.path.join(fake_bin, "clang-format")
+        with open(fake_format, "w", encoding="utf-8") as f:
+            f.write("#!/bin/sh\nexit 0\n")
+        os.chmod(fake_format, 0o755)
+        env = dict(os.environ)
+        env["PATH"] = fake_bin + os.pathsep + env.get("PATH", "")
+        cp = self._run("gate_develop.py", env=env)
+        style_report = os.path.join(self.pdir, "evidence", "phase2", "style_report.txt")
+        style_detail = ""
+        if os.path.isfile(style_report):
+            with open(style_report, encoding="utf-8") as f:
+                style_detail = f.read()
+        self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr + style_detail)
+        cp = self._advance(2)
+        self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+        cp = self._run("gate_test_develop.py")
+        self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+        self.assertIn("authored_test_files=1", cp.stdout + cp.stderr)
+        self.assertTrue(os.path.isfile(os.path.join(
+            self.pdir, "evidence", "phase3", "authored_test_files.txt")))
 
     def test_gate_test_develop_fail_when_suite_not_authored(self):
         # Finding 1 negative case: contract declares a gtest but no new test file

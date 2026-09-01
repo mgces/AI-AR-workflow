@@ -302,7 +302,7 @@ reports/               # 人读 Markdown 审计报告(脱敏,可归档)——与
 
 - `code_fingerprint`：旧全量指纹，保留给 legacy run。
 - `functional_fingerprint`：**P2(feature-develop)闭合时锁定**的非测试路径内容指纹；P3–P8 推进前必须保持一致(`check_code_drift` 从 phase3 起生效)。
-- `locked_all_paths`：**P2 闭合时锁定**的全量变更路径基线；P3/P5/P6/P7 只能新增独立测试路径。
+- `locked_all_paths`：**P2 闭合时锁定**的全量变更路径基线；P3/P5/P6/P7 只能增改独立测试路径，功能路径不得漂移。
 - `legacy_mode=true` 的典型来源：
   - manifest reason 中出现 `LEGACY-BYPASS`
   - 进入 P2+ 后找不到签名设计 entry(设计条目在 phase1)

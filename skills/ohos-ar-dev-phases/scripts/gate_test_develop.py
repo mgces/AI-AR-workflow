@@ -11,9 +11,11 @@ the truth layer for test AUTHORSHIP; test EXECUTION stays in phase 5
 (gate_test_ut.py). The distinction is deliberate:
 
   * AUTHORSHIP (here): for every test_cases[].gtest "Suite.Case" declared in the
-    signed ar-contract, a NEW test file (added after the phase-2 feature freeze)
-    must exist and name that suite. This proves the tests were written before the
-    build, without needing a toolchain to run them.
+    signed ar-contract, a test file added or modified by this run (diff against
+    base_commit) must genuinely register that suite. Tests may be created during
+    P2 for TDD or during P3; unchanged historical tests cannot satisfy the gate.
+    This proves the tests were written before the build without inventing a
+    meaningless post-P2 birth-time requirement.
   * EXECUTION (phase 5): those same gtests must actually PASS in freshly produced
     result xmls.
 
@@ -71,11 +73,11 @@ _HYPIUM_IT_RE = re.compile(
     r"\bit\s*\(\s*(?:\"|\'|`)(?P<case>[^\"\'`]{1,200})(?:\"|\'|`)")
 
 
-def _rule_check_new_tests(pdir, gdir, new_tests):
-    """Run the code_ruleset guard (rules-only) over newly authored C/C++ test
+def _rule_check_authored_tests(pdir, gdir, test_paths):
+    """Run the code_ruleset guard (rules-only) over authored C/C++ test
     files. Returns (problems, evidence_rel). A missing guard fails closed so a
     silent bypass can never masquerade as a clean check."""
-    cxx = [t for t in new_tests if os.path.splitext(t)[1].lower() in CXX_EXTS]
+    cxx = [t for t in test_paths if os.path.splitext(t)[1].lower() in CXX_EXTS]
     rel = "evidence/phase3/test_style_report.txt"
     out = os.path.join(pdir, rel)
     if not cxx:
@@ -110,14 +112,14 @@ def _rule_check_new_tests(pdir, gdir, new_tests):
     return problems, rel
 
 
-def _hygiene_check_new_tests(pdir, gdir, new_tests):
+def _hygiene_check_authored_tests(pdir, gdir, test_paths):
     """H1: run the deterministic file-hygiene guard (license header) over newly
     authored test files. Returns (problems, evidence_rel). A missing guard fails
     closed so a silent bypass cannot masquerade as clean. The guard self-scopes
-    to header-bearing extensions, so we pass every new test file on disk."""
+    to header-bearing extensions, so we pass every authored test file on disk."""
     rel = "evidence/phase3/test_hygiene_report.txt"
     out = os.path.join(pdir, rel)
-    abs_paths = [os.path.join(gdir, t) for t in new_tests
+    abs_paths = [os.path.join(gdir, t) for t in test_paths
                  if os.path.isfile(os.path.join(gdir, t))]
     if not os.path.exists(HYGIENE_GUARD):
         with open(out, "w", encoding="utf-8") as f:
@@ -138,21 +140,24 @@ def _hygiene_check_new_tests(pdir, gdir, new_tests):
     return problems, rel
 
 
-def _new_test_paths(state, freeze):
-    """Paths present now, classed as test, that were NOT in the phase-2 freeze.
-    These are the files that must carry the authored test suites."""
-    frozen = set(freeze.get("locked_all_paths") or freeze.get("changed_files") or [])
-    out = []
-    for p in gl._changed_paths(state):
-        if p in frozen:
-            continue
-        if gl.classify_path(p) == "test":
-            out.append(p)
-    return out
+def _authored_test_paths(gdir, changed_paths, contract):
+    """Test files authored or modified by this workflow run.
+
+    P3 proves that tests exist before P4; it does not require them to have been
+    born after P2. Limit candidates to the current diff against base_commit so
+    unchanged historical tests cannot satisfy the contract, while accepting TDD
+    tests legitimately created during P2. Contract-declared ArkTS test projects
+    use the same path relaxation as the feature-freeze guard.
+    """
+    return sorted({
+        p for p in changed_paths
+        if gl.is_allowed_test_path(p, contract)
+        and os.path.isfile(os.path.join(gdir, p))
+    })
 
 
 def _suites_referenced(gdir, test_paths):
-    """Map each readable new test file -> set of gtest suite tokens it references.
+    """Map each readable authored test file -> registered suite source text.
     A suite is 'referenced' when its name appears in the file text (covers
     TEST(Suite,Case) / TEST_F(Suite,Case) / TYPED_TEST(Suite,...) and BUILD.gn
     target wiring alike — authorship, not a compiler parse)."""
@@ -204,7 +209,7 @@ def _coverage(contract, gdir, test_paths):
     reference is a real registration — for kind==gtest a `TEST(`/`TEST_F(`/
     `TEST_P(`/`TYPED_TEST(`/`TYPED_TEST_P(` macro with the suite as its first
     argument (allowing `::`-qualified names); for kind==arkts a Hypium
-    `describe('<suite>', ...)` call in a new test file (preferring the
+    `describe('<suite>', ...)` call in an authored test file (preferring the
     contract-declared `file` when present). A bare suite name in a comment, a
     string literal, or free text does NOT count.
 
@@ -236,7 +241,7 @@ def _coverage(contract, gdir, test_paths):
             if kind == "arkts":
                 # Prefer the contract-declared file: the freeze-relaxed source is
                 # the one that must actually author the suite. Otherwise scan all
-                # new test files.
+                # authored test files.
                 declared = (tc.get("file") or "").strip().lstrip("./")
                 if declared and declared in file_text:
                     if _arkts_suite_registered(file_text[declared], suite, declared):
@@ -254,10 +259,10 @@ def _coverage(contract, gdir, test_paths):
         if not hit:
             missing.append(gtest)
             if kind == "arkts":
-                lines.append("[MISS] arkts %s -> describe('%s') not found in any new ArkTS test file"
+                lines.append("[MISS] arkts %s -> describe('%s') not found in any authored ArkTS test file"
                              % (gtest, suite))
             else:
-                lines.append("[MISS] %s -> suite %s not found in any new test file" % (gtest, suite))
+                lines.append("[MISS] %s -> suite %s not found in any authored test file" % (gtest, suite))
             continue
         # design-point semantic coverage: the suite file must exercise the point
         # in executable code (comments/strings stripped). A suite that exists but
@@ -318,23 +323,23 @@ def main():
     non_test_extra = [p for p in current_paths
                       if p not in frozen_paths and not gl.is_allowed_test_path(p, contract)]
 
-    new_tests = _new_test_paths(state, freeze)
-    files_rel = "evidence/phase3/new_test_files.txt"
+    authored_tests = _authored_test_paths(gdir, current_paths, contract)
+    files_rel = "evidence/phase3/authored_test_files.txt"
     with open(os.path.join(pdir, files_rel), "w", encoding="utf-8") as f:
-        f.write("new test files (added since phase-2 feature freeze):\n")
-        f.write("\n".join(new_tests) or "(none)")
+        f.write("test files authored/modified in this run (diff vs base_commit):\n")
+        f.write("\n".join(authored_tests) or "(none)")
         f.write("\n")
     arts = [files_rel]
 
     # RULE CHECK the authored test code now (rules-only). Test files were never
     # style-gated before P4/CI, so banned APIs in tests leaked straight to the CI
     # gate — this closes that gap at author time.
-    style_problems, style_rel = _rule_check_new_tests(pdir, gdir, new_tests)
+    style_problems, style_rel = _rule_check_authored_tests(pdir, gdir, authored_tests)
     arts.append(style_rel)
 
     # H1 FILE HYGIENE: license-header mirror of the CI file check over the newly
     # authored test files. Blocking, fail-closed — same as P2.
-    hygiene_problems, hygiene_rel = _hygiene_check_new_tests(pdir, gdir, new_tests)
+    hygiene_problems, hygiene_rel = _hygiene_check_authored_tests(pdir, gdir, authored_tests)
     arts.append(hygiene_rel)
 
     # CONTRACT AUTHORSHIP COVERAGE: recover the contract from the SIGNED design.
@@ -342,11 +347,11 @@ def main():
     contract_status = "ok" if c_ok else ""
     required, covered, missing, cov_lines = [], [], [], []
     if c_ok:
-        required, covered, missing, cov_lines = _coverage(contract, gdir, new_tests)
+        required, covered, missing, cov_lines = _coverage(contract, gdir, authored_tests)
         cov_rel = "evidence/phase3/authorship_coverage.txt"
         with open(os.path.join(pdir, cov_rel), "w", encoding="utf-8") as f:
             f.write("required test_cases (from signed ar-contract): %d\n" % len(required))
-            f.write("new test files scanned: %d\n\n" % len(new_tests))
+            f.write("authored test files scanned: %d\n\n" % len(authored_tests))
             f.write("\n".join(cov_lines) or "(no test_cases in contract)")
             f.write("\n")
         arts.append(cov_rel)
@@ -359,7 +364,7 @@ def main():
         # when advance.py closes phase 3.
         snap_dir = os.path.join(pdir, "evidence", "phase3", "authored")
         os.makedirs(snap_dir, exist_ok=True)
-        for t in new_tests:
+        for t in authored_tests:
             src = os.path.join(gdir, t)
             if not os.path.isfile(src):
                 continue
@@ -386,15 +391,15 @@ def main():
     problems += style_problems
     problems += hygiene_problems
     if contract_status == "ok" and missing:
-        problems += ["declared test_case not authored (suite not referenced by any new test file): %s"
+        problems += ["declared test_case not authored (suite not referenced by this run's test files): %s"
                      % g for g in missing]
-    if contract_status == "ok" and required and not new_tests:
-        problems.append("contract declares test_cases but no new test files were authored")
+    if contract_status == "ok" and required and not authored_tests:
+        problems.append("contract declares test_cases but no test files were authored/modified in this run")
 
     bypass = " (AR-CONTRACT-BYPASS: %s)" % c_detail if contract_status == "absent" else ""
     reason = ("test-develop authorship: contract=%s, required=%d authored=%d, "
-              "new_test_files=%d%s") % (
-        contract_status or "n/a", len(required), len(covered), len(new_tests), bypass)
+              "authored_test_files=%d%s") % (
+        contract_status or "n/a", len(required), len(covered), len(authored_tests), bypass)
     if missing:
         reason += " MISSING: %s" % ", ".join(missing)
     print(reason)
@@ -420,7 +425,7 @@ def main():
     else:
         gl.write_phase_summary(pdir, PHASE, GATE, "FAIL", reason, checks=problems)
         gl.write_failure_report(pdir, PHASE, GATE, reason, problems=problems,
-                                resume_hint="为每个 test_cases.gtest 写引用其 suite 的新测试文件,并确保该测试文件的可执行代码覆盖对应设计点(point)后重跑 gate_test_develop.py(不得改功能代码)")
+                                resume_hint="为每个 test_cases.gtest 在本次 run 的测试变更中真实注册 suite,并确保可执行代码覆盖对应设计点(point)后重跑 gate_test_develop.py(不得改功能代码)")
 
     if verdict == "PASS":
         gl.write_gate_phase_memory_card(
@@ -451,7 +456,7 @@ def main():
             pdir, phase=PHASE, phase_name="test-develop", verdict="FAIL",
             repair_packet_parts=REPAIR_PACKET_PARTS,
             failure_class=failure_class,
-            suspect_files=new_tests, suspect_tests=new_tests,
+            suspect_files=authored_tests, suspect_tests=authored_tests,
             suspect_locations=suspect_locations,
             problems=problems, last_failure_reason=reason,
             must_rerun=[GATE],

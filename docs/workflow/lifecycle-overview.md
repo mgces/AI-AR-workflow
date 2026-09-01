@@ -56,7 +56,7 @@
 
 ### P3 测试开发
 - **输入**:签名 AR_design 契约的 test_cases[].gtest
-- **产物**:`new_test_files.txt`、`authorship_coverage.txt`、`authored/*` 签名快照
+- **产物**:`authored_test_files.txt`、`authorship_coverage.txt`、`authored/*` 签名快照；P2 已创建及 P3 新增/修改的本次测试均可认领
 - **停下**:否,自动推进
 
 ### P4 编译

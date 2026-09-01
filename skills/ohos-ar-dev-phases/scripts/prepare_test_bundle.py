@@ -204,7 +204,7 @@ def _artifact_index(bundle_revision, matrix_items):
 
 
 
-def _evidence_index(pdir, freeze, expanded_paths):
+def _evidence_index(pdir, freeze, expanded_paths, authored_test_paths=None):
     return {
         "develop_summary": gl.phase_summary_relpath(2),
         "develop_failure_report": gl.failure_report_relpath(2),
@@ -213,6 +213,7 @@ def _evidence_index(pdir, freeze, expanded_paths):
             "declared_present": freeze.get("declared_changed_files_present") or [],
             "declared_missing": freeze.get("declared_changed_files_missing") or [],
             "new_test_paths": expanded_paths,
+            "authored_test_paths": authored_test_paths or [],
         },
     }
 
@@ -228,7 +229,8 @@ def _report_index():
 
 
 
-def _handoff_payload(pdir, freeze, bundle_revision, matrix_items, scope_payload, expanded_paths):
+def _handoff_payload(pdir, freeze, bundle_revision, matrix_items, scope_payload,
+                     expanded_paths, authored_test_paths):
     return {
         "bundle_id": "phase1-bundle",
         "bundle_revision": bundle_revision,
@@ -260,7 +262,8 @@ def _handoff_payload(pdir, freeze, bundle_revision, matrix_items, scope_payload,
         "repair_scope_hint": expanded_paths,
         "downstream_revalidate_scope": "P4_P5",
         "artifact_index": _artifact_index(bundle_revision, matrix_items),
-        "evidence_index": _evidence_index(pdir, freeze, expanded_paths),
+        "evidence_index": _evidence_index(
+            pdir, freeze, expanded_paths, authored_test_paths),
         "report_index": _report_index(),
     }
 
@@ -280,7 +283,8 @@ def _completion_receipt(bundle_revision):
 
 
 
-def build_status_payload(pdir, freeze, matrix_items, changed_files, expanded_paths, scope_payload, bundle_revision):
+def build_status_payload(pdir, freeze, matrix_items, changed_files, expanded_paths,
+                         authored_test_paths, scope_payload, bundle_revision):
     return {
         "phase": 3,
         "logical_phase_id": "test_develop",
@@ -296,6 +300,7 @@ def build_status_payload(pdir, freeze, matrix_items, changed_files, expanded_pat
         "changed_files": changed_files,
         "feature_freeze_ok": True,
         "new_test_paths": [p for p in changed_files if p not in (freeze.get("changed_files") or [])],
+        "authored_test_paths": authored_test_paths,
         "handoff_to": "build_verify",
         "scope_expansion_decision": "allow_test_only",
         "downstream_revalidate_scope": "P4_P5",
@@ -305,7 +310,8 @@ def build_status_payload(pdir, freeze, matrix_items, changed_files, expanded_pat
             "regenerate": ["feature_freeze_violated", "signed_test_scope_unavailable"],
         },
         "artifact_index": _artifact_index(bundle_revision, matrix_items),
-        "evidence_index": _evidence_index(pdir, freeze, expanded_paths),
+        "evidence_index": _evidence_index(
+            pdir, freeze, expanded_paths, authored_test_paths),
         "report_index": _report_index(),
         "signed_test_scope_requirements": scope_payload.get("requirements") or [],
     }
@@ -319,14 +325,22 @@ def run_prepare(pdir, state):
     freeze = _load_freeze_snapshot(pdir)
     contract = _load_signed_contract_or_fail(pdir)
     changed_files, expanded_paths = _verify_feature_freeze(pdir, state, freeze, contract)
+    gdir = gl.resolve_git_dir(state)
+    authored_test_paths = sorted(
+        p for p in changed_files
+        if gl.is_allowed_test_path(p, contract)
+        and os.path.isfile(os.path.join(gdir, p)))
     matrix_items = gl.collect_test_intent_matrix(contract, changed_files)
     bundle_revision = gl.entry_id(gl.last_entry_for_phase(pdir, 2) or {"phase": 2})[:12]
     scope_payload = _signed_test_scope_payload(
         pdir, freeze, contract, changed_files, matrix_items, bundle_revision)
     status = build_status_payload(
         pdir, freeze, matrix_items, changed_files, expanded_paths,
+        authored_test_paths,
         scope_payload, bundle_revision)
-    handoff = _handoff_payload(pdir, freeze, bundle_revision, matrix_items, scope_payload, expanded_paths)
+    handoff = _handoff_payload(
+        pdir, freeze, bundle_revision, matrix_items, scope_payload,
+        expanded_paths, authored_test_paths)
     receipt = _completion_receipt(bundle_revision)
     gl.write_control_json(pdir, *SCOPE_PARTS, payload=scope_payload, best_effort=True)
     gl.write_control_json(pdir, *MATRIX_PARTS,
@@ -364,6 +378,7 @@ def run_prepare(pdir, state):
         "contract": contract,
         "changed_files": changed_files,
         "expanded_paths": expanded_paths,
+        "authored_test_paths": authored_test_paths,
         "matrix_items": matrix_items,
         "bundle_revision": bundle_revision,
         "scope_payload": scope_payload,

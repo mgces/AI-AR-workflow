@@ -100,10 +100,10 @@ advance.py consent --phase 1 --token <reviewer>
 编译前测试代码已写的真签名门——不闭合 phase3 就到不了 phase4。P3 PASS 需要同时满足:
 
 - phase-2 冻结快照(`development_freeze_snapshot.json`)存在;
-- 自 phase-2 冻结以来只出现新测试文件(无新增非测试路径);
-- 签名 contract 的 `test_cases[].gtest` **每一个**的 suite 都在某个**新测试文件**文本中出现(**编写**覆盖,非执行)。
+- 自 phase-2 冻结以来只增改测试路径(无功能路径漂移);
+- 签名 contract 的 `test_cases[].gtest` **每一个**的 suite 都在本次 run 相对 `base_commit` 新增或修改的测试文件中真实注册(**编写**覆盖,非执行)。
 
-导航输出包含:`new_test_files` / `authored_count` / `contract_status` / `missing_suites` / `failure_class`;
+导航输出包含:`authored_test_files` / `authored_count` / `contract_status` / `missing_suites` / `failure_class`;
 新测试源快照落 `evidence/phase3/authored/<flattened>` 并作为签名 artifact。典型 `failure_class`:
 
 - `freeze_snapshot_missing`
@@ -295,7 +295,7 @@ P8 摘要字段示例:
 - 当前 phase 最后一条闭合记录是签名 PASS
 - 所有 artifact 当前 sha256 与记录一致
 - 需要 consent 的 phase,其 consent HMAC 有效且绑定当前 PASS entry
-- P3–P8 功能指纹未漂移(P2 闭合锁定,`check_code_drift` 从 phase3 起生效);P3/P5/P6/P7 只允许新增独立测试路径
+- P3–P8 功能指纹未漂移(P2 闭合锁定,`check_code_drift` 从 phase3 起生效);P3/P5/P6/P7 只允许增改独立测试路径
 
 因此：
 

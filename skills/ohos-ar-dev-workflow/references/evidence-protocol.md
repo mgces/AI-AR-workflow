@@ -108,11 +108,11 @@
 
 ### P3(测试开发,★Finding 1)
 
-- 依赖 phase-2 冻结快照:自冻结以来只允许新增测试文件;
-- 额外硬门控:签名 contract 的 `test_cases[].gtest` 的 suite 必须逐个在**新测试文件**中出现(**编写**覆盖,非执行);
+- 依赖 phase-2 冻结快照:自冻结以来只允许增改测试路径,功能路径不得漂移;
+- 额外硬门控:签名 contract 的 `test_cases[].gtest` 的 suite 必须逐个在本次 run 相对 `base_commit` 新增或修改的测试文件中真实注册(**编写**覆盖,非执行);
 - 新测试源快照落 `evidence/phase3/authored/` 并作为签名 artifact。
 
-相关摘要:`new_test_files` / `missing_suites` / `contract_status` / `failure_class`。
+相关摘要:`authored_test_files` / `missing_suites` / `contract_status` / `failure_class`。
 
 ### P4(编译)
 
