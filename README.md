@@ -6,6 +6,20 @@
 2. **需求开发工作流**：入口 `ohos-ar-dev-workflow`，以自然语言 AR 或上述 `AR.md` 为输入，推进 OHOS
    系统组件的设计固化、开发、测试、真机验证和上库。
 
+跨宿主 DSH 化正在 `runtime/dsh-ohos/` 实施。AR 开发工作流的 P0-P8 调度、Python 签名门控、
+P1/P6/P7/P8 人工确认、P8 预检/发布拆分和中断/reset 对账代码已经完成；Requirement 工作流
+也已接入 R1-R9 调度、文档结构与追溯校验、人工决策、独立评审上下文检查、GA→SR 约束和恢复。
+这些为代码及本地协议测试状态，DSH 上游与真实宿主会话仍待验收。
+Codex、Claude Code、Cursor、Trae 配置生成器复用各宿主选择的模型；状态、限制和运行方法见
+[`runtime/dsh-ohos/README.md`](runtime/dsh-ohos/README.md)。
+
+安装配置、两条流程的启动提示词、跨宿主接续及排障见
+[跨宿主 DSH subagent 使用指南](docs/getting-started/dsh-subagents.md)。
+
+DSH 运行时代码按业务分为 `src/workflows/requirement/`（需求分析 R1-R9）与
+`src/workflows/ar-delivery/`（AR 开发 P0-P8）；公共任务、租约、凭证和存储在 `src/core/`。
+两条 workflow 各自拥有控制器、工具定义、agent 指令、测试和调用文档，通过 `AR.md` 显式交接。
+
 作业线通过 AR 文件串行交接；交接前后的门禁状态和 PASS 结论相互隔离：
 
 ```text

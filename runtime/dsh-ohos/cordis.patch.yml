@@ -1,0 +1,3 @@
+# Added to a DSH profile when this package is installed as a bundle.
+- id: ohos-domain-tools
+  name: '@ai-ar-workflow/dsh-ohos'

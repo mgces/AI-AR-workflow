@@ -42,6 +42,7 @@ export default defineConfig({
             { text: '概览', link: '/getting-started/' },
             { text: '什么是 AI-AR Workflow', link: '/getting-started/what-is-ai-ar-workflow' },
             { text: '5 分钟快速开始', link: '/getting-started/quick-start' },
+            { text: '跨宿主 DSH subagent 使用指南', link: '/getting-started/dsh-subagents' },
             { text: '环境初始化', link: '/getting-started/environment-init' },
             { text: '首次运行一个 AR', link: '/getting-started/first-ar-run' },
           ],

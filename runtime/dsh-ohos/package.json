@@ -1,0 +1,25 @@
+{
+  "name": "@ai-ar-workflow/dsh-ohos",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/dsh/plugin.js",
+  "exports": {
+    ".": "./src/dsh/plugin.js",
+    "./core": "./src/index.js"
+  },
+  "description": "Host-neutral OHOS workflow controller and MCP server for DeepSeek Harness integration",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node src/mcp/stdio.js",
+    "export-host": "node src/hosts/export-cli.js",
+    "test": "node --test"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

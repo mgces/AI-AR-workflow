@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-ar-workflow.local/schemas/task-envelope.schema.json",
+  "title": "OHOS DSH task envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "status", "run_id", "task_id", "attempt_id", "phase",
+    "role", "revision", "attempt", "lease_epoch", "lease_until",
+    "host_binding_ref", "execution_mode", "context_ref", "input_digest",
+    "output_ref", "policy_ref", "task_credential"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "status": { "const": "leased" },
+    "run_id": { "type": "string", "minLength": 1 },
+    "task_id": { "type": "string", "minLength": 1 },
+    "attempt_id": { "type": "string", "minLength": 1 },
+    "phase": { "type": "string", "pattern": "^[RP][0-9]+$" },
+    "role": { "type": "string", "minLength": 1 },
+    "revision": { "type": "integer", "minimum": 1 },
+    "attempt": { "type": "integer", "minimum": 1 },
+    "lease_epoch": { "type": "integer", "minimum": 1 },
+    "lease_until": { "type": "string", "format": "date-time" },
+    "host_binding_ref": { "type": "string", "minLength": 1 },
+    "execution_mode": { "enum": ["host_native", "external"] },
+    "context_ref": { "type": "string", "minLength": 1 },
+    "input_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "workspace_ref": { "type": ["string", "null"] },
+    "output_ref": { "type": "string", "minLength": 1 },
+    "policy_ref": { "type": "string", "minLength": 1 },
+    "task_credential": { "type": "string", "minLength": 1 }
+  }
+}

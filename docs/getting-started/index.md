@@ -36,3 +36,4 @@ AI-AR Workflow 是一套面向 OpenHarmony 研发的**证据门控开发流水�
 2. 跑之前如需准备环境，看 [环境初始化](/getting-started/environment-init)
 3. 想建立整体认知，看 [什么是 AI-AR Workflow](/getting-started/what-is-ai-ar-workflow)
 4. 第一次跑通后看 [首次运行一个 AR](/getting-started/first-ar-run) 理解产物结构
+5. 在 Codex、Claude Code、Cursor 或 Trae 中使用 DSH subagent，看 [跨宿主使用指南](/getting-started/dsh-subagents)

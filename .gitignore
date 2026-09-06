@@ -9,6 +9,7 @@ specs/
 examples/specs/
 *.build-probe-ok
 .lifecycle-secret/
+.dsh-ohos/
 
 # archived product RAW run-state — may carry device serials / personal paths.
 # Only redacted summaries (ar.md, manifest_summary.md, README.md) may be committed;

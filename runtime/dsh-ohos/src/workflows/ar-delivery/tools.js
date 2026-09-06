@@ -1,0 +1,69 @@
+import { objectSchema, id, ref } from '../../core/tool-schema.js';
+
+export const DELIVERY_TOOLS = Object.freeze([
+  {
+    name: 'ohos_delivery_start',
+    description: 'Initialize or attach an authoritative Python P0-P8 pipeline and return its first DSH task.',
+    principals: ['parent', 'all'],
+    inputSchema: objectSchema({
+      input_ref: ref,
+      run_id: id,
+      ar_path: ref,
+      ar_text: { type: 'string', minLength: 1, maxLength: 1_000_000 },
+      pipeline_dir: ref,
+      repo_root: ref,
+      environment: { type: 'string', enum: ['openharmony', 'harmonyos'] },
+      component_type: { type: 'string', enum: ['system', 'chip'] },
+      device_type: { type: 'string', minLength: 1, maxLength: 256 },
+      device_serial: { type: 'string', minLength: 1, maxLength: 256 },
+      git_dir: ref,
+      build_target: { type: 'string', minLength: 1, maxLength: 512 },
+      part: { type: 'string', minLength: 1, maxLength: 512 },
+      base_commit: { type: 'string', minLength: 1, maxLength: 256 },
+      confirm_defaults: { type: 'boolean', default: false },
+      agent: { type: 'string', minLength: 1, maxLength: 128 },
+      model: { type: 'string', minLength: 1, maxLength: 256 },
+      skills: {
+        type: 'array', maxItems: 50,
+        items: { type: 'string', minLength: 1, maxLength: 4096 },
+      },
+      idempotency_key: id,
+    }, ['input_ref', 'idempotency_key']),
+    invoke: (controller, args, principal) => controller.delivery.start(args, principal),
+  },
+  {
+    name: 'ohos_delivery_validate',
+    description: 'Verify submitted delivery artifacts against signed Python gate evidence and advance or request consent/repair.',
+    principals: ['parent', 'all'],
+    inputSchema: objectSchema({
+      run_id: id,
+      task_id: id,
+      expected_revision: { type: 'integer', minimum: 1 },
+      idempotency_key: id,
+    }, ['run_id', 'task_id', 'expected_revision', 'idempotency_key']),
+    invoke: (controller, args, principal) => controller.delivery.validate(args, principal),
+  },
+  {
+    name: 'ohos_delivery_consent',
+    description: 'Record evidence-bound human consent for P1, P6, P7, or the P8 upload precheck, then continue the delivery graph.',
+    principals: ['parent', 'all'],
+    inputSchema: objectSchema({
+      run_id: id,
+      task_id: id,
+      phase: { type: 'integer', minimum: 0, maximum: 8 },
+      token: { type: 'string', minLength: 1, maxLength: 1024 },
+      idempotency_key: id,
+    }, ['run_id', 'task_id', 'phase', 'token', 'idempotency_key']),
+    invoke: (controller, args, principal) => controller.delivery.consent(args, principal),
+  },
+  {
+    name: 'ohos_delivery_sync',
+    description: 'Reconcile a DSH delivery run with authoritative Python phase, evidence, consent, reset, or completion state.',
+    principals: ['parent', 'all'],
+    inputSchema: objectSchema({
+      run_id: id,
+      idempotency_key: id,
+    }, ['run_id', 'idempotency_key']),
+    invoke: (controller, args, principal) => controller.delivery.sync(args, principal),
+  },
+]);

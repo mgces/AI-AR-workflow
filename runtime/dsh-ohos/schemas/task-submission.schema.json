@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-ar-workflow.local/schemas/task-submission.schema.json",
+  "title": "OHOS DSH task submission",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "attempt_id", "revision", "lease_epoch", "task_credential",
+    "artifact_refs", "summary", "idempotency_key"
+  ],
+  "properties": {
+    "attempt_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "revision": { "type": "integer", "minimum": 1 },
+    "lease_epoch": { "type": "integer", "minimum": 1 },
+    "task_credential": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "artifact_refs": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": { "type": "string", "minLength": 1, "maxLength": 4096 }
+    },
+    "summary": { "type": "string", "minLength": 1, "maxLength": 4096 },
+    "idempotency_key": { "type": "string", "minLength": 1, "maxLength": 128 }
+  }
+}

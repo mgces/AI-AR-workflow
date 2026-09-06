@@ -1,0 +1,788 @@
+[
+  {
+    "name": "ohos_delivery_consent",
+    "principals": [
+      "parent",
+      "all"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "run_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "task_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "phase": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8
+        },
+        "token": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "idempotency_key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "run_id",
+        "task_id",
+        "phase",
+        "token",
+        "idempotency_key"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "ohos_delivery_start",
+    "principals": [
+      "parent",
+      "all"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "input_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "ar_path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "ar_text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000000
+        },
+        "pipeline_dir": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "repo_root": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "openharmony",
+            "harmonyos"
+          ]
+        },
+        "component_type": {
+          "type": "string",
+          "enum": [
+            "system",
+            "chip"
+          ]
+        },
+        "device_type": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "device_serial": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "git_dir": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "build_target": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "part": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "base_commit": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "confirm_defaults": {
+          "type": "boolean",
+          "default": false
+        },
+        "agent": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "skills": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "idempotency_key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "input_ref",
+        "idempotency_key"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "ohos_delivery_sync",
+    "principals": [
+      "parent",
+      "all"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "run_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "idempotency_key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "run_id",
+        "idempotency_key"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "ohos_delivery_validate",
+    "principals": [
+      "parent",
+      "all"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "run_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "task_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "expected_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "idempotency_key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "run_id",
+        "task_id",
+        "expected_revision",
+        "idempotency_key"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "ohos_host_capabilities",
+    "principals": [
+      "parent",
+      "worker",
+      "all"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "binding_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "binding_id"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "ohos_host_register",
+    "principals": [
+      "parent",
+      "all"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "binding_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "host_kind": {
+          "type": "string",
+          "enum": [
+            "codex",
+            "claude-code",
+            "cursor",
+            "trae",
+            "other"
+          ]
+        },
+        "host_version": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "execution_mode": {
+          "type": "string",
+          "enum": [
+            "host_native",
+            "external"
+          ],
+          "default": "host_native"
+        },
+        "capabilities": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "boolean"
+          }
+        },
+        "capability_source": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "idempotency_key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "binding_id",
+        "host_kind",
+        "capabilities",
+        "capability_source",
+        "idempotency_key"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "ohos_requirement_decide",
+    "principals": [
+      "parent",
+      "all"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "run_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "task_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "expected_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "snapshot_digest": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "source_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "decision": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "idempotency_key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "run_id",
+        "task_id",
+        "expected_revision",
+        "snapshot_digest",
+        "source_ref",
+        "decision",
+        "idempotency_key"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "ohos_requirement_reset",
+    "principals": [
+      "parent",
+      "all"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "run_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "target_phase": {
+          "type": "string",
+          "enum": [
+            "R1",
+            "R2-input",
+            "R2",
+            "R3-options",
+            "R3",
+            "R4",
+            "R5",
+            "R6-input",
+            "R6",
+            "R7-plan",
+            "R7-SR",
+            "R8",
+            "R9"
+          ]
+        },
+        "expected_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "idempotency_key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "run_id",
+        "target_phase",
+        "expected_revision",
+        "reason",
+        "idempotency_key"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "ohos_requirement_start",
+    "principals": [
+      "parent",
+      "all"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "input_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "docs_root": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "input_text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000000
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "idempotency_key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "input_ref",
+        "docs_root",
+        "idempotency_key"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "ohos_requirement_sync",
+    "principals": [
+      "parent",
+      "all"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "run_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "idempotency_key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "run_id",
+        "idempotency_key"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "ohos_requirement_validate",
+    "principals": [
+      "parent",
+      "all"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "run_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "task_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "expected_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "idempotency_key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "run_id",
+        "task_id",
+        "expected_revision",
+        "idempotency_key"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "ohos_run_status",
+    "principals": [
+      "parent",
+      "worker",
+      "all"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "run_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "cursor": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "run_id"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "ohos_task_claim",
+    "principals": [
+      "worker",
+      "all"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "run_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "host_binding_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "context_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "expected_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "idempotency_key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "run_id",
+        "role",
+        "host_binding_id",
+        "expected_revision",
+        "idempotency_key"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "ohos_task_context",
+    "principals": [
+      "worker",
+      "all"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "attempt_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "lease_epoch": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "task_credential": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      },
+      "required": [
+        "attempt_id",
+        "lease_epoch",
+        "task_credential"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "ohos_task_heartbeat",
+    "principals": [
+      "worker",
+      "all"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "attempt_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "lease_epoch": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "task_credential": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      },
+      "required": [
+        "attempt_id",
+        "lease_epoch",
+        "task_credential"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "ohos_task_release",
+    "principals": [
+      "worker",
+      "all"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "attempt_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "lease_epoch": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "task_credential": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "artifact_refs": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "idempotency_key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "attempt_id",
+        "lease_epoch",
+        "task_credential",
+        "reason",
+        "idempotency_key"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "ohos_task_submit",
+    "principals": [
+      "worker",
+      "all"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "attempt_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "lease_epoch": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "task_credential": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "artifact_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "idempotency_key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "attempt_id",
+        "revision",
+        "lease_epoch",
+        "task_credential",
+        "artifact_refs",
+        "summary",
+        "idempotency_key"
+      ],
+      "additionalProperties": false
+    }
+  }
+]
