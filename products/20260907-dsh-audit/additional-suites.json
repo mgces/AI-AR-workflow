@@ -1,0 +1,18 @@
+[
+  {
+    "suite": "skills/ohos-ar-dev-workflow/tests",
+    "exit_code": 0
+  },
+  {
+    "suite": "skills/ohos-req-intake-orchestration/tests",
+    "exit_code": 0
+  },
+  {
+    "suite": "skills/code-ruleset-style-check/tests",
+    "exit_code": 0
+  },
+  {
+    "suite": "skills/check-test-code-quality/tests",
+    "exit_code": 0
+  }
+]

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-ar.local/schemas/repair-packet.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["failureId", "workflow", "phase", "failureClass", "strategy", "modules", "invariants"],
+  "properties": {
+    "failureId": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "workflow": { "enum": ["requirement", "development"] },
+    "phase": { "type": "string" },
+    "failureClass": { "type": "string" },
+    "strategy": { "type": "object" },
+    "evidenceSummary": { "type": "string" },
+    "modules": { "type": "array", "items": { "type": "object" } },
+    "invariants": { "type": "array", "items": { "type": "string" } }
+  }
+}

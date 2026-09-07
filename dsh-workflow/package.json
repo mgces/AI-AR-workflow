@@ -1,0 +1,49 @@
+{
+  "name": "@ai-ar/dsh-workflow",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Isolated DSH adaptive controller and MCP facade for AI-AR workflows.",
+  "license": "Apache-2.0",
+  "main": "./src/dsh/plugin.js",
+  "exports": {
+    ".": "./src/dsh/plugin.js",
+    "./core": "./src/core/controller.js",
+    "./mcp": "./src/mcp/server.js"
+  },
+  "bin": {
+    "ai-ar-dsh": "./bin/ai-ar-dsh.js",
+    "ai-ar-dsh-mcp": "./src/mcp/server.js"
+  },
+  "files": [
+    "bin",
+    "config",
+    "examples",
+    "schemas",
+    "src",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "scripts": {
+    "check": "node ./scripts/check.js",
+    "test": "node --test",
+    "mcp": "node ./src/mcp/server.js"
+  },
+  "engines": {
+    "node": ">=22.19"
+  },
+  "dependencies": {
+    "@deepseek-ai/cordis": "4.0.2",
+    "@deepseek-ai/dsh-tools": "0.0.1-rc.1",
+    "@modelcontextprotocol/server": "2.0.0",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "2.0.0"
+  }
+}

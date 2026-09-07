@@ -8,6 +8,10 @@ DeepSeek Harness tool plugin boundary.
 中文安装与使用步骤见 [跨宿主 DSH subagent 使用指南](../../docs/getting-started/dsh-subagents.md)，
 覆盖 Codex、Claude Code、Cursor、Trae、两条 workflow 的启动提示词、恢复与接入验收。
 
+融合改造进度见 [实施状态与未完成项](../../docs/reference/dsh-fusion-implementation-status.md)。
+当前新增能力是 **observe 路由与签名失败诊断**。长作业托管、自动补丁和策略自动发布尚未实现；
+`managed` 模式明确拒绝启用。
+
 ## Completion status
 
 Both workflows have controller paths: requirement R1-R9 and AR delivery P0-P8.
@@ -33,8 +37,11 @@ OpenHarmony build, device test, push, or four-host acceptance run has occurred.
 - Requirement R1-R9 and the full delivery P0-P8 task graph. P8 is split
   into reviewable precheck and authorized publish tasks.
 - Atomic task claim, heartbeat, submit, and release operations.
-- Delivery expired-lease requeue plus workspace/device-scoped exclusion for
-  build, device, and publish tasks across concurrent delivery runs.
+- Delivery expired leases quarantine the task and retain resource exclusion.
+  The credentialed owner must stop its process tree before releasing; partial
+  artifacts then require sync. Local workspace aliases and parent/child paths
+  participate in build/write exclusion. This is cooperative lifecycle recovery,
+  not an OS process supervisor or a lock shared with standalone Python CLI jobs.
 - Requirement expired leases quarantine work for reconciliation; reset requests active writers to stop before replacement.
 - Revision, lease epoch, host capability, and scoped task credential checks.
 - MCP `initialize`, `ping`, `tools/list`, and `tools/call` over stdio.
@@ -47,6 +54,14 @@ OpenHarmony build, device test, push, or four-host acceptance run has occurred.
 - DSH bundle metadata and a Cordis tool-registration plugin.
 - Codex, Claude Code, Cursor, and Trae project-agent bundle generation without
   pinning a model.
+- Immutable per-run policy hashes and dependency-aware Skill routing, with
+  phase requirements, context bounds, cycle/missing-module checks and drift rejection.
+- Parent-only `ohos_policy_configure`, `ohos_policy_status`, and `ohos_repair_plan`.
+  Plans verify current P4 signed FAIL evidence and bind the observed source state.
+  They do not execute a repair, reserve build budget, or establish which source
+  version the historical build actually compiled.
+- An internal persistent budget reservation ledger with idempotency and terminal
+  settlement. It is not yet wired into a build launcher or legacy CLI commands.
 
 A worker submission enters `validating`. Delivery acceptance requires the Python
 authority. Requirement acceptance checks structural contracts, immutable
@@ -101,13 +116,14 @@ src/
     ar-delivery/             # P0–P8: workflow/stages/python-adapter/python/tools/agent
   hosts/                     # 四种宿主导出；业务指令从 workflow 注册表获取
   tools/catalog.js           # 合并 core 和两条 workflow 的工具定义
+  policy/                    # 固定版本、模块路由、失败诊断、只读修复计划、预算账本
   mcp/                       # MCP stdio 协议
   dsh/                       # DSH 插件接入
   controller.js              # OhosController 兼容入口与 workflow 注册
   runtime.js                 # 组装存储、适配器、控制器和工具目录
   index.js                   # 保留公共导出
 test/
-  core/  requirement/  ar-delivery/  hosts/  dsh/
+  core/  requirement/  ar-delivery/  policy/  hosts/  dsh/
 docs/
   requirement/contract.md
   ar-delivery/contract.md

@@ -2,10 +2,11 @@ import { ProtocolError, errorPayload } from '../core/errors.js';
 import { CORE_TOOLS } from '../core/tools.js';
 import { REQUIREMENT_TOOLS } from '../workflows/requirement/tools.js';
 import { DELIVERY_TOOLS } from '../workflows/ar-delivery/tools.js';
+import { POLICY_TOOLS } from '../policy/tools.js';
 
 // Composition only: each domain owns its tool schema and business handler.
 export const TOOL_DEFINITIONS = Object.freeze([
-  ...CORE_TOOLS, ...REQUIREMENT_TOOLS, ...DELIVERY_TOOLS,
+  ...CORE_TOOLS, ...REQUIREMENT_TOOLS, ...DELIVERY_TOOLS, ...POLICY_TOOLS,
 ]);
 
 export function createToolCatalog(controller, { principal = 'all' } = {}) {

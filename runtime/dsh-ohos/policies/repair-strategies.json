@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "strategies": {
+    "input_incomplete": {
+      "automatic": false,
+      "action": "request_missing_input",
+      "maxAttempts": 0,
+      "escalateWhen": ["required user fact is absent"]
+    },
+    "design_contract_invalid": {
+      "automatic": true,
+      "action": "repair_design_without_expanding_reviewed_scope",
+      "maxAttempts": 2,
+      "reset": "P1"
+    },
+    "scope_violation": {
+      "automatic": false,
+      "action": "stop_and_review_scope",
+      "maxAttempts": 0,
+      "reset": "P1"
+    },
+    "style_or_static_rule_failed": {
+      "automatic": true,
+      "action": "apply_scoped_style_fix",
+      "maxAttempts": 2
+    },
+    "test_authorship_incomplete": {
+      "automatic": true,
+      "action": "add_missing_independent_tests",
+      "maxAttempts": 2
+    },
+    "compile_error": {
+      "automatic": true,
+      "action": "diagnose_build_and_apply_scoped_fix",
+      "maxAttempts": 2
+    },
+    "unit_test_failed": {
+      "automatic": true,
+      "action": "diagnose_test_failure_without_weakening_assertions",
+      "maxAttempts": 2
+    },
+    "device_or_deploy_failed": {
+      "automatic": true,
+      "action": "diagnose_environment_before_code_change",
+      "maxAttempts": 1,
+      "escalateWhen": ["device is offline", "credential or physical action is required"]
+    },
+    "runtime_evidence_missing": {
+      "automatic": true,
+      "action": "rerun_runtime_scenario_with_fresh_nonce",
+      "maxAttempts": 1
+    },
+    "quality_report_failed": {
+      "automatic": true,
+      "action": "regenerate_invalid_quality_evidence",
+      "maxAttempts": 1
+    },
+    "review_gate_failed": {
+      "automatic": true,
+      "action": "repair_reported_review_findings",
+      "maxAttempts": 2
+    },
+    "consent_missing": {
+      "automatic": false,
+      "action": "request_human_review",
+      "maxAttempts": 0
+    },
+    "remote_ci_failed": {
+      "automatic": true,
+      "action": "classify_remote_ci_before_code_change",
+      "maxAttempts": 1
+    },
+    "environment_unavailable": {
+      "automatic": false,
+      "action": "report_environment_blocker",
+      "maxAttempts": 0
+    },
+    "transient_environment": {
+      "automatic": false,
+      "action": "diagnose_transient_environment_then_retry_same_input",
+      "maxAttempts": 2
+    },
+    "authority_or_signature_invalid": {
+      "automatic": false,
+      "action": "stop_and_run_authoritative_recovery",
+      "maxAttempts": 0
+    },
+    "unknown": {
+      "automatic": false,
+      "action": "inspect_evidence_and_escalate",
+      "maxAttempts": 0
+    }
+  }
+}

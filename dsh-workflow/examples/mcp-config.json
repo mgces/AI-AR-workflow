@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "ai-ar-dsh-workflow": {
+      "command": "node",
+      "args": [
+        "/ABS/PATH/AI-AR-workflow/dsh-workflow/src/mcp/server.js"
+      ],
+      "env": {
+        "AI_AR_WORKSPACE": "/ABS/PATH/AI-AR-workflow",
+        "AI_AR_DSH_STATE_DIR": "/ABS/PATH/AI-AR-workflow/dsh-workflow/.runtime"
+      }
+    }
+  }
+}

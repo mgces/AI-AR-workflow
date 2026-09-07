@@ -44,7 +44,8 @@ test('all pre-refactor MCP tool names, principals and input schemas are preserve
     'test-support/core/mcp-contract-v0.3.json'), 'utf8'));
   const actual = TOOL_DEFINITIONS.map(({ name, principals, inputSchema }) => ({ name, principals, inputSchema }))
     .sort((a, b) => a.name.localeCompare(b.name));
-  assert.deepEqual(actual, expected);
+  const originalNames = new Set(expected.map((tool) => tool.name));
+  assert.deepEqual(actual.filter((tool) => originalNames.has(tool.name)), expected);
   assert.equal(new Set(actual.map((tool) => tool.name)).size, actual.length);
 });
 

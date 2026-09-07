@@ -3,13 +3,17 @@ import { digest, expectId, expectInteger, expectObject, expectString, expectStri
   optionalString, parseJson } from '../../core/validation.js';
 import { deliveryPosition, deliveryStage, deliveryTaskInstructions, firstDeliveryStage,
   nextDeliveryStage } from './stages.js';
+import { resourcesOverlap } from '../../core/resource-identity.js';
 
-const EXCLUSIVE_CAPABILITIES = new Set(['build_execution', 'device_access', 'network_publish']);
+const EXCLUSIVE_CAPABILITIES = new Set(['workspace_write', 'build_execution', 'device_access', 'network_publish']);
 
 export class DeliveryWorkflow {
-  constructor({ store, taskController, adapter = null, clock = () => new Date() }) {
-    Object.assign(this, { store, taskController, adapter, clock });
+  constructor({ store, taskController, adapter = null, failureHints, clock = () => new Date() }) {
+    Object.assign(this, { store, taskController, adapter, failureHints, clock });
     this.runPrefix = 'dev';
+    // A release is the credentialed owner's acknowledgement that it AND its
+    // subprocesses stopped. Lease expiry alone never supplies that acknowledgement.
+    this.allowExpiredOwnerRelease = true;
   }
 
   bootstrap(args) {
@@ -18,7 +22,9 @@ export class DeliveryWorkflow {
       : { phase: 'P0', role: 'environment-analyst' };
   }
 
-  onClaim(run, task, _args, { required, now }) {
+  expiredLeaseStatus() { return 'needs_reconcile'; }
+
+  onClaim(run, task, _args, { required }) {
     const exclusive = required.filter((capability) => EXCLUSIVE_CAPABILITIES.has(capability));
     if (exclusive.length > 0) {
       const blockers = this.store.db.prepare(`
@@ -26,17 +32,18 @@ export class DeliveryWorkflow {
                r.workspace_root, r.device_ref
         FROM attempts a JOIN tasks t ON t.id = a.task_id
         JOIN runs r ON r.id = t.run_id
-        WHERE a.status IN ('leased', 'executing') AND a.lease_until >= ? AND t.id != ?
-      `).all(now, task.id).flatMap((row) => {
+        WHERE (a.status IN ('leased', 'executing') OR t.status = 'needs_reconcile') AND t.id != ?
+      `).all(task.id).flatMap((row) => {
         const held = parseJson(row.required_capabilities_json,
           'tasks.required_capabilities_json');
         const overlap = exclusive.filter((capability) => {
-          if (!held.includes(capability)) return false;
+          if (!held.includes(capability)
+              && !(capability === 'workspace_write' && held.includes('build_execution'))
+              && !(capability === 'build_execution' && held.includes('workspace_write'))) return false;
           if (capability === 'device_access') {
             return !run.device_ref || !row.device_ref || run.device_ref === row.device_ref;
           }
-          return !run.workspace_root || !row.workspace_root
-            || run.workspace_root === row.workspace_root;
+          return resourcesOverlap(run.workspace_root, row.workspace_root);
         });
         return overlap.length > 0 ? [{
           run_id: row.run_id, task_id: row.task_id, capabilities: overlap,
@@ -48,7 +55,11 @@ export class DeliveryWorkflow {
   }
 
   taskContext(row) {
-    return { constraints: row.pipeline_dir ? deliveryTaskInstructions(row.phase, row.pipeline_dir) : [] };
+    return { constraints: [
+      ...(row.pipeline_dir ? deliveryTaskInstructions(row.phase, row.pipeline_dir) : []),
+      'Before submit or release, stop and reap every subprocess you started. An expired lease does not prove that a build stopped.',
+      'If your lease expires, stop work and release with the original credential; include all partial artifacts. Never start a second writer to recover an unknown process.',
+    ] };
   }
 
   insertTask(args) {
@@ -178,6 +189,11 @@ export class DeliveryWorkflow {
       `Delivery run ${runId} does not exist.`);
     invariant(run.pipeline_dir, 'delivery_pipeline_missing',
       `Delivery run ${runId} is not bound to a Python pipeline.`);
+    const uncertain = this.store.db.prepare(`SELECT t.id FROM tasks t JOIN attempts a ON a.task_id=t.id
+      WHERE t.run_id=? AND a.lease_epoch=t.lease_epoch AND
+        a.status IN ('leased','executing','expired') LIMIT 1`).get(runId);
+    if (uncertain) return { status: 'needs_reconcile', run_id: runId,
+      reason: 'Confirm the previous writer stopped and release its attempt before synchronizing.' };
     const inspected = await this.adapter.inspect(run.pipeline_dir);
     const aligned = await this.#alignPythonPipeline(run.pipeline_dir, inspected);
 
@@ -558,6 +574,7 @@ export class DeliveryWorkflow {
       `).run(nextRevision, now, runId);
       const result = {
         status: 'needs_repair',
+        ...(this.failureHints ? { diagnostic: this.failureHints(runId, task.phase, error) } : {}),
         reason: error.message,
         details: error.details,
         run_id: runId,

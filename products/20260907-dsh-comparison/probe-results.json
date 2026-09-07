@@ -1,0 +1,54 @@
+{
+  "root": "/tmp/dsh-compare-probes-cXRRZu",
+  "outputs": [
+    {
+      "probe": "local_approval_omitted",
+      "result": "R2",
+      "humanApproved": "omitted"
+    },
+    {
+      "probe": "local_R5_contradictory_evidence",
+      "evidenceGate": "Not Ready",
+      "submittedDecision": "Ready",
+      "result": "R6"
+    },
+    {
+      "probe": "local_R6_explicit_disapproval",
+      "humanApproved": false,
+      "result": "R7"
+    },
+    {
+      "probe": "local_R7_unapproved_proposal",
+      "proposalStatus": "Draft",
+      "srBytes": 0,
+      "result": "R8"
+    },
+    {
+      "probe": "local_empty_handoff_AR_and_upstream_change",
+      "result": "completed"
+    },
+    {
+      "probe": "local_experience_before_gate_execution",
+      "ok": false,
+      "source": "authoritative-gate-execution",
+      "result": "fail"
+    },
+    {
+      "probe": "local_zero_exit_precheck_synthetic_subprocess",
+      "commandOk": true,
+      "businessPass": false,
+      "experienceResult": "pass"
+    },
+    {
+      "probe": "local_module_cycle",
+      "error": "Maximum call stack size exceeded"
+    },
+    {
+      "probe": "remote_delivery_expired_lease_reissued",
+      "firstAttempt": 1,
+      "secondAttempt": 2,
+      "requiresOldProcessStoppedProof": false,
+      "note": "controller-only simulation; no actual worker process was started"
+    }
+  ]
+}

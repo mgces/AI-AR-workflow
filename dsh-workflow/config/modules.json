@@ -1,0 +1,257 @@
+{
+  "schemaVersion": 1,
+  "modules": [
+    {
+      "id": "ohos-req-intake-orchestration",
+      "kind": "skill",
+      "workflows": ["requirement"],
+      "phases": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9"],
+      "defaultForPhase": true,
+      "capabilities": ["requirement-orchestration"],
+      "contextCost": "low"
+    },
+    {
+      "id": "ohos-req-requirement-intake",
+      "kind": "skill",
+      "workflows": ["requirement"],
+      "phases": ["R1"],
+      "defaultForPhase": true,
+      "capabilities": ["requirement-intake", "clarification"]
+    },
+    {
+      "id": "ohos-req-feasibility-analysis",
+      "kind": "skill",
+      "workflows": ["requirement"],
+      "phases": ["R2"],
+      "defaultForPhase": true,
+      "capabilities": ["feasibility", "source-verification"],
+      "failureClasses": ["input_incomplete"]
+    },
+    {
+      "id": "ohos-req-arch-decision",
+      "kind": "skill",
+      "workflows": ["requirement"],
+      "phases": ["R3"],
+      "defaultForPhase": true,
+      "capabilities": ["architecture-decision"]
+    },
+    {
+      "id": "ohos-req-feature-baseline",
+      "kind": "skill",
+      "workflows": ["requirement"],
+      "phases": ["R4"],
+      "defaultForPhase": true,
+      "capabilities": ["feature-baseline", "scope-split"]
+    },
+    {
+      "id": "ohos-req-review-gate",
+      "kind": "skill",
+      "workflows": ["requirement"],
+      "phases": ["R5"],
+      "defaultForPhase": true,
+      "capabilities": ["review-ready-gate"],
+      "failureClasses": ["design_contract_invalid"]
+    },
+    {
+      "id": "ohos-req-review-ppt-gen",
+      "kind": "skill",
+      "workflows": ["requirement"],
+      "phases": ["R5"],
+      "defaultForPhase": false,
+      "triggerTags": ["review-ppt"],
+      "capabilities": ["review-presentation"],
+      "optional": true
+    },
+    {
+      "id": "ohos-req-value-decision",
+      "kind": "skill",
+      "workflows": ["requirement"],
+      "phases": ["R6"],
+      "defaultForPhase": true,
+      "capabilities": ["review-decision"]
+    },
+    {
+      "id": "ohos-req-feature-to-ir",
+      "kind": "skill",
+      "workflows": ["requirement"],
+      "phases": ["R7"],
+      "defaultForPhase": true,
+      "capabilities": ["feature-to-ir"]
+    },
+    {
+      "id": "ohos-req-proposal-to-sr",
+      "kind": "skill",
+      "workflows": ["requirement"],
+      "phases": ["R7"],
+      "defaultForPhase": true,
+      "capabilities": ["proposal", "sr-generation"]
+    },
+    {
+      "id": "ohos-ar-dev-init",
+      "kind": "skill",
+      "workflows": ["development"],
+      "phases": ["P0"],
+      "defaultForPhase": true,
+      "capabilities": ["environment-preflight"]
+    },
+    {
+      "id": "ohos-ar-dev-workflow",
+      "kind": "skill",
+      "workflows": ["development"],
+      "phases": ["P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8"],
+      "defaultForPhase": true,
+      "capabilities": ["development-orchestration"],
+      "contextCost": "low"
+    },
+    {
+      "id": "ohos-dev-sa-codegen",
+      "kind": "skill",
+      "workflows": ["development"],
+      "phases": ["P1", "P2"],
+      "triggerTags": ["sa", "system-ability", "system-component"],
+      "capabilities": ["sa-architecture", "sa-codegen"],
+      "requires": ["ohos-dev-cpp-coding-style"]
+    },
+    {
+      "id": "ohos-dev-napi-module",
+      "kind": "skill",
+      "workflows": ["development"],
+      "phases": ["P1", "P2"],
+      "triggerTags": ["napi", "js-api"],
+      "capabilities": ["napi-design", "napi-codegen"],
+      "requires": ["ohos-dev-cpp-coding-style"]
+    },
+    {
+      "id": "ohos-dev-cpp-coding-style",
+      "kind": "skill",
+      "workflows": ["development"],
+      "phases": ["P1", "P2", "P3", "P4"],
+      "triggerTags": ["cpp", "cxx", "sa", "napi"],
+      "capabilities": ["cpp-contract", "cpp-review"],
+      "failureClasses": ["style_or_static_rule_failed", "compile_error"]
+    },
+    {
+      "id": "code-ruleset-style-check",
+      "kind": "skill",
+      "workflows": ["development"],
+      "phases": ["P2", "P3", "P4"],
+      "defaultForPhase": true,
+      "capabilities": ["deterministic-style-check"],
+      "failureClasses": ["style_or_static_rule_failed"]
+    },
+    {
+      "id": "ohos-dev-security-code-review",
+      "kind": "skill",
+      "workflows": ["development"],
+      "phases": ["P1", "P2", "P7", "P8"],
+      "triggerTags": ["security", "permission", "ipc", "privacy", "privilege-boundary"],
+      "capabilities": ["security-review"],
+      "failureClasses": ["review_gate_failed"]
+    },
+    {
+      "id": "tdd-enforcer",
+      "kind": "skill",
+      "workflows": ["development"],
+      "phases": ["P2", "P3", "P5"],
+      "defaultForPhase": true,
+      "capabilities": ["tdd-contract"],
+      "failureClasses": ["test_authorship_incomplete", "unit_test_failed"]
+    },
+    {
+      "id": "ohos-test-ut-generation",
+      "kind": "skill",
+      "workflows": ["development"],
+      "phases": ["P3", "P5"],
+      "defaultForPhase": true,
+      "capabilities": ["unit-test-generation", "unit-test-execution"],
+      "failureClasses": ["test_authorship_incomplete", "unit_test_failed"]
+    },
+    {
+      "id": "ohos-dev-build-execution-diagnosis",
+      "kind": "skill",
+      "workflows": ["development"],
+      "phases": ["P4"],
+      "defaultForPhase": true,
+      "capabilities": ["build", "build-diagnosis"],
+      "failureClasses": ["compile_error"]
+    },
+    {
+      "id": "ohos-build-flash",
+      "kind": "skill",
+      "workflows": ["development"],
+      "phases": ["P4", "P6", "P7"],
+      "defaultForPhase": true,
+      "capabilities": ["build", "deploy", "flash"],
+      "failureClasses": ["device_or_deploy_failed"]
+    },
+    {
+      "id": "ohos-dev-hdc-command-usage",
+      "kind": "skill",
+      "workflows": ["development"],
+      "phases": ["P6", "P7"],
+      "defaultForPhase": true,
+      "capabilities": ["device-runtime", "hdc"],
+      "failureClasses": ["device_or_deploy_failed", "runtime_evidence_missing"]
+    },
+    {
+      "id": "ohos-test-coverage",
+      "kind": "skill",
+      "workflows": ["development"],
+      "phases": ["P7"],
+      "defaultForPhase": true,
+      "capabilities": ["coverage"],
+      "failureClasses": ["quality_report_failed"]
+    },
+    {
+      "id": "ohos-test-xts",
+      "kind": "skill",
+      "workflows": ["development"],
+      "phases": ["P7"],
+      "triggerTags": ["xts", "compatibility"],
+      "capabilities": ["xts"]
+    },
+    {
+      "id": "ohos-test-fuzz-generation",
+      "kind": "skill",
+      "workflows": ["development"],
+      "phases": ["P7"],
+      "triggerTags": ["fuzz", "parser", "untrusted-input"],
+      "capabilities": ["fuzz"]
+    },
+    {
+      "id": "ohos-ci-local-precheck",
+      "kind": "skill",
+      "workflows": ["development"],
+      "phases": ["P7", "P8"],
+      "defaultForPhase": true,
+      "capabilities": ["local-ci-precheck"],
+      "failureClasses": ["review_gate_failed"]
+    },
+    {
+      "id": "ohos-ci-gitcode-cli-usage",
+      "kind": "skill",
+      "workflows": ["development"],
+      "phases": ["P8"],
+      "defaultForPhase": true,
+      "capabilities": ["gitcode-upload"]
+    },
+    {
+      "id": "ohos-dev-gitcode-pr-review",
+      "kind": "skill",
+      "workflows": ["development"],
+      "phases": ["P8"],
+      "defaultForPhase": true,
+      "capabilities": ["pr-review"],
+      "failureClasses": ["review_gate_failed"]
+    },
+    {
+      "id": "ohos-ci-openharmony-ci-analysis",
+      "kind": "skill",
+      "workflows": ["development"],
+      "phases": ["P8"],
+      "defaultForPhase": true,
+      "capabilities": ["remote-ci-analysis"],
+      "failureClasses": ["remote_ci_failed"]
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-ar.local/schemas/execution-packet.schema.json",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["workflow", "phase", "objective", "modules", "forbiddenActions"],
+  "properties": {
+    "workflow": { "enum": ["requirement", "development"] },
+    "phase": { "type": "string" },
+    "objective": { "type": "string" },
+    "modules": { "type": "array", "items": { "type": "object" } },
+    "forbiddenActions": { "type": "array", "items": { "type": "string" } }
+  }
+}

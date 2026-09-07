@@ -32,6 +32,50 @@ phase and token; `dispatch_needed` names the next phase. Call
 `ohos_delivery_sync` after a controller restart, an uncertain Python command, or
 an external `advance.py reset`.
 
+AR 租约过期会进入 `needs_reconcile`，不会自动重派。原 worker 必须停止并回收所有子进程，
+再用原 attempt 凭证调用 `ohos_task_release`；不得省略部分产物。存在部分产物时，parent
+随后调用 `ohos_delivery_sync` 重新检查 Python 状态。活动或尚未确认停止的过期 writer 会阻止 sync。
+如果原 worker 已丢失且进程状态未知，本版保留隔离；不能把手工改数据库当作停止证明。
+
+## 融合路由与修复诊断（observe）
+
+parent 可在首次 claim 前调用：
+
+```json
+{
+  "run_id": "dev-example",
+  "mode": "observe",
+  "task_tags": ["sa", "cpp"],
+  "capabilities_by_phase": {"P2": ["cpp-contract"]},
+  "idempotency_key": "routing-example"
+}
+```
+
+工具名为 `ohos_policy_configure`；`capabilities_by_phase` 是 Skill 能力，不能替代宿主的
+`build_execution` 等权限检查。`ohos_task_context.routing` 返回固定 policy、Skill 哈希、依赖顺序、
+选择原因和预算裁剪结果。必需模块超过上下文预算时拒绝生成上下文，不静默删除约束。
+`ohos_policy_status` 只读返回 policy 与预算账本；本版只支持 observe。
+
+P4 构建结束并停止 writer 后，parent 可调用 `ohos_repair_plan`：
+
+```json
+{
+  "run_id": "dev-example",
+  "expected_revision": 2,
+  "idempotency_key": "inspect-build-failure-1"
+}
+```
+
+失败证据由 Python bridge 从绑定的 pipeline 读取，调用方不能上传一个 `verified=true`
+来创建计划。bridge 检查完整签名链、当前阶段/rewind barrier、所有日志产物哈希，并要求
+`gate_build.py` 的真实命令退出记录。P8 预检、缺少执行记录、篡改证据均不能作为 P4 失败。
+
+返回的 `plan_digest` 固定本次观测到的源码基线与诊断；`execution_input_binding=unavailable`
+表示旧 gate 尚未把构建前源码 hash 与 operation 写入签名证据。此计划仅供诊断，不能据此
+自动导入补丁或宣称修复成功。`budget_reserved=false`；预算账本尚未接入执行入口。
+改码应在 Python `repair` 回 P2 后进行；涉及公开行为、依赖或验收变化须 `reset` 回 P1。
+所有原门禁与人工确认继续适用，P4 PASS 不能代替后续验证。
+
 | DSH task | Worker role | Python authority | Hold |
 |---|---|---|---|
 | P0 | environment-analyst | `gate_env_init.py` | — |

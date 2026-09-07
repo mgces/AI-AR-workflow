@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-ar.local/schemas/capability-manifest.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "workflow", "phase", "requiredCapabilities"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "workflow": { "enum": ["requirement", "development"] },
+    "phase": { "type": "string" },
+    "taskTags": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "requiredCapabilities": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "failureClass": { "type": ["string", "null"] }
+  }
+}

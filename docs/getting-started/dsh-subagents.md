@@ -414,7 +414,7 @@ AR 确认使用 `run_id/task_id/phase/token/idempotency_key`；`phase` 为数字
 
 需求变更通过 `ohos_requirement_reset` 指定已经到达的最低受影响阶段、当前 revision 和原因。原始需求文件变化需显式 reset 到 R1；上游基线修改会使受影响的下游证据与人工确认失效。
 
-遇到 `needs_reconcile`，先核实旧写入者停止、检查部分产物，再按契约 reset。需求租约过期会保留在该状态，防止自动出现第二个写入者。AR 的过期租约可以重新排队，因此恢复前也应检查旧构建/设备进程是否仍在运行。
+遇到 `needs_reconcile`，先核实旧写入者停止并检查部分产物。需求与 AR 的过期租约都会隔离任务，防止自动出现第二个写入者。AR 原 worker 停止并回收构建/设备子进程后，可用原凭证 release；部分产物由 parent sync 对账。进程状态未知时继续隔离，不直接重派。融合能力的边界见[实施状态](/reference/dsh-fusion-implementation-status)。
 
 AR 若使用原 `advance.py reset` 回退，完成后调用 `ohos_delivery_sync` 对齐控制器；不要手改 `pipeline.json`、签名证据或 SQLite 状态。
 

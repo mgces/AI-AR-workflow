@@ -1,0 +1,140 @@
+{
+  "sync_claim_race": {
+    "claimed_during_sync": "leased",
+    "sync_next_phase": "P5",
+    "advances": 1,
+    "owner_status_after_sync": "accepted"
+  },
+  "attach_live_writer": {
+    "result": "needs_reconcile",
+    "advances_before_owner_stopped": 1
+  },
+  "changed_run_id_same_key": {
+    "first": "first",
+    "requested_second": "second",
+    "returned_second": "first"
+  },
+  "routing": [
+    {
+      "phase": "P0",
+      "modules": 2,
+      "estimated_chars": 30372
+    },
+    {
+      "phase": "P1",
+      "modules": 1,
+      "estimated_chars": 18379
+    },
+    {
+      "phase": "P2",
+      "modules": 3,
+      "estimated_chars": 33678
+    },
+    {
+      "phase": "P3",
+      "modules": 4,
+      "estimated_chars": 54090
+    },
+    {
+      "phase": "P4",
+      "modules": 4,
+      "estimated_chars": 46142
+    },
+    {
+      "phase": "P5",
+      "modules": 3,
+      "estimated_chars": 45615
+    },
+    {
+      "phase": "P6",
+      "modules": 3,
+      "estimated_chars": 48138
+    },
+    {
+      "phase": "P7",
+      "modules": 5,
+      "estimated_chars": 51496
+    },
+    {
+      "phase": "P8",
+      "modules": 5,
+      "estimated_chars": 47146
+    },
+    {
+      "phase": "R1",
+      "modules": 2,
+      "estimated_chars": 33659
+    },
+    {
+      "phase": "R2",
+      "modules": 2,
+      "estimated_chars": 35059
+    },
+    {
+      "phase": "R3",
+      "modules": 2,
+      "estimated_chars": 33058
+    },
+    {
+      "phase": "R4",
+      "modules": 2,
+      "estimated_chars": 31053
+    },
+    {
+      "phase": "R5",
+      "modules": 2,
+      "estimated_chars": 36557
+    },
+    {
+      "phase": "R6",
+      "modules": 2,
+      "estimated_chars": 30232
+    },
+    {
+      "phase": "R7",
+      "modules": 3,
+      "estimated_chars": 38391
+    },
+    {
+      "phase": "R8",
+      "modules": 1,
+      "estimated_chars": 22473
+    },
+    {
+      "phase": "R9",
+      "modules": 1,
+      "estimated_chars": 22473
+    },
+    {
+      "phase": "P8-precheck",
+      "modules": 5,
+      "estimated_chars": 47146
+    },
+    {
+      "phase": "P8-publish",
+      "modules": 5,
+      "estimated_chars": 47146
+    },
+    {
+      "phase": "R7-plan",
+      "modules": 3,
+      "estimated_chars": 38391
+    }
+  ],
+  "stdio": [
+    {
+      "node": "/usr/bin/node",
+      "response_id": 1,
+      "initialized": true
+    },
+    {
+      "node": "/tmp/ai-ar-dsh-node24/node-v24.20.0-linux-x64/bin/node",
+      "response_id": 1,
+      "initialized": true
+    }
+  ],
+  "policy_root_option": {
+    "invalid_explicit_policy_root_ignored": true,
+    "actual_root": "/home/mgces/code/AI-AR-workflow/skills"
+  }
+}

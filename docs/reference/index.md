@@ -10,6 +10,10 @@
 - [关键命令](/reference/key-commands) — 按场景列关键命令
 - [Skill 映射](/reference/skill-map) — 阶段→技能 / 任务→技能 / 输入类型→技能 查表
 - [Skills 能力吸收基线](/reference/capability-absorption) — 上游能力取舍与 backend 可信度分层
+- [DSH 自适应 Workflow Controller 方案](/reference/dsh-adaptive-workflow-controller-proposal) — 按需模块、repair loop、自进化治理与跨 Agent MCP 架构候选
+- [两套 DSH 实现对比与融合建议](/reference/dsh-implementation-comparison) — GitCode 与本地实现、验证发现及分阶段选型建议
+- [DSH 融合、自修复与自迭代方案 v1](/reference/dsh-fusion-self-repair-evolution-v1) — GitCode 主干、构建修复闭环、受管执行与策略演进设计
+- [DSH 融合实施状态与未完成项](/reference/dsh-fusion-implementation-status) — 已实现能力、测试证据、未接入的执行与自迭代链路
 - [FAQ](/reference/faq) — 高频误解速查
 - [文档站部署与双仓库同步](/reference/docs-deployment) — GitCode/GitHub 双仓、双推、Pages 自动部署
 

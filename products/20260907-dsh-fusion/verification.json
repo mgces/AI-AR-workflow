@@ -1,0 +1,42 @@
+{
+  "base_commit": "415c57bfa3a9313a712253a665c82a1738c5e66c",
+  "branch": "codex/dsh-fusion-self-repair",
+  "tests": {
+    "total": 70,
+    "pass": 70,
+    "fail": 0,
+    "skip": 0
+  },
+  "docs_build": "passed",
+  "real_ohos_build": "not_run",
+  "changed_runtime_sha256": {
+    "runtime/dsh-ohos/README.md": "8d4d86aaec4ea109c77a4de9f5cff12d70ad73cbe0a2391548b4a060841d8836",
+    "runtime/dsh-ohos/docs/ar-delivery/contract.md": "4f63a3b134e4a840a8a9f9431d6598513e29ba774f13da0a3a79c05c7380b599",
+    "runtime/dsh-ohos/policies/modules.json": "1774dec79f0597b161eb26f1f30bf3c4ea50a08a9c10ca2fc3a558397a5a5b89",
+    "runtime/dsh-ohos/policies/repair-strategies.json": "e96a3447a2f0014f25b17593a955e4a97aa7ddcc3637e4413477034242605c4f",
+    "runtime/dsh-ohos/src/controller.js": "395e475ca594c026c2bc37c2edf67bce37d21ff2d6159e280101b4f1cc7ac1cf",
+    "runtime/dsh-ohos/src/core/agent-protocol.js": "cfc655eae675d06981dcd9c18fdbe8bee0509860a26776cdcd76a0f7f5c1e974",
+    "runtime/dsh-ohos/src/core/resource-identity.js": "818f17ca06af9e7640dd1d5acdd3af35f3bbd32911c69b9ab242e1c8b5ae3a91",
+    "runtime/dsh-ohos/src/core/store/fusion-schema.js": "df3b8e5bb216b80f9b2f8d285802baf7a2fbc4c1e973cd37bc35f9669c841d61",
+    "runtime/dsh-ohos/src/core/task-controller.js": "2ded2be8c2a012f61f6ce85bfa5f90566b51113eec5ae2c746eb5edae5cbec1e",
+    "runtime/dsh-ohos/src/policy/budget-ledger.js": "ebf36f0a2fa09dbd1d79cecdbe01d1d251c75eb165e583966f12f1fba7c3feff",
+    "runtime/dsh-ohos/src/policy/failure-normalizer.js": "42260dc2554fc1fbc81c41a22fc3d2ae6bda30974e76f7d2751b494347a99803",
+    "runtime/dsh-ohos/src/policy/module-registry.js": "859c161b835baa0cc2af1562d8dabbd4e585ce0dfc4df0ef472cc54ab81f5a5d",
+    "runtime/dsh-ohos/src/policy/policy-registry.js": "6649b37abd013250b875044199fdf5d372ad84e95a210a121f83a4389d5ceac4",
+    "runtime/dsh-ohos/src/policy/repair-planner.js": "04583ce5019eb411ceabe09396f90d72a394910933d8c9c0a874b66c6b0fb7a4",
+    "runtime/dsh-ohos/src/policy/tools.js": "5fa3d72216bfc5864155c15cd26a39acb77ef20367de34a5fcbf7d9095320817",
+    "runtime/dsh-ohos/src/tools/catalog.js": "20de646fae4ef0120e7a98c13e3f33897b545c8544065c1272c8058c4a91f2ed",
+    "runtime/dsh-ohos/src/workflows/ar-delivery/agent.js": "37b18337d68f7f5db49e42106c92a9a4340b005034087a2958ceb5e6a7540bf6",
+    "runtime/dsh-ohos/src/workflows/ar-delivery/python-adapter.js": "d7fec0dbe32b240eb3b0209f51ceee2e8cac7dd8a4c9d47a41e6d0ef38d9c5cb",
+    "runtime/dsh-ohos/src/workflows/ar-delivery/python/delivery_bridge.py": "56657352b6c04f63c844c0297f4ada98cd902894c389a73d26c40f8deedc926d",
+    "runtime/dsh-ohos/src/workflows/ar-delivery/workflow.js": "ab097393235f5298f8f3cfb76c8c679e785359dc4577f99e1016a084b13981be",
+    "runtime/dsh-ohos/test/ar-delivery/failure-snapshot.test.js": "290c7c9e244c1a8dfe5aab81951768e16681ff3020fc98002e181df8970e4568",
+    "runtime/dsh-ohos/test/ar-delivery/recovery.test.js": "a951651609a1131a2cf9e2e140c1637cd50244c4a8d12dfd8a3be82e3bb888be",
+    "runtime/dsh-ohos/test/core/architecture.test.js": "cfadfd6b0f6a13c815acc1e518a03c2a6f4a9c04ce48a101f67253095d6400d9",
+    "runtime/dsh-ohos/test/policy/fusion.test.js": "0eb79f436495fb779de3a665fc9029cb6113871957b101ed542d80224a8e4035"
+  },
+  "logs": {
+    "node-tests.log": "cbfa87c33f67c5e6add5e77598fdf1ea20d78a1175f1e8b0f0b10acc9a21841f",
+    "docs-build.log": "6fd883df8ef4d46eb13b1e9a399b08770461c86082f3ee34d52149b3f5a9e5dd"
+  }
+}

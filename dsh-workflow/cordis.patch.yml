@@ -1,0 +1,3 @@
+- insert:
+    - id: ai-ar-adaptive-workflow-controller
+      name: '@ai-ar/dsh-workflow'

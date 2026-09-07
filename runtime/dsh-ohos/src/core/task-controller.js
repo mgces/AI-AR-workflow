@@ -128,6 +128,7 @@ export class TaskController {
       `).run(runId, workflow, runStatus, inputRef, docsRoot, environmentProfile, pipelineDir,
         workspaceRoot, deviceRef,
         inputDigest, now, now);
+      this.initializeRun?.(runId);
       const taskId = completed ? null : this.insertTask({
         runId, workflow, phase, role: initial.role, revision: 1, inputDigest, pipelineDir,
         workspaceRoot,
@@ -336,6 +337,7 @@ export class TaskController {
       output_ref: row.output_ref,
       policy_ref: row.policy_ref,
       ...extension.data,
+      ...(this.contextExtension ? this.contextExtension(row, attempt) : {}),
       constraints: [
         'Write candidate artifacts only within the task workspace and designated output paths.',
         'Do not report workflow PASS; submit artifact references for deterministic validation.',
@@ -426,7 +428,13 @@ export class TaskController {
       const previous = this.store.getOperation(principal, 'release_task',
         idempotencyKey, payloadDigest);
       if (previous) return previous;
-      invariant(ACTIVE_ATTEMPT.has(attempt.status), 'lease_lost',
+      const task = this.store.db.prepare('SELECT * FROM tasks WHERE id = ?').get(attempt.task_id);
+      invariant(task?.lease_epoch === attempt.lease_epoch, 'lease_lost',
+        'A newer attempt owns this task.');
+      const workflow = this.store.db.prepare('SELECT workflow FROM runs WHERE id = ?').get(attempt.run_id);
+      const canReleaseExpired = attempt.status === 'expired' && task.status === 'needs_reconcile'
+        && this.workflows.get(workflow.workflow)?.allowExpiredOwnerRelease === true;
+      invariant(ACTIVE_ATTEMPT.has(attempt.status) || canReleaseExpired, 'lease_lost',
         `Attempt ${attempt.id} is ${attempt.status}.`);
       const now = this.#now();
       this.store.db.prepare(`
@@ -510,6 +518,7 @@ export class TaskController {
     status = 'queued',
     now,
   }) {
+    this.initializeRun?.(runId);
     invariant(['queued', 'awaiting_consent', 'accepted'].includes(status),
       'invalid_task_status', `Cannot create a task with status ${status}.`);
     const taskId = taskIdentifier(runId, phase, revision);

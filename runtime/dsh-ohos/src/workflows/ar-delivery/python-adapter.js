@@ -100,6 +100,13 @@ export class PythonDeliveryAdapter {
     return result;
   }
 
+  async failureSnapshot(pipelineDir) {
+    return this.#runJson([
+      this.bridgePath, '--scripts-root', this.scriptsRoot,
+      'failure-snapshot', '--pipeline-dir', absolute(pipelineDir, 'pipeline_dir'),
+    ], 'delivery_failure_snapshot');
+  }
+
   async advance(pipelineDir, phase) {
     const before = await this.inspect(pipelineDir);
     if (before.complete || before.current_phase > phase) return before;

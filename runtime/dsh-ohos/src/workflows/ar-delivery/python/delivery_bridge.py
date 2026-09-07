@@ -6,6 +6,7 @@ the bridge only exposes signed gate inspection in a stable machine-readable form
 """
 
 import argparse
+import hashlib
 import json
 import os
 import sys
@@ -127,6 +128,67 @@ def validate(gl, pipeline_dir, phase, upload_precheck):
     }
 
 
+def failure_snapshot(gl, pipeline_dir):
+    """Verify a current P4 FAIL for diagnostic planning, without advancing state.
+
+    Unlike validate_closing_entry this accepts FAIL, but still checks the entire
+    chain, phase/rewind floor, and all artifacts. It never grants workflow PASS.
+    """
+    pdir = os.path.realpath(gl.pipeline_dir(pipeline_dir))
+    state = gl.load_state(pdir)
+    blocked = lambda reason: {"ok": False, "reason": reason, "executed": False}
+    if state.get("current_phase") != 4:
+        return blocked("repair planning requires the current Python phase to be P4")
+    ok, reason, entries = gl.verify_chain(pdir)
+    if not ok:
+        return blocked(reason)
+    entry = next((item for item in reversed(entries) if item.get("phase") == 4), None)
+    if not entry or entry.get("gate") != "gate_build.py" or entry.get("verdict") != "FAIL":
+        return blocked("no current signed gate_build.py FAIL")
+    floor = gl.evidence_floor(state, 4)
+    if floor is not None and (not isinstance(entry.get("seq"), int) or entry["seq"] < floor):
+        return blocked("build evidence predates the current phase/rewind barrier")
+    stdout_path = None
+    checked_artifacts = []
+    for artifact in entry.get("artifacts", []):
+        name = artifact.get("path")
+        if not isinstance(name, str):
+            return blocked("invalid artifact path")
+        path = os.path.realpath(os.path.join(pdir, name))
+        if os.path.commonpath([pdir, path]) != pdir or not os.path.isfile(path):
+            return blocked("artifact vanished or escapes pipeline: %s" % name)
+        if gl.sha256_file(path) != artifact.get("sha256"):
+            return blocked("artifact altered (sha256 mismatch): %s" % name)
+        checked_artifacts.append((path, artifact["sha256"]))
+        if name == "evidence/phase4/build_stdout.log":
+            stdout_path = path
+    executed = (type(entry.get("exit_code")) is int and bool(entry.get("cmd"))
+                and stdout_path is not None)
+    if not executed:
+        return blocked("signed failure does not establish that the build command executed")
+    # The source fingerprint includes changed and untracked files in the bound
+    # component; baseline drift changes plan identity, including after restart.
+    source = gl.code_fingerprint(state)
+    baseline = {"state": state, "source_fingerprint": source, "entry_id": gl.entry_id(entry)}
+    input_digest = "sha256:" + hashlib.sha256(json.dumps(
+        baseline, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
+    with open(stdout_path, "rb") as stream:
+        stream.seek(max(0, os.path.getsize(stdout_path) - 8192))
+        log_tail = stream.read(8192).decode("utf-8", errors="replace")
+    # Check for concurrent changes while reading. A later launcher must still
+    # revalidate under a resource lock immediately before doing any mutation.
+    if gl.load_state(pdir) != state or gl.code_fingerprint(state) != source or gl.read_manifest(pdir) != entries:
+        return blocked("input changed during evidence inspection")
+    for path, expected in checked_artifacts:
+        if not os.path.isfile(path) or gl.sha256_file(path) != expected:
+            return blocked("artifact changed during evidence inspection")
+    return {"ok": True, "executed": True, "purpose": "diagnostic_only",
+            "pipeline_run_id": state.get("run_id"), "input_digest": input_digest,
+            "source_fingerprint": source, "execution_input_binding": "unavailable",
+            "entry": _entry_summary(gl, entry),
+            "stdout_tail": log_tail}
+
+
 def main():
     parser = argparse.ArgumentParser(description="JSON inspection bridge for OHOS AR delivery")
     parser.add_argument("--scripts-root", required=True)
@@ -140,10 +202,15 @@ def main():
     command.add_argument("--phase", required=True, type=int, choices=range(0, 9))
     command.add_argument("--upload-precheck", action="store_true")
 
+    command = sub.add_parser("failure-snapshot")
+    command.add_argument("--pipeline-dir", required=True)
+
     args = parser.parse_args()
     gl = _load_gatelib(args.scripts_root)
     if args.command == "inspect":
         payload = inspect(gl, args.pipeline_dir)
+    elif args.command == "failure-snapshot":
+        payload = failure_snapshot(gl, args.pipeline_dir)
     else:
         payload = validate(gl, args.pipeline_dir, args.phase, args.upload_precheck)
     print(json.dumps(payload, ensure_ascii=False))
