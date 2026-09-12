@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "test_id": "official-dsh-web-and-ar-tools-20260912",
+  "status": "passed_with_scope_limits",
+  "entrypoint": "http://127.0.0.1:8787/",
+  "checks": [
+    {
+      "id": "official-index",
+      "status": "passed",
+      "observed": "Official @deepseek-ai/dsh Web profile served the upstream Web UI index and boot module graph."
+    },
+    {
+      "id": "browser-token",
+      "status": "passed",
+      "observed": "One-time ?token URL exchanged for the authority-bound DSH browser cookie; no user login was used."
+    },
+    {
+      "id": "ar-plugin",
+      "status": "passed",
+      "observed": [
+        "ohos_delivery_start",
+        "ohos_task_claim/context/heartbeat/submit/release",
+        "ohos_delivery_validate/consent/sync",
+        "ohos_run_status/observability/events/artifacts"
+      ]
+    },
+    {
+      "id": "codeagent-settings",
+      "status": "passed",
+      "observed": "Authenticated /api/ohos-ar/overview exposes the selectable CodeAgent catalog; Claude Code provider is available and OpenCode/Codex CLI probes are reported separately."
+    }
+  ],
+  "scope_limits": [
+    "The official DSH UI is a local trusted process on loopback; it is not a multi-tenant cloud deployment.",
+    "AR gate decisions still require the existing Python evidence and explicit human consent.",
+    "Model token usage remains unknown until the selected provider reports structured usage."
+  ]
+}

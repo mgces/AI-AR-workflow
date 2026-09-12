@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "probe_id": "t00-local-20260912",
+  "status": "blocked",
+  "commands": [
+    {
+      "command": "node --version",
+      "result": "v22.22.2",
+      "classification": "environment_mismatch"
+    },
+    {
+      "command": "python3 --version",
+      "result": "Python 3.12.3",
+      "classification": "observed"
+    },
+    {
+      "command": "command -v opencode",
+      "result": "not found",
+      "classification": "missing"
+    },
+    {
+      "command": "command -v dsh",
+      "result": "not found",
+      "classification": "missing"
+    },
+    {
+      "command": "claude --version",
+      "result": "WSL vsock startup error",
+      "classification": "probe_failed"
+    }
+  ],
+  "not_attempted": [
+    "SSH read/patch/exec round trip",
+    "OpenCode adapter",
+    "Claude Code adapter",
+    "DSH plugin load",
+    "usage and resume measurement"
+  ],
+  "next_probe": "Run on Node 24 with authorized OpenCode and Claude Code installations and a disposable SSH workspace; retain raw responses outside git and store only redacted hashes here."
+}

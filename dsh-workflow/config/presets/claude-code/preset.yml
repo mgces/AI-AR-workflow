@@ -1,0 +1,3 @@
+name: Claude Code 编排模式
+description: 使用 DSH 官方 Claude Code provider，在当前工作区执行一次性代码任务。
+order: 2

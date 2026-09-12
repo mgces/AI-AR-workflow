@@ -152,6 +152,7 @@ export class DeliveryWorkflow {
       pipeline_dir: pipelineDir,
       workspace_root: initialized.repo_root ?? payload.repo_root ?? undefined,
       device_ref: initialized.device_serial ?? payload.device_serial ?? undefined,
+      agent: payload.agent,
       initial_phase: aligned.position.stage?.key,
       initial_status: aligned.position.status === 'awaiting_consent'
         ? 'awaiting_consent' : 'queued',

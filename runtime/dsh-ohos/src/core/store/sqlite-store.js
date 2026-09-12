@@ -61,6 +61,7 @@ export class SqliteStore {
         pipeline_dir TEXT,
         workspace_root TEXT,
         device_ref TEXT,
+        agent TEXT,
         input_digest TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
@@ -140,9 +141,12 @@ export class SqliteStore {
     if (!runColumns.has('device_ref')) {
       this.db.exec('ALTER TABLE runs ADD COLUMN device_ref TEXT');
     }
+    if (!runColumns.has('agent')) {
+      this.db.exec('ALTER TABLE runs ADD COLUMN agent TEXT');
+    }
     const attemptColumns = new Set(this.db.prepare('PRAGMA table_info(attempts)').all().map((column) => column.name));
     if (!attemptColumns.has('context_id')) this.db.exec('ALTER TABLE attempts ADD COLUMN context_id TEXT');
-    this.db.exec('UPDATE schema_meta SET version = 5 WHERE version < 5');
+    this.db.exec('UPDATE schema_meta SET version = 6 WHERE version < 6');
   }
 
   getOperation(principal, kind, key, payloadDigest) {

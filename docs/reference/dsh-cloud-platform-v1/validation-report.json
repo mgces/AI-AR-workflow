@@ -1,0 +1,57 @@
+{
+  "kind": "design_document_validation",
+  "design_version": "1.1",
+  "status": "passed",
+  "implementation_status": "in_progress",
+  "files": 14,
+  "task_count": 26,
+  "acceptance_count": 64,
+  "estimated_person_days": [
+    98,
+    153
+  ],
+  "json_schema_validation": "passed",
+  "checks": {
+    "publish_requires_receipt": true,
+    "revision_positive": true,
+    "reject_unknown_fields": true,
+    "digest_format": true,
+    "bounded_timeout": true,
+    "environment_profile_required": true,
+    "harmonyos_requires_subtype_and_device_type": true,
+    "harmonyos_explicit_parameters_valid": true
+  },
+  "errors": [],
+  "repository_head": "e65dd9a5afd9d736d261bceb95b60d4eda123cf1",
+  "scope": "Design documents, links, task DAG, schema examples and repository reference consistency plus the local platform contract, official DSH Web UI AR main-panel integration, authenticated same-port route slice, Claude Code provider composition, and persisted CodeAgent selection settings. The local-console API has local lexical RAG and read-only artifact/device probes for automated tests; no model RAG, cloud deployment, HarmonyOS profile, codeagent execution or cloud AR end-to-end test was run.",
+  "implementation_snapshot": {
+    "platform_contract_slice": "passed",
+    "verified_substeps": [
+      "T01.platform-foundation-package",
+      "T02.environment-and-ar-manifest-contracts",
+      "T03.authority-envelope-fence",
+      "LOCAL-MVP.no-login-local-console",
+      "DSH-OFFICIAL-WEB.official-dsh-web-ui-and-ar-tools",
+      "DSH-OFFICIAL-WEB.CLAUDE-CODE-provider-loaded",
+      "DSH-OFFICIAL-WEB.CODEAGENT-settings"
+    ],
+    "live_host_probe": "not_run",
+    "cloud_service": "official_dsh_web_local_with_embedded_ar_workbench_and_configurable_codeagents"
+  },
+  "sha256": {
+    "acceptance.md": "0cc2221127ec8fc520f4a65ec3a90477683eac38ee8209ff222762a468fd6936",
+    "contracts.md": "fdbdd368f92b139b974dbe08f7b4a9801ebd9849d7d291c1c93bcd0ba4802c17",
+    "examples/README.md": "1567955f2fe2b768efbdee6bb948666ff6c91fbccc182ae0c048d65d45b11007",
+    "examples/ar-delivery.workflow.json": "e6d825ec0e08786af7009375e8b18fdd3db29a408aba52792335799d04527530",
+    "examples/environment-profiles.draft.json": "6c7b36bfdcc9df690f9b07882f97f2e1d081b34b28a18ba94c0b81da47ee5ff9",
+    "examples/operation-start.json": "10f974ff074a1dd2be54d842a455f265a6dfb9f335ca9e72efaeec4c89b7e7ef",
+    "examples/operation-start.schema.json": "58a9124e3d58d7166fd2f1a302fc84c970a03c0030950285637a42a58fbd9e43",
+    "examples/rag-profile.draft.json": "871b1025d49e29849dff6efd14e46329ebf1d777e30367aa42a8234003b5d5a4",
+    "examples/task-plan.json": "a6586094b6707af1af6a1d58a1cb06dc8696cce5e3ed4394c4dcc46dba04e9ae",
+    "implementation-tasks.md": "942e9f8478803ffdf20ed95ccf7f59c0205d3cf815813c51411526e0fedf7b06",
+    "index.md": "daf61a0394e3aadd7e1d388d0b80d29ac7b80b4888aa87abe5d4d6b3d0a6d1d0",
+    "dsh-integration.md": "ee1b07e2ab0aed91f4ef7e05298d0285cdaaadfe6211329c4d9386f5fd540339",
+    "model-handoff.md": "a182984e4a3ff3ec9502c8454841ab49c7db09cfea31d8061d341be8038b5ff2",
+    "rag-environment-debug.md": "9b8381d36a6a0b3620d93a0d26de57858041cf7fe9ebfed2b3339d27f938cf67"
+  }
+}

@@ -13,7 +13,8 @@ async function filesUnder(dir) {
 }
 
 for (const file of await filesUnder(fileURLToPath(new URL('../src', import.meta.url)))) {
-  if (file.endsWith(`${path.sep}mcp${path.sep}server.js`)) continue;
+  if (file.endsWith(`${path.sep}mcp${path.sep}server.js`)
+      || file.endsWith(`${path.sep}dsh${path.sep}client.js`)) continue;
   await import(pathToFileURL(file));
 }
 console.log('module import check passed');

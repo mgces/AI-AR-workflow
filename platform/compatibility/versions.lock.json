@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "design_version": "1.1",
+  "kind": "t00_probe_snapshot",
+  "status": "blocked",
+  "observed_at": "2026-09-12T00:00:00.000Z",
+  "repository_commit": "e65dd9a5afd9d736d261bceb95b60d4eda123cf1",
+  "runtime_baseline": {
+    "node_required": ">=24",
+    "node_observed": "22.22.2",
+    "python_observed": "3.12.3",
+    "status": "node_version_blocked"
+  },
+  "codeagents": {
+    "opencode": {
+      "status": "not_found",
+      "version": null
+    },
+    "claude-code": {
+      "status": "probe_failed",
+      "version": null,
+      "reason": "claude --version ended with a WSL vsock startup error"
+    }
+  },
+  "dsh": {
+    "status": "not_found",
+    "version": null
+  },
+  "ssh_workspace": {
+    "status": "not_probed",
+    "reason": "No authorized test workspace endpoint was configured"
+  },
+  "note": "This is a failed/partial compatibility snapshot, not a production version lock. T00 must be rerun on a Node 24 host with authorized local agents and a disposable SSH workspace."
+}

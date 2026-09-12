@@ -89,6 +89,7 @@ export class TaskController {
     const pipelineDir = optionalString(args.pipeline_dir, 'pipeline_dir', { max: 4096 });
     const workspaceRoot = optionalString(args.workspace_root, 'workspace_root', { max: 4096 });
     const deviceRef = optionalString(args.device_ref, 'device_ref', { max: 256 });
+    const agent = optionalString(args.agent, 'agent', { max: 128 });
     const requestedRunId = args.run_id === undefined
       ? null : expectId(args.run_id, 'run_id');
     const requestedInitialPhase = args.initial_phase === undefined
@@ -103,7 +104,7 @@ export class TaskController {
     invariant(handler, 'workflow_unavailable', `No workflow is registered for ${workflow}.`);
     const idempotencyKey = expectId(args.idempotency_key, 'idempotency_key');
     const payload = {
-      workflow, inputRef, docsRoot, environmentProfile, pipelineDir, workspaceRoot, deviceRef,
+      workflow, inputRef, docsRoot, environmentProfile, pipelineDir, workspaceRoot, deviceRef, agent,
       requestedRunId,
       requestedInitialPhase, requestedInitialStatus, completed,
     };
@@ -123,10 +124,10 @@ export class TaskController {
         INSERT INTO runs(
           id, workflow, revision, status, input_ref, docs_root,
           environment_profile, pipeline_dir, workspace_root, device_ref,
-          input_digest, created_at, updated_at
-        ) VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          agent, input_digest, created_at, updated_at
+        ) VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(runId, workflow, runStatus, inputRef, docsRoot, environmentProfile, pipelineDir,
-        workspaceRoot, deviceRef,
+        workspaceRoot, deviceRef, agent,
         inputDigest, now, now);
       this.initializeRun?.(runId);
       const taskId = completed ? null : this.insertTask({
@@ -140,6 +141,7 @@ export class TaskController {
         workflow,
         revision: 1,
         status: runStatus,
+        agent,
         next: completed ? null : {
           status: requestedInitialStatus === 'awaiting_consent'
             ? 'needs_input' : 'dispatch_needed',
@@ -311,7 +313,7 @@ export class TaskController {
       SELECT t.id AS task_id, t.phase, t.role, t.revision, t.context_ref,
              t.input_digest, t.workspace_ref, t.output_ref, t.policy_ref,
              r.id AS run_id, r.workflow, r.input_ref, r.docs_root,
-             r.environment_profile, r.pipeline_dir, r.workspace_root, r.device_ref
+             r.environment_profile, r.pipeline_dir, r.workspace_root, r.device_ref, r.agent
       FROM tasks t JOIN runs r ON r.id = t.run_id WHERE t.id = ?
     `).get(attempt.task_id);
     invariant(row, 'task_not_found', `Task ${attempt.task_id} does not exist.`);
@@ -333,6 +335,7 @@ export class TaskController {
       pipeline_dir: row.pipeline_dir,
       workspace_root: row.workspace_root,
       device_ref: row.device_ref,
+      agent: row.agent,
       workspace_ref: row.workspace_ref,
       output_ref: row.output_ref,
       policy_ref: row.policy_ref,
@@ -498,6 +501,7 @@ export class TaskController {
       pipeline_dir: run.pipeline_dir,
       workspace_root: run.workspace_root,
       device_ref: run.device_ref,
+      agent: run.agent,
       tasks,
       events,
       next_cursor: events.length ? events.at(-1).seq : cursor,

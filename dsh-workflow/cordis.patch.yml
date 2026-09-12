@@ -1,3 +1,29 @@
 - insert:
     - id: ai-ar-adaptive-workflow-controller
       name: '@ai-ar/dsh-workflow'
+      config:
+        enableDeliveryRuntime: true
+        dataRoot: '/tmp/dsh-ohos-official'
+        repoRoot: '/home/mgces/code/AI-AR-workflow'
+        defaultArPath: 'docs/reference/dsh-cloud-platform-v1/examples/ar-delivery.workflow.json'
+        workspaceId: 'wsl-local'
+        workflowId: 'ar-delivery'
+# This deployment uses the local AR workbench and Claude Code child provider.
+# It does not require the DeepSeek API-key onboarding dialog.
+- id: ui-settings-models
+  name: '@deepseek-ai/dsh-client-ui-settings-models'
+  disabled: true
+- id: agent-presets
+  name: '@deepseek-ai/dsh-agent-presets'
+  config:
+    default: 'claude-code'
+    roots:
+      - path: '/home/mgces/code/AI-AR-workflow/dsh-workflow/config/presets'
+        trust: system
+    includeShippedRoot: true
+    includeUserRoot: true
+- insert:
+    - id: subagent-claude-code
+      name: '@deepseek-ai/dsh-subagent-claude-code'
+      config:
+        permissionMode: 'acceptEdits'

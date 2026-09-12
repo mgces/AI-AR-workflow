@@ -1,0 +1,55 @@
+{
+  "design_version": "1.1",
+  "kind": "environment_profile_draft",
+  "installable": false,
+  "profiles": [
+    {
+      "profile_id": "openharmony-rk3568-example",
+      "environment": "openharmony",
+      "component_type": null,
+      "product": "rk3568",
+      "out_dir": "out/rk3568",
+      "root_markers": [
+        "build.sh",
+        "test/testfwk/developer_test"
+      ],
+      "build_entry": "build.sh",
+      "upload_backend": "gitcode",
+      "profile_digest": null,
+      "status": "requires_source_and_user_confirmation"
+    },
+    {
+      "profile_id": "harmonyos-system-example",
+      "environment": "harmonyos",
+      "component_type": "system",
+      "product": null,
+      "device_type": null,
+      "out_dir": null,
+      "root_markers": null,
+      "build_entry": "build_system.sh",
+      "upload_backend": "gerrit",
+      "profile_digest": null,
+      "status": "incomplete_real_workspace_values_required"
+    },
+    {
+      "profile_id": "harmonyos-chip-example",
+      "environment": "harmonyos",
+      "component_type": "chip",
+      "product": null,
+      "device_type": null,
+      "out_dir": null,
+      "root_markers": null,
+      "build_entry": "build_vendor.sh",
+      "upload_backend": "gerrit",
+      "profile_digest": null,
+      "status": "incomplete_real_workspace_values_required"
+    }
+  ],
+  "required_binding": [
+    "project_id",
+    "workspace_id",
+    "explicit_human_confirmation",
+    "profile_digest"
+  ],
+  "note": "Not executable profiles. T21/T25 must fill real values, verify branch/runner/device/publication policy and sign before use."
+}

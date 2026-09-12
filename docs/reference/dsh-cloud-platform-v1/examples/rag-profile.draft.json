@@ -1,0 +1,55 @@
+{
+  "design_version": "1.1",
+  "kind": "rag_profile_draft",
+  "installable": false,
+  "enabled": false,
+  "embedding": {
+    "model": "Qwen/Qwen3-Embedding-0.6B",
+    "revision": null,
+    "dimension": 1024
+  },
+  "reranker": {
+    "model": "Qwen/Qwen3-Reranker-0.6B",
+    "revision": null
+  },
+  "storage": "postgresql_pgvector",
+  "lexical": "symbol_path_and_fulltext",
+  "query": {
+    "lexical_top_k": 30,
+    "vector_top_k": 30,
+    "rerank_max_candidates": 40,
+    "result_top_k": 8,
+    "verify_current_source": true
+  },
+  "chunk": {
+    "target_tokens": [
+      600,
+      1200
+    ],
+    "max_tokens": 1800,
+    "overlap_tokens": 100
+  },
+  "source_scope": {
+    "workspace_id": null,
+    "environment_profile_digest": null,
+    "include_paths": [],
+    "exclude_paths": [
+      "out/**",
+      "**/.git/**",
+      "**/specs/pipeline/**"
+    ],
+    "data_policy": "disabled_until_user_authorization"
+  },
+  "permissions": {
+    "tenant_filter_before_retrieval": true,
+    "workspace_filter_before_retrieval": true,
+    "rag_cannot_authorize_gates": true
+  },
+  "evaluation": {
+    "questions_min": 60,
+    "held_out_fraction": 0.2,
+    "recall_at_10_target": 0.85,
+    "current_citation_verification_target": 1
+  },
+  "note": "Proposed defaults only. Real model/service revision, allowed scope and evaluation are required."
+}

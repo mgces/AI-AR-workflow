@@ -145,6 +145,28 @@ dsh --profile ai-ar --dump-config
 
 `cordis.patch.yml` 会加载 `@ai-ar/dsh-workflow` 插件，插件向 `ctx.tools` 注册与 MCP 入口相同的控制工具。
 
+将 `cordis.patch.yml` 作为官方 `dsh --profile web --patch ...` 的最后一层加载时，设置
+`enableDeliveryRuntime: true` 会额外注册 `ohos_delivery_*`、`ohos_task_*` 和
+`ohos_run_observability/events/artifacts` 工具。这样官方 Web UI 的 Session、Tool card 和
+Approval 展示直接承载 AR workflow；P0–P8 的 PASS 仍由本仓 runtime 调用 Python authority 决定。
+
+同一 patch 还加载 `src/dsh/client.js` 官方客户端扩展：左侧会出现 **AR Delivery** 主面板，
+面板内提供 OpenHarmony/HarmonyOS 启动、阶段耗时、人工审核、阻塞原因、事件和哈希产物展示。
+面板调用官方 DSH Web Server 的 `/api/ohos-ar/*` 认证路由，因此用户只需要一个 DSH 页面；
+`platform/apps/local-console` 仅作为自动化测试面，不是第二个用户入口。
+
+本地 patch 同时关闭只针对 DeepSeek API 的首次使用 onboarding，并挂载官方
+`@deepseek-ai/dsh-subagent-claude-code`。`dsh-workflow/config/presets/claude-code/`
+是默认 Agent Preset，开启 `subagent_claude_code`，让同一个 DSH Session 可以把一次性代码任务交给
+WSL 工作区中的 Claude Code；Claude 认证仍使用 Claude Code 原生设置或 provider 显式环境变量。
+
+官方 AR 面板中的 **CodeAgent 设置**支持在 Claude Code、OpenCode、Codex CLI、Cursor Agent、Trae CLI
+和自定义命令之间选择。选择保存在 DSH runtime 数据目录的 `codeagent-settings.json`，新建 run 会把
+选择的 `agent` 和可选 `model` 写入权威 SQLite 状态；每个 run 详情和列表都会显示启动时的 Agent。
+OpenCode 等非官方 provider 会先探测 WSL CLI 是否存在；自定义命令只保存配置，不会在探测阶段执行。
+面板中的“刷新本地 Agent”会重新执行受限的 `--version` 探测，并返回命令名、解析路径、版本和失败原因。
+当前 DSH 官方 provider 直接可执行 Claude Code，其余命令需要对应的宿主适配器接入后才会进入自动派发。
+
 如果 DSH 配有模型 Provider，可将 [`examples/dsh-repair-workflow.js`](examples/dsh-repair-workflow.js)
 作为动态 workflow script 的参考。DSH 当前的 workflow 是模型提交的脚本，并不是稳定的“保存 workflow”接口，
 因此该文件仅是脚本模板。
