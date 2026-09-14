@@ -67,3 +67,51 @@ OHOS_DSH_TEST_PYTHON=python3 node --test
 
 这些仅是环境与历史故障信息，不证明该错误当前仍可复现。本次未修改此源码、未启动完整构建，
 也未完成真实构建自修复验收；最终验收目标应绑定到具体组件与经确认的 AR contract。
+
+## Claude Code 接入与最小闭环实测（2026-09-08）
+
+在 Claude Code 2.1.263（Node v22.22.2、Python 3.12.3）上完成接入验收与一个真实 R1 最小闭环。
+本文把这次实测作为「接入层 vs 自动执行层」的分层证据：协议与状态机已验证，业务内容生成仍依赖宿主。
+
+### 1. 接入验收（全部通过）
+
+| 项 | 结果 |
+|---|---|
+| 配置导出 | `--host claude-code` 生成 `.claude/agents/{ohos-requirement,ohos-delivery}.md` + parent fragment + 2 父协议 + host-bundle.json；6 文件通过 writeHostBundle |
+| 技能同步 | `sync-skills.sh --agent claude` 安装 35 技能到 `~/.claude/skills`；需求链路 10 项 + AR 链路 3 项齐全 |
+| parent MCP | 合并进 `~/.claude.json`，stdio 启动成功，initialize 协议 2024-11-05，15 工具 |
+| worker MCP | stdio 启动成功，7 工具（claim/context/heartbeat/submit/release/host_capabilities/run_status） |
+| 工具隔离 | `--strict-mcp-config` 下 worker 仅 7、parent 仅 15；正常派发时 `mcp__ohos_worker__*` / `mcp__ohos_parent__*` 命名空间区分 |
+| 子会话实际出现 | `--agent ohos-requirement` / `--agent ohos-delivery` 派发成功，内联 worker 与 parent 工具均可见 |
+| 文件可读 | worker 契约/门禁脚本可读（派发需 `--add-dir /home/mgces/code/AI-AR-workflow`，缺失则被权限拦截） |
+| 能力注册 | `binding_id=claude-local-20260908`；`mcp_tools/native_subagent/workspace_write=true`，`isolated_context/build_execution/device_access/network_publish=false`（未验证不虚标） |
+
+### 2. 真实 R1 最小闭环（协议层全部走通）
+
+原始需求 `minloop-raw-request.md`（资源可靠性监控，含真实待澄清项）→ `ohos_requirement_start` →
+claim → context → submit → validate → 停在澄清确认点（`awaiting_consent` / `needs_input`）。
+
+- 校验器准确提取 R1 候选：`rr_id=未立项`、`feature_id=MINLOOP-001`、`FR-01..04`、`NFR-01..02`。
+- 校验器对产物路径强制：R1 的 `clarification-questions.md` 位于 `docs_root` 根（非 `_draft/`），
+  放错位置会 `invalidate` 并升 revision——已修正后通过。
+- submit 只进入 `validating`，父 validate 后才进入澄清等待点，与契约一致。
+
+### 3. 分层结论（关键）
+
+- **协议/状态机/门禁：实测成立。** start/claim/context/submit/validate/needs_input、reset 恢复、
+  过期租约隔离、snapshot_digest 绑定，全部按契约工作。
+- **业务内容生成：依赖宿主，且这是当前最弱一环。** 非交互子会话（`claude -p --agent ohos-requirement`）
+  在 R1 上 claim 成功后无法在租约内完成重型文档生成——读取全部 skill/契约/模板导致上下文膨胀，
+  两次尝试均停滞（无 context 读取、无产物、无输出），耗尽租约。最终由父会话（本交互会话）直接生成
+  产物并驱动 controller，才完成闭环。根因是「单次非交互会话承载读材料+生成合规模板文档」的上下文预算不足，
+  而非 MCP/权限/工具故障（这些均已验证可用）。
+
+### 4. 对"当前能力边界"的刻画
+
+- 接入就绪：✅（本次实测）。
+- 协议闭环：✅（本次实测一个 R1 到澄清点）。
+- 自动完成业务内容（读材料→生成合规模板文档→提交）：⚠️ 依赖宿主会话质量，实测非交互子会话撑不住 R1。
+- 自动构建自修复 / 经验 / 自迭代：❌（见上 M1/M3/M4/M5，本次未触及，也不以本地协议测试冒充）。
+
+据此，**"运行一段时间能力自动提升"目前不成立**；当前成立的是"流程可管、证据可信、失败可诊断、可断点续跑、
+可跨宿主切换"，而"失败后自动改码、自动重验、自动总结并变强"尚未实现（M3/M4/M5 空白）。

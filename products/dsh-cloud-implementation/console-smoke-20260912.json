@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "test_id": "no-login-local-console-20260912",
+  "status": "passed_with_scope_limits",
+  "topology": "Windows native browser/curl -> WSL Node local console",
+  "entrypoint": "http://localhost:8787",
+  "checks": [
+    {
+      "id": "health",
+      "command": "Windows System32 curl.exe GET /healthz",
+      "status": "passed",
+      "observed": { "status": "ok", "service": "dsh-local-console" }
+    },
+    {
+      "id": "status",
+      "command": "Windows System32 curl.exe GET /api/status",
+      "status": "passed",
+      "observed": {
+        "topology": "windows-local-to-wsl-ssh",
+        "environment": "unknown",
+        "claude_code": "available: 2.1.250 (Claude Code)",
+        "opencode": "missing",
+        "rag": "local_lexical, not_indexed before first query",
+        "debug": "partial, hdc missing, no deployable artifact found"
+      }
+    },
+    {
+      "id": "rag",
+      "command": "Windows System32 curl.exe POST /api/rag/search query=environment profile",
+      "status": "passed",
+      "observed": {
+        "state": "ready",
+        "result_count": 20,
+        "result_fields": ["relative_path", "line", "snippet", "sha256", "source_revision", "stale_check"]
+      }
+    },
+    {
+      "id": "run",
+      "command": "POST /api/runs workflow_id=ar-delivery workspace_id=wsl-local",
+      "status": "passed",
+      "observed": {
+        "run_id": "6d35f5ae-2f66-4dee-8832-242a6c8514e3",
+        "run_status": "blocked",
+        "current_stage": "P0",
+        "blocker": "ENVIRONMENT_UNKNOWN before selection; PROFILE_REQUIRED after harmonyos/system selection",
+        "artifact_role": "environment_report",
+        "metrics": ["stage_elapsed_ms", "human_input_count", "human_intervention_count", "token_usage", "success_count", "failure_count"]
+      }
+    },
+    {
+      "id": "events-and-input",
+      "command": "GET /api/runs/{run_id}/events and POST /api/runs/{run_id}/inputs",
+      "status": "passed",
+      "observed": "run.started, run.blocked and human.input.received are persisted"
+    },
+    {
+      "id": "environment-selection",
+      "command": "POST /api/projects/local-project/environment with harmonyos/system",
+      "status": "passed",
+      "observed": "project is persisted as harmonyos/system with profile_incomplete; no compile capability is implied"
+    }
+  ],
+  "scope_limits": [
+    "No login is intentionally required; the service binds to WSL loopback and is for trusted local use.",
+    "The current repository is not an OpenHarmony or HarmonyOS source root, so P0 correctly blocks before compilation.",
+    "Claude/OpenCode are not yet execution adapters; only version availability is probed.",
+    "RAG uses local lexical search; no embedding/reranker model or cloud index is configured.",
+    "Device and artifact discovery is read-only advisory; hdc, real device deployment and P0-P8 gates are not connected."
+  ]
+}

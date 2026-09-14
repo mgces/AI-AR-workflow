@@ -1,0 +1,320 @@
+{
+  "schema_version": 1,
+  "kind": "workflow_manifest_draft",
+  "workflow_id": "ar-delivery",
+  "version": "1.0.0",
+  "display_name": "AR 开发 P0–P8",
+  "digest": null,
+  "source_lock_status": "pending_probe",
+  "installable": false,
+  "source_lock": {
+    "repository_commit": "e65dd9a5afd9d736d261bceb95b60d4eda123cf1",
+    "runtime_path": "runtime/dsh-ohos",
+    "gate_scripts_path": "skills/ohos-ar-dev-phases/scripts",
+    "runtime_digest": null,
+    "skills_digest": null,
+    "dsh_version": null
+  },
+  "entry_adapter": "ohos-delivery-authority-v1",
+  "execution_profile": {
+    "agent_location": "local",
+    "workspace_access": "ssh_remote_tools",
+    "source_authority": "ssh_gateway",
+    "allowed_agents": [
+      "opencode",
+      "claude-code"
+    ],
+    "workspace_write_concurrency": 1
+  },
+  "input_schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "workspace_id",
+      "agent_kind",
+      "input_artifact_id",
+      "environment",
+      "git_dir",
+      "build_target",
+      "part",
+      "project_id",
+      "environment_profile_digest"
+    ],
+    "properties": {
+      "workspace_id": {
+        "type": "string",
+        "minLength": 1
+      },
+      "agent_kind": {
+        "enum": [
+          "opencode",
+          "claude-code"
+        ]
+      },
+      "input_artifact_id": {
+        "type": "string",
+        "minLength": 1
+      },
+      "environment": {
+        "enum": [
+          "openharmony",
+          "harmonyos"
+        ]
+      },
+      "component_type": {
+        "enum": [
+          "system",
+          "chip"
+        ]
+      },
+      "device_type": {
+        "type": "string",
+        "minLength": 1
+      },
+      "git_dir": {
+        "type": "string",
+        "minLength": 1
+      },
+      "build_target": {
+        "type": "string",
+        "minLength": 1
+      },
+      "part": {
+        "type": "string",
+        "minLength": 1
+      },
+      "project_id": {
+        "type": "string",
+        "minLength": 1
+      },
+      "environment_profile_digest": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "rag_profile_id": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "allOf": [
+      {
+        "if": {
+          "properties": {
+            "environment": {
+              "const": "harmonyos"
+            }
+          }
+        },
+        "then": {
+          "required": [
+            "component_type",
+            "device_type"
+          ]
+        }
+      }
+    ]
+  },
+  "stages": [
+    {
+      "id": "P0",
+      "physical_phase": 0,
+      "task_key": "P0",
+      "gate": "gate_env_init.py",
+      "depends_on": [],
+      "consent_kind": null,
+      "artifact_roles": [
+        "environment_report"
+      ],
+      "authority": "python_gate_and_advance"
+    },
+    {
+      "id": "P1",
+      "physical_phase": 1,
+      "task_key": "P1",
+      "gate": "gate_design.py",
+      "depends_on": [
+        "P0"
+      ],
+      "consent_kind": "design",
+      "artifact_roles": [
+        "design",
+        "contract",
+        "build_artifacts"
+      ],
+      "authority": "python_gate_and_advance"
+    },
+    {
+      "id": "P2",
+      "physical_phase": 2,
+      "task_key": "P2",
+      "gate": "gate_develop.py",
+      "depends_on": [
+        "P1"
+      ],
+      "consent_kind": null,
+      "artifact_roles": [
+        "code_diff",
+        "rules_report"
+      ],
+      "authority": "python_gate_and_advance"
+    },
+    {
+      "id": "P3",
+      "physical_phase": 3,
+      "task_key": "P3",
+      "gate": "gate_test_develop.py",
+      "depends_on": [
+        "P2"
+      ],
+      "consent_kind": null,
+      "artifact_roles": [
+        "test_diff",
+        "test_snapshot"
+      ],
+      "authority": "python_gate_and_advance"
+    },
+    {
+      "id": "P4",
+      "physical_phase": 4,
+      "task_key": "P4",
+      "gate": "gate_build.py",
+      "depends_on": [
+        "P3"
+      ],
+      "consent_kind": null,
+      "artifact_roles": [
+        "build_log",
+        "build_artifacts"
+      ],
+      "authority": "python_gate_and_advance"
+    },
+    {
+      "id": "P5",
+      "physical_phase": 5,
+      "task_key": "P5",
+      "gate": "gate_test_ut.py",
+      "depends_on": [
+        "P4"
+      ],
+      "consent_kind": null,
+      "artifact_roles": [
+        "ut_report"
+      ],
+      "authority": "python_gate_and_advance"
+    },
+    {
+      "id": "P6",
+      "physical_phase": 6,
+      "task_key": "P6",
+      "gate": "gate_device_func.py",
+      "depends_on": [
+        "P5"
+      ],
+      "consent_kind": "device_result",
+      "artifact_roles": [
+        "device_report",
+        "test_report",
+        "device_evidence"
+      ],
+      "authority": "python_gate_and_advance"
+    },
+    {
+      "id": "P7",
+      "physical_phase": 7,
+      "task_key": "P7",
+      "gate": "gate_integration.py",
+      "depends_on": [
+        "P6"
+      ],
+      "consent_kind": "quality",
+      "artifact_roles": [
+        "quality_report",
+        "review_report"
+      ],
+      "authority": "python_gate_and_advance"
+    },
+    {
+      "id": "P8-precheck",
+      "physical_phase": 8,
+      "task_key": "P8-precheck",
+      "gate": "gate_upload_ci.py",
+      "depends_on": [
+        "P7"
+      ],
+      "consent_kind": "publish",
+      "artifact_roles": [
+        "full_diff",
+        "publish_target",
+        "upload_precheck"
+      ],
+      "authority": "python_gate_and_advance",
+      "allow_push": false
+    },
+    {
+      "id": "P8-publish",
+      "physical_phase": 8,
+      "task_key": "P8-publish",
+      "gate": "gate_upload_ci.py",
+      "depends_on": [
+        "P8-precheck"
+      ],
+      "consent_kind": null,
+      "artifact_roles": [
+        "pr_ci_evidence",
+        "summary_report"
+      ],
+      "authority": "python_gate_and_advance",
+      "requires_valid_publish_receipt": true
+    }
+  ],
+  "observability": {
+    "legacy_metrics_schema": 2,
+    "platform_metrics_schema": 1,
+    "token_unknown_policy": "null_with_completeness",
+    "expected_holds": [
+      "gate_upload_ci.py:consent-precheck"
+    ]
+  },
+  "validation_notice": "Design example only. T02 must add signed content digests, capabilities and bounded timeout/budget policy before installation.",
+  "design_version": "1.1",
+  "initialization": {
+    "require_explicit_environment_confirmation": true,
+    "branches": [
+      "openharmony",
+      "harmonyos/system",
+      "harmonyos/chip"
+    ],
+    "profile_must_be_complete": true,
+    "ready_requires": "gate_env_init_and_advance_phase0",
+    "unknown_environment_policy": "block"
+  },
+  "rag": {
+    "entry": "code.search",
+    "verify_entry": "code.verify",
+    "data_scope": "user_approved_only",
+    "unavailable_policy": "workspace_search_fallback",
+    "can_advance_phase": false
+  },
+  "debug": {
+    "device_discovery": [
+      "local",
+      "ssh"
+    ],
+    "artifact_sources": [
+      "signed_build_index",
+      "local_imported_advisory"
+    ],
+    "compatibility_required": [
+      "profile",
+      "product",
+      "abi",
+      "source_build_identity",
+      "sha256"
+    ],
+    "formal_evidence_authority": "python_gate_device_func"
+  },
+  "publication_backends": {
+    "openharmony": "gitcode",
+    "harmonyos": "gerrit"
+  }
+}

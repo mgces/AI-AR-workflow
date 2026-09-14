@@ -1,0 +1,175 @@
+{
+  "schema_version": 1,
+  "design_version": "1.1",
+  "overall_status": "in_progress",
+  "active_task": "T04",
+  "active_substep": "A",
+  "baseline_commit": "e65dd9a5afd9d736d261bceb95b60d4eda123cf1",
+  "verified_tasks": [],
+  "verified_substeps": [
+    {
+      "task_id": "T01",
+      "name": "platform-foundation-package",
+      "status": "local_slice_passed",
+      "evidence": [
+        "platform/package.json",
+        "platform/package-lock.json",
+        "npm --prefix platform ci --ignore-scripts",
+        "npm --prefix platform test",
+        "npm --prefix platform run lint",
+        "npm --prefix platform run typecheck",
+        "npm --prefix platform run build"
+      ],
+      "scope_note": "Connector、workspace-gateway、Node 24 和真实宿主能力仍未完成。"
+    },
+    {
+      "task_id": "T02",
+      "name": "environment-and-ar-manifest-contracts",
+      "status": "local_slice_passed",
+      "evidence": [
+        "platform/packages/contracts/test/environment-profile.test.js",
+        "platform/packages/workflow-registry/test/manifest.test.js"
+      ],
+      "scope_note": "管理员签名的密码学验签、正式 schema/OpenAPI、workflow pack 安装和版本锁仍待完成。"
+    },
+    {
+      "task_id": "T03",
+      "name": "authority-envelope-fence",
+      "status": "local_slice_passed",
+      "evidence": [
+        "workspace-gateway/src/authority/envelope.js",
+        "workspace-gateway/test/authority/envelope.test.js",
+        "npm --prefix workspace-gateway ci --ignore-scripts",
+        "npm --prefix workspace-gateway test"
+      ],
+      "scope_note": "仅完成 envelope 结构和世代护栏；没有真实 SSH RPC、设备公钥验签或 runtime authority。"
+    },
+    {
+      "task_id": "LOCAL-MVP",
+      "name": "no-login-local-console",
+      "status": "local_slice_passed",
+      "evidence": [
+        "platform/apps/local-console/src/server.js",
+        "platform/apps/local-console/src/store.js",
+        "platform/apps/local-console/src/rag.js",
+        "platform/apps/local-console/src/debug.js",
+        "platform/apps/local-console/test/",
+        "Windows browser/curl -> WSL http://127.0.0.1:8787"
+      ],
+      "scope_note": "可免登录进入并运行 P0 环境预检；Agent 仅做版本探测，RAG 为本地词法 fallback，设备/产物为只读 advisory 探测，未接入真实 DSH、SSH 作业、模型或部署。"
+    },
+    {
+      "task_id": "DSH-OFFICIAL-WEB",
+      "name": "official-dsh-web-ui-and-ar-tools",
+      "status": "local_slice_passed",
+      "evidence": [
+        "dsh-workflow/src/dsh/delivery-runtime.js",
+        "dsh-workflow/src/dsh/plugin.js",
+        "dsh-workflow/src/dsh/web-routes.js",
+        "dsh-workflow/src/dsh/client.js",
+        "dsh-workflow/cordis.patch.yml",
+        "docs/reference/dsh-cloud-platform-v1/dsh-integration.md",
+        "official @deepseek-ai/dsh Web profile on 127.0.0.1:8787",
+        "npm --prefix dsh-workflow test",
+        "npm --prefix dsh-workflow run check"
+      ],
+      "scope_note": "官方 DSH Web UI 已作为唯一用户入口；AR Delivery Workbench 通过官方 main/sidebar 槽位和同端口认证路由内置，API Key onboarding 已按本地部署策略关闭，并挂载官方 Claude Code subagent provider 与 claude-code Agent Preset。页面新增 CodeAgent 设置，可选择 Claude Code、OpenCode、Codex CLI、Cursor Agent、Trae CLI 或自定义命令，并把选择写入新 run。当前仍是本地可信模式，Claude credentialed e2e、云端多租户、非官方 CLI 执行适配器、真实 codeagent 任务编排和模型 usage 采集未完成。"
+    }
+  ],
+  "changed_files": [
+    "platform/",
+    "dsh-workflow/",
+    "workspace-gateway/",
+    "docs/reference/dsh-cloud-platform-v1/",
+    "docs/.vitepress/config.mjs",
+    "products/dsh-cloud-implementation/official-dsh-smoke-20260912.json"
+  ],
+  "checks": [
+    {
+      "command": "Windows OpenSSH client -> temporary WSL sshd -> remote sentinel read/write",
+      "status": "passed",
+      "evidence": "products/dsh-cloud-implementation/smoke-test-20260912.json"
+    },
+    {
+      "command": "npm --prefix platform test",
+      "status": "passed",
+      "result": "6 suites, 21 tests passed"
+    },
+    {
+      "command": "npm --prefix platform run lint",
+      "status": "passed"
+    },
+    {
+      "command": "npm --prefix platform run typecheck",
+      "status": "passed"
+    },
+    {
+      "command": "npm --prefix platform run build",
+      "status": "passed"
+    },
+    {
+      "command": "npm --prefix workspace-gateway test",
+      "status": "passed",
+      "result": "1 suite, 4 tests passed"
+    },
+    {
+      "command": "npm --prefix workspace-gateway run lint && npm --prefix workspace-gateway run typecheck",
+      "status": "passed"
+    },
+    {
+      "command": "python3 -m unittest skills/ohos-ar-dev-phases/tests/test_environments.py",
+      "status": "passed",
+      "result": "24 tests passed"
+    },
+    {
+      "command": "OHOS_DSH_TEST_PYTHON=python3 node --test runtime/dsh-ohos/test/ar-delivery/workflow.test.js",
+      "status": "passed",
+      "result": "targeted AR workflow suite passed"
+    },
+    {
+      "command": "npm --prefix runtime/dsh-ohos test",
+      "status": "failed",
+      "result": "9 passed, 4 failed in the full runner",
+      "reason": "本批次未修改 runtime；failure-snapshot、core/stdio、requirement/stdio、requirement/workflow 在完整套件中失败，分别单独重跑时通过，需要在接入 Gateway 前定位并记录。"
+    },
+    {
+      "command": "npm --prefix docs run docs:build",
+      "status": "passed",
+      "result": "VitePress build complete with only chunk-size warning"
+    },
+    {
+      "command": "npm --prefix platform run console + Windows native curl /healthz and /api/status",
+      "status": "passed",
+      "result": "免登录 local console 可从 Windows localhost 访问；P0 run、RAG、debug 和事件接口已验证",
+      "evidence": "products/dsh-cloud-implementation/console-smoke-20260912.json"
+    },
+    {
+      "command": "official DSH Web profile + dsh-workflow patch",
+      "status": "passed",
+      "result": "官方 Session/Tool/Approval/Workspace 页面与 AR Delivery Workbench 在同一 127.0.0.1:8787 启动；客户端 graph 含 @ai-ar/dsh-workflow 且不加载 API-key onboarding 的 Models client，/api/ohos-ar/overview 通过 DSH browser cookie 返回并报告 claude-code provider available=true，使用一次性 token URL 建立浏览器会话"
+    }
+  ],
+  "open_blockers": [
+    {
+      "id": "T00-REAL-HOST-PROBE",
+      "severity": "high",
+      "description": "Claude Code 版本探测与 Windows→WSL 临时 SSH 烟测已有证据，但本机 DSH/OpenCode 未发现，SSH 服务未持久配置，不能宣称本地 agent 已接通。"
+    },
+    {
+      "id": "T21-HARMONYOS-PROFILE",
+      "severity": "high",
+      "description": "HarmonyOS system/chip 的真实 product、out_dir、runner、设备和 Gerrit 项目规则尚未绑定。"
+    },
+    {
+      "id": "RUNTIME-REGRESSION-BASELINE",
+      "severity": "medium",
+      "description": "现有 runtime 全套并发/串行运行均出现 4 个失败，但失败测试单独重跑通过；需在接入 Gateway 前判定测试隔离或环境问题。"
+    },
+    {
+      "id": "CLOUD-PRODUCTION-SERVICES",
+      "severity": "high",
+      "description": "当前只有免登录本地 console；持久云 API/数据库、Connector/WSS、真实 DSH scheduler、OpenCode/Claude 执行适配器、embedding/reranker、设备部署和三环境 AR P0-P8 仍未完成。"
+    }
+  ],
+  "next_action": "完成 T04.A：为官方 DSH Web profile 增加 AR observability 的标准 session/tool 投影，并绑定真实 codeagent、SSH workspace 和 provider usage。"
+}

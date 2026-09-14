@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ai-ar-workflow:dsh-cloud:operation-start:v1.1",
+  "title": "Platform OperationStart v1.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "operation_id",
+    "task_id",
+    "attempt_id",
+    "revision",
+    "lease_epoch",
+    "workspace_id",
+    "source_snapshot_digest",
+    "policy_digest",
+    "operation_kind",
+    "action_ref",
+    "args",
+    "timeout_ms",
+    "budget_reservation_id",
+    "environment_profile_digest"
+  ],
+  "properties": {
+    "operation_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "task_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "attempt_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "lease_epoch": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "workspace_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_snapshot_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "policy_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "operation_kind": {
+      "enum": [
+        "workspace_patch",
+        "workspace_exec",
+        "gate",
+        "publish"
+      ]
+    },
+    "action_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "args": {
+      "type": "object"
+    },
+    "timeout_ms": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 86400000
+    },
+    "budget_reservation_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "approval_receipt_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "environment_profile_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "operation_kind": {
+            "const": "publish"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "approval_receipt_id"
+        ]
+      }
+    }
+  ]
+}

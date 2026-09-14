@@ -1,0 +1,18 @@
+{
+  "operation_id": "demo-operation-001",
+  "task_id": "demo-task-P4",
+  "attempt_id": "demo-attempt-001",
+  "revision": 1,
+  "lease_epoch": 1,
+  "workspace_id": "demo-workspace-001",
+  "source_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "policy_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "operation_kind": "gate",
+  "action_ref": "ar-delivery/P4/gate_build.py",
+  "args": {
+    "pipeline_ref": "demo-registered-pipeline"
+  },
+  "timeout_ms": 7200000,
+  "budget_reservation_id": "demo-reservation-001",
+  "environment_profile_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+}

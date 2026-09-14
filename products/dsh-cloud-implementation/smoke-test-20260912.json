@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "test_id": "windows-local-wsl-ssh-20260912",
+  "timestamp": "2026-09-12T16:20:00+08:00",
+  "status": "passed_with_scope_limits",
+  "topology": {
+    "local_side": "Windows OpenSSH client (C:\\Windows\\System32\\OpenSSH\\ssh.exe)",
+    "remote_side": "WSL2 Ubuntu 24.04.4, temporary non-system OpenSSH server",
+    "code_side": "WSL filesystem temporary workspace",
+    "production_equivalent": false,
+    "remote_runtime": {
+      "os": "Ubuntu 24.04.4 on WSL2",
+      "node": "22.22.2",
+      "python": "3.12.3",
+      "ssh_port": 22222
+    }
+  },
+  "steps": [
+    {
+      "id": "ssh-read",
+      "operation": "Windows client connects to WSL high port and reads sentinel",
+      "status": "passed",
+      "observed": ["windows-client-to-wsl=mgces", "remote-after"]
+    },
+    {
+      "id": "ssh-write",
+      "operation": "Windows client writes a remote sentinel through SSH",
+      "status": "passed",
+      "sha256": "bf3fd074cd92204d70508de7394a7834fd1f59128c91741876aef4c1b861b68b",
+      "remote_content": "windows-write"
+    },
+    {
+      "id": "ssh-cleanup",
+      "operation": "Stop temporary sshd and remove temporary keys/workspace",
+      "status": "passed"
+    },
+    {
+      "id": "environment-detection",
+      "operation": "Detect current repository environment from build markers",
+      "status": "passed",
+      "result": {
+        "status": "unknown",
+        "candidates": []
+      },
+      "reason": "AI-AR-workflow is not an OpenHarmony/HarmonyOS source root; build.sh, developer_test, build_system.sh and build_vendor.sh are absent."
+    }
+  ],
+  "contract_checks": {
+    "platform_environment_profile": "passed",
+    "platform_ar_manifest": "passed",
+    "authority_epoch_fence": "passed",
+    "openharmony_environment_unit_tests": "passed"
+  },
+  "scope_limits": [
+    "WSL has no persistent sshd service; the server was extracted to /tmp and ran only for this smoke test.",
+    "This validates Windows SSH transport and remote file identity, not OpenCode/Claude Code adapters, DSH execution, RAG, device access or AR P0-P8.",
+    "A real workspace must provide explicit environment profile confirmation before a run can start."
+  ]
+}

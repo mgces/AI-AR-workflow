@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "design_version": "1.1",
+  "kind": "capability_matrix",
+  "status": "blocked",
+  "capabilities": {
+    "local_codeagent_process": "unknown",
+    "remote_workspace_read": "unknown",
+    "remote_workspace_patch": "unknown",
+    "remote_workspace_exec": "unknown",
+    "permission_round_trip": "unknown",
+    "cancel_and_process_reconciliation": "unknown",
+    "session_resume": "unknown",
+    "real_usage_source": "unknown",
+    "dsh_plugin_load": "unknown",
+    "openharmony_environment_detection": "local_contract_only",
+    "harmonyos_system_environment_detection": "local_contract_only",
+    "harmonyos_chip_environment_detection": "local_contract_only"
+  },
+  "evidence_policy": "unknown and unsupported capabilities cannot satisfy T00 or any live acceptance item",
+  "probe_ref": "probes/t00-local-probe.json"
+}
