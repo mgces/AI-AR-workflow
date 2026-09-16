@@ -1,11 +1,22 @@
 {
   "schema_version": 1,
-  "design_version": "1.1",
+  "design_version": "1.2",
   "overall_status": "in_progress",
-  "active_task": "T04",
+  "active_task": "T00-REAL-HOST-PROBE",
   "active_substep": "A",
-  "baseline_commit": "e65dd9a5afd9d736d261bceb95b60d4eda123cf1",
-  "verified_tasks": [],
+  "baseline_commit": "ac885b9eff6194127f880b9a494da8590dcf497f",
+  "verified_tasks": [
+    "T01",
+    "T02",
+    "T03",
+    "T04",
+    "LOCAL-CONNECTOR-SSHFS",
+    "LOCAL-CONNECTOR-REMOTE-TOOLS",
+    "T08-PROTOCOL-SLICE",
+    "LOCAL-CONNECTOR-DURABILITY-SECURITY",
+    "T16-DEPLOYMENT-ASSETS",
+    "T04-CGROUP-ISOLATION"
+  ],
   "verified_substeps": [
     {
       "task_id": "T01",
@@ -14,13 +25,18 @@
       "evidence": [
         "platform/package.json",
         "platform/package-lock.json",
-        "npm --prefix platform ci --ignore-scripts",
-        "npm --prefix platform test",
+        "platform/apps/local-console/src/server.js",
+        "platform/apps/local-console/src/scheduler.js",
+        "platform/apps/local-console/src/remote-codeagent-executor.js",
+        "platform/apps/local-console/src/remote-delivery-adapter.js",
+        "platform/apps/local-console/src/rag.js",
+        "platform/apps/local-console/src/debug.js",
+        "targeted Connector/preflight/scheduler regressions passed; full platform suite passed (158/158 tests)",
         "npm --prefix platform run lint",
         "npm --prefix platform run typecheck",
         "npm --prefix platform run build"
       ],
-      "scope_note": "Connector、workspace-gateway、Node 24 和真实宿主能力仍未完成。"
+      "scope_note": "平台包、local-console、durable scheduler、CodeAgent 执行器、远端 delivery adapter、远端 RAG/调试入口和统一 HTTP API 已通过本地切片验证；远端二进制产物只取 workspace.hash 摘要；持久云数据库、多租户、外部 Supervisor 和真实宿主容量仍未完成。"
     },
     {
       "task_id": "T02",
@@ -30,7 +46,7 @@
         "platform/packages/contracts/test/environment-profile.test.js",
         "platform/packages/workflow-registry/test/manifest.test.js"
       ],
-      "scope_note": "管理员签名的密码学验签、正式 schema/OpenAPI、workflow pack 安装和版本锁仍待完成。"
+      "scope_note": "contracts 与 workflow-registry 的本地 schema 校验已验证；正式 OpenAPI、workflow pack 安装、管理员密码学签名和版本服务仍待完成。"
     },
     {
       "task_id": "T03",
@@ -38,11 +54,17 @@
       "status": "local_slice_passed",
       "evidence": [
         "workspace-gateway/src/authority/envelope.js",
-        "workspace-gateway/test/authority/envelope.test.js",
-        "npm --prefix workspace-gateway ci --ignore-scripts",
-        "npm --prefix workspace-gateway test"
+        "workspace-gateway/src/authority/signature.js",
+        "workspace-gateway/src/connector/workspace-connector.js",
+        "workspace-gateway/src/connector/jsonl-gateway.js",
+        "workspace-gateway/src/connector/http-client.js",
+        "workspace-gateway/src/supervisor/resource-locks.js",
+        "workspace-gateway/bin/workspace-gateway.js",
+        "targeted WebSocket/SSHFS/remote-tools regressions passed; full Gateway suite passed (83/83 tests)",
+        "npm --prefix workspace-gateway run lint",
+        "npm --prefix workspace-gateway run typecheck"
       ],
-      "scope_note": "仅完成 envelope 结构和世代护栏；没有真实 SSH RPC、设备公钥验签或 runtime authority。"
+      "scope_note": "Authority envelope、HMAC 验签、受限 SSH Connector、workspace.hash 二进制摘要、JSONL/HTTP Gateway、HTTP client、跨进程 SQLite operation journal、资源锁和内置 ProcessSupervisor 的进程组取消/重启回收已通过本地协议切片验证；WebSocket hub 的 TLS/mTLS、Origin、证书指纹和配对策略也已实现；公网证书终止、密钥服务、systemd/cgroup 模板与 cgroup v2 admission 已实现；真实委派、远端进程树证明和远端 gate authority 仍需部署。"
     },
     {
       "task_id": "LOCAL-MVP",
@@ -53,10 +75,13 @@
         "platform/apps/local-console/src/store.js",
         "platform/apps/local-console/src/rag.js",
         "platform/apps/local-console/src/debug.js",
+        "platform/apps/local-console/src/remote-codeagent-executor.js",
+        "platform/apps/local-console/src/remote-delivery-adapter.js",
         "platform/apps/local-console/test/",
-        "Windows browser/curl -> WSL http://127.0.0.1:8787"
+        "Windows browser/curl -> WSL http://127.0.0.1:8787",
+        "targeted platform regressions passed; full platform suite passed (158/158 tests)"
       ],
-      "scope_note": "可免登录进入并运行 P0 环境预检；Agent 仅做版本探测，RAG 为本地词法 fallback，设备/产物为只读 advisory 探测，未接入真实 DSH、SSH 作业、模型或部署。"
+      "scope_note": "免登录 local-console 已实际持久化 run、事件、人工输入、审核、usage 和 CodeAgent 设置；Claude/OpenCode/Codex 使用真实非交互进程适配器，custom 支持受限 argv；RAG 支持本地与受签名 Gateway 的词法或 OpenAI-compatible embedding/reranker 检索，调试入口支持远端产物 hash 和固定 device profile，二进制不按 UTF-8 解码；当前仓库不具备真实 OHOS 产品根。"
     },
     {
       "task_id": "DSH-OFFICIAL-WEB",
@@ -69,107 +94,472 @@
         "dsh-workflow/src/dsh/client.js",
         "dsh-workflow/cordis.patch.yml",
         "docs/reference/dsh-cloud-platform-v1/dsh-integration.md",
-        "official @deepseek-ai/dsh Web profile on 127.0.0.1:8787",
-        "npm --prefix dsh-workflow test",
-        "npm --prefix dsh-workflow run check"
+        "products/dsh-cloud-implementation/official-dsh-smoke-20260915.json",
+        "products/dsh-cloud-implementation/official-dsh-smoke-20260916.json",
+        "official @deepseek-ai/dsh Web profile on 127.0.0.1:8792 (temporary current smoke; 8787 prior deployment port)",
+        "npm --prefix dsh-workflow run check",
+        "targeted DSH route/plugin/CodeAgent regressions passed; full workflow suite passed (73/73 tests)",
+        "remote preflight probes every required AR gate, lib/environments.py and delivery bridge",
+        "remote default AR path remains relative to the selected project root",
+        "products/dsh-cloud-implementation/official-dsh-connector-smoke-20260916.json"
       ],
-      "scope_note": "官方 DSH Web UI 已作为唯一用户入口；AR Delivery Workbench 通过官方 main/sidebar 槽位和同端口认证路由内置，API Key onboarding 已按本地部署策略关闭，并挂载官方 Claude Code subagent provider 与 claude-code Agent Preset。页面新增 CodeAgent 设置，可选择 Claude Code、OpenCode、Codex CLI、Cursor Agent、Trae CLI 或自定义命令，并把选择写入新 run。当前仍是本地可信模式，Claude credentialed e2e、云端多租户、非官方 CLI 执行适配器、真实 codeagent 任务编排和模型 usage 采集未完成。"
+      "scope_note": "官方 DSH Web UI 仍是唯一用户入口；AR Delivery 面板已接入同一官方 sidebar/main、CodeAgent 选择（含 Connector 本地 Claude/OpenCode/Codex/custom CLI 和 Gateway 远端 profile）、RAG、调试、产物全文、事件、人工输入和 usage 投影。官方 Claude provider 可直接执行；其他 CLI 在 Connector 探测或 Gateway profile 条件满足时可派发。多租户、生产身份和 credentialed 三环境 e2e 仍未完成。 2026-09-16 已用官方 DSH 页面完成真实 Connector WebSocket/hello/能力注册 smoke；完整 P0–P8 仍由宿主前置条件决定。"
+    },
+    {
+      "task_id": "LOCAL-EXECUTION",
+      "name": "durable-local-codeagent-execution",
+      "status": "local_slice_passed",
+      "evidence": [
+        "platform/apps/local-console/src/codeagent-executor.js",
+        "platform/apps/local-console/src/scheduler.js",
+        "platform/apps/local-console/test/codeagent-executor.test.js",
+        "platform/apps/local-console/test/scheduler.test.js",
+        "npm --prefix platform test"
+      ],
+      "scope_note": "真实 CLI 是否安装、其账号额度、完整 OHOS gate 和长时任务容量仍需宿主验收。"
+    },
+    {
+      "task_id": "LOCAL-CONNECTOR-SSHFS",
+      "name": "cloud-dsh-local-codeagent-connector-over-sshfs",
+      "status": "local_slice_passed",
+      "evidence": [
+        "workspace-gateway/src/connector/websocket.js",
+        "workspace-gateway/bin/dsh-local-connector.js",
+        "platform/apps/local-console/src/connector-agent.js",
+        "platform/apps/local-console/src/connector-codeagent-executor.js",
+        "dsh-workflow/src/dsh/codeagents.js",
+        "dsh-workflow/src/dsh/plugin.js",
+        "dsh-workflow/src/dsh/web-routes.js",
+        "workspace-gateway/test/connector/websocket.test.js",
+        "platform/apps/local-console/test/connector-agent.test.js",
+        "platform/apps/local-console/test/connector-codeagent-executor.test.js",
+        "dsh-workflow/test/codeagents.test.js",
+        "dsh-workflow/test/dsh-plugin.test.js",
+        "dsh-workflow/test/dsh-web-routes.test.js",
+        "real loopback HTTP upgrade -> local CodeAgent edit/usage/artifact projection (6/6)",
+        "workspace-gateway/test/bin.test.js (SSHFS binding guard 8/8)"
+      ],
+      "scope_note": "单工作区 WSS upgrade/client、hello/心跳、请求相关、超时、取消、重连和连接 epoch 已实现；本地 Connector 在 SSHFS/等价挂载根内探测并运行 Claude/OpenCode/Codex/custom argv CLI，支持启动前取消、真实路径/读写权限检查、软链接逃逸拒绝、结构化 usage 和 artifact refs；云端继续用 Workspace Gateway 执行 P0–P8 gate/编译/设备/发布 profile。生产证书终止/密钥服务、远端进程存活证明和真实 Windows/WSL/SSH 宿主仍需验收。 真实 loopback HTTP upgrade 已验证云端 Connector executor 经 WebSocket 触发本地 argv CodeAgent、修改工作区并回传 usage/artifact refs。"
+    },
+    {
+      "task_id": "LOCAL-CONNECTOR-REMOTE-TOOLS",
+      "name": "cloud-dsh-local-codeagent-connector-with-remote-tools-mcp",
+      "status": "local_slice_passed",
+      "evidence": [
+        "workspace-gateway/src/connector/remote-tools-mcp.js",
+        "workspace-gateway/src/connector/workspace-connector.js",
+        "platform/apps/local-console/src/connector-agent.js",
+        "platform/apps/local-console/src/codeagent-executor.js",
+        "platform/apps/local-console/src/connector-codeagent-executor.js",
+        "workspace-gateway/test/connector/remote-tools-mcp.test.js",
+        "platform/apps/local-console/test/connector-agent.test.js",
+        "platform/apps/local-console/test/codeagent-executor.test.js",
+        "remote-tools MCP broker/stdio cancellation, allowlist and authority translation",
+        "OpenCode OPENCODE_CONFIG and Codex CODEX_HOME/config.toml adapter regressions",
+        "products/dsh-cloud-implementation/ssh-remote-tools-smoke-20260916.json"
+      ],
+      "scope_note": "不需要 SSHFS 时，Connector 在本地创建一次性 MCP broker；Claude Code、OpenCode、Codex 或带显式 MCP 参数的 custom CLI 可通过受限 read/list/search/write/diff/hash/read_binary 与登记 profile 操作 SSH 代码，stdout/stderr 和远端 artifact refs 回写 SSH pipeline，临时目录在 run 结束清理。真实 loopback SSH smoke 已验证 remote_tools 读写、新文件产物写入和登记 profile 调用；P4–P8 gate 仍由 SSH Workspace Gateway 执行。真实 CLI 账号、Windows/WSL/用户 SSH 宿主、生产证书终止和密钥服务仍属于部署验收。"
+    },
+    {
+      "task_id": "T08-PROTOCOL-SLICE",
+      "name": "connector-websocket-transport-slice",
+      "status": "local_slice_passed",
+      "evidence": [
+        "workspace-gateway/src/connector/websocket.js",
+        "workspace-gateway/test/connector/websocket.test.js",
+        "dsh-workflow/src/dsh/plugin.js",
+        "dsh-workflow/test/dsh-plugin.test.js"
+      ],
+      "scope_note": "协议切片已由 fake peer/client 和官方 WebServer upgrade 注册回归验证；hub 现支持 Origin/TLS/mTLS 策略、证书指纹 allowlist、配对 registry、审计回调、ACK、同进程回放和文件持久 outbox。持久 outbox 按 operation_id 保存 pending/completed/failed、原子写入并在云端重启后重绑；公网证书终止、外部密钥轮换和真实连接审计仍需部署。"
+    },
+    {
+      "task_id": "RAG-DEBUG",
+      "name": "persistent-rag-and-debug-surface",
+      "status": "local_slice_passed",
+      "evidence": [
+        "platform/apps/local-console/src/rag.js",
+        "platform/apps/local-console/src/debug.js",
+        "dsh-workflow/src/dsh/web-routes.js",
+        "dsh-workflow/test/dsh-web-routes.test.js",
+        "platform/apps/local-console/test/rag.test.js",
+        "platform/apps/local-console/test/debug.test.js",
+        "workspace-gateway/test/connector/workspace-connector.test.js"
+      ],
+      "scope_note": "RAG 已支持本地与远端词法索引、OpenAI-compatible embedding/reranker 适配、远端 size/mtime freshness、命中前回读 hash和有界模型错误；调试面板已支持 hdc 固定 profile、远端产物列表、文本预览和二进制 sha256/字节数。生产 pgvector/增量分块、ACL 撤销、云配额、模型评测和设备/产物正式 gate 仍需部署。"
+    },
+    {
+      "task_id": "WORKSPACE-GATEWAY",
+      "name": "jsonl-http-workspace-gateway",
+      "status": "local_slice_passed",
+      "evidence": [
+        "workspace-gateway/src/connector/workspace-connector.js",
+        "workspace-gateway/src/connector/jsonl-gateway.js",
+        "workspace-gateway/src/connector/http-client.js",
+        "workspace-gateway/src/supervisor/resource-locks.js",
+        "workspace-gateway/bin/workspace-gateway.js",
+        "workspace-gateway/test/connector/",
+        "workspace-gateway/test/bin.test.js",
+        "targeted Gateway regressions passed; full Gateway suite passed (83/83 tests)",
+        "workspace.probe verifies source marker kind and executable bit"
+      ],
+      "scope_note": "受限 SSH Connector、HMAC 验签、workspace.hash、JSONL/HTTP transport、WSS upgrade/client 协议、跨进程 operation journal、resource lock 和内置 ProcessSupervisor 的进程组取消、重启回收、脱敏 authority.inspect 已具备；hub 的配对/撤销、ACK、同进程回放和文件持久 outbox 也已具备。公网证书终止、外部密钥服务、systemd/cgroup 模板与 cgroup v2 admission 已实现；远端 gate profile 和远端 SSH 进程存活证明仍需部署。"
+    },
+    {
+      "task_id": "MCP-STDIO",
+      "name": "mcp-stdio-child-transport",
+      "status": "local_slice_passed",
+      "evidence": [
+        "dsh-workflow/src/mcp/server.js",
+        "dsh-workflow/test/mcp-server.test.js",
+        "runtime/dsh-ohos/src/mcp/stdio.js",
+        "runtime/dsh-ohos/test/core/stdio.test.js",
+        "npm --prefix dsh-workflow test",
+        "runtime/dsh-ohos suite: 72 passed, 4 skipped (76 total)"
+      ],
+      "scope_note": "已验证 Node 子进程 JSONL 初始化、工具列表、调用、flush 和 EOF；本轮 runtime 测试 72 项通过、4 项按环境跳过，仍不等同于云端多租户 MCP 入口。"
+    },
+    {
+      "task_id": "T04",
+      "name": "durable-process-supervisor-and-shared-locks",
+      "status": "local_slice_passed",
+      "evidence": [
+        "workspace-gateway/src/supervisor/process-supervisor.js",
+        "workspace-gateway/test/supervisor/process-supervisor.test.js",
+        "workspace-gateway/test/connector/workspace-connector.test.js",
+        "platform/apps/local-console/src/codeagent-executor.js",
+        "platform/apps/local-console/test/codeagent-executor.test.js",
+        "products/dsh-cloud-implementation/official-dsh-smoke-20260915.json",
+        "targeted Gateway regressions passed; full Gateway suite passed (83/83 tests)",
+        "targeted platform regressions passed; full platform suite passed (158/158 tests)"
+      ],
+      "scope_note": "本地切片已持久化启动意图、PID/PGID和受限输出，支持进程组取消、超时、输出上限、重启时回收存活进程并保留 unknown 状态，authority.inspect 只返回脱敏快照；systemd/cgroup 模板与 cgroup v2 admission 已实现；真实委派、远端 SSH 子进程存活证明和宿主故障恢复仍需部署验收。"
+    },
+    {
+      "task_id": "OBSERVABILITY-METRICS",
+      "name": "auditable-wait-effective-time-and-failure-idempotency",
+      "status": "local_slice_passed",
+      "evidence": [
+        "platform/apps/local-console/src/ar-runtime.js",
+        "platform/apps/local-console/src/scheduler.js",
+        "runtime/dsh-ohos/src/workflows/ar-delivery/workflow.js",
+        "platform/apps/local-console/test/ar-runtime.test.js",
+        "platform/apps/local-console/test/scheduler.test.js",
+        "runtime/dsh-ohos/test/ar-delivery/workflow.test.js",
+        "targeted platform regressions passed; full platform suite passed (158/158 tests)",
+        "runtime/dsh-ohos suite: 72 passed, 4 skipped (76 total)"
+      ],
+      "scope_note": "审核等待按 wait_id 配对并去重，运行/阶段同时返回 wall、human wait、effective elapsed 和 unknown 数据质量；scheduler.failed 绑定 attempt_id 并通过 operation journal 幂等回放。旧事件无法闭合时保持 partial/unknown。"
+    },
+    {
+      "task_id": "LOCAL-CONNECTOR-DURABILITY-SECURITY",
+      "name": "connector-operation-durability-and-transport-hardening",
+      "status": "local_slice_passed",
+      "evidence": [
+        "platform/apps/local-console/src/connector-operation-journal.js",
+        "platform/apps/local-console/test/connector-agent.test.js",
+        "workspace-gateway/src/connector/pairing-registry.js",
+        "workspace-gateway/src/connector/websocket.js",
+        "workspace-gateway/bin/dsh-connector-pair.js",
+        "workspace-gateway/test/connector/pairing-registry.test.js",
+        "workspace-gateway/test/connector/websocket.test.js",
+        "completed operation replay, active reconnect replay and interrupted-operation unknown regressions",
+        "Origin/TLS/mTLS policy, certificate fingerprint and pairing hello regressions"
+      ],
+      "scope_note": "Connector 本地 operation journal 会持久化输入指纹、完成结果和结构化失败；同一进程中的重连复用活动 promise，重启遗留 running 会变为 unknown 并阻断重复执行。WebSocket hub 已支持 Origin allowlist、TLS/mTLS 请求策略、证书指纹 allowlist、持久配对 token、撤销/轮换、审计回调、ACK/同设备回放和文件持久 outbox；持久记录可在云端重启后按 operation_id 重绑或回放结果。云端证书终止、外部密钥服务和真实连接审计仍需部署。"
+    },
+    {
+      "task_id": "T16-DEPLOYMENT-ASSETS",
+      "name": "deployment-doctor-and-systemd-assets",
+      "status": "local_slice_passed",
+      "evidence": [
+        "platform/deploy/doctor.mjs",
+        "platform/deploy/test/doctor.test.js",
+        "platform/deploy/systemd/dsh-web.service",
+        "platform/deploy/systemd/dsh-workspace-gateway@.service",
+        "platform/deploy/env/dsh.env.example",
+        "platform/deploy/env/workspace-gateway.env.example",
+        "platform/deploy/cordis.cloud.patch.yml",
+        "platform/deploy/reverse-proxy/dsh-nginx.conf.example",
+        "platform/deploy/dsh-doctor",
+        "workspace-gateway/bin/workspace-gateway.js",
+        "workspace-gateway/test/bin.test.js",
+        "node platform/deploy/test/doctor.test.js"
+      ],
+      "scope_note": "部署目录现在包含 JSON/人类可读 doctor、官方 DSH 云 patch、systemd 单元、Gateway profile-file 环境模板和 Nginx WebSocket/TLS 模板；Web 单元使用固定部署路径并在启动前重新检查可执行文件和 patch，doctor 会探测官方 DSH 可执行文件及 patch、验证 DSH/Gateway Bearer 与 Authority HMAC EnvironmentFile 的存在性、长度和一致性并拒绝未解析占位值，并只把已探测的 P0/P8 条件标为 ready。canonical patch 显式绑定 tenant_id/workspace_id，并与 Gateway/Connector 工作区保持一致。密钥注入、日志轮转、真实证书和真实云节点安装仍需部署验收。"
+    },
+    {
+      "task_id": "T04-CGROUP-ISOLATION",
+      "name": "process-supervisor-cgroup-v2-admission",
+      "status": "local_slice_passed",
+      "evidence": [
+        "workspace-gateway/src/supervisor/process-supervisor.js",
+        "workspace-gateway/test/supervisor/process-supervisor.test.js",
+        "workspace-gateway/bin/workspace-gateway.js",
+        "platform/apps/local-console/src/server.js",
+        "dsh-workflow/src/dsh/plugin.js",
+        "targeted cgroup best_effort and required fail-closed tests"
+      ],
+      "scope_note": "ProcessSupervisor 支持 disabled/best_effort/required 三种 cgroup v2 模式、可选 memory/pids/cpu 限制、operation 级隔离状态与 SIGKILL cgroup 回收；required 在启动子进程前阻断。当前 WSL 未向该进程委派可写 cgroup 子树，因此真实纳管仍待云主机验收。"
     }
   ],
   "changed_files": [
-    "platform/",
-    "dsh-workflow/",
-    "workspace-gateway/",
-    "docs/reference/dsh-cloud-platform-v1/",
     "docs/.vitepress/config.mjs",
-    "products/dsh-cloud-implementation/official-dsh-smoke-20260912.json"
+    "docs/reference/dsh-cloud-platform-v1/",
+    "dsh-workflow/",
+    "dsh-workflow/src/mcp/server.js",
+    "platform/",
+    "platform/apps/local-console/src/remote-codeagent-executor.js",
+    "products/dsh-cloud-implementation/official-dsh-smoke-20260912.json",
+    "runtime/dsh-ohos/src/mcp/stdio.js",
+    "runtime/dsh-ohos/test/core/stdio.test.js",
+    "workspace-gateway/",
+    "workspace-gateway/bin/",
+    "workspace-gateway/src/connector/",
+    "workspace-gateway/src/connector/websocket.js",
+    "workspace-gateway/src/connector/sshfs-mount.js",
+    "workspace-gateway/test/connector/sshfs-mount.test.js",
+    "workspace-gateway/bin/dsh-local-connector.js",
+    "dsh-workflow/examples/local-connector-config.json",
+    "dsh-workflow/examples/cordis.patch.local-connector.yml",
+    "platform/apps/local-console/src/connector-agent.js",
+    "platform/apps/local-console/src/connector-codeagent-executor.js",
+    "products/dsh-cloud-implementation/official-dsh-smoke-20260914.json",
+    "products/dsh-cloud-implementation/official-dsh-smoke-20260915.json",
+    "products/dsh-cloud-implementation/official-dsh-smoke-20260916.json",
+    "products/dsh-cloud-implementation/host-capability-probe-20260915.json",
+    "products/dsh-cloud-implementation/review-20260915.md",
+    "platform/deploy/doctor.mjs",
+    "platform/deploy/dsh-doctor",
+    "platform/deploy/README.md",
+    "platform/deploy/env/dsh.env.example",
+    "platform/deploy/env/workspace-gateway.env.example",
+    "platform/deploy/cordis.cloud.patch.yml",
+    "platform/deploy/reverse-proxy/dsh-nginx.conf.example",
+    "platform/deploy/systemd/dsh-web.service",
+    "platform/deploy/systemd/dsh-workspace-gateway@.service",
+    "platform/deploy/test/doctor.test.js",
+    "platform/apps/local-console/src/command.js",
+    "platform/apps/local-console/test/command.test.js",
+    "dsh-workflow/src/dsh/plugin.js",
+    "dsh-workflow/test/dsh-plugin.test.js",
+    "workspace-gateway/test/bin.test.js",
+    "products/dsh-cloud-implementation/official-dsh-connector-smoke-20260916.json",
+    "platform/apps/local-console/test/connector-codeagent-executor.test.js",
+    "products/dsh-cloud-implementation/ssh-remote-tools-smoke-20260916.json"
   ],
   "checks": [
     {
-      "command": "Windows OpenSSH client -> temporary WSL sshd -> remote sentinel read/write",
-      "status": "passed",
-      "evidence": "products/dsh-cloud-implementation/smoke-test-20260912.json"
-    },
-    {
       "command": "npm --prefix platform test",
       "status": "passed",
-      "result": "6 suites, 21 tests passed"
+      "result": "158/158 tests passed with host permissions; child process, listener, Connector, preflight and scheduler cases all completed."
     },
     {
-      "command": "npm --prefix platform run lint",
-      "status": "passed"
-    },
-    {
-      "command": "npm --prefix platform run typecheck",
-      "status": "passed"
-    },
-    {
-      "command": "npm --prefix platform run build",
-      "status": "passed"
+      "command": "npm --prefix platform run lint && npm --prefix platform run typecheck && npm --prefix platform run build",
+      "status": "passed",
+      "result": "lint, typecheck and build passed"
     },
     {
       "command": "npm --prefix workspace-gateway test",
       "status": "passed",
-      "result": "1 suite, 4 tests passed"
+      "result": "83/83 tests passed with host permissions, including HTTP/JSONL/workspace, Connector, supervisor and resource-lock integration cases."
     },
     {
       "command": "npm --prefix workspace-gateway run lint && npm --prefix workspace-gateway run typecheck",
-      "status": "passed"
+      "status": "passed",
+      "result": "syntax/type checks passed"
     },
     {
-      "command": "python3 -m unittest skills/ohos-ar-dev-phases/tests/test_environments.py",
+      "command": "npm --prefix dsh-workflow test && npm --prefix dsh-workflow run check",
       "status": "passed",
-      "result": "24 tests passed"
-    },
-    {
-      "command": "OHOS_DSH_TEST_PYTHON=python3 node --test runtime/dsh-ohos/test/ar-delivery/workflow.test.js",
-      "status": "passed",
-      "result": "targeted AR workflow suite passed"
+      "result": "73/73 tests passed with host permissions, including MCP stdio integration and module import checks."
     },
     {
       "command": "npm --prefix runtime/dsh-ohos test",
-      "status": "failed",
-      "result": "9 passed, 4 failed in the full runner",
-      "reason": "本批次未修改 runtime；failure-snapshot、core/stdio、requirement/stdio、requirement/workflow 在完整套件中失败，分别单独重跑时通过，需要在接入 Gateway 前定位并记录。"
+      "status": "passed",
+      "result": "76 tests completed: 72 passed, 4 skipped for external OHOS/device conditions, 0 failed."
+    },
+    {
+      "command": "python3 -m unittest discover -s skills/ohos-ar-dev-phases/tests",
+      "status": "passed_with_test_secret_override",
+      "result": "572 tests passed with LIFECYCLE_SECRET_ROOT=/tmp/dsh-ar-test-secret; the default managed ~/.claude lifecycle-secret path remains read-only in this environment."
     },
     {
       "command": "npm --prefix docs run docs:build",
       "status": "passed",
-      "result": "VitePress build complete with only chunk-size warning"
+      "result": "VitePress build complete; chunk-size warning only"
     },
     {
-      "command": "npm --prefix platform run console + Windows native curl /healthz and /api/status",
+      "command": "WorkspaceConnector operation journal restart replay",
       "status": "passed",
-      "result": "免登录 local console 可从 Windows localhost 访问；P0 run、RAG、debug 和事件接口已验证",
-      "evidence": "products/dsh-cloud-implementation/console-smoke-20260912.json"
+      "result": "completed and failed operation replayed across two Connector instances sharing SQLite"
+    },
+    {
+      "command": "remote binary artifact projection",
+      "status": "passed",
+      "result": "RemotePythonDeliveryAdapter and local ArRuntimeService return hash/bytes metadata and do not decode .hap/.so/.img content; dedicated tests passed"
+    },
+    {
+      "command": "RemoteRagIndex and RemoteDebugSurface",
+      "status": "passed",
+      "result": "remote list metadata freshness, binary hash and fixed device profile paths passed"
     },
     {
       "command": "official DSH Web profile + dsh-workflow patch",
       "status": "passed",
-      "result": "官方 Session/Tool/Approval/Workspace 页面与 AR Delivery Workbench 在同一 127.0.0.1:8787 启动；客户端 graph 含 @ai-ar/dsh-workflow 且不加载 API-key onboarding 的 Models client，/api/ohos-ar/overview 通过 DSH browser cookie 返回并报告 claude-code provider available=true，使用一次性 token URL 建立浏览器会话"
+      "result": "official Session/Tool/Approval/Workspace and embedded AR Delivery panel share the same temporary 127.0.0.1:8792 page (deployment port remains 8787); token exchange and authenticated AR overview passed; API-key onboarding disabled",
+      "evidence": "products/dsh-cloud-implementation/official-dsh-smoke-20260916.json"
+    },
+    {
+      "command": "official DSH authenticated P0 preflight",
+      "status": "passed_with_scope_limits",
+      "result": "authenticated preflight returned HTTP 200 and can_start_p0=false with explicit source-layout, hdc, environment-profile and publication blockers; no run was queued",
+      "evidence": "products/dsh-cloud-implementation/official-dsh-smoke-20260916.json"
+    },
+    {
+      "command": "Windows browser/curl -> WSL local console",
+      "status": "passed",
+      "result": "historical smoke recorded in products/dsh-cloud-implementation/console-smoke-20260912.json"
+    },
+    {
+      "command": "RAG OpenAI-compatible semantic adapter",
+      "status": "passed",
+      "result": "local and remote injected adapter tests passed; credentials are host-injected and never persisted in the profile"
+    },
+    {
+      "command": "local Connector + SSHFS targeted regression",
+      "status": "passed",
+      "result": "WebSocket protocol, fixed workspace/device binding, SSHFS argv mount lifecycle, local path/symlink guard, startup and running cancellation, custom argv dispatch, cloud relative-path mapping, Connector refresh and official upgrade registration passed"
+    },
+    {
+      "command": "local Connector + remote-tools MCP targeted regression",
+      "status": "passed",
+      "result": "Remote workspace probe, disposable local sandbox, MCP allowlist, authority translation, remote read/write/search/profile boundary, OpenCode/Codex config injection, cancellation and SSH artifact-log projection passed."
+    },
+    {
+      "command": "targeted regression commands in the current managed environment",
+      "status": "passed",
+      "result": "connector websocket 12/12; pairing registry 2/2; SSHFS mount 2/2; local connector agent 12/12; cloud connector executor 6/6; CodeAgent registry 14/14; DSH routes 25/25; plugin 19/19 (including Gateway Bearer reference and remote Authority binding resolution); preflight 13/13; Windows command bridge 2/2; Gateway launcher/profile loader 8/8; deployment doctor 13/13; package lint/check passed"
+    },
+    {
+      "command": "Connector operation journal replay and interrupted-operation reconciliation",
+      "status": "passed",
+      "result": "completed result replayed across two Connector services; active reconnect reused the same promise; a running record after restart became unknown and blocked duplicate execution"
+    },
+    {
+      "command": "Connector WebSocket transport security and pairing",
+      "status": "passed",
+      "result": "Origin allowlist, TLS/mTLS request policy, certificate fingerprint allowlist, pairing token authorization/revocation/rotation and audit hooks passed targeted tests"
+    },
+    {
+      "command": "Connector WebSocket in-memory ACK/replay",
+      "status": "passed",
+      "result": "optional replayPending queue retained an idempotent command across a session replacement and replayed it on the same workspace/device connection"
+    },
+    {
+      "command": "Connector WebSocket durable outbox restart/rebind",
+      "status": "passed",
+      "result": "file-backed outbox atomically persisted pending operations and completed results; a second hub process rebound the same operation_id, rejected input conflicts, and replayed the original command id"
+    },
+    {
+      "command": "node platform/deploy/test/doctor.test.js",
+      "status": "passed",
+      "result": "13/13 deployment doctor tests passed; incomplete roots, required hdc target, required cgroup isolation, missing official DSH/Gateway profiles or Bearer/HMAC env, mismatched secrets, short Authority secrets, invalid argv profiles, developer checkout patch paths, remote gate bundle paths outside SSH root, and variable-based systemd ExecStart paths are fail-closed; Web unit ExecStartPre asset checks are covered."
+    },
+    {
+      "command": "ProcessSupervisor cgroup v2 admission",
+      "status": "passed",
+      "result": "best_effort records cgroup_v2_unavailable on an un-delegated host; required mode fails before spawning and leaves a structured failed record."
+    },
+    {
+      "command": "real loopback Connector WebSocket -> local CodeAgent edit",
+      "status": "passed",
+      "result": "6/6 test cases passed: real HTTP upgrade, hello/heartbeat, cloud command dispatch, local argv CodeAgent source edit, usage=18 and P2 evidence artifact refs were verified with workspace/device binding.",
+      "evidence": "platform/apps/local-console/test/connector-codeagent-executor.test.js"
+    },
+    {
+      "command": "official DSH + local Connector live smoke",
+      "status": "passed_with_scope_limits",
+      "result": "official page token exchange, /v1/connect WebSocket registration, authenticated AR overview and live Connector CodeAgent catalog passed; preflight correctly blocked without real SSH/OHOS/device/publication prerequisites.",
+      "evidence": "products/dsh-cloud-implementation/official-dsh-connector-smoke-20260916.json"
+    },
+    {
+      "command": "real SSH remote-tools -> local CodeAgent edit/profile",
+      "status": "passed_with_scope_limits",
+      "result": "A real loopback HTTP/WebSocket cloud request reached a local Connector backed by a temporary OpenSSH server; remote_tools MCP read/write and a registered compile profile completed, and SSH verified the edited source and artifact. The CodeAgent was deterministic and the compile profile was a marker, not OHOS build evidence.",
+      "evidence": "products/dsh-cloud-implementation/ssh-remote-tools-smoke-20260916.json"
     }
   ],
   "open_blockers": [
     {
       "id": "T00-REAL-HOST-PROBE",
       "severity": "high",
-      "description": "Claude Code 版本探测与 Windows→WSL 临时 SSH 烟测已有证据，但本机 DSH/OpenCode 未发现，SSH 服务未持久配置，不能宣称本地 agent 已接通。"
+      "description": "当前 WSL 已对 Codex CLI 版本、真实非交互启动、PID/PGID 监督、取消回收、Connector operation journal 和临时 loopback SSH remote_tools 编辑回路形成脱敏 smoke 记录（见 host-capability-probe-20260915.json、ssh-remote-tools-smoke-20260916.json）；Claude/OpenCode 的真实账号权限、长任务恢复，以及用户 Windows/WSL Connector 和 SSH 代码主机验收仍未完成。"
+    },
+    {
+      "id": "T04-SUPERVISOR-AND-LOCKS",
+      "severity": "high",
+      "description": "Workspace Gateway 的 HMAC、操作幂等 journal、取消、SQLite 资源锁、内置 ProcessSupervisor 和 cgroup v2 admission 已实现；部署目录提供 systemd/cgroup 模板。仍需在真实云主机授予委派子树，验证宿主故障回收、远端 SSH 进程存活证明和外部 supervisor 纳管。"
+    },
+    {
+      "id": "T08-WSS-PAIRING",
+      "severity": "high",
+      "description": "WebSocket hub 已实现 Origin/TLS/mTLS 请求策略、证书指纹 allowlist、持久配对 token 的 hello 校验、撤销/轮换、审计回调、ACK、同设备断线回放和文件持久 outbox；公网证书终止、外部密钥服务和真实连接审计仍需部署。"
     },
     {
       "id": "T21-HARMONYOS-PROFILE",
       "severity": "high",
-      "description": "HarmonyOS system/chip 的真实 product、out_dir、runner、设备和 Gerrit 项目规则尚未绑定。"
+      "description": "HarmonyOS-system/chip 的真实 product、out_dir、root markers、runner、设备和 Gerrit 规则仍需由部署方通过受保护的 OHOS_ENV_PROFILE_FILE 绑定；代码已按缺失即硬失败处理，当前仓库也不是 OpenHarmony 产品根目录。"
     },
     {
-      "id": "RUNTIME-REGRESSION-BASELINE",
-      "severity": "medium",
-      "description": "现有 runtime 全套并发/串行运行均出现 4 个失败，但失败测试单独重跑通过；需在接入 Gateway 前判定测试隔离或环境问题。"
+      "id": "T22-CLOUD-RAG",
+      "severity": "high",
+      "description": "本地/远端受签名词法 RAG 和 OpenAI-compatible embedding/reranker 适配、元数据 freshness、命中 hash 核验已实现；生产 Qwen 模型服务、pgvector/增量分块、ACL 撤销、评测、配额和数据保留策略仍需部署。"
+    },
+    {
+      "id": "T24-DEVICE-ARTIFACT-GATE",
+      "severity": "high",
+      "description": "页面和远端 Gateway 能只读识别 hdc 目标、产物元数据及二进制 hash；受管部署、设备/产物绑定和正式 P6/P7 gate 仍需真实设备及 SSH authority。"
     },
     {
       "id": "CLOUD-PRODUCTION-SERVICES",
       "severity": "high",
-      "description": "当前只有免登录本地 console；持久云 API/数据库、Connector/WSS、真实 DSH scheduler、OpenCode/Claude 执行适配器、embedding/reranker、设备部署和三环境 AR P0-P8 仍未完成。"
+      "description": "公网可用的多租户身份、数据库、对象存储、OIDC/CSRF、WSS、密钥服务、监控备份和容量验收尚未完成；免登录模式只适用于可信内网。"
+    },
+    {
+      "id": "SECURITY-PROMPT-RETENTION",
+      "severity": "medium",
+      "description": "当前本地/远端 CodeAgent 执行器会在 finally 清理临时提示词，ProcessSupervisor 持久化参数摘要而非原文；上线前仍需对旧 run/备份做迁移审计，并部署异常终止后的定时清理。"
+    },
+    {
+      "id": "LEGACY-METRICS-RECONCILIATION",
+      "severity": "medium",
+      "description": "旧 run 缺少 wait_id/action 事件时会正确标记 partial/unknown，但尚未提供批量对账/迁移任务；旧数据不能直接与新 run 做精确等待和效率比较。"
     }
   ],
-  "next_action": "完成 T04.A：为官方 DSH Web profile 增加 AR observability 的标准 session/tool 投影，并绑定真实 codeagent、SSH workspace 和 provider usage。"
+  "next_action": "先在真实 Windows/WSL 与 SSH 代码主机完成 Connector 的 SSHFS 与 remote-tools 两种模式、Claude/OpenCode/Codex 实际版本和三类 environment profile 的端到端探测，并实际跑完一次 P0–P8；云端部署使用 platform/deploy/doctor 和 systemd 模板，完成反向代理 TLS、证书配对、外部密钥服务与宿主 cgroup 委派后再验证生产恢复。RAG 生产模型与向量库、设备和 P8 发布凭据按部署阶段交付。",
+  "repository_state": "working_tree_with_uncommitted_changes",
+  "last_reviewed_at": "2026-09-16",
+  "last_review_artifact": "products/dsh-cloud-implementation/review-20260915.md",
+  "implementation_snapshot": {
+    "verification": {
+      "platform_tests": "158/158 passed with host permissions",
+      "workspace_gateway_tests": "83/83 passed with host permissions",
+      "dsh_workflow_tests": "73/73 passed with host permissions",
+      "runtime_tests": "76 tests total: 72 passed, 4 skipped, 0 failed",
+      "python_environment_gate_tests": "572 passed with LIFECYCLE_SECRET_ROOT=/tmp/dsh-ar-test-secret",
+      "docs_build": "passed (chunk-size warning only)",
+      "lint_typecheck_build": "passed",
+      "remote_preflight_bundle_probe": "passed in targeted dsh-plugin and workspace-gateway regressions",
+      "remote_default_path_binding": "passed in remote-delivery-adapter and dsh-web-routes regressions",
+      "local_connector_sshfs": "passed in targeted WebSocket, connector-agent, connector-codeagent-executor (including real loopback HTTP upgrade), CodeAgent, plugin and route regressions",
+      "local_connector_remote_tools": "passed in targeted broker/stdio, Connector agent, OpenCode/Codex config and cancellation regressions; real loopback SSH remote_tools smoke passed with scope limits",
+      "connector_operation_journal": "passed targeted restart replay, active reconnect replay and unknown reconciliation regressions",
+      "connector_transport_security": "passed targeted Origin/TLS/mTLS, certificate fingerprint, pairing revoke/rotate and audit regressions",
+      "connector_replay_pending": "passed targeted same-workspace/device in-memory replay plus file-backed pending/completed operation rebind across hub restart",
+      "deployment_doctor": "passed: 13/13 tests; official DSH command/patch, Gateway profiles, Bearer/HMAC auth, source, gate, device and publish readiness are derived from host evidence",
+      "gateway_auth_doctor": "passed: 13/13 deployment doctor tests; DSH/Gateway Bearer and Authority HMAC EnvironmentFiles are checked for presence, minimum length and equality without exposing secret values",
+      "gateway_bearer_reference": "passed in targeted dsh-plugin regression; canonical cloud patch resolves the Bearer secret at runtime, requires tenant/workspace Authority binding and leaves unresolved references fail-closed",
+      "process_supervisor_cgroup": "passed targeted best_effort/required fail-closed tests; real cgroup delegation pending"
+    }
+  }
 }

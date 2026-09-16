@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "test_id": "official-dsh-web-and-ar-tools-20260916",
+  "status": "passed_with_scope_limits",
+  "entrypoint": "http://127.0.0.1:8792/",
+  "checks": [
+    {
+      "id": "official-index",
+      "status": "passed",
+      "observed": "The official @deepseek-ai/dsh Web profile served its upstream index on the temporary local instance; the AR Delivery client was loaded through that same page."
+    },
+    {
+      "id": "browser-token",
+      "status": "passed",
+      "observed": "The one-time browser URL exchanged for an HttpOnly session cookie with HTTP 303; no user login or API-key onboarding was required."
+    },
+    {
+      "id": "ar-overview",
+      "status": "passed",
+      "observed": "Authenticated /api/ohos-ar/overview returned HTTP 200 with source official-dsh-web, the dsh-ohos-delivery service, CodeAgent catalog, run list and scheduler projection."
+    },
+    {
+      "id": "codeagent-discovery",
+      "status": "passed",
+      "observed": "The live WSL catalog reported the official Claude provider and Codex CLI as available and dispatchable; OpenCode, Cursor, Trae and unconfigured custom CLI were reported missing or not configured."
+    },
+    {
+      "id": "p0-preflight",
+      "status": "passed",
+      "observed": "Authenticated preflight returned HTTP 200 and can_start_p0=false with explicit blockers for the incomplete OHOS source root, missing hdc, missing environment profile/publication target and the Node version warning."
+    }
+  ],
+  "scope_limits": [
+    "The temporary instance runs on WSL loopback with an initialized official DSH profile; it is not a public cloud deployment or a multi-tenant service.",
+    "This repository is not an OpenHarmony or HarmonyOS product root, so a real P0-P8 run is correctly blocked until a remote SSH project, profile and gate bundle are bound.",
+    "No SSHFS mount, remote-tools Connector session, hdc device, or credentialed P8 publication was available for this smoke."
+  ]
+}

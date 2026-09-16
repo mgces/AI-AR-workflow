@@ -1,0 +1,37 @@
+{
+  "url": "wss://dsh.example.com/v1/connect",
+  "token": "replace-with-a-rotated-connector-token",
+  "device_id": "windows-mgces-01",
+  "workspace_id": "workspace-1",
+  "remote_root": "/srv/project",
+  "workspace_access": "remote_tools",
+  "remote_tools": {
+    "enabled": true,
+    "allowed_profiles": ["codeagent.build", "codeagent.test"],
+    "mcp_config_format": "claude"
+  },
+  "ssh": {
+    "host": "code-host.example",
+    "username": "builder",
+    "port": 22,
+    "identity_file": "/home/user/.ssh/id_ed25519",
+    "known_hosts_file": "/home/user/.ssh/known_hosts"
+  },
+  "profiles": {
+    "codeagent.build": {
+      "command": "bash",
+      "args": ["-lc", "./build.sh --product {{product}}"],
+      "resource_lock": "workspace",
+      "capabilities": ["build_execution"]
+    },
+    "codeagent.test": {
+      "command": "bash",
+      "args": ["-lc", "./test/run.sh"],
+      "resource_lock": "workspace",
+      "capabilities": ["test_execution"]
+    }
+  },
+  "settings_file": "/home/user/.config/dsh/codeagent-settings.json",
+  "reconnect": true,
+  "reconnect_delay_ms": 1000
+}

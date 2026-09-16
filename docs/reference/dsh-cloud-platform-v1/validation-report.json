@@ -1,6 +1,6 @@
 {
   "kind": "design_document_validation",
-  "design_version": "1.1",
+  "design_version": "1.2",
   "status": "passed",
   "implementation_status": "in_progress",
   "files": 14,
@@ -22,36 +22,71 @@
     "harmonyos_explicit_parameters_valid": true
   },
   "errors": [],
-  "repository_head": "e65dd9a5afd9d736d261bceb95b60d4eda123cf1",
-  "scope": "Design documents, links, task DAG, schema examples and repository reference consistency plus the local platform contract, official DSH Web UI AR main-panel integration, authenticated same-port route slice, Claude Code provider composition, and persisted CodeAgent selection settings. The local-console API has local lexical RAG and read-only artifact/device probes for automated tests; no model RAG, cloud deployment, HarmonyOS profile, codeagent execution or cloud AR end-to-end test was run.",
+  "repository_head": "ac885b9",
+  "scope": "Design documents, links, task DAG, schema examples and repository reference consistency plus the local platform contract, official DSH Web UI AR main-panel integration, authenticated same-port route slice, Claude Code provider composition, persisted CodeAgent selection, local non-interactive CodeAgent execution, optional remote Claude/OpenCode/Codex and Python delivery adapters, persistent local/remote lexical or OpenAI-compatible semantic RAG with source freshness checks, read-only local/remote device and artifact debug surface with binary-safe hash projection, Workspace Gateway HMAC/JSONL/HTTP transport, binary artifact hashing, durable operation journal/resource locks, child-process MCP stdio reliability and ProcessSupervisor restart reaping/redacted inspection, auditable human wait intervals/effective elapsed time and idempotent scheduler failure projection, remote gate-bundle per-file/executable preflight and per-project path binding, local Connector SSHFS transport and remote-tools MCP broker with Claude/OpenCode/Codex native config adapters, WSS Origin/TLS/mTLS policy, durable pairing and file-backed Connector outbox replay. Cloud certificate termination, cryptographic key service, multi-tenant services, production pgvector/ACL worker, real CLI accounts, real HarmonyOS profiles and three-environment AR end-to-end acceptance were not run.",
   "implementation_snapshot": {
     "platform_contract_slice": "passed",
     "verified_substeps": [
       "T01.platform-foundation-package",
       "T02.environment-and-ar-manifest-contracts",
-      "T03.authority-envelope-fence",
+      "T03.authority-envelope-fence-and-gateway-journal",
       "LOCAL-MVP.no-login-local-console",
+      "LOCAL-EXECUTION.durable-local-codeagent-execution",
+      "LOCAL-CONNECTOR-SSHFS",
+      "LOCAL-CONNECTOR-REMOTE-TOOLS",
+      "T08-PROTOCOL-SLICE",
+      "REMOTE-EXECUTION.gateway-codeagent-and-python-adapter",
+      "RAG-DEBUG.local-remote-rag-and-artifact-device-surface",
+      "WORKSPACE-GATEWAY.jsonl-http-hmac-journal-locks",
+      "MCP-STDIO.mcp-stdio-child-transport",
       "DSH-OFFICIAL-WEB.official-dsh-web-ui-and-ar-tools",
       "DSH-OFFICIAL-WEB.CLAUDE-CODE-provider-loaded",
-      "DSH-OFFICIAL-WEB.CODEAGENT-settings"
+      "DSH-OFFICIAL-WEB.CODEAGENT-settings",
+      "OBSERVABILITY.stage-failure-and-scheduler-projection",
+      "OBSERVABILITY.human-wait-effective-time-and-failure-idempotency",
+      "LOCAL-CONNECTOR-DURABILITY-SECURITY.connector-journal-pairing-and-durable-outbox"
     ],
-    "live_host_probe": "not_run",
-    "cloud_service": "official_dsh_web_local_with_embedded_ar_workbench_and_configurable_codeagents"
+    "live_host_probe": "partial_current_wsl_only (see products/dsh-cloud-implementation/host-capability-probe-20260915.json)",
+    "cloud_service": "official_dsh_web_local_with_embedded_ar_workbench_and_optional_workspace_gateway",
+    "verification": {
+      "platform_tests": "158/158 tests passed with host permissions",
+      "workspace_gateway_tests": "83/83 tests passed with host permissions",
+      "dsh_workflow_tests": "73/73 tests passed with host permissions",
+      "runtime_tests": "76 tests total: 72 passed, 4 skipped, 0 failed",
+      "python_environment_gate_tests": "572 tests passed with LIFECYCLE_SECRET_ROOT=/tmp/dsh-ar-test-secret",
+      "docs_build": "passed (chunk-size warning only)",
+      "lint_typecheck_build": "passed",
+      "rag_semantic_adapter": "passed",
+      "supervisor_restart_reaping": "passed",
+      "human_wait_effective_time_and_failure_idempotency": "passed",
+      "remote_preflight_bundle_probe": "passed in targeted dsh-plugin and workspace-gateway regressions",
+      "local_connector_sshfs": "passed targeted connector/executor regressions, including real loopback HTTP upgrade -> local CodeAgent edit/usage/artifact projection (6/6)",
+      "local_connector_remote_ssh": "passed real loopback HTTP/WebSocket -> local Connector -> SSH remote_tools edit/profile/artifact smoke with a deterministic local CodeAgent; production OHOS build remains environment-gated",
+      "local_connector_remote_tools": "passed targeted MCP, connector, config-adapter and cancellation regressions",
+      "sshfs_config_binding_guard": "passed workspace-gateway/test/bin.test.js (8/8); unbound local directories are rejected in SSHFS mode",
+      "official_dsh_connector_smoke": "passed_with_scope_limits; official page, Connector WebSocket registration and live CodeAgent catalog verified, AR preflight correctly blocked by missing host prerequisites",
+      "remote_default_path_binding": "passed in remote-delivery-adapter and dsh-web-routes regressions",
+      "connector_durable_outbox": "passed targeted websocket restart/rebind, completed-result replay and operation-input conflict regressions",
+      "http_operation_replay_conflict_mapping": "passed; Workspace Gateway operation_replay_conflict is returned as HTTP 400"
+    }
   },
+  "last_review_artifact": "products/dsh-cloud-implementation/review-20260915.md",
   "sha256": {
     "acceptance.md": "0cc2221127ec8fc520f4a65ec3a90477683eac38ee8209ff222762a468fd6936",
-    "contracts.md": "fdbdd368f92b139b974dbe08f7b4a9801ebd9849d7d291c1c93bcd0ba4802c17",
+    "contracts.md": "0f0c838e38c7c80a400b140d4c4b09671e86ff5dfe741e648fc3642a1a62caa4",
     "examples/README.md": "1567955f2fe2b768efbdee6bb948666ff6c91fbccc182ae0c048d65d45b11007",
     "examples/ar-delivery.workflow.json": "e6d825ec0e08786af7009375e8b18fdd3db29a408aba52792335799d04527530",
-    "examples/environment-profiles.draft.json": "6c7b36bfdcc9df690f9b07882f97f2e1d081b34b28a18ba94c0b81da47ee5ff9",
+    "examples/environment-profiles.draft.json": "65e02dfeda97c90e22737330a32a467165d4b0ce6c9677fe5dfea228d0bce1db",
     "examples/operation-start.json": "10f974ff074a1dd2be54d842a455f265a6dfb9f335ca9e72efaeec4c89b7e7ef",
     "examples/operation-start.schema.json": "58a9124e3d58d7166fd2f1a302fc84c970a03c0030950285637a42a58fbd9e43",
     "examples/rag-profile.draft.json": "871b1025d49e29849dff6efd14e46329ebf1d777e30367aa42a8234003b5d5a4",
-    "examples/task-plan.json": "a6586094b6707af1af6a1d58a1cb06dc8696cce5e3ed4394c4dcc46dba04e9ae",
-    "implementation-tasks.md": "942e9f8478803ffdf20ed95ccf7f59c0205d3cf815813c51411526e0fedf7b06",
-    "index.md": "daf61a0394e3aadd7e1d388d0b80d29ac7b80b4888aa87abe5d4d6b3d0a6d1d0",
-    "dsh-integration.md": "ee1b07e2ab0aed91f4ef7e05298d0285cdaaadfe6211329c4d9386f5fd540339",
+    "examples/task-plan.json": "24b197ef4687445ec2365c72f3895f0811970f910a56da05c283289aa7dee445",
+    "implementation-tasks.md": "30d53db9174fe477ca6cdbc94b462272dea97f8042b2fe43afa2c017e6ec3e3d",
+    "index.md": "9b19d2a9159e6b0934c9b2dcc312db4eaa6292721e81a5a4a8dddcfbacdbe5f1",
+    "dsh-integration.md": "39a12b962cf79da60797968db693e7e0443e89e681390fd84c26a5f2de08267e",
     "model-handoff.md": "a182984e4a3ff3ec9502c8454841ab49c7db09cfea31d8061d341be8038b5ff2",
-    "rag-environment-debug.md": "9b8381d36a6a0b3620d93a0d26de57858041cf7fe9ebfed2b3339d27f938cf67"
-  }
+    "rag-environment-debug.md": "048ac44b94fb5672d4c1e24fa3838b3db1ff5704950ed565cb22c373c9627703"
+  },
+  "repository_state": "working_tree_with_uncommitted_changes",
+  "verification_commit": null
 }

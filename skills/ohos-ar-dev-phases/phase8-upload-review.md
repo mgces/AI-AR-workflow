@@ -7,8 +7,11 @@
 > - `openharmony`(默认):走本页描述的 **gitcode** 流程(`oh-gc` 建 PR + OpenHarmony CI 绿)。`--repo-slug`/`--issue` 必填。
 > - `harmonyos`:走 **Gerrit**(`git push refs/for/<base>` + Gerrit review 标签作 CI 绿等价物)。
 >   两道 review 门 + 人工 consent + head-SHA 绑定**照旧复用**;`--repo-slug`/`--issue` 不适用。
->   **Gerrit 后端目前为占位**:push/review 查询命令未填时门控**硬失败并打印"待填"提示**
->   (与编译命令占位同风格),须在 `gate_upload_ci.py` 的 gerrit 分支填入真实命令后才能上库。
+>   **Gerrit 后端由环境 profile 驱动**：`OHOS_ENV_PROFILE_FILE` 必须提供真实的
+>   `gerrit_remote`、`gerrit_project`、`gerrit_push_ref`、`gerrit_query_command` 和
+>   `gerrit_green_labels`（可选 `gerrit_change_url`）。门控使用 `shell=False` 执行这些
+>   argv；缺字段或命令不可启动会在不可逆动作前硬失败，并给出可恢复的
+>   `failure_class=gerrit_query_failed`/配置错误。不得把内部 Gerrit 地址或凭据写入仓库。
 
 ## 做事(调用现有技能)
 两道 code review 夹住上库,均要求**机器可读的零问题报告**(与 P7 同一 review 报告契约:

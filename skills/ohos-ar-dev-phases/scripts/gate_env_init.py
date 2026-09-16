@@ -4,18 +4,19 @@
 gate_env_init.py — Phase 0 (bootstrap) deterministic preflight.
 
 Probes that every capability the later phases depend on is actually present,
-then emits a signed PASS so advance.py can close phase 0. Nothing is hardcoded:
+then emits a signed PASS so advance.py can close phase 0. Environment-specific
+commands and markers are profile-driven; unresolved values fail closed. Nothing is hardcoded:
 the device serial is auto-detected from the single connected target (or taken
 from $DEVICE_SERIAL / --device-serial) and recorded into pipeline.json + evidence.
 
 Capabilities checked (HARD = blocks; SOFT = warns only):
-  build       HARD  ./build.sh present                         -> P2
+  build       HARD  profile-resolved build entry present       -> P2
   compile     HARD  a real build of a probe target succeeds    -> P2
               (default target: hiview_package; runs the FIRST init per repo,
                then a stability marker specs/.build-probe-ok lets later inits
                skip it. --force-build-probe recompiles; --skip-build-probe skips)
   git         HARD  git_dir is a git repo (records HEAD)        -> P1/P6
-  testfwk     HARD  test/testfwk/developer_test/start.sh        -> P3/P5
+  testfwk     HARD  profile-resolved test runner present       -> P3/P5
   hdc_bin     HARD  an hdc binary is resolvable                 -> P0/P4/P5
   device      HARD  a unique device is online (records serial)  -> P4/P5
   --- upload prereqs (SOFT; probed per environment upload backend) ---
@@ -43,7 +44,8 @@ DEVICE_SH = os.path.join(HERE, "lib", "device.sh")
 
 # Compile banners and the probe target are resolved per-environment via
 # environments.py (openharmony keeps the historical rk3568 banners/target;
-# harmonyos supplies its own). DEFAULT_PROBE_TARGET is the CLI fallback only.
+# harmonyos supplies its own through the external environment profile).
+# DEFAULT_PROBE_TARGET is the CLI fallback only.
 DEFAULT_PROBE_TARGET = "hiview_package"
 
 
@@ -84,7 +86,7 @@ def main():
                     help="GN target compiled to verify the build toolchain works "
                          "(default: %s). No user confirmation — runs automatically." % DEFAULT_PROBE_TARGET)
     ap.add_argument("--skip-build-probe", action="store_true",
-                    help="skip the real compile probe (only check build.sh exists)")
+                    help="skip the real compile probe (only check the profile build entry exists)")
     ap.add_argument("--force-build-probe", action="store_true",
                     help="re-run the compile probe even if this repo was already "
                          "verified (ignores the stability marker)")
@@ -101,7 +103,7 @@ def main():
     # --- source-root sanity: repo defaults to the directory Claude was opened in
     # ($OHOS_ROOT or cwd, set at `advance.py init`). The markers that make a
     # directory "look like a source root" are environment-specific and come from
-    # the profile (openharmony -> build.sh + test/testfwk/developer_test;
+    # the profile (OpenHarmony currently resolves build.sh + developer_test;
     # harmonyos -> whatever that environment's profile declares). A HarmonyOS
     # environment whose root_markers are still a placeholder hard-fails here with
     # a "configure environments.py" message rather than falling back to the OHOS
@@ -147,8 +149,22 @@ def main():
         sys.exit("PHASE 0 FAIL — %s" % msg)
 
     # repo-level stability marker: once a real compile probe has passed here, we
-    # don't recompile on every init (a full GN+ninja pass is heavy).
+    # don't recompile on every init (a full GN+ninja pass is heavy). The marker
+    # is bound to the resolved environment profile and probe target; a HarmonyOS
+    # profile change or a target change cannot inherit OpenHarmony evidence.
     probe_marker = os.path.join(repo, "specs", ".build-probe-ok")
+    profile_digest = envs.profile_digest(state)
+
+    def probe_marker_matches():
+        if not os.path.exists(probe_marker):
+            return False
+        try:
+            with open(probe_marker, "r", encoding="utf-8") as marker:
+                text = marker.read()
+            return ("profile=%s" % profile_digest in text
+                    and "target=%s" % args.probe_target in text)
+        except OSError:
+            return False
 
     # Pass an explicitly-pinned serial (if any) through to device.sh.
     env = dict(os.environ)
@@ -160,17 +176,34 @@ def main():
     def add(name, kind, ok, detail, phases):
         checks.append((name, kind, ok, detail, phases))
 
-    # build.sh exists
-    bs = os.path.join(repo, "build.sh")
-    bs_ok = os.path.exists(bs)
-    add("build", "HARD", bs_ok, bs, "P2")
+    # Build entry and test framework are environment-profile values. Keeping
+    # these checks here (rather than assuming build.sh/developer_test) is what
+    # lets HarmonyOS system/chip profiles take a different branch safely.
+    try:
+        build_entry = envs.build_entry(state)
+        build_path = os.path.join(repo, build_entry)
+        build_ok = os.path.isfile(build_path) and os.access(build_path, os.X_OK)
+        add("build", "HARD", build_ok, build_path, "P2")
+    except envs.EnvironmentNotConfigured as e:
+        build_entry = None
+        build_path = ""
+        build_ok = False
+        add("build", "HARD", False, str(e), "P2")
+    try:
+        test_framework_path = envs.test_framework_path(state)
+        test_framework = os.path.join(repo, test_framework_path)
+        testfwk_ok = os.path.isfile(test_framework) and os.access(test_framework, os.X_OK)
+        add("testfwk", "HARD", testfwk_ok, test_framework, "P3/P5")
+    except envs.EnvironmentNotConfigured as e:
+        testfwk_ok = False
+        add("testfwk", "HARD", False, str(e), "P3/P5")
 
     # real compile probe: build a known target to prove the toolchain works.
     # Runs automatically (no user confirmation), but only the FIRST time per repo:
     # once it passes, a stability marker lets later inits skip the heavy rebuild.
     probe_rel = "evidence/phase0/build_probe.log"
-    already_ok = os.path.exists(probe_marker)
-    do_probe = bs_ok and not args.skip_build_probe and (args.force_build_probe or not already_ok)
+    already_ok = probe_marker_matches()
+    do_probe = build_ok and not args.skip_build_probe and (args.force_build_probe or not already_ok)
     if do_probe:
         # Build command + success/error banners come from the environment profile.
         # If this environment's build template is still a placeholder (e.g. a
@@ -213,7 +246,7 @@ def main():
         if compile_ok:  # record stability so subsequent inits skip the rebuild
             os.makedirs(os.path.dirname(probe_marker), exist_ok=True)
             with open(probe_marker, "w", encoding="utf-8") as f:
-                f.write("verified target=%s\n" % args.probe_target)
+                f.write("profile=%s target=%s\n" % (profile_digest, args.probe_target))
     elif args.skip_build_probe:
         add("compile", "SOFT", True, "skipped (--skip-build-probe)", "P2")
     else:  # already_ok and not forced
@@ -226,10 +259,6 @@ def main():
     head = g.stdout.strip()
     add("git", "HARD", g.returncode == 0 and len(head) == 40,
         "%s @ %s" % (gdir, head or g.stderr.strip()), "P1/P6")
-
-    # test framework
-    dt = os.path.join(repo, "test/testfwk/developer_test/start.sh")
-    add("testfwk", "HARD", os.path.exists(dt), dt, "P3/P5")
 
     # hdc binary resolvable
     hb = dev("echo \"$HDC_BIN\"; [ -x \"$HDC_BIN\" ] || command -v \"$HDC_BIN\" >/dev/null", env=env)

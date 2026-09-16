@@ -1,0 +1,83 @@
+{
+  "codeagent.claude": {
+    "command": "claude",
+    "args": ["-p", "{{prompt}}", "--output-format", "stream-json", "--verbose", "--permission-mode", "acceptEdits", "--model", "{{model}}"],
+    "resource_lock": "workspace",
+    "capabilities": ["workspace_write", "usage_observable", "cancel_observable"]
+  },
+  "codeagent.opencode": {
+    "command": "opencode",
+    "args": ["run", "--format", "json", "--dir", "{{workspace_root}}", "--model", "{{model}}", "{{prompt}}"],
+    "resource_lock": "workspace",
+    "capabilities": ["workspace_write", "usage_observable", "cancel_observable"]
+  },
+  "codeagent.codex": {
+    "command": "codex",
+    "args": ["exec", "--json", "--sandbox", "workspace-write", "-C", "{{workspace_root}}", "--model", "{{model}}", "{{prompt}}"],
+    "resource_lock": "workspace",
+    "capabilities": ["workspace_write", "usage_observable", "cancel_observable"]
+  },
+  "codeagent.custom": {
+    "command": "my-codeagent",
+    "args": ["--workspace", "{{workspace_root}}", "--prompt-file", "{{prompt_file}}", "--model", "{{model}}"],
+    "resource_lock": "workspace",
+    "capabilities": ["workspace_write", "usage_observable", "cancel_observable"]
+  },
+  "ar.delivery.init": {
+    "command": "/usr/local/bin/dsh-ar-delivery",
+    "args": [
+      "init", "--repo-root", "{{repo_root}}", "--run-id", "{{run_id}}",
+      "--pipeline-dir", "{{pipeline_dir}}",
+      "--scripts-root", "{{scripts_root}}", "--bridge-path", "{{bridge_path}}",
+      "--environment", "{{environment}}", "--git-dir", "{{git_dir}}",
+      "--build-target", "{{build_target}}", "--part", "{{part}}",
+      "--device-serial", "{{device_serial}}", "--device-type", "{{device_type}}",
+      "--component-type", "{{component_type}}", "--base-commit", "{{base_commit}}",
+      "--agent", "{{agent}}", "--model", "{{model}}", "--confirm-defaults", "{{confirm_defaults}}"
+    ],
+    "resource_lock": "workspace",
+    "capabilities": ["workspace_write", "build_execution", "device_access", "network_publish"]
+  },
+  "ar.delivery.inspect": {
+    "command": "/usr/local/bin/dsh-ar-delivery",
+    "args": ["inspect", "--repo-root", "{{repo_root}}", "--scripts-root", "{{scripts_root}}", "--bridge-path", "{{bridge_path}}", "--pipeline-dir", "{{pipeline_dir}}"],
+    "resource_lock": "workspace",
+    "capabilities": ["workspace_write"]
+  },
+  "ar.delivery.validate": {
+    "command": "/usr/local/bin/dsh-ar-delivery",
+    "args": [
+      "validate", "--repo-root", "{{repo_root}}", "--scripts-root", "{{scripts_root}}", "--bridge-path", "{{bridge_path}}", "--pipeline-dir", "{{pipeline_dir}}",
+      "--phase", "{{phase}}", "--upload-precheck", "{{upload_precheck}}"
+    ],
+    "resource_lock": "workspace",
+    "capabilities": ["workspace_write"]
+  },
+  "ar.delivery.advance": {
+    "command": "/usr/local/bin/dsh-ar-delivery",
+    "args": ["advance", "--repo-root", "{{repo_root}}", "--scripts-root", "{{scripts_root}}", "--bridge-path", "{{bridge_path}}", "--pipeline-dir", "{{pipeline_dir}}", "--phase", "{{phase}}"],
+    "resource_lock": "workspace",
+    "capabilities": ["workspace_write"]
+  },
+  "ar.delivery.consent": {
+    "command": "/usr/local/bin/dsh-ar-delivery",
+    "args": [
+      "consent", "--repo-root", "{{repo_root}}", "--scripts-root", "{{scripts_root}}", "--bridge-path", "{{bridge_path}}", "--pipeline-dir", "{{pipeline_dir}}",
+      "--phase", "{{phase}}", "--token", "{{token}}"
+    ],
+    "resource_lock": "workspace",
+    "capabilities": ["workspace_write"]
+  },
+  "ar.delivery.failure_snapshot": {
+    "command": "/usr/local/bin/dsh-ar-delivery",
+    "args": ["failure-snapshot", "--repo-root", "{{repo_root}}", "--scripts-root", "{{scripts_root}}", "--bridge-path", "{{bridge_path}}", "--pipeline-dir", "{{pipeline_dir}}"],
+    "resource_lock": "workspace",
+    "capabilities": ["workspace_write"]
+  },
+  "debug.device_probe": {
+    "command": "/usr/local/bin/dsh-device-probe",
+    "args": [],
+    "resource_lock": "device",
+    "capabilities": ["device_access"]
+  }
+}

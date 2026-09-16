@@ -131,14 +131,26 @@ export class PythonDeliveryAdapter {
   }
 
   async #readAr(raw, { allowExisting = false } = {}) {
-    if (typeof raw.ar_text === 'string' && raw.ar_text.length > 0) return raw.ar_text;
+    if (typeof raw.ar_text === 'string') {
+      if (raw.ar_text.trim() === '') {
+        throw new ProtocolError('ar_input_empty', 'AR input text must contain non-whitespace content.');
+      }
+      return raw.ar_text;
+    }
     const source = raw.ar_path ?? raw.input_ref;
     if (typeof source === 'string' && isAbsolute(source)) {
-      return readFile(source, 'utf8').catch((error) => {
+      try {
+        const content = await readFile(source, 'utf8');
+        if (content.trim() === '') {
+          throw new ProtocolError('ar_input_empty', `AR input file is empty: ${source}`);
+        }
+        return content;
+      } catch (error) {
+        if (error instanceof ProtocolError) throw error;
         throw new ProtocolError('ar_input_unreadable', `Cannot read AR input: ${source}`, {
           cause: error.message,
         });
-      });
+      }
     }
     invariant(allowExisting, 'invalid_input',
       'New delivery runs require absolute ar_path/input_ref or non-empty ar_text.');

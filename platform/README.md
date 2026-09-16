@@ -1,16 +1,20 @@
 # DSH platform foundation and local console
 
-这是 DSH 云端编排平台的第一段可运行实现，对应方案中的 T01/T02 基础切片，并包含一个免登录本地控制台。它先把会影响所有服务的契约固定下来：
+这是 DSH 云端编排平台的可运行基础。它把环境、workflow、Authority、调度、CodeAgent、RAG、设备/产物和 AR 运行时接到同一条可审计链路：模型或 CLI 的文本不会直接改变阶段，只有真实 Python gate、`advance.py` 和人工 consent 能推进 P0–P8。
 
-- `packages/contracts`：OpenHarmony、HarmonyOS-system、HarmonyOS-chip 的环境 profile 校验、确定性摘要、环境探测和人工确认绑定。
-- `packages/workflow-registry`：workflow manifest 的摘要、签名元数据、阶段 DAG、路径安全和 AR P0–P8/P8-precheck/P8-publish 固定约束。
-- `apps/local-console`：绑定 WSL `127.0.0.1:8787` 的可运行入口，持久化 run/阶段/人工输入，提供 Agent 版本探测、代码 RAG 词法检索、产物识别和 hdc 只读探测。
+## 已可运行的能力
 
-当前控制台可以运行真实的本地 P0 环境预检并保留可审计的阻塞产物；它不把版本探测当作 Agent 调度，不把扩展名识别当作可部署产物，也不产生真实 gate/PASS 证据。草案 manifest 的 `digest: null`、未锁定 source lock 和未完成的 HarmonyOS profile 会被安装校验拒绝。
+- `packages/contracts` 校验 OpenHarmony、HarmonyOS-system、HarmonyOS-chip profile，并生成确定性摘要。
+- `packages/workflow-registry` 校验 AR manifest、阶段 DAG、路径安全和 P8 发布门。
+- `apps/local-console` 在 WSL `127.0.0.1:8787` 提供免登录本地入口；SQLite 持久化运行、任务、租约、事件、审核、人工输入、失败原因和 usage。
+- 本地 fallback 的 `GET/POST /api/ar/preflight` 会在真实 scheduler 创建 run 前验证代码根可写、运行时脚本、环境分支和 CodeAgent；预检失败不会创建 run。
+- 本地调度器实际启动非交互 Claude Code、OpenCode、Codex CLI；自定义 argv Agent 可配置，Cursor/Trae 在没有 adapter 时明确阻止派发。
+- RAG 索引会保存到工作区 `.dsh/rag-index.json`，源码变化后标为 stale；官方面板和 DSH 工具可以保存 provider、embedding/reranker 模型与 endpoint 配置。宿主注入 `DSH_RAG_ENDPOINT` 后通过 OpenAI-compatible `/embeddings` 和 `/rerank` 执行语义检索，否则明确使用词法 fallback；凭据从宿主 secret 读取，不写入 profile。
+- 设备 `hdc` 目标和 `.hap/.hsp/.so/.ko/.elf/.img/.bin` 产物识别已经接到状态 API；识别结果不替代真实设备 gate。
+- `workspace-gateway` 提供 Authority envelope、受限 SSH Connector、JSONL Gateway、HTTP Gateway 和云端 HTTP Client，可作为用户电脑/WSL 的代码端接入层。
+- `deploy/doctor.mjs`、systemd 单元和环境模板提供云主机安装前的 P0/P8 readiness 检查；Gateway/本地 DSH 的 ProcessSupervisor 可按环境变量启用 cgroup v2 operation 隔离。
 
-T00 的当前探测快照在 `compatibility/`：本机 Node 22 不满足 Node 24 基线，OpenCode/DSH CLI 未发现，Claude Code 探测被 WSL 启动错误中断；因此 capability matrix 保持 `unknown`，不能作为真实宿主验收结果。
-
-在 `platform/` 目录运行：
+## 本地运行
 
 ```bash
 npm ci --ignore-scripts
@@ -19,8 +23,21 @@ npm run lint
 npm run typecheck
 npm run build
 npm run console
+# 云主机部署前检查（JSON；阻断时退出码 2）
+npm run deploy:doctor -- --repo-root /srv/dsh/workspaces/default/project --environment openharmony --human
 ```
 
-运行 `npm run console` 后从 Windows 浏览器打开 `http://localhost:8787`，无需登录。界面可加载和校验 AR 草案、启动 P0 预检、查看阶段事件/产物、记录人工输入、建立本地词法 RAG 索引并检索代码；RAG 页面会标出当前是本地 fallback，未配置 embedding/reranker 模型。
+从 Windows 打开 `http://localhost:8787`。常用检查：
 
-Node 24 是设计基线；如果本机低于 Node 24，命令可能出现 engine warning，不能把它当作 T00 版本兼容性证据。真实 DSH/codeagent 执行、持久 SSH 服务、远端 Authority RPC、Connector、模型 RAG、设备部署和多用户云服务仍按实施任务单继续推进。当前运行入口属于本机可用的 local MVP，不应作为生产云服务或三环境 AR 验收结论。
+```bash
+curl http://127.0.0.1:8787/healthz
+curl http://127.0.0.1:8787/api/status
+```
+
+## 官方 DSH
+
+生产用户入口是官方 DSH Web profile；`dsh-workflow/cordis.patch.yml` 把 AR Delivery 面板挂进官方 sidebar/main，不再另开一个产品页面。面板提供 CodeAgent 选择、OpenHarmony/HarmonyOS 分支选择、P0–P8 启动、阶段耗时、人工审核、完整审核产物、事件、失败原因、RAG、设备/产物调试和 token usage 展示。
+
+## 真实环境边界
+
+当前仓库自身不是 OpenHarmony 或 HarmonyOS 产品根目录。要跑通完整 P0–P8，必须绑定真实源码、profile、工具链、设备、`hdc`、GitCode/Gerrit 和发布凭据；缺少其中任何一项，页面会显示 `profile_incomplete` 或确定性阻塞。公网多租户还需要在反向代理/身份层补 OIDC、租户数据库和对象存储；本地免登录模式只适用于受信内网。

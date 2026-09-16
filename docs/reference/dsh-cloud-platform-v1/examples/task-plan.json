@@ -2,7 +2,7 @@
   "schema_version": 1,
   "kind": "implementation_plan",
   "status": "in_progress",
-  "design_version": "1.1",
+  "design_version": "1.2",
   "baseline_commit": "e65dd9a5afd9d736d261bceb95b60d4eda123cf1",
   "tasks": [
     {
@@ -154,7 +154,7 @@
         "connector/src/adapters/opencode/",
         "connector/test/opencode/"
       ],
-      "steps": "以 T00 验证版本为准启动受认证 loopback server，独立 run session/config；调用实际 OpenAPI 的会话/消息/事件/权限接口。只开放 remote MCP 工作区工具和必要交互；模型来源取真实会话。映射文本/工具/permission/question/usage/result，保留 provider IDs 和 raw usage。实现 cancel 与 checkpoint，未验证 resume 返回明确 unsupported。记录所有嵌套 session 或禁止未托管子代理。",
+      "steps": "当前仓库已提供 OpenCode argv 适配和 remote-tools MCP 配置生成（OPENCODE_CONFIG、官方 flat mcp.dsh_remote 形态及显式 v2 兼容开关），并通过 fixture/协议回归；剩余验收以 T00 固定版本为准启动受认证 loopback server，独立 run session/config，调用实际 OpenAPI 的会话/消息/事件/权限接口。只开放 remote MCP 工作区工具和必要交互；模型来源取真实会话。映射文本/工具/permission/question/usage/result，保留 provider IDs 和 raw usage。实现 cancel 与 checkpoint，未验证 resume 返回明确 unsupported。记录所有嵌套 session 或禁止未托管子代理。",
       "completion": "真实本地 OpenCode 完成一次远端修改与命令；UI 权限拒绝确实阻止动作；重复事件不双算，服务端取消后进程/远端操作均可对账。",
       "acceptance_ids": [
         "AC02",
@@ -176,7 +176,7 @@
         "connector/src/adapters/claude-code/",
         "connector/test/claude-code/"
       ],
-      "steps": "用本地 Agent SDK 驱动用户安装，显式指定工具、MCP 与技能来源。实现 canUseTool/用户追问的结构化等待与回应；不给 bypassPermissions。按 T00 固定版本采集 message/result usage，记录 coverage，不能同时加 parent/child 汇总。实现启动、取消、进程树监督、resume/checkpoint 与本地模型标识读取。兼容目录权限但不让 codeagent 读 authority 密钥。",
+      "steps": "当前仓库已提供 Claude Code argv 适配、--strict-mcp-config --mcp-config 加载和 remote-tools 工具限制，并通过 fixture/协议回归；剩余验收用本地 Agent SDK 驱动用户安装，显式指定工具、MCP 与技能来源。实现 canUseTool/用户追问的结构化等待与回应；不给 bypassPermissions。按 T00 固定版本采集 message/result usage，记录 coverage，不能同时加 parent/child 汇总。实现启动、取消、进程树监督、resume/checkpoint 与本地模型标识读取。兼容目录权限但不让 codeagent 读 authority 密钥。",
       "completion": "同 OpenCode 的统一适配器契约测试加真实调用；中断时缺失 output 计量标 partial；权限请求不能被模型自答。",
       "acceptance_ids": [
         "AC02",

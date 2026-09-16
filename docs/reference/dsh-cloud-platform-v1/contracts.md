@@ -128,6 +128,43 @@ input_artifact_id, project_id, environment_profile_digest, environment, componen
 服务端从已确认project取得environment/profile；请求体冗余字段冲突返回409，缺确认拒绝启动。可选rag_profile_id只选已授权检索范围，不改变工程身份。
 DSH模型通过model_profile_id配置；embedding/reranker由独立rag_model_profile配置，不直接提交API key。
 
+官方 DSH Web 的 AR 扩展在同一会话下提供启动前检查接口：
+`GET/POST /api/ohos-ar/preflight`。它不是新的状态权威，只返回当前宿主和工作区的探测结果，供页面
+区分“可派发 P0”和“前置上具备完成 P8 的条件”。响应至少包含：
+
+```typescript
+type DeliveryPreflight = {
+  schema_version: 1;
+  generated_at: string;
+  status: "blocked" | "ready_for_p0" | "ready_for_p8";
+  can_start_p0: boolean;
+  can_complete_p8: boolean;
+  checks: Array<{
+    id: string;
+    label: string;
+    status: "pass" | "pending" | "warn" | "blocked" | "failed";
+    required_for: string[];
+    reason?: string | null;
+  }>;
+  execution_plan: {
+    workspace_mode: "local" | "workspace_gateway";
+    source_root: string | null;
+    codeagent_host: "dsh_host" | "ssh_code_host" | string;
+    agent_load_strategy: "dsh_provider" | "local_cli_path" | "gateway_registered_profile" | "unresolved";
+    agent_profile_id: string | null;
+    agent_auth_source: string | null;
+    edit_strategy: "local_cli" | "remote_codeagent_profile";
+    local_cli_remote_edit: "not_applicable" | "unsupported" | "avoided_by_remote_execution";
+    gate_execution: string;
+    artifact_location: string;
+  };
+};
+```
+
+`ready_for_p0` 只表示调度器可以创建并派发 P0；`pending` 的环境 profile、设备、发布目标或凭据不会
+被解释成 P8 通过。真实 gate/consent/发布回执仍必须携带 run、workspace、revision、lease 和
+`environment_profile_digest`，云端不能用 preflight 结果直接推进阶段。
+
 POST 返回 202 + operation_id 表示意图已接受，不表示完成或 gate PASS。
 正常审核等待 200/202 + awaiting_review；409 表示版本/幂等冲突；422 表示能力/输入不满足；
 423 表示资源隔离/锁占用；503 表示执行端暂不可达。
@@ -383,6 +420,10 @@ effective_ms = wall_ms − human_wait_ms。
 
 例：P4 打开 10:00、结束 10:10，两次人工等待 10:02–10:05 与 10:04–10:06。
 墙钟 600 s、等待并集 240 s、有效 360 s，不能扣 300 s。
+运行投影分别返回 `wall_elapsed_ms`、`human_wait_ms`、`effective_elapsed_ms` 和
+`human_wait_intervals`；阶段投影返回 `wall_ms`、`human_wait_ms`、`effective_elapsed_ms`。
+无法由旧事件闭合的等待区间保留 `status=unknown` 并计入 `human_wait_unknown_count`，不作零时长推断。
+存在此类区间时 `human_wait_data_quality=partial`，相应有效耗时保持未知；没有区间时质量为 `complete`。
 旧 schema v2 时间作为 legacy view 保留；新增 ledger 以权威阶段事件划分 epoch，
 同一 run 有旧采集和新采集时通过 source ownership 选择唯一来源，不相加。
 

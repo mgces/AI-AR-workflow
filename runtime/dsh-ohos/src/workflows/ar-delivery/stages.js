@@ -1,4 +1,5 @@
 import { ProtocolError } from '../../core/errors.js';
+import { publicationInstructions } from './publication.js';
 
 export const DELIVERY_STAGES = Object.freeze([
   stage('P0', 0, 'environment-analyst', 'gate_env_init.py', {
@@ -93,7 +94,7 @@ export function deliveryPosition(pythonState) {
   return { complete: false, stage, status: 'ready_to_advance' };
 }
 
-export function deliveryTaskInstructions(key, pipelineDir) {
+export function deliveryTaskInstructions(key, pipelineDir, publication = null) {
   const current = deliveryStage(key);
   const p8Rule = key === 'P8-precheck'
     ? 'Do not pass --allow-push. This task must stop after producing the signed consent precheck.'
@@ -107,6 +108,7 @@ export function deliveryTaskInstructions(key, pipelineDir) {
     'Submit only after the gate has written its signed evidence. Include the relevant evidence and report paths as artifact_refs.',
     'A DSH submission is not PASS. The parent validator will verify the Python evidence and advance the authoritative pipeline.',
     p8Rule,
+    ...(current.phaseNumber === 8 ? publicationInstructions(key, pipelineDir, publication) : []),
   ].filter(Boolean);
 }
 

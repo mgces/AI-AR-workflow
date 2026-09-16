@@ -1,11 +1,11 @@
-# 可逐项执行的实施任务单 v1.1
+# 可逐项执行的实施任务单 v1.2
 
 返回 [总方案](index.md)。顺序以 [task-plan.json](examples/task-plan.json) 为准，完整接口见 [contracts.md](contracts.md) 与 [RAG/环境/调试扩展](rag-environment-debug.md)。共26个任务，T21–T25按依赖插入执行，不能在T20交接后才开始。
 
 这些路径、脚本和测试名是“需要实现”的目标，除明确标为现有的命令外不能假定已存在。
-一期应用仍未完成；T01/T02 已有 `platform/` 本地契约切片，本文是交给实施模型的任务契约和后续实现边界。实时进度见 `products/dsh-cloud-implementation/implementation-status.json`。
+一期应用的本地/私有内网切片已落地；本文仍是交给实施模型的任务契约和后续生产化边界。实时进度见 `products/dsh-cloud-implementation/implementation-status.json`。
 
-当前已完成的本地子步：T01 的 platform 开发入口、T02 的 environment/profile 与 AR manifest 校验、T03.A 的 Gateway Authority envelope 世代护栏，以及一个免登录 local console MVP（run/阶段/事件/人工输入、P0 环境预检、词法 RAG 和只读产物/设备探测）。它们只证明本地切片测试通过；T00 真实宿主执行、T03.B 真实 RPC、签名验签和其后的云/Connector/Gateway 功能仍未完成。
+当前已完成的本地子步：T01 的 platform 开发入口、T02 的 environment/profile 与 AR manifest 校验、T03.A 的 Gateway Authority envelope 世代护栏、免登录官方 DSH AR 页面（run/阶段/事件/人工输入、P0 环境预检、词法 RAG 和只读产物/设备探测）、Connector WSS/SSHFS 路径，以及 Connector remote-tools MCP 协议切片。Connector 还提供本地 operation journal、Origin/TLS/mTLS 策略、配对凭据撤销/轮换和可选断线命令回放。它们证明本地定向契约测试通过；T00 真实宿主执行、T03.B 真实 RPC、生产密钥服务、多租户、真实 CLI 账号和三环境 AR 验收仍按状态文件标记为待完成。
 
 ## 统一执行规则
 
@@ -185,7 +185,7 @@ flowchart LR
 - `connector/src/adapters/opencode/`
 - `connector/test/opencode/`
 
-实施步骤：以 T00 验证版本为准启动受认证 loopback server，独立 run session/config；调用实际 OpenAPI 的会话/消息/事件/权限接口。只开放 remote MCP 工作区工具和必要交互；模型来源取真实会话。映射文本/工具/permission/question/usage/result，保留 provider IDs 和 raw usage。实现 cancel 与 checkpoint，未验证 resume 返回明确 unsupported。记录所有嵌套 session 或禁止未托管子代理。
+实施步骤：当前代码已提供 OpenCode argv 适配和 remote-tools MCP 配置生成（`OPENCODE_CONFIG`、官方 flat `mcp.dsh_remote` 形态及显式 v2 兼容开关），并通过 fixture/协议测试；本任务剩余部分以 T00 固定版本为准启动受认证 loopback server，独立 run session/config，调用实际 OpenAPI 的会话/消息/事件/权限接口。只开放 remote MCP 工作区工具和必要交互；模型来源取真实会话。映射文本/工具/permission/question/usage/result，保留 provider IDs 和 raw usage。实现 cancel 与 checkpoint，未验证 resume 返回明确 unsupported。记录所有嵌套 session 或禁止未托管子代理。
 
 完成条件：真实本地 OpenCode 完成一次远端修改与命令；UI 权限拒绝确实阻止动作；重复事件不双算，服务端取消后进程/远端操作均可对账。
 
@@ -200,7 +200,7 @@ flowchart LR
 - `connector/src/adapters/claude-code/`
 - `connector/test/claude-code/`
 
-实施步骤：用本地 Agent SDK 驱动用户安装，显式指定工具、MCP 与技能来源。实现 canUseTool/用户追问的结构化等待与回应；不给 bypassPermissions。按 T00 固定版本采集 message/result usage，记录 coverage，不能同时加 parent/child 汇总。实现启动、取消、进程树监督、resume/checkpoint 与本地模型标识读取。兼容目录权限但不让 codeagent 读 authority 密钥。
+实施步骤：当前代码已提供 Claude Code argv 适配、`--strict-mcp-config --mcp-config` 加载及 remote-tools 工具限制，并通过 fixture/协议测试；本任务剩余部分用本地 Agent SDK 驱动用户安装，显式指定工具、MCP 与技能来源。实现 canUseTool/用户追问的结构化等待与回应；不给 bypassPermissions。按 T00 固定版本采集 message/result usage，记录 coverage，不能同时加 parent/child 汇总。实现启动、取消、进程树监督、resume/checkpoint 与本地模型标识读取。兼容目录权限但不让 codeagent 读 authority 密钥。
 
 完成条件：同 OpenCode 的统一适配器契约测试加真实调用；中断时缺失 output 计量标 partial；权限请求不能被模型自答。
 
@@ -436,7 +436,7 @@ flowchart LR
 - `workspace-gateway/install/`
 - `docs/operations/dsh-cloud/`
 
-实施步骤：生成固定 digest Compose、环境变量模板、OIDC/TLS/对象存储配置与健康检查。Linux/WSL2 用户服务、SSH 端 authority/worker/publisher 分权安装脚本；先 dry-run 输出路径/权限，安装需明确目标。实现 drain/升级/回滚与协议兼容检查。编写从零部署、添加用户/本地连接、绑定 SSH 的连续手册。secret 通过文件/secret store 注入，不写 git。 部署RAG worker/模型服务/pgvector并限额；提供三个环境profile部署与验证配置，不能填虚假HarmonyOS值。
+实施步骤：生成固定 digest Compose、环境变量模板、OIDC/TLS/对象存储配置与健康检查。当前版本已提供 `platform/deploy/doctor.mjs`、systemd 单元、环境模板和 `dsh-doctor` 包装器；doctor 先输出 P0/P8 阻断与路径/权限证据。Linux/WSL2 用户服务、SSH 端 authority/worker/publisher 分权安装脚本；先 dry-run 输出路径/权限，安装需明确目标。实现 drain/升级/回滚与协议兼容检查。编写从零部署、添加用户/本地连接、绑定 SSH 的连续手册。secret 通过文件/secret store 注入，不写 git。部署RAG worker/模型服务/pgvector并限额；提供三个环境profile部署与验证配置，不能填虚假HarmonyOS值。systemd/cgroup 模板必须在真实云主机授予委派后才能把 best_effort 切为 required。
 
 完成条件：新云节点可按手册安装；仅 443 公网暴露；新用户无需云管理员 SSH 权限；版本不兼容拒绝新 run，旧 run 不被无提示升级。
 

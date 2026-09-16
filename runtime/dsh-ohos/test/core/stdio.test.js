@@ -39,7 +39,10 @@ test('stdio entrypoint completes an MCP initialize and tools/list exchange', asy
     child.stdin.end();
     const exitCode = await new Promise((resolve, reject) => {
       child.once('error', reject);
-      child.once('exit', resolve);
+      // Wait for `close`, not only `exit`: the MCP response and diagnostic
+      // streams are piped, so `exit` can fire before their final chunks are
+      // delivered to the parent assertions.
+      child.once('close', resolve);
     });
     assert.equal(exitCode, 0, stderr);
     const responses = stdout.trim().split(/\r?\n/).map(JSON.parse);

@@ -3,9 +3,14 @@ import { digest, expectId, expectInteger, expectObject, expectString, expectStri
   optionalString, parseJson } from '../../core/validation.js';
 import { deliveryPosition, deliveryStage, deliveryTaskInstructions, firstDeliveryStage,
   nextDeliveryStage } from './stages.js';
+import { normalizePublication } from './publication.js';
 import { resourcesOverlap } from '../../core/resource-identity.js';
 
 const EXCLUSIVE_CAPABILITIES = new Set(['workspace_write', 'build_execution', 'device_access', 'network_publish']);
+
+function consentWaitId(runId, taskId, phase, revision) {
+  return `wait-${digest({ runId, taskId, phase, revision }).slice(7, 39)}`;
+}
 
 export class DeliveryWorkflow {
   constructor({ store, taskController, adapter = null, failureHints, clock = () => new Date() }) {
@@ -55,8 +60,10 @@ export class DeliveryWorkflow {
   }
 
   taskContext(row) {
+    const config = parseJson(row.config_json ?? '{}', 'runs.config_json');
+    const publication = config.publication ?? null;
     return { constraints: [
-      ...(row.pipeline_dir ? deliveryTaskInstructions(row.phase, row.pipeline_dir) : []),
+      ...(row.pipeline_dir ? deliveryTaskInstructions(row.phase, row.pipeline_dir, publication) : []),
       'Before submit or release, stop and reap every subprocess you started. An expired lease does not prove that a build stopped.',
       'If your lease expires, stop work and release with the original credential; include all partial artifacts. Never start a second writer to recover an unknown process.',
     ] };
@@ -94,6 +101,7 @@ export class DeliveryWorkflow {
       model: optionalString(args.model, 'model', { max: 256 }),
       confirm_defaults: args.confirm_defaults === true,
       skills,
+      publication: normalizePublication(args.publication),
     };
     invariant(payload.pipeline_dir || payload.repo_root, 'invalid_input',
       'pipeline_dir or repo_root is required.');
@@ -143,6 +151,27 @@ export class DeliveryWorkflow {
       });
     }
     const internalKey = `delivery-${digest({ runId, payloadDigest }).slice(7, 31)}`;
+    // `advance.py` serializes an omitted optional CLI value as an empty string
+    // in some legacy pipeline states.  Treat that representation as absent at
+    // the protocol boundary; passing it through to TaskController would make
+    // an otherwise valid run fail `optionalString(device_ref)` validation.
+    const initializedDevice = typeof initialized.device_serial === 'string'
+      && initialized.device_serial.trim() !== '' ? initialized.device_serial : null;
+    // Keep the immutable branch choice in the controller row as well as in
+    // Python's signed pipeline.json.  Status/list APIs do not perform a
+    // remote inspect on every poll, so without this projection the DSH page
+    // could show only a generic environment label and lose the HarmonyOS
+    // system/chip distinction after a restart.
+    const runConfig = {
+      ...(payload.publication ? { publication: payload.publication } : {}),
+      environment: initialized.environment ?? payload.environment ?? null,
+      component_type: initialized.component_type ?? payload.component_type ?? null,
+      device_type: initialized.device_type ?? payload.device_type ?? null,
+      environment_profile_digest: initialized.environment_profile_digest ?? null,
+      product: initialized.product ?? null,
+      agent: payload.agent ?? null,
+      model: payload.model ?? null,
+    };
     const result = this.taskController.createRun({
       workflow: 'delivery',
       run_id: runId,
@@ -151,8 +180,9 @@ export class DeliveryWorkflow {
       environment_profile: initialized.environment ?? payload.environment ?? undefined,
       pipeline_dir: pipelineDir,
       workspace_root: initialized.repo_root ?? payload.repo_root ?? undefined,
-      device_ref: initialized.device_serial ?? payload.device_serial ?? undefined,
+      device_ref: initializedDevice ?? payload.device_serial ?? undefined,
       agent: payload.agent,
+      config: runConfig,
       initial_phase: aligned.position.stage?.key,
       initial_status: aligned.position.status === 'awaiting_consent'
         ? 'awaiting_consent' : 'queued',
@@ -387,6 +417,14 @@ export class DeliveryWorkflow {
       invariant(task?.status === 'validation_running', 'external_state_unknown',
         `Task ${taskId} changed while Python validation was running.`);
       const now = this.#now();
+      this.store.event(runId, 'gate.passed', {
+        task_id: taskId,
+        phase: snapshot.stage.key,
+        revision: task.revision,
+        validation: snapshot.stage.validation,
+        evidence_entry_id: pythonResult?.entry?.entry_id ?? null,
+        verdict: pythonResult?.entry?.verdict ?? 'PASS',
+      }, now);
       let result;
       if (snapshot.stage.consent) {
         this.store.db.prepare(`UPDATE tasks SET status = 'awaiting_consent', updated_at = ? WHERE id = ?`)
@@ -398,6 +436,8 @@ export class DeliveryWorkflow {
         this.store.event(runId, 'task.awaiting_consent', {
           task_id: taskId,
           phase: snapshot.stage.key,
+          revision: task.revision,
+          wait_id: consentWaitId(runId, taskId, snapshot.stage.key, task.revision),
           evidence: pythonResult.entry ?? null,
         }, now);
         result = {
@@ -426,8 +466,10 @@ export class DeliveryWorkflow {
     const taskId = expectId(args.task_id, 'task_id');
     const phase = expectInteger(args.phase, 'phase', { min: 0, max: 8 });
     const token = expectString(args.token, 'token', { max: 1024 });
+    const actor = args.actor === undefined
+      ? principal : expectString(args.actor, 'actor', { max: 256 });
     const idempotencyKey = expectId(args.idempotency_key, 'idempotency_key');
-    const payload = { runId, taskId, phase, token };
+    const payload = { runId, taskId, phase, token, actor };
     const payloadDigest = digest(payload);
     const previous = this.store.getOperation(principal, 'consent_delivery',
       idempotencyKey, payloadDigest);
@@ -471,8 +513,80 @@ export class DeliveryWorkflow {
       const result = this.#acceptDeliveryTask(snapshot.run, task, snapshot.stage, now, {
         consent_recorded: true,
       });
+      this.store.event(snapshot.run.id, 'human.action_recorded', {
+        action_id: `consent-${digest({ runId, taskId, phase, idempotencyKey }).slice(7, 39)}`,
+        wait_id: consentWaitId(runId, taskId, snapshot.stage.key, task.revision),
+        category: 'required_workflow',
+        kind: 'review',
+        decision: 'approve',
+        actor,
+        task_id: taskId,
+        phase: snapshot.stage.key,
+        consent_phase: phase,
+        evidence_entry_id: result.python_state?.entry?.entry_id ?? null,
+      }, now);
       this.store.saveOperation(principal, 'consent_delivery', idempotencyKey,
         payloadDigest, result, now);
+      return result;
+    });
+  }
+
+  /**
+   * Request a safe cancellation. Active attempts are first marked
+   * cancel_requested so their owner can stop and release the lease; a run is
+   * terminally cancelled only once no writer remains.
+   */
+  cancel(raw, principal = 'parent') {
+    const args = expectObject(raw);
+    const runId = expectId(args.run_id, 'run_id');
+    const reason = expectString(args.reason ?? 'cancelled by user', 'reason', { max: 1024 });
+    const idempotencyKey = expectId(args.idempotency_key, 'idempotency_key');
+    // Cancellation is a monotone operation. The first request wins its
+    // recorded reason; retries with a revised UI reason must replay the same
+    // authoritative result instead of turning a harmless retry into a
+    // payload-conflict error.
+    const payloadDigest = digest({ runId });
+    const previous = this.store.getOperation(principal, 'cancel_delivery', idempotencyKey, payloadDigest);
+    if (previous) return previous;
+    return this.store.transaction(() => {
+      const run = this.store.db.prepare('SELECT * FROM runs WHERE id = ? AND workflow = ?').get(runId, 'delivery');
+      invariant(run, 'run_not_found', `Delivery run ${runId} does not exist.`);
+      const now = this.#now();
+      if (['completed', 'cancelled', 'closed'].includes(run.status)) {
+        const result = {
+          status: run.status,
+          run_id: runId,
+          reason: run.status === 'completed' ? 'run already completed' : 'run already terminal',
+        };
+        this.store.saveOperation(principal, 'cancel_delivery', idempotencyKey, payloadDigest, result, now);
+        return result;
+      }
+      const active = this.store.db.prepare(`SELECT a.id AS attempt_id, a.task_id, a.lease_epoch
+        FROM attempts a JOIN tasks t ON t.id = a.task_id
+        WHERE t.run_id = ? AND a.status IN ('leased', 'executing')`).all(runId);
+      let result;
+      if (active.length > 0) {
+        this.store.db.prepare(`UPDATE tasks SET cancel_requested = 1, updated_at = ?
+          WHERE run_id = ? AND status IN ('leased', 'executing')`).run(now, runId);
+        this.store.db.prepare(`UPDATE runs SET status = 'cancelling', updated_at = ? WHERE id = ?`)
+          .run(now, runId);
+        this.store.event(runId, 'run.cancellation_requested', {
+          reason, attempts: active.map((item) => item.attempt_id),
+        }, now);
+        result = { status: 'cancelling', run_id: runId, reason, active_attempts: active.map((item) => item.attempt_id) };
+      } else {
+        this.store.db.prepare(`UPDATE tasks SET status = 'cancelled', cancel_requested = 1,
+          lease_until = NULL, updated_at = ? WHERE run_id = ? AND status NOT IN ('accepted', 'cancelled')`)
+          .run(now, runId);
+        this.store.db.prepare(`UPDATE attempts SET status = 'cancelled', updated_at = ?
+          WHERE task_id IN (SELECT id FROM tasks WHERE run_id = ?)
+            AND status NOT IN ('accepted', 'rejected', 'released', 'superseded')`).run(now, runId);
+        this.store.db.prepare(`UPDATE runs SET status = 'cancelled', updated_at = ? WHERE id = ?`)
+          .run(now, runId);
+        this.store.event(runId, 'run.cancelled', { reason }, now);
+        result = { status: 'cancelled', run_id: runId, reason };
+      }
+      this.store.saveOperation(principal, 'cancel_delivery', idempotencyKey, payloadDigest, result, now);
       return result;
     });
   }
@@ -499,6 +613,12 @@ export class DeliveryWorkflow {
     if (!next) {
       this.store.db.prepare(`UPDATE runs SET status = 'completed', updated_at = ? WHERE id = ?`)
         .run(now, runSnapshot.id);
+      this.store.event(runSnapshot.id, 'task.accepted', {
+        task_id: task.id,
+        phase: stage.key,
+        next_task_id: null,
+        next_phase: null,
+      }, now);
       this.store.event(runSnapshot.id, 'run.completed', {
         task_id: task.id,
         phase: stage.key,
@@ -595,6 +715,9 @@ export class DeliveryWorkflow {
         phase: task.phase,
         revision: nextRevision,
         reason: error.message,
+        failure_class: 'raw_gate',
+        raw_failure: true,
+        details: error.details ?? {},
       }, now);
       this.store.saveOperation(principal, 'validate_delivery', idempotencyKey,
         payloadDigest, result, now);

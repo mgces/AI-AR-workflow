@@ -1,0 +1,37 @@
+- insert:
+    - id: ai-ar-adaptive-workflow-controller
+      name: '@ai-ar/dsh-workflow'
+      config:
+        enableDeliveryRuntime: true
+        dataRoot: '/var/lib/dsh-ohos'
+        workspaceId: 'workspace-1'
+        workflowId: 'ar-delivery'
+        localConnector:
+          enabled: true
+          replayPending: true
+          outboxFilePath: '/var/lib/dsh-ohos/connector-outbox.json'
+          workspaceId: 'workspace-1'
+          remoteRoot: '/srv/project'
+          authToken: '${DSH_CONNECTOR_TOKEN}'
+        workspaceGateway:
+          enabled: true
+          baseUrl: 'http://127.0.0.1:9443'
+          remoteRoot: '/srv/project'
+          headers:
+            authorization: 'Bearer ${DSH_GATEWAY_BEARER_TOKEN}'
+          authorityContext:
+            tenant_id: 'tenant-1'
+            workspace_id: 'workspace-1'
+          signatureSecretEnv: 'DSH_AUTHORITY_SHARED_SECRET'
+          signatureKeyId: 'dsh-cloud'
+          profiles:
+            claude-code: 'codeagent.claude'
+            opencode: 'codeagent.opencode'
+            codex: 'codeagent.codex'
+          deliveryProfiles:
+            init: 'ar.delivery.init'
+            inspect: 'ar.delivery.inspect'
+            validate: 'ar.delivery.validate'
+            advance: 'ar.delivery.advance'
+            consent: 'ar.delivery.consent'
+            failureSnapshot: 'ar.delivery.failure_snapshot'

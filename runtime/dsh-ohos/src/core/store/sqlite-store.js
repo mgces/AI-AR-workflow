@@ -62,6 +62,7 @@ export class SqliteStore {
         workspace_root TEXT,
         device_ref TEXT,
         agent TEXT,
+        config_json TEXT NOT NULL DEFAULT '{}',
         input_digest TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
@@ -144,9 +145,12 @@ export class SqliteStore {
     if (!runColumns.has('agent')) {
       this.db.exec('ALTER TABLE runs ADD COLUMN agent TEXT');
     }
+    if (!runColumns.has('config_json')) {
+      this.db.exec("ALTER TABLE runs ADD COLUMN config_json TEXT NOT NULL DEFAULT '{}'");
+    }
     const attemptColumns = new Set(this.db.prepare('PRAGMA table_info(attempts)').all().map((column) => column.name));
     if (!attemptColumns.has('context_id')) this.db.exec('ALTER TABLE attempts ADD COLUMN context_id TEXT');
-    this.db.exec('UPDATE schema_meta SET version = 6 WHERE version < 6');
+    this.db.exec('UPDATE schema_meta SET version = 7 WHERE version < 7');
   }
 
   getOperation(principal, kind, key, payloadDigest) {

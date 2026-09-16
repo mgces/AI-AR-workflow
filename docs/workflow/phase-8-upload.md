@@ -9,11 +9,36 @@ P8 的上库后端取自 `pipeline.json` 的 `environment`(由 `lib/environments
 | 环境 | 后端 | 上库方式 | `--repo-slug` / `--issue` |
 |---|---|---|---|
 | `openharmony`(默认) | gitcode | `oh-gc` 建 PR + OpenHarmony CI 绿 | 必填 |
-| `harmonyos` | gerrit | `git push refs/for/<base>` + Gerrit review 标签作 CI 绿等价 | 不适用 |
+| `harmonyos` | gerrit | profile 驱动的 `git push refs/for/<base>` + Gerrit review 标签作 CI 绿等价 | 不适用 |
 
-**两道 review 门 + 人工 consent + head-SHA 绑定在两种后端下照旧复用**——只是「push+建 PR」「查 CI 绿」这两步换成对应后端的命令。**Gerrit 后端目前为占位**:内部 push/review 查询命令未填时门控**硬失败并打印"待填"提示**(与编译命令占位同风格),须在 `gate_upload_ci.py` 的 gerrit 分支填入真实命令后才能上库。
+**两道 review 门 + 人工 consent + head-SHA 绑定在两种后端下照旧复用**——只是「push+建 PR」「查 CI 绿」这两步换成对应后端的命令。Gerrit 的 remote、project、`refs/for` 模板、查询 argv 和通过标签必须由 `OHOS_ENV_PROFILE_FILE` 提供；字段缺失或仍为占位时门控在 commit/push 前硬失败。
 
-> 本页以下步骤以 **gitcode(openharmony)** 后端为例;gerrit 后端的 P8 子状态机、两道 review 门、consent、SHA 绑定完全一致,仅 push/PR/CI 三步的底层命令不同。
+> 本页以下步骤以 **gitcode(openharmony)** 后端为例;gerrit 后端的 P8 子状态机、两道 review 门、consent、SHA 绑定完全一致,仅 push/Change 查询三步的底层命令不同。
+
+### Gerrit profile
+
+在代码端或发布 worker 注入绝对路径的 profile 文件，不能把凭据写入仓库：
+
+```json
+{
+  "profiles": {
+    "harmonyos/system": {
+      "product": "<真实 product>",
+      "out_dir": "<真实产物目录>",
+      "root_markers": ["build_system.sh", "<真实标志>"],
+      "test_framework_path": "<真实测试入口>",
+      "gerrit_remote": "review",
+      "gerrit_project": "platform/frameworks",
+      "gerrit_push_ref": "HEAD:refs/for/{base}",
+      "gerrit_query_command": ["gerrit-query", "--project", "{project}", "--change", "{change_id}", "--revision", "{sha}"],
+      "gerrit_change_url": "https://review.example/{project}/+/change/{change_id}",
+      "gerrit_green_labels": {"Code-Review": 2, "Verified": 1}
+    }
+  }
+}
+```
+
+`gerrit_query_command` 必须输出 JSON-lines：一条包含目标 `change_id`、当前 patchset 的完整 40 位 `revision`、`labels` 和 `end_timestamp` 的记录（可带 Gerrit `stats` 行）。门控会校验 Change-Id、当前 revision 等于本次 push SHA、每个配置标签达到最低值，并校验查询时间不早于本次 push；任一条件不满足都会保留 evidence 并阻止 `advance`。
 
 ## P8 两道 review 门
 
@@ -43,15 +68,25 @@ gate_upload_ci.py --pipeline-dir P --repo-slug owner/repo --branch B [--base mas
 
 > `--repo-slug` / `--issue` 仅 **gitcode(openharmony)** 后端适用且必填;gerrit(harmonyos)后端不需要,改用 `--base` 指定 refs/for 目标分支。
 
+HarmonyOS/Gerrit 的命令为：
+
+```bash
+gate_upload_ci.py --pipeline-dir P --gerrit-project platform/frameworks \
+    --branch B --base master [--change-id I...] \
+    --local-review-report F --pr-review-report F [--allow-push]
+```
+
+`--gerrit-project` 必须与绑定 profile 相同；remote、查询命令和标签策略不从 CLI 接收，避免审核后被替换。
+
 流程:
 
 1. DRY RUN 生成并签名完整 diff + repo/branch/base/Issue 上库目标
 2. consent --phase 8(人工确认签名预检内容，发生在 push 前)
 3. A 本地自检==0(commit 前硬控)
 4. `git commit -s`(DCO 签名)并 push
-5. 建绑定 Issue 的 PR(`--issue N` 必填,CI 门禁只对绑定 Issue 的 PR 触发)
+5. 建绑定 Issue 的 PR(`--issue N` 必填,CI 门禁只对绑定 Issue 的 PR 触发；Gerrit 路径在此处产生 Change/patchset)
 6. B PR review==0(建 PR 后、CI 前硬控)
-7. CI `overall∈{success,passed}` + PR head SHA==push SHA，产生最终 PASS
+7. GitCode 校验 CI `overall∈{success,passed}` + PR head SHA==push SHA；Gerrit 校验 review labels + 当前 patchset SHA + 查询 freshness，产生最终 PASS
 
 `render_report --kind summary` 渲染 `reports/summary.md` + `pr_description.md` 注入 PR(背景/设计/修改/用例/结果)。
 

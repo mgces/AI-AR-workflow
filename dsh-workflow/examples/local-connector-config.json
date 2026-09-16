@@ -1,0 +1,22 @@
+{
+  "url": "wss://dsh.example.com/v1/connect",
+  "token": "replace-with-a-rotated-connector-token",
+  "device_id": "windows-mgces-01",
+  "workspace_id": "workspace-1",
+  "workspace_access": "sshfs_mount",
+  "local_root": "/mnt/dsh-code",
+  "remote_root": "/srv/project",
+  "ssh": {
+    "host": "code-host.example",
+    "username": "builder",
+    "port": 22,
+    "mount_point": "/mnt/dsh-code",
+    "identity_file": "/home/user/.ssh/id_ed25519",
+    "known_hosts_file": "/home/user/.ssh/known_hosts",
+    "options": ["reconnect", "ServerAliveInterval=15"]
+  },
+  "auto_mount": false,
+  "settings_file": "/home/user/.config/dsh/codeagent-settings.json",
+  "reconnect": true,
+  "reconnect_delay_ms": 1000
+}

@@ -11,7 +11,9 @@ Two invariants matter most:
     (EnvironmentNotConfigured) until filled — never silently return a wrong value.
 """
 import os
+import json
 import sys
+import tempfile
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -187,6 +189,130 @@ class TestArktsRunnerAccessors(unittest.TestCase):
             envs.arkts_report_root(st)
         with self.assertRaises(envs.EnvironmentNotConfigured):
             envs.arkts_report_glob(st)
+
+
+class TestExternalProfiles(unittest.TestCase):
+    """A deployment may provide the verified HarmonyOS values without editing
+    the shared skill checkout. Overrides are still schema-checked and are read
+    by every accessor, so a configured profile can drive a real gate run."""
+
+    def setUp(self):
+        self.previous = os.environ.get("OHOS_ENV_PROFILE_FILE")
+        self.file = tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False)
+        json.dump({"profiles": {
+            "harmonyos/system": {
+                "product": "hm-system",
+                "out_dir": "out/hm-system",
+                "root_markers": ["build_system.sh", "system/BUILD.gn"],
+                "test_framework_path": "tests/developer_test/start.sh",
+                "arkts_test_template": "./hypium-runner --suite {suite}",
+                "arkts_report_root": "out/test-reports",
+                "arkts_report_glob": "**/*.xml",
+            },
+        }}, self.file)
+        self.file.close()
+        os.environ["OHOS_ENV_PROFILE_FILE"] = self.file.name
+
+    def tearDown(self):
+        os.unlink(self.file.name)
+        if self.previous is None:
+            os.environ.pop("OHOS_ENV_PROFILE_FILE", None)
+        else:
+            os.environ["OHOS_ENV_PROFILE_FILE"] = self.previous
+
+    def test_harmonyos_override_drives_all_profile_accessors(self):
+        state = {"environment": "harmonyos", "component_type": "system", "device_type": "phone"}
+        self.assertEqual(envs.product_form(state), "hm-system")
+        self.assertEqual(envs.out_dir(state), "out/hm-system")
+        self.assertEqual(envs.root_markers(state), ["build_system.sh", "system/BUILD.gn"])
+        self.assertEqual(envs.test_framework_path(state), "tests/developer_test/start.sh")
+        self.assertEqual(envs.arkts_test_command(state, "Smoke"), "./hypium-runner --suite Smoke")
+        self.assertEqual(envs.arkts_report_root(state), "out/test-reports")
+        self.assertEqual(envs.arkts_report_glob(state), "**/*.xml")
+
+    def test_override_rejects_unsafe_root_marker(self):
+        with open(self.file.name, "w", encoding="utf-8") as stream:
+            json.dump({"profiles": {"harmonyos/system": {"root_markers": ["../outside"]}}}, stream)
+        with self.assertRaises(envs.EnvironmentNotConfigured):
+            envs.root_markers({"environment": "harmonyos", "component_type": "system"})
+
+    def test_bound_digest_detects_profile_change(self):
+        state = {"environment": "harmonyos", "component_type": "system"}
+        state["environment_profile_digest"] = envs.profile_digest(state)
+        self.assertEqual(envs.product_form({**state}), "hm-system")
+        with open(self.file.name, "w", encoding="utf-8") as stream:
+            json.dump({"profiles": {"harmonyos/system": {"product": "hm-system-v2"}}}, stream)
+        with self.assertRaises(envs.EnvironmentNotConfigured):
+            envs.product_form(state)
+
+
+class TestGerritProfile(unittest.TestCase):
+    """A HarmonyOS publisher must be driven by an explicit, validated Gerrit
+    profile.  The profile is intentionally test-local here so the repository
+    never embeds an internal Gerrit hostname or credential."""
+
+    def setUp(self):
+        self.previous = os.environ.get("OHOS_ENV_PROFILE_FILE")
+        self.file = tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False)
+        json.dump({"profiles": {
+            "harmonyos/system": {
+                "gerrit_remote": "review",
+                "gerrit_project": "platform/frameworks",
+                "gerrit_push_ref": "HEAD:refs/for/{base}",
+                "gerrit_query_command": [
+                    "gerrit-query", "--project", "{project}",
+                    "--change", "{change_id}", "--revision", "{sha}"
+                ],
+                "gerrit_change_url": "https://review.example/{project}/+/change/{change_id}",
+                "gerrit_green_labels": {"Code-Review": 2, "Verified": 1},
+            },
+        }}, self.file)
+        self.file.close()
+        os.environ["OHOS_ENV_PROFILE_FILE"] = self.file.name
+
+    def tearDown(self):
+        os.unlink(self.file.name)
+        if self.previous is None:
+            os.environ.pop("OHOS_ENV_PROFILE_FILE", None)
+        else:
+            os.environ["OHOS_ENV_PROFILE_FILE"] = self.previous
+
+    def test_gerrit_config_and_commands_are_rendered(self):
+        state = {"environment": "harmonyos", "component_type": "system"}
+        config = envs.gerrit_config(state)
+        self.assertEqual(config["remote"], "review")
+        self.assertEqual(config["project"], "platform/frameworks")
+        self.assertEqual(config["push_ref"], "HEAD:refs/for/master")
+        self.assertEqual(config["push_ref_for"]("main"), "HEAD:refs/for/main")
+        self.assertEqual(
+            config["query_command"]("I" + "a" * 40, "deadbeef" * 5),
+            ["gerrit-query", "--project", "platform/frameworks",
+             "--change", "I" + "a" * 40, "--revision", "deadbeef" * 5])
+        self.assertEqual(
+            config["change_url"]("I" + "a" * 40),
+            "https://review.example/platform/frameworks/+/change/" + "I" + "a" * 40)
+        self.assertEqual(config["green_labels"], {"Code-Review": 2, "Verified": 1})
+
+    def test_unconfigured_gerrit_is_actionable(self):
+        with open(self.file.name, "w", encoding="utf-8") as stream:
+            json.dump({"profiles": {"harmonyos/system": {"gerrit_remote": "review"}}}, stream)
+        with self.assertRaises(envs.EnvironmentNotConfigured) as raised:
+            envs.gerrit_config({"environment": "harmonyos", "component_type": "system"})
+        self.assertIn("gerrit", str(raised.exception).lower())
+
+    def test_gerrit_profile_rejects_shell_and_unknown_template_fields(self):
+        with open(self.file.name, "w", encoding="utf-8") as stream:
+            json.dump({"profiles": {"harmonyos/system": {
+                "gerrit_remote": "review;touch /tmp/x",
+            }}}, stream)
+        with self.assertRaises(envs.EnvironmentNotConfigured):
+            envs.gerrit_config({"environment": "harmonyos", "component_type": "system"})
+        with open(self.file.name, "w", encoding="utf-8") as stream:
+            json.dump({"profiles": {"harmonyos/system": {
+                "gerrit_query_command": ["gerrit-query", "{secret}"],
+            }}}, stream)
+        with self.assertRaises(envs.EnvironmentNotConfigured):
+            envs.gerrit_config({"environment": "harmonyos", "component_type": "system"})
 
 
 if __name__ == "__main__":

@@ -29,9 +29,9 @@ Pass evidence (RTC-independent; keyed to an immutable commit SHA):
 UPLOAD BACKEND: which upload path runs is resolved from the environment profile
 (environments.upload_backend). 'gitcode' is the OpenHarmony flow described above
 (oh-gc PR + OpenHarmony CI). 'harmonyos' uses 'gerrit' (git push refs/for + Gerrit
-review labels as the CI-green equivalent); its internal push/query commands are
-placeholders and the gate hard-fails with an actionable "configure environments.py"
-message until they are filled — the same fail-closed stance as the build gates.
+review labels as the CI-green equivalent). Gerrit remote/project/push/query
+commands and green labels must be supplied by an external, protected profile;
+missing or unresolved values fail closed with an actionable configuration error.
 The two review gates + consent + SHA binding are backend-agnostic and always run.
 """
 import argparse
@@ -42,6 +42,7 @@ import shutil
 import subprocess
 import sys
 import time
+import re
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 import gatelib as gl  # noqa: E402
@@ -115,6 +116,7 @@ P8_FAILURE_TO_SUBSTATE = {
     "consent_missing": "precheck",
     "consent_stale": "precheck",
     "issue_binding_missing": "precheck",
+    "publication_target_mismatch": "precheck",
     "branch_mismatch": "precheck",
     "upload_backend_unconfigured": "precheck",
     "review_gate_failed": "local_review",
@@ -123,6 +125,13 @@ P8_FAILURE_TO_SUBSTATE = {
     "push_failed": "push_pr",
     "pr_create_failed": "push_pr",
     "pr_metadata_incomplete": "push_pr",
+    "change_id_missing": "push_pr",
+    "change_id_mismatch": "push_pr",
+    "gerrit_push_failed": "push_pr",
+    "gerrit_query_failed": "ci_green",
+    "gerrit_labels_not_green": "ci_green",
+    "gerrit_revision_mismatch": "ci_green",
+    "gerrit_review_unparseable": "ci_green",
     "commit_message_invalid": "push_pr",
     "pr_review_blocked": "pr_review",
     "ci_not_green": "ci_green",
@@ -203,7 +212,7 @@ def _is_transport_failure(proc):
     return not (proc.stdout or "").strip() and not (proc.stderr or "").strip()
 
 
-def _query_ci_with_backoff(cmd, env, *, max_attempts, base_delay):
+def _query_ci_with_backoff(cmd, env, *, max_attempts, base_delay, cwd=None):
     """E1: query the CI/PR status endpoint with bounded exponential backoff on
     TRANSPORT failures only. A transport outage (endpoint down/throttled) is
     transient, so a short retry often clears it and avoids a needless human
@@ -215,7 +224,10 @@ def _query_ci_with_backoff(cmd, env, *, max_attempts, base_delay):
     attempts = max(1, max_attempts)
     proc = None
     for attempt in range(1, attempts + 1):
-        proc = subprocess.run(cmd, text=True, capture_output=True, env=env)
+        kwargs = {"text": True, "capture_output": True, "env": env}
+        if cwd is not None:
+            kwargs["cwd"] = cwd
+        proc = subprocess.run(cmd, **kwargs)
         if not _is_transport_failure(proc) or attempt == attempts:
             return proc, attempt
         delay = base_delay * (2 ** (attempt - 1))
@@ -223,6 +235,147 @@ def _query_ci_with_backoff(cmd, env, *, max_attempts, base_delay):
               "%.1fs" % (attempt, attempts, delay), file=sys.stderr)
         time.sleep(delay)
     return proc, attempts
+
+
+class GerritQueryUnavailable(RuntimeError):
+    """The configured Gerrit query executable could not be started.
+
+    This is different from ``external_api_unstable``: a missing binary,
+    permission error, or invalid working directory is a local deployment
+    problem that cannot be fixed by retrying the network request.  Keeping a
+    dedicated exception lets the P8 adapter record ``gerrit_query_failed`` and
+    resume from the CI substate with the exact operating-system diagnostic.
+    """
+
+    code = "gerrit_query_failed"
+
+    def __init__(self, command, cause):
+        self.command = list(command) if isinstance(command, (list, tuple)) else [str(command)]
+        self.cause = cause
+        rendered = " ".join(str(item) for item in self.command)
+        super().__init__("Gerrit query command could not be started (%s): %s" %
+                         (rendered, cause))
+
+
+def _query_gerrit_with_backoff(cmd, env, *, max_attempts, base_delay, cwd=None):
+    """Run the profile-selected Gerrit query and classify local start errors."""
+    try:
+        return _query_ci_with_backoff(cmd, env, max_attempts=max_attempts,
+                                      base_delay=base_delay, cwd=cwd)
+    except OSError as error:
+        raise GerritQueryUnavailable(cmd, error) from error
+
+
+_CHANGE_ID_RE = re.compile(r"(?im)^\s*Change-Id:\s*(I[0-9a-f]{40})\s*$")
+_FULL_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+
+
+def parse_change_id(commit_text):
+    """Return the Gerrit Change-Id trailer from a commit message.
+
+    Gerrit treats the trailer as the stable identity across patchsets.  Only a
+    canonical ``I`` plus forty hexadecimal characters is accepted; a subject,
+    URL or arbitrary push output can never be mistaken for a change id.
+    """
+    match = _CHANGE_ID_RE.search(str(commit_text or ""))
+    return match.group(1) if match else None
+
+
+def _gerrit_label_value(value):
+    """Normalize the common Gerrit label/approval shapes to an integer."""
+    if isinstance(value, bool):
+        return 4 if value else 0
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return int(value)
+    if isinstance(value, str):
+        text = value.strip().lower()
+        try:
+            return int(text)
+        except ValueError:
+            return 4 if text in {"approved", "ok", "pass", "passed", "success", "green"} else 0
+    if isinstance(value, dict):
+        if "value" in value:
+            return _gerrit_label_value(value["value"])
+        if value.get("approved") is True or value.get("status", "").lower() in {
+                "approved", "ok", "pass", "passed", "success", "green"}:
+            return 4
+    return 0
+
+
+def gerrit_labels_green(labels, required):
+    """Return True only when every configured review label meets its minimum."""
+    if not isinstance(labels, dict) or not isinstance(required, dict) or not required:
+        return False
+    return all(name in labels and _gerrit_label_value(labels[name]) >= minimum
+               for name, minimum in required.items())
+
+
+def _record_change_id(record):
+    for key in ("change_id", "changeId", "Change-Id"):
+        value = record.get(key)
+        if isinstance(value, str) and value:
+            return value
+    # A standard Gerrit query may expose only id=project~branch~Change-Id.
+    identifier = record.get("id")
+    if isinstance(identifier, str) and "~" in identifier:
+        candidate = identifier.rsplit("~", 1)[-1]
+        if candidate.startswith("I"):
+            return candidate
+    return ""
+
+
+def parse_gerrit_review(output, expected_change_id=None):
+    """Parse the JSON-lines contract emitted by a configured Gerrit query.
+
+    The query command may print Gerrit's ``stats`` line before the change
+    object.  The returned record has stable names consumed by the gate:
+    ``change_id``, ``revision``, ``labels``, ``end_timestamp`` and ``url``.
+    Missing/mismatched identity or revision is an error, never a green result.
+    """
+    records = []
+    for line in str(output or "").splitlines():
+        text = line.strip()
+        if not text:
+            continue
+        try:
+            value = json.loads(text)
+        except (TypeError, ValueError):
+            continue
+        if isinstance(value, dict) and value.get("type") != "stats":
+            records.append(value)
+    if expected_change_id:
+        matches = [item for item in records if _record_change_id(item) == expected_change_id]
+    else:
+        matches = records
+    if not matches:
+        raise ValueError("Gerrit query did not return the expected Change-Id")
+    record = matches[0]
+    change_id = _record_change_id(record)
+    revision = (record.get("current_revision") or record.get("revision")
+                or record.get("commit") or (record.get("patchSet") or {}).get("revision"))
+    if not revision and isinstance(record.get("revisions"), dict):
+        revisions = record["revisions"]
+        for key, value in revisions.items():
+            if isinstance(value, dict) and value.get("_number") is not None:
+                revision = key
+        revision = revision or (next(iter(revisions), "") if revisions else "")
+    if not isinstance(revision, str) or not _FULL_SHA_RE.fullmatch(revision.lower()):
+        raise ValueError("Gerrit query did not return a full current revision SHA")
+    labels = record.get("labels") or record.get("review_labels") or record.get("approvals") or {}
+    if not isinstance(labels, dict):
+        labels = {}
+    timestamp = (record.get("end_timestamp") or record.get("completed_at")
+                 or record.get("updated") or record.get("timestamp"))
+    return {
+        "change_id": change_id,
+        "revision": revision.lower(),
+        "labels": labels,
+        "end_timestamp": timestamp,
+        "url": record.get("url") or record.get("web_url") or "",
+        "overall_result": record.get("overall_result") or record.get("ci_result")
+        or record.get("status") or "",
+        "raw": record,
+    }
 
 
 def _test_bundle_context(pdir):
@@ -428,7 +581,8 @@ def _write_repair_packet(pdir, *, failure_class, problems, last_failure_reason,
 
 def _write_completion_controls(pdir, *, arts, pr_number, overall, ci_ok, pushed_sha,
                                pr_head, sha_ok, local_review_detail, pr_review_detail,
-                               mode):
+                               mode, backend="gitcode", change_id=None,
+                               review_url=None):
     bundle = _test_bundle_context(pdir)
     bundle_revision = bundle.get("bundle_revision") or ""
     receipt = {
@@ -443,6 +597,9 @@ def _write_completion_controls(pdir, *, arts, pr_number, overall, ci_ok, pushed_
         "next_phase": None,
         "downstream_revalidate_scope": bundle.get("downstream_revalidate_scope") or "P4_P5",
         "pr": pr_number,
+        "publication_backend": backend,
+        "change_id": change_id,
+        "review_url": review_url or "",
         "ci_overall": overall,
         "ci_ok": ci_ok,
         "pushed_sha": pushed_sha,
@@ -560,6 +717,65 @@ def write_upload_consent_request(pdir, *, repo_slug, branch, base, issue,
         json.dump(payload, f, ensure_ascii=False, sort_keys=True, indent=2)
         f.write("\n")
     return rel
+
+
+def write_gerrit_consent_request(pdir, *, project, remote, branch, base,
+                                 change_id, head_sha, diff_rel, stat_rel,
+                                 push_ref):
+    """Write the immutable HarmonyOS/Gerrit publication intent.
+
+    The shape is deliberately separate from the GitCode PR request: a Gerrit
+    change has a Change-Id/patchset rather than a PR number and never needs an
+    issue or fork owner.  Both diff files are hashed so human consent remains
+    bound to the exact source that will be pushed.
+    """
+    def digest(rel):
+        h = hashlib.sha256()
+        with open(os.path.join(pdir, rel), "rb") as stream:
+            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                h.update(chunk)
+        return h.hexdigest()
+
+    rel = "evidence/phase8/upload_consent_request.json"
+    os.makedirs(os.path.dirname(os.path.join(pdir, rel)), exist_ok=True)
+    payload = {
+        "version": 2,
+        "backend": "gerrit",
+        "project": project,
+        "remote": remote,
+        "branch": branch,
+        "base": base,
+        "change_id": change_id or "",
+        "push_ref": push_ref,
+        "head_sha_before_push": head_sha,
+        "full_diff": {"path": diff_rel, "sha256": digest(diff_rel)},
+        "full_diff_stat": {"path": stat_rel, "sha256": digest(stat_rel)},
+    }
+    with open(os.path.join(pdir, rel), "w", encoding="utf-8") as stream:
+        json.dump(payload, stream, ensure_ascii=False, sort_keys=True, indent=2)
+        stream.write("\n")
+    return rel
+
+
+def gerrit_consent_target_matches(pdir, *, project, remote, branch, base,
+                                  change_id, push_ref):
+    """Check that the Gerrit target has not changed since human consent."""
+    path = os.path.join(pdir, "evidence/phase8/upload_consent_request.json")
+    try:
+        with open(path, "r", encoding="utf-8") as stream:
+            request = json.load(stream)
+    except (OSError, ValueError, TypeError) as error:
+        return False, "cannot read Gerrit upload consent request: %s" % error
+    expected = {
+        "backend": "gerrit", "project": project, "remote": remote,
+        "branch": branch, "base": base, "change_id": change_id or "",
+        "push_ref": push_ref,
+    }
+    mismatches = ["%s=%r (reviewed %r)" % (key, value, request.get(key))
+                  for key, value in expected.items() if request.get(key) != value]
+    if mismatches:
+        return False, "Gerrit upload target changed after consent: %s" % ", ".join(mismatches)
+    return True, "ok"
 
 
 def upload_consent_target_matches(pdir, *, repo_slug, branch, base, issue,
@@ -761,18 +977,309 @@ def require_zero_issue_report(path, label, dst_rel, pdir, arts):
     return rel, detail
 
 
+def _gerrit_fail(pdir, reason, arts, *, project, remote, branch, failure_class,
+                 problems=None, resume_hint=None, change_id=None,
+                 review_url=None, pushed_sha=None, pr_head=None, sha_ok=None,
+                 overall=None, ci_ok=None, mode="precheck"):
+    """Record a fail-closed Gerrit result and stop the gate.
+
+    This helper deliberately emits the same signed/unsigned control artifacts
+    as the GitCode path while carrying Gerrit-specific publication metadata.
+    No failure in this branch can be mistaken for a successful PR or CI check.
+    """
+    _record_result(
+        pdir, "FAIL", reason, arts,
+        cmd="git push / configured Gerrit query",
+        repo_slug=project,
+        branch=branch,
+        pr_number=None,
+        overall=overall,
+        ci_ok=ci_ok,
+        pushed_sha=pushed_sha,
+        pr_head=pr_head,
+        sha_ok=sha_ok,
+        mode=mode,
+        failure_class=failure_class,
+        problems=problems or [reason],
+        resume_hint=resume_hint,
+        emit_manifest=False,
+        backend="gerrit",
+        change_id=change_id,
+        review_url=review_url,
+    )
+    sys.exit("PHASE 8 FAIL (Gerrit): %s" % reason)
+
+
+def _run_gerrit(state, args, pdir, repo, gdir):
+    """Execute the configured HarmonyOS/Gerrit publication path.
+
+    The environment profile supplies the push ref, query argv and green-label
+    policy.  The gate never invokes a shell and never accepts a repository,
+    remote or query command that is absent from that profile.  Dry-run creates
+    the same human-consent hold as GitCode; ``--allow-push`` then requires the
+    signed hold, both review reports, a Change-Id, exact revision binding,
+    green labels and a fresh query timestamp.
+    """
+    arts = []
+    try:
+        config = envs.gerrit_config(state)
+    except envs.EnvironmentNotConfigured as error:
+        _gerrit_fail(
+            pdir, "Gerrit publication profile is not configured: %s" % error,
+            arts, project=args.gerrit_project or "", remote=args.gerrit_remote or "",
+            branch=args.branch, failure_class="upload_backend_unconfigured",
+            problems=[str(error)],
+            resume_hint="通过 OHOS_ENV_PROFILE_FILE 配置 harmonyos/system 或 harmonyos/chip 的 Gerrit profile 后重跑 P8")
+
+    project = args.gerrit_project or config["project"]
+    remote = args.gerrit_remote or config["remote"]
+    if project != config["project"]:
+        _gerrit_fail(
+            pdir, "Gerrit project does not match the bound environment profile",
+            arts, project=project, remote=remote, branch=args.branch,
+            failure_class="publication_target_mismatch",
+            problems=["profile project=%s, requested project=%s" % (config["project"], project)],
+            resume_hint="使用 profile 中绑定的 Gerrit project，重新生成 P8 预检并重新审批")
+    if remote != config["remote"]:
+        _gerrit_fail(
+            pdir, "Gerrit remote does not match the bound environment profile",
+            arts, project=project, remote=remote, branch=args.branch,
+            failure_class="publication_target_mismatch",
+            problems=["profile remote=%s, requested remote=%s" % (config["remote"], remote)],
+            resume_hint="使用 profile 中绑定的 Gerrit remote，重新生成 P8 预检并重新审批")
+    try:
+        push_ref = config["push_ref_for"](args.base, args.gerrit_topic or "")
+    except envs.EnvironmentNotConfigured as error:
+        _gerrit_fail(
+            pdir, "Gerrit push ref is invalid: %s" % error,
+            arts, project=project, remote=remote, branch=args.branch,
+            failure_class="upload_backend_unconfigured", problems=[str(error)],
+            resume_hint="修正 Gerrit profile 的 gerrit_push_ref 后重新初始化并重走 P0-P8")
+
+    not_done = [p["id"] for p in state["phases"] if p["id"] in (1, 2, 3, 4, 5, 6, 7)
+                and p["status"] != "passed"]
+    if not_done:
+        _gerrit_fail(
+            pdir, "phases not passed: %s" % not_done, arts, project=project,
+            remote=remote, branch=args.branch, failure_class="prerequisite_phase_missing",
+            problems=["prerequisite phases not passed: %s" % not_done],
+            resume_hint="先完成并 advance P1-P7，再重跑 gate_upload_ci.py")
+
+    current_branch = run(["git", "-C", gdir, "branch", "--show-current"]).stdout.strip()
+    if current_branch and current_branch != args.branch:
+        _gerrit_fail(
+            pdir, "checked-out branch %r does not match --branch %r" % (current_branch, args.branch),
+            arts, project=project, remote=remote, branch=args.branch,
+            failure_class="branch_mismatch", problems=["checked-out branch mismatch"],
+            resume_hint="checkout the exact Gerrit upload branch, then rerun")
+    head_result = run(["git", "-C", gdir, "rev-parse", args.branch])
+    head_sha = head_result.stdout.strip()
+    if head_result.returncode != 0 or not _FULL_SHA_RE.fullmatch(head_sha.lower()):
+        _gerrit_fail(
+            pdir, "cannot resolve Gerrit upload branch %r" % args.branch, arts,
+            project=project, remote=remote, branch=args.branch,
+            failure_class="branch_mismatch",
+            problems=[head_result.stderr.strip()[:500] or "git rev-parse failed"],
+            resume_hint="确认本地分支存在并包含待发布提交后重跑 P8")
+
+    diff_rel, stat_rel, stat = write_full_diff(state, gdir, pdir)
+    arts.extend([diff_rel, stat_rel])
+    change_id = args.change_id or ""
+    review_url = config["change_url"](change_id) if change_id else ""
+    if not args.allow_push:
+        consent_rel = write_gerrit_consent_request(
+            pdir, project=project, remote=remote, branch=args.branch,
+            base=args.base, change_id=change_id, head_sha=head_sha,
+            diff_rel=diff_rel, stat_rel=stat_rel, push_ref=push_ref)
+        arts.append(consent_rel)
+        reason = "dry run prepared Gerrit upload plan (no --allow-push)"
+        _record_result(
+            pdir, "FAIL", reason, arts, repo_slug=project, branch=args.branch,
+            pushed_sha=head_sha, mode="dry_run", failure_class="dry_run_no_pass",
+            problems=["dry run only: no Gerrit push was performed"],
+            resume_hint="人工确认完整 diff 后记录 phase 8 consent，并带 --allow-push 重跑",
+            emit_manifest=True, manifest_gate=gl.UPLOAD_CONSENT_GATE,
+            backend="gerrit", change_id=change_id, review_url=review_url)
+        print("\n" + "=" * 64)
+        print("P8 Gerrit 上库前 —— 全部代码改动已保存，待人工确认")
+        print("=" * 64)
+        print("完整 diff : %s" % os.path.join(pdir, diff_rel))
+        print("改动统计 :\n%s" % stat)
+        print("\nDRY RUN (no --allow-push). Would: A) verify --local-review-report "
+              "→ commit -s → git push %s %s → query Gerrit change/revision/labels "
+              "→ B) verify --pr-review-report → final gate. project=%s base=%s "
+              "branch=%s push_ref=%s change_id=%s head_sha=%s" % (
+                  remote, push_ref, project, args.base, args.branch, push_ref,
+                  change_id or "(commit trailer after consent)", head_sha[:12]))
+        print("人工核对以上改动可上库后:")
+        print("  advance.py --pipeline-dir %s consent --phase 8 --token <审核人>" % pdir)
+        print("  再带 --allow-push、两份零问题 review 报告重跑本门控。")
+        print("=" * 64)
+        return
+
+    precheck_ok, precheck_reason, precheck_entry = gl.validate_upload_consent_entry(pdir)
+    if not precheck_ok:
+        _gerrit_fail(
+            pdir, "invalid Gerrit upload consent: %s" % precheck_reason, arts,
+            project=project, remote=remote, branch=args.branch,
+            failure_class="consent_missing", problems=[precheck_reason],
+            resume_hint="先运行 Gerrit dry-run，审核完整 diff 后记录 phase 8 consent")
+    consent_ok, consent_reason = gl.verify_consent(state, 8, gl.entry_id(precheck_entry))
+    if not consent_ok:
+        _gerrit_fail(
+            pdir, "invalid Gerrit upload consent: %s" % consent_reason, arts,
+            project=project, remote=remote, branch=args.branch,
+            failure_class="consent_missing", problems=[consent_reason],
+            resume_hint="使用与当前 Gerrit diff/目标绑定的 reviewer token 重新 consent")
+    target_ok, target_reason = gerrit_consent_target_matches(
+        pdir, project=project, remote=remote, branch=args.branch, base=args.base,
+        change_id=change_id, push_ref=push_ref)
+    if not target_ok:
+        _gerrit_fail(
+            pdir, target_reason, arts, project=project, remote=remote,
+            branch=args.branch, failure_class="consent_stale", problems=[target_reason],
+            resume_hint="目标发生变化，重新执行 Gerrit dry-run 并重新审批")
+
+    local_rel, local_detail = require_zero_issue_report(
+        args.local_review_report, "local-review-report",
+        "evidence/phase8/local_code_review_report", pdir, arts)
+    new_head = commit_pending_changes(gdir, args.title or args.branch, pdir)
+    if new_head:
+        head_sha = new_head
+    push = run(["git", "-C", gdir, "push", remote, push_ref])
+    push_rel = "evidence/phase8/gerrit_push.txt"
+    with open(os.path.join(pdir, push_rel), "w", encoding="utf-8") as stream:
+        stream.write(push.stdout + "\n----\n" + push.stderr)
+    arts.append(push_rel)
+    if push.returncode != 0:
+        _gerrit_fail(
+            pdir, "git push to Gerrit failed: %s" % push.stderr.strip()[:500], arts,
+            project=project, remote=remote, branch=args.branch,
+            failure_class="gerrit_push_failed", problems=[push.stderr.strip()[:500]],
+            resume_hint="检查 Gerrit remote/权限/refs-for 规则；确认远端状态后重跑，不要重复创建 Change")
+    pushed_at = time.time()
+    commit_message = run(["git", "-C", gdir, "show", "-s", "--format=%B", head_sha]).stdout
+    parsed_change_id = parse_change_id(commit_message) or parse_change_id(push.stdout + "\n" + push.stderr)
+    if change_id and parsed_change_id and parsed_change_id != change_id:
+        _gerrit_fail(
+            pdir, "Gerrit Change-Id does not match the consent target", arts,
+            project=project, remote=remote, branch=args.branch,
+            failure_class="change_id_mismatch", change_id=parsed_change_id,
+            pushed_sha=head_sha, problems=["consented=%s actual=%s" % (change_id, parsed_change_id)],
+            resume_hint="不要重复 push；确认当前 patchset 与审批目标后人工对账")
+    change_id = parsed_change_id or change_id
+    if not change_id:
+        _gerrit_fail(
+            pdir, "Gerrit Change-Id is missing from the pushed commit", arts,
+            project=project, remote=remote, branch=args.branch,
+            failure_class="change_id_missing", pushed_sha=head_sha,
+            problems=["commit-msg hook did not add a valid Change-Id trailer"],
+            resume_hint="安装 Gerrit commit-msg hook、确认远端 patchset 状态后再继续；不要重复发送未知提交")
+    review_url = config["change_url"](change_id) or review_url
+
+    pr_review_rel, pr_review_detail = require_zero_issue_report(
+        args.pr_review_report, "pr-review-report",
+        "evidence/phase8/gerrit_review_report", pdir, arts)
+    try:
+        query_argv = config["query_command"](change_id, head_sha, base=args.base,
+                                               topic=args.gerrit_topic or "")
+    except envs.EnvironmentNotConfigured as error:
+        _gerrit_fail(
+            pdir, "Gerrit query command is invalid: %s" % error, arts,
+            project=project, remote=remote, branch=args.branch,
+            failure_class="gerrit_query_failed", change_id=change_id,
+            pushed_sha=head_sha, review_url=review_url, problems=[str(error)],
+            resume_hint="修正 Gerrit profile query argv 后人工确认当前 patchset，再重跑 P8")
+    query_env = dict(os.environ)
+    try:
+        query, query_attempts = _query_gerrit_with_backoff(
+            query_argv, query_env, max_attempts=args.ci_query_attempts,
+            base_delay=args.ci_query_backoff, cwd=gdir)
+    except GerritQueryUnavailable as error:
+        _gerrit_fail(
+            pdir, str(error), arts, project=project, remote=remote,
+            branch=args.branch, failure_class=error.code, change_id=change_id,
+            pushed_sha=head_sha, review_url=review_url,
+            problems=[str(error)],
+            resume_hint="安装/修复 Gerrit profile 指定的 query 可执行文件后重跑 P8；无需重复 push 当前 Change")
+    review_rel = "evidence/phase8/gerrit_review.json"
+    with open(os.path.join(pdir, review_rel), "w", encoding="utf-8") as stream:
+        stream.write(query.stdout or query.stderr)
+    arts.append(review_rel)
+    if query.returncode != 0 and _is_transport_failure(query):
+        _gerrit_fail(
+            pdir, "Gerrit review query remained unavailable after %d attempts" % query_attempts,
+            arts, project=project, remote=remote, branch=args.branch,
+            failure_class="external_api_unstable", change_id=change_id,
+            pushed_sha=head_sha, review_url=review_url,
+            problems=[(query.stderr or query.stdout or "transport failure").strip()[:500]],
+            resume_hint="确认 Gerrit 查询服务恢复后重跑 P8；不要重新 push 当前 Change")
+    try:
+        review = parse_gerrit_review(query.stdout, change_id)
+    except ValueError as error:
+        _gerrit_fail(
+            pdir, "Gerrit review response is not verifiable: %s" % error, arts,
+            project=project, remote=remote, branch=args.branch,
+            failure_class="gerrit_review_unparseable", change_id=change_id,
+            pushed_sha=head_sha, review_url=review_url,
+            problems=[str(error)],
+            resume_hint="修正 Gerrit query profile 使其输出 JSON-lines change/revision/labels/timestamp，再重跑 P8")
+    review_url = review["url"] or review_url
+    revision_ok = review["revision"] == head_sha.lower()
+    labels_ok = gerrit_labels_green(review["labels"], config["green_labels"])
+    fresh_ok, fresh_detail = ci_freshness(
+        review["end_timestamp"], pushed_at, args.ci_freshness_skew)
+    overall = review["overall_result"] or ("SUCCESS" if labels_ok else "FAIL")
+    ci_ok = labels_ok
+    reason = ("change=%s labels_ok=%s pushed=%s revision=%s revision_ok=%s "
+              "fresh=%s local_review=%s review=%s") % (
+                  change_id, labels_ok, head_sha[:12], review["revision"][:12],
+                  revision_ok, fresh_ok, local_detail, pr_review_detail)
+    problems = []
+    if not labels_ok:
+        problems.append("Gerrit review labels did not meet the configured green policy")
+    if not revision_ok:
+        problems.append("Gerrit current revision does not match pushed SHA")
+    if not fresh_ok:
+        problems.append("Gerrit review freshness: %s" % fresh_detail)
+    verdict = "PASS" if labels_ok and revision_ok and fresh_ok else "FAIL"
+    failure_class = None
+    if verdict != "PASS":
+        if not revision_ok:
+            failure_class = "gerrit_revision_mismatch"
+        elif not labels_ok:
+            failure_class = "gerrit_labels_not_green"
+        else:
+            failure_class = "ci_stale_pre_push"
+    _record_result(
+        pdir, verdict, reason, arts, repo_slug=project, branch=args.branch,
+        overall=overall, ci_ok=ci_ok, pushed_sha=head_sha,
+        pr_head=review["revision"], sha_ok=revision_ok,
+        local_review_detail=local_detail, pr_review_detail=pr_review_detail,
+        mode="push", failure_class=failure_class, problems=problems,
+        suspect_locations=[], resume_hint="修复 Gerrit review/CI/patchset 绑定后重跑 gate_upload_ci.py",
+        backend="gerrit", change_id=change_id, review_url=review_url)
+    if verdict == "PASS":
+        print("PHASE 8 PASS (Gerrit) — advance.py advance --phase 8")
+    else:
+        sys.exit("PHASE 8 FAIL (Gerrit): %s" % reason)
+
+
 def _record_result(pdir, verdict, reason, arts, *, cmd=None, repo_slug=None,
                    branch=None, pr_number=None, overall=None, ci_ok=None,
                    pushed_sha=None, pr_head=None, sha_ok=None,
                    local_review_detail=None, pr_review_detail=None,
                    mode=None, failure_class=None, problems=None,
                    resume_hint=None, emit_manifest=True, suspect_locations=None,
-                   manifest_gate="gate_upload_ci.py"):
+                   manifest_gate="gate_upload_ci.py", backend="gitcode",
+                   change_id=None, review_url=None):
     checks = []
     if mode:
         checks.append("mode=%s" % mode)
     if repo_slug:
         checks.append("repo=%s" % repo_slug)
+    if backend:
+        checks.append("backend=%s" % backend)
     if branch:
         checks.append("branch=%s" % branch)
     if pr_number is not None:
@@ -790,6 +1297,9 @@ def _record_result(pdir, verdict, reason, arts, *, cmd=None, repo_slug=None,
         pdir, 8, "gate_upload_ci.py", verdict, reason, checks=checks,
         extra={
             "repo_slug": repo_slug,
+            "publication_backend": backend,
+            "change_id": change_id,
+            "review_url": review_url or "",
             "branch": branch,
             "pr": pr_number,
             "ci_overall": overall,
@@ -828,6 +1338,9 @@ def _record_result(pdir, verdict, reason, arts, *, cmd=None, repo_slug=None,
             local_review_detail=local_review_detail,
             pr_review_detail=pr_review_detail,
             mode=mode,
+            backend=backend,
+            change_id=change_id,
+            review_url=review_url,
         )
     elif failure_class == "dry_run_no_pass":
         # A successful dry-run is an intentional human hold, not a repairable
@@ -865,6 +1378,9 @@ def _record_result(pdir, verdict, reason, arts, *, cmd=None, repo_slug=None,
             problems=problems or [], resume_hint=resume_hint,
             extra={
                 "repo_slug": repo_slug,
+                "publication_backend": backend,
+                "change_id": change_id,
+                "review_url": review_url or "",
                 "branch": branch,
                 "pr": pr_number,
                 "ci_overall": overall,
@@ -915,6 +1431,13 @@ def main():
     ap.add_argument("--repo-slug", help="gitcode owner/repo the PR is opened AGAINST "
                     "(the base repo, e.g. openharmony/hiviewdfx_hiview). REQUIRED for the "
                     "gitcode upload backend; ignored for gerrit.")
+    ap.add_argument("--gerrit-project", help="HarmonyOS Gerrit project (must match the "
+                    "environment profile; e.g. platform/frameworks).")
+    ap.add_argument("--gerrit-remote", help="Gerrit git remote name (must match the profile).")
+    ap.add_argument("--gerrit-topic", default="", help="optional Gerrit topic used by a "
+                    "profile push-ref/query template.")
+    ap.add_argument("--change-id", default="", help="existing Gerrit Change-Id to bind "
+                    "the consent target; otherwise read it from the pushed commit trailer.")
     ap.add_argument("--branch", required=True, help="local branch to push")
     ap.add_argument("--head-owner", default="", help="owner/namespace of the fork the branch is "
                     "pushed to (the PR head repo). Defaults to the owner of the `origin` remote. "
@@ -977,32 +1500,8 @@ def main():
             emit_manifest=False)
         sys.exit("PHASE 8 BLOCKED: phases not passed: %s" % not_done)
 
-    # Gerrit backend (HarmonyOS): placeholder. The push target,
-    # `git push HEAD:refs/for/<base>` invocation, Change-Id parsing, and Gerrit
-    # review-label query are environment-specific and not yet wired. Fail closed
-    # with an actionable message rather than silently doing the wrong thing —
-    # same stance as an unconfigured build command. The backend-agnostic scaffold
-    # (two review gates, consent, SHA binding, P8 substate machine) is ready to
-    # host it once the commands are filled.
     if backend == "gerrit":
-        reason = ("HarmonyOS 上库后端（gerrit）尚未配置：push refs/for 与 "
-                  "Gerrit review 查询命令为占位。")
-        _record_result(
-            pdir, "FAIL", reason, [],
-            repo_slug=args.repo_slug, branch=args.branch, mode="precheck",
-            failure_class="upload_backend_unconfigured",
-            problems=["gerrit upload backend not implemented (placeholder)"],
-            resume_hint="在 lib/environments.py / gate_upload_ci.py 填充 gerrit "
-                        "push+review 命令后重跑 gate_upload_ci.py",
-            emit_manifest=False)
-        sys.exit(
-            "PHASE 8 BLOCKED — HarmonyOS(gerrit) 上库后端未实现（占位）。\n"
-            "  需要填充：\n"
-            "    * git push HEAD:refs/for/%s 的远端与命令\n"
-            "    * 从 push 输出解析 change 号/URL\n"
-            "    * 查询 Gerrit review 标签（Verified/Code-Review）作 CI 绿等价\n"
-            "  这些命令是 HarmonyOS 环境相关，请在 gate_upload_ci.py 的 gerrit 分支填入。"
-            % args.base)
+        return _run_gerrit(state, args, pdir, repo, gdir)
 
     # From here down is the gitcode backend (OpenHarmony). --repo-slug is required
     # to open the PR against the base repo.

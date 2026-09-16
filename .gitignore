@@ -10,6 +10,7 @@ examples/specs/
 *.build-probe-ok
 .lifecycle-secret/
 .dsh-ohos/
+.dsh/
 
 # archived product RAW run-state — may carry device serials / personal paths.
 # Only redacted summaries (ar.md, manifest_summary.md, README.md) may be committed;
@@ -37,3 +38,9 @@ openharmony-knowledge-base/subsystems/**/README.generated.md
 node_modules/
 docs/.vitepress/dist/
 docs/.vitepress/cache/
+
+# Deployment instances keep host-specific patches, environment files and
+# generated doctor reports outside source control.
+platform/deploy/env/*.env
+platform/deploy/cordis*.yml
+products/dsh-cloud-implementation/doctor-*.json

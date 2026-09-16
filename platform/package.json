@@ -11,6 +11,7 @@
     "lint": "node scripts/lint.mjs",
     "typecheck": "node scripts/typecheck.mjs",
     "build": "node scripts/build.mjs",
-    "console": "node apps/local-console/src/server.js"
+    "console": "node apps/local-console/src/server.js",
+    "deploy:doctor": "node deploy/doctor.mjs"
   }
 }

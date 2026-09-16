@@ -29,6 +29,10 @@ resolves the right value from the profile registry. All accessors default a
 missing `environment` to "openharmony" so pre-existing runs (whose pipeline.json
 has no `environment` field) behave exactly as before.
 """
+import copy
+import hashlib
+import json
+import os
 import re
 import shlex
 
@@ -39,9 +43,17 @@ UNSET = None
 DEFAULT_ENVIRONMENT = "openharmony"
 ENVIRONMENTS = ("openharmony", "harmonyos")
 COMPONENT_TYPES = ("system", "chip")  # HarmonyOS only
+PROFILE_FILE_ENV = "OHOS_ENV_PROFILE_FILE"
+_GERRIT_TEMPLATE_FIELDS = frozenset(("base", "project", "change_id", "sha", "topic"))
+_GERRIT_PROJECT_RE = re.compile(r"[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)+")
+_GERRIT_REMOTE_RE = re.compile(r"[A-Za-z0-9._-]{1,128}")
+_GERRIT_CHANGE_RE = re.compile(r"[A-Za-z0-9._:-]{1,256}")
+_GERRIT_SHA_RE = re.compile(r"[0-9a-fA-F]{40}")
 
-# Compile banners. OpenHarmony's build.sh prints these to stdout (product name
-# may be absent on early failure), so match loosely — verbatim from the gates.
+# Compile banners. The profile-selected build entry prints these to stdout (the
+# OpenHarmony default is build.sh; other environments may use another entry).
+# Product name may be absent on early failure, so match loosely — verbatim from
+# the gates.
 _OHOS_SUCCESS_RE = r"=====build.*successful====="
 _OHOS_ERROR_RE = r"=====build.*error====="
 
@@ -83,6 +95,8 @@ def _ohos_profile():
         "product": "rk3568",
         "build_template": "./build.sh --product-name rk3568 --ccache --build-target {target}",
         "out_dir": "out/rk3568",
+        "build_entry": "build.sh",
+        "test_framework_path": "test/testfwk/developer_test/start.sh",
         "success_re": _OHOS_SUCCESS_RE,
         "error_re": _OHOS_ERROR_RE,
         "upload_backend": "gitcode",
@@ -93,6 +107,12 @@ def _ohos_profile():
         "arkts_test_template": UNSET,  # TODO: hap 测试构建+安装+aa test/hypium runner
         "arkts_report_root": UNSET,    # TODO: runner 报告输出目录(相对 repo 根)
         "arkts_report_glob": UNSET,    # TODO: 每套件一个 JUnit XML 的 glob(相对报告根)
+        "gerrit_remote": UNSET,
+        "gerrit_project": UNSET,
+        "gerrit_push_ref": UNSET,
+        "gerrit_query_command": UNSET,
+        "gerrit_change_url": UNSET,
+        "gerrit_green_labels": UNSET,
     }
 
 
@@ -124,6 +144,8 @@ def _harmonyos_profile(component_type):
                 "--device-type {device_type} --ccache --build-target {target} "
                 "--build-variant root -ninja-args=-j30"),
             "out_dir": UNSET,         # TODO: 系统组件 产物目录
+            "build_entry": "build_system.sh",
+            "test_framework_path": UNSET,
             "success_re": _HMOS_SUCCESS_RE,
             "error_re": _HMOS_ERROR_RE,
             "upload_backend": "gerrit",
@@ -131,6 +153,12 @@ def _harmonyos_profile(component_type):
             "arkts_test_template": UNSET,
             "arkts_report_root": UNSET,
             "arkts_report_glob": UNSET,
+            "gerrit_remote": UNSET,
+            "gerrit_project": UNSET,
+            "gerrit_push_ref": UNSET,
+            "gerrit_query_command": UNSET,
+            "gerrit_change_url": UNSET,
+            "gerrit_green_labels": UNSET,
         },
         "chip": {
             "product": UNSET,        # TODO: HarmonyOS 芯片组件 product form
@@ -141,6 +169,8 @@ def _harmonyos_profile(component_type):
                 "--gn-args singleap=true --build-target {target} "
                 "--root-perf-main root"),
             "out_dir": UNSET,         # TODO: 芯片组件 产物目录
+            "build_entry": "build_vendor.sh",
+            "test_framework_path": UNSET,
             "success_re": _HMOS_SUCCESS_RE,
             "error_re": _HMOS_ERROR_RE,
             "upload_backend": "gerrit",
@@ -148,11 +178,136 @@ def _harmonyos_profile(component_type):
             "arkts_test_template": UNSET,
             "arkts_report_root": UNSET,
             "arkts_report_glob": UNSET,
+            "gerrit_remote": UNSET,
+            "gerrit_project": UNSET,
+            "gerrit_push_ref": UNSET,
+            "gerrit_query_command": UNSET,
+            "gerrit_change_url": UNSET,
+            "gerrit_green_labels": UNSET,
         },
     }[component_type]
 
 
-def _profile(state):
+def _profile_key(state):
+    env = env_id(state)
+    return env if env == "openharmony" else "%s/%s" % (env, component_type(state))
+
+
+def _validate_override(key, value):
+    if not isinstance(value, dict) or not value:
+        raise EnvironmentNotConfigured(
+            "环境 profile %s 必须是非空 JSON 对象" % key)
+    allowed = {
+        "product", "build_template", "build_entry", "out_dir", "success_re",
+    "error_re", "upload_backend", "root_markers", "test_framework_path",
+        "arkts_test_template", "arkts_report_root", "arkts_report_glob",
+        "gerrit_remote", "gerrit_project", "gerrit_push_ref",
+        "gerrit_query_command", "gerrit_change_url", "gerrit_green_labels",
+    }
+    unknown = sorted(set(value) - allowed)
+    if unknown:
+        raise EnvironmentNotConfigured(
+            "环境 profile %s 包含不支持的字段: %s" % (key, ", ".join(unknown)))
+    result = copy.deepcopy(value)
+    for field in ("product", "build_template", "build_entry", "success_re", "error_re",
+                  "test_framework_path", "arkts_test_template", "arkts_report_root",
+                  "arkts_report_glob", "gerrit_remote", "gerrit_project",
+                  "gerrit_push_ref", "gerrit_change_url"):
+        if field not in result or result[field] is None:
+            continue
+        if not isinstance(result[field], str) or not result[field].strip() or "\0" in result[field] or "\n" in result[field] or "\r" in result[field]:
+            raise EnvironmentNotConfigured(
+                "环境 profile %s 的 %s 必须是无换行字符串" % (key, field))
+    if "product" in result and result["product"] is not None and not re.fullmatch(r"[A-Za-z0-9._-]{1,128}", result["product"]):
+        raise EnvironmentNotConfigured("环境 profile %s 的 product 不安全" % key)
+    if "build_entry" in result and result["build_entry"] is not None and not re.fullmatch(r"[A-Za-z0-9._-]{1,128}", result["build_entry"]):
+        raise EnvironmentNotConfigured("环境 profile %s 的 build_entry 不安全" % key)
+    for field in ("out_dir", "test_framework_path", "arkts_report_root"):
+        path = result.get(field)
+        if path is not None and (path.startswith(("/", "\\")) or "\\" in path or path == ".." or path.startswith("../") or "/../" in path):
+            raise EnvironmentNotConfigured("环境 profile %s 的 %s 必须是工作区内相对路径" % (key, field))
+    if "root_markers" in result:
+        markers = result["root_markers"]
+        if not isinstance(markers, list) or not markers or len(markers) > 64:
+            raise EnvironmentNotConfigured("环境 profile %s 的 root_markers 必须是非空数组" % key)
+        for marker in markers:
+            if not isinstance(marker, str) or not marker or marker.startswith(("/", "\\")) or "\\" in marker or marker == ".." or marker.startswith("../") or "/../" in marker or "\0" in marker or "\n" in marker or "\r" in marker:
+                raise EnvironmentNotConfigured("环境 profile %s 的 root_markers 含越界路径" % key)
+    if "upload_backend" in result and result["upload_backend"] not in ("gitcode", "gerrit"):
+        raise EnvironmentNotConfigured("环境 profile %s 的 upload_backend 必须为 gitcode 或 gerrit" % key)
+    if "gerrit_remote" in result and result["gerrit_remote"] is not None \
+            and not _GERRIT_REMOTE_RE.fullmatch(result["gerrit_remote"]):
+        raise EnvironmentNotConfigured("环境 profile %s 的 gerrit_remote 不安全" % key)
+    if "gerrit_project" in result and result["gerrit_project"] is not None \
+            and not _GERRIT_PROJECT_RE.fullmatch(result["gerrit_project"]):
+        raise EnvironmentNotConfigured("环境 profile %s 的 gerrit_project 不安全" % key)
+    if "gerrit_push_ref" in result and result["gerrit_push_ref"] is not None:
+        push_ref = result["gerrit_push_ref"]
+        fields = set(re.findall(r"\{([A-Za-z0-9_]+)\}", push_ref))
+        if fields - {"base", "topic"} or "{base}" not in push_ref \
+                or not push_ref.startswith("HEAD:refs/for/"):
+            raise EnvironmentNotConfigured(
+                "环境 profile %s 的 gerrit_push_ref 必须是 HEAD:refs/for/{base} 模板" % key)
+    if "gerrit_query_command" in result and result["gerrit_query_command"] is not None:
+        command = result["gerrit_query_command"]
+        if (not isinstance(command, list) or not command or len(command) > 64
+                or any(not isinstance(item, str) or not item.strip() or len(item) > 4096
+                       or "\0" in item or "\n" in item or "\r" in item for item in command)):
+            raise EnvironmentNotConfigured(
+                "环境 profile %s 的 gerrit_query_command 必须是非空 argv 数组" % key)
+        fields = set()
+        for item in command:
+            fields.update(re.findall(r"\{([A-Za-z0-9_]+)\}", item))
+        unknown_fields = fields - _GERRIT_TEMPLATE_FIELDS
+        if unknown_fields:
+            raise EnvironmentNotConfigured(
+                "环境 profile %s 的 gerrit_query_command 含未知模板字段: %s"
+                % (key, ", ".join(sorted(unknown_fields))))
+        first = command[0]
+        if re.search(r"[;&|`$<>]", first) or (not os.path.isabs(first)
+                                               and "/" in first):
+            # A profile command may be a binary name or an absolute path; a
+            # relative path is deliberately rejected because it depends on the
+            # gate's current directory and can escape the reviewed toolchain.
+            raise EnvironmentNotConfigured(
+                "环境 profile %s 的 gerrit_query_command 首项必须是命令名或绝对路径" % key)
+    if "gerrit_change_url" in result and result["gerrit_change_url"] is not None:
+        fields = set(re.findall(r"\{([A-Za-z0-9_]+)\}", result["gerrit_change_url"]))
+        if fields - {"project", "change_id"}:
+            raise EnvironmentNotConfigured(
+                "环境 profile %s 的 gerrit_change_url 含未知模板字段" % key)
+    if "gerrit_green_labels" in result and result["gerrit_green_labels"] is not None:
+        labels = result["gerrit_green_labels"]
+        if (not isinstance(labels, dict) or not labels or len(labels) > 32
+                or any(not isinstance(name, str) or not name.strip() or len(name) > 128
+                       or not isinstance(level, int) or isinstance(level, bool)
+                       or level < 1 or level > 4 for name, level in labels.items())):
+            raise EnvironmentNotConfigured(
+                "环境 profile %s 的 gerrit_green_labels 必须是非空 label->整数数组" % key)
+    return result
+
+
+def _external_profiles():
+    filename = os.environ.get(PROFILE_FILE_ENV, "").strip()
+    if not filename:
+        return {}
+    if not os.path.isabs(filename):
+        raise EnvironmentNotConfigured(
+            "%s 必须是绝对路径，当前为 %r" % (PROFILE_FILE_ENV, filename))
+    try:
+        with open(filename, "r", encoding="utf-8") as stream:
+            raw = json.load(stream)
+    except Exception as error:
+        raise EnvironmentNotConfigured(
+            "无法读取 %s=%s: %s" % (PROFILE_FILE_ENV, filename, error))
+    profiles = raw.get("profiles") if isinstance(raw, dict) else None
+    if not isinstance(profiles, dict):
+        raise EnvironmentNotConfigured(
+            "%s 顶层必须包含 profiles JSON 对象" % filename)
+    return {key: _validate_override(key, value) for key, value in profiles.items()}
+
+
+def _resolved_profile(state):
     env = env_id(state)
     if env == "openharmony":
         return _ohos_profile()
@@ -162,7 +317,32 @@ def _profile(state):
             "environment=harmonyos requires component_type in %s, got %r.\n"
             "  Re-run `advance.py init` with --component-type system|chip."
             % (list(COMPONENT_TYPES), ctype))
-    return _harmonyos_profile(ctype)
+    base = _harmonyos_profile(ctype)
+    key = "%s/%s" % (env, ctype)
+    override = _external_profiles().get(key)
+    if override:
+        base.update(override)
+    return base
+
+
+def _profile_digest(profile):
+    payload = json.dumps(profile, sort_keys=True, separators=(",", ":"))
+    return "sha256:" + hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _profile(state):
+    profile = _resolved_profile(state)
+    bound = (state or {}).get("environment_profile_digest")
+    if bound and bound != _profile_digest(profile):
+        raise EnvironmentNotConfigured(
+            "环境 profile digest 已变化 (pipeline=%s, 当前=%s)。"
+            "必须重新 init 并重新执行 P0。" % (bound, _profile_digest(profile)))
+    return profile
+
+
+def profile_digest(state):
+    """Stable digest of the resolved environment profile for run/cache binding."""
+    return _profile_digest(_resolved_profile(state))
 
 
 # ----------------------------------------------------------------------------
@@ -201,6 +381,16 @@ def _require(value, state, what):
 def product_form(state):
     """developer_test -p product (also the out/<product> segment)."""
     return _require(_profile(state)["product"], state, "product")
+
+
+def build_entry(state):
+    """Executable build entry resolved from the same profile as build_argv."""
+    return _require(_profile(state).get("build_entry", UNSET), state, "build_entry")
+
+
+def test_framework_path(state):
+    """Relative developer-test entrypoint for the selected environment."""
+    return _require(_profile(state).get("test_framework_path", UNSET), state, "test_framework_path")
 
 
 def build_command(state, target):
@@ -254,6 +444,108 @@ def error_re(state):
 def upload_backend(state):
     """Which P8 upload backend this environment uses: 'gitcode' | 'gerrit'."""
     return _profile(state)["upload_backend"]
+
+
+def _render_gerrit_template(template, values, *, field):
+    """Render an operator-supplied Gerrit argv/ref template.
+
+    Templates are data, never shell snippets.  Runtime values are validated
+    before substitution and the profile validator has already rejected unknown
+    fields, so a configured publisher can be executed with ``shell=False``
+    without allowing a branch, project or Change-Id to become command syntax.
+    """
+    if not isinstance(template, str) or not template:
+        raise EnvironmentNotConfigured("gerrit %s is not configured" % field)
+    unknown = set(re.findall(r"\{([A-Za-z0-9_]+)\}", template)) - _GERRIT_TEMPLATE_FIELDS
+    if unknown:
+        raise EnvironmentNotConfigured(
+            "gerrit %s contains unknown template fields: %s"
+            % (field, ", ".join(sorted(unknown))))
+    try:
+        return template.format(**values)
+    except (KeyError, IndexError, ValueError) as error:
+        raise EnvironmentNotConfigured(
+            "gerrit %s cannot be rendered: %s" % (field, error)) from error
+
+
+def _gerrit_values(state, *, base="master", project=None, change_id=None, sha=None,
+                   topic=""):
+    """Validate values that may be interpolated into a Gerrit profile."""
+    if not isinstance(base, str) or not re.fullmatch(r"[A-Za-z0-9._/-]{1,256}", base) \
+            or base.startswith(("/", "-")) or ".." in base.split("/"):
+        raise EnvironmentNotConfigured("gerrit base branch is unsafe")
+    resolved_project = project or _profile(state).get("gerrit_project")
+    if not isinstance(resolved_project, str) or not _GERRIT_PROJECT_RE.fullmatch(resolved_project):
+        raise EnvironmentNotConfigured("gerrit project is not configured or unsafe")
+    resolved_change = change_id or ""
+    if resolved_change and not _GERRIT_CHANGE_RE.fullmatch(resolved_change):
+        raise EnvironmentNotConfigured("gerrit change_id is unsafe")
+    resolved_sha = sha or ""
+    if resolved_sha and not _GERRIT_SHA_RE.fullmatch(resolved_sha):
+        raise EnvironmentNotConfigured("gerrit commit SHA is unsafe")
+    if topic and (not isinstance(topic, str) or not re.fullmatch(r"[A-Za-z0-9._/-]{1,256}", topic)
+                  or topic.startswith(("/", "-")) or ".." in topic.split("/")):
+        raise EnvironmentNotConfigured("gerrit topic is unsafe")
+    return {
+        "base": base,
+        "project": resolved_project,
+        "change_id": resolved_change,
+        "sha": resolved_sha,
+        "topic": topic,
+    }
+
+
+def gerrit_config(state):
+    """Return the complete, validated P8 Gerrit configuration.
+
+    A HarmonyOS deployment must provide all values through the external profile
+    file (``OHOS_ENV_PROFILE_FILE``).  No internal Gerrit host, credential or
+    query command is shipped in this repository.  Missing values raise
+    ``EnvironmentNotConfigured`` before a diff is committed or pushed.
+    """
+    profile = _profile(state)
+    if env_id(state) != "harmonyos" or profile.get("upload_backend") != "gerrit":
+        raise EnvironmentNotConfigured("gerrit backend is only available for harmonyos profiles")
+    remote = _require(profile.get("gerrit_remote", UNSET), state, "gerrit_remote")
+    project = _require(profile.get("gerrit_project", UNSET), state, "gerrit_project")
+    push_template = _require(profile.get("gerrit_push_ref", UNSET), state, "gerrit_push_ref")
+    query_template = _require(profile.get("gerrit_query_command", UNSET), state, "gerrit_query_command")
+    labels = _require(profile.get("gerrit_green_labels", UNSET), state, "gerrit_green_labels")
+    if not _GERRIT_REMOTE_RE.fullmatch(remote):
+        raise EnvironmentNotConfigured("gerrit_remote is unsafe")
+    if not _GERRIT_PROJECT_RE.fullmatch(project):
+        raise EnvironmentNotConfigured("gerrit_project is unsafe")
+
+    def push_ref(base="master", topic=""):
+        values = _gerrit_values(state, base=base, project=project, topic=topic)
+        rendered = _render_gerrit_template(push_template, values, field="push_ref")
+        if not rendered.startswith("HEAD:refs/for/"):
+            raise EnvironmentNotConfigured("gerrit push_ref must target refs/for")
+        return rendered
+
+    def query_command(change_id, sha, *, base="master", topic=""):
+        values = _gerrit_values(state, base=base, project=project,
+                                change_id=change_id, sha=sha, topic=topic)
+        return [_render_gerrit_template(item, values, field="query_command")
+                for item in query_template]
+
+    change_url_template = profile.get("gerrit_change_url")
+
+    def change_url(change_id):
+        if change_url_template is None:
+            return ""
+        values = _gerrit_values(state, project=project, change_id=change_id)
+        return _render_gerrit_template(change_url_template, values, field="change_url")
+
+    return {
+        "remote": remote,
+        "project": project,
+        "push_ref": push_ref(),
+        "push_ref_for": push_ref,
+        "query_command": query_command,
+        "change_url": change_url,
+        "green_labels": dict(labels),
+    }
 
 
 def root_markers(state):

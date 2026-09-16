@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { test } from 'node:test';
@@ -7,6 +7,25 @@ import { PACKAGE_ROOT, REPOSITORY_ROOT } from '../../src/core/paths.js';
 import { ProtocolError, PythonDeliveryAdapter } from '../../src/index.js';
 
 const PYTHON = process.env.OHOS_DSH_TEST_PYTHON;
+
+test('Python boundary rejects blank AR input before invoking the gate process', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'ohos-dsh-adapter-input-'));
+  try {
+    const adapter = new PythonDeliveryAdapter({ scriptsRoot: join(REPOSITORY_ROOT, 'skills/ohos-ar-dev-phases/scripts') });
+    await assert.rejects(
+      adapter.initialize({ run_id: 'blank-text', repo_root: root, environment: 'openharmony', ar_text: ' \n\t' }),
+      (error) => error instanceof ProtocolError && error.code === 'ar_input_empty',
+    );
+    const path = join(root, 'empty.md');
+    await writeFile(path, ' \n');
+    await assert.rejects(
+      adapter.initialize({ run_id: 'blank-file', repo_root: root, environment: 'openharmony', ar_path: path }),
+      (error) => error instanceof ProtocolError && error.code === 'ar_input_empty',
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
 
 test('real Python boundary initializes and inspects an authoritative pipeline', {
   skip: !PYTHON,

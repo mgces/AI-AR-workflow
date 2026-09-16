@@ -1,6 +1,6 @@
 # DSH 云端 Agent 编排平台：一期完整实施方案
 
-版本：1.1 · 日期：2026-09-12 · 状态：架构设计与实施基线；T01/T02/T03.A 的本地契约切片和免登录 local console MVP 已实现，Windows→WSL SSH 烟测通过，云平台与真实宿主验收未完成。
+版本：1.2 · 日期：2026-09-15 · 状态：架构设计与实施基线；官方 DSH AR 面板、远端 Gateway/RAG/调试、维测投影，“本地 Connector + SSHFS 挂载/remote-tools MCP + 本地 CodeAgent”执行切片，以及部署 doctor/systemd/cgroup admission 已实现并通过定向本地测试；Connector 连接边界已加入 Origin/TLS/mTLS 策略、配对撤销/轮换和断线命令回放。多租户、真实证书部署、真实宿主验收和真实 CLI/SSH/设备 P0–P8 验收仍未完成。
 
 面向实施者：Qwen3.8 等同类型模型、项目开发者、测试与运维人员。文中技术选型是本方案的设计决定；上游接口事实以引用资料及任务 T00 的固定版本实测为准。不得把设计、现有夹具测试或本文示例当作上线验收证据。
 
@@ -12,7 +12,7 @@
 
 | 文件 | 用途 |
 |---|---|
-| [v1.1：RAG、环境分支与调试](rag-environment-debug.md) | 云端模型/知识库入口、工程三分支、产物与设备识别 |
+| [扩展：RAG、环境分支、调试与 remote-tools](rag-environment-debug.md) | 云端模型/知识库入口、工程三分支、产物与设备识别、本地 MCP 访问 SSH 代码 |
 | [DSH 官方 Web UI 接入边界](dsh-integration.md) | 官方 Session/Tool/Approval 页面、AR runtime 工具和本地启动方式 |
 | [迁移到计算云部署手册](deploy-to-compute-cloud.md) | 从 WSL 单机验证迁移到 Linux 计算云、CodeAgent、SSH、反向代理和验收 |
 | [平台使用手册](usage-guide.md) | 最终用户从 CodeAgent、工程初始化到 AR P0–P8、审核、产物、维测和 API 的操作步骤 |
@@ -25,9 +25,9 @@
 | [workflow 示例](examples/ar-delivery.workflow.json) | 平台自定义 manifest 的字段示范，T02 后才可装载 |
 | [消息示例](examples/operation-start.json) | 平台协议示范，非 DSH 上游 API |
 
-当前实施状态记录在 `products/dsh-cloud-implementation/implementation-status.json`。已落地的基础代码在 `platform/README.md`，免登录运行入口说明在 `platform/apps/local-console/README.md`；该 local MVP 不代表 Connector、模型 RAG、设备调试或真实 AR 已完成。
+当前实施状态记录在 `products/dsh-cloud-implementation/implementation-status.json`。已落地的基础代码在 `platform/README.md`，免登录运行入口说明在 `platform/apps/local-console/README.md`；本轮新增 Connector WebSocket upgrade、出站客户端、在线工作区目录、受限 `agent.start/status/cancel`、本地 CodeAgent 执行器、SSHFS 相对路径绑定、不挂载源码的 remote-tools MCP broker、本地 operation journal 和安全连接策略。两种 Connector 模式都可以让本地 Claude Code/OpenCode/Codex 修改 SSH 代码，远端 Gateway 继续执行 gate；云端 hub 启用 `replayPending` 和绝对 `outboxFilePath` 后会保留断线中的幂等命令，在同一设备重连或云端进程重启后按 `operation_id` 重绑并回放结果。仍不代表多租户、真实证书/密钥服务、云模型 RAG、OS 硬隔离或三环境真实 AR 验收已完成。
 
-v1.1将**云端代码RAG及入口、本地产物/设备识别、工程三环境分支初始化**纳入一期，共26个实施任务、64项验收。新增详细设计见 [扩展章节](rag-environment-debug.md)。
+v1.2将**云端代码RAG及入口、本地产物/设备识别、工程三环境分支初始化、本地 Connector remote-tools MCP**纳入一期，共26个实施任务、64项验收。新增详细设计见 [扩展章节](rag-environment-debug.md)。
 
 ## 2. 需求基线
 
@@ -82,12 +82,11 @@ v1.1将**云端代码RAG及入口、本地产物/设备识别、工程三环境�
 
 ### 3.1 检查基线
 
-本次从真实 WSL 仓库读取：`/home/mgces/code/AI-AR-workflow`，Git HEAD：
-`e65dd9a5afd9d736d261bceb95b60d4eda123cf1`。
-
-读取时已有用户修改：`docs/reference/dsh-fusion-implementation-status.md`；
+设计启动时从真实 WSL 仓库读取：`/home/mgces/code/AI-AR-workflow`，基线提交为
+`e65dd9a5afd9d736d261bceb95b60d4eda123cf1`；当前本地实现验证以 `ac885b9` 为参考提交，
+工作树仍包含未提交的实现改动。读取时已有用户修改：`docs/reference/dsh-fusion-implementation-status.md`；
 已有未跟踪目录：`products/20260908-harmony-ai-video-script/`。本方案不修改这些内容。
-本次没有执行 OHOS 编译、设备操作、代码发布或 DSH 实机测试。
+本轮仍没有执行真实 OHOS/HarmonyOS 编译、设备操作、代码发布或三环境 DSH 业务验收。
 
 | 已有模块/资料 | 核实的能力 | 本期处理 |
 |---|---|---|
@@ -98,7 +97,7 @@ v1.1将**云端代码RAG及入口、本地产物/设备识别、工程三环境�
 | `runtime/dsh-ohos/src/core/store/sqlite-store.js` | runs / tasks / attempts / operations / events | 保持远端本地盘 SQLite；不能挂到 SSHFS/NFS |
 | `runtime/dsh-ohos/src/dsh/plugin.js` | createRuntime() 后注册工具 | 云端不能直接照搬：会误把云端文件系统当源码环境 |
 | [维测说明](../../workflow/observability-usage.md) | schema v2、阶段耗时、等待并集、三类人工介入、gate 次数 | 原字段保留，云端补充 usage、输入与事件投影 |
-| [融合实施状态](../dsh-fusion-implementation-status.md) | observe 模式；进程托管、真实计量等仍未完整 | 本次作为明确缺口；历史状态记录不当新验收 |
+| [融合实施状态](../dsh-fusion-implementation-status.md) | observe 模式记录历史融合状态 | 以当前实现状态和本报告的可重复测试证据为准；历史条目不当新验收 |
 | `dsh-workflow/README.md` | 另一套参考实现 | 不导入其数据库，不形成第二套 AR 状态机 |
 
 ### 3.2 必须解决的实际缺口
@@ -112,7 +111,7 @@ v1.1将**云端代码RAG及入口、本地产物/设备识别、工程三环境�
 7. 构建前源码身份尚未完整绑定 operation，无法可靠地把一次 FAIL/PASS 归因到修复版本。
 8. 云上 HMAC 校验不能仅靠上传摘要。保留远端 gate HMAC 原链；新增网关签名验证回执让云端验证来源，不上传 HMAC 私钥。
 
-9. HarmonyOS的product/out_dir/root_markers仍占位，P0还有固定build.sh检查及未按环境绑定的编译probe缓存，Gerrit明确未实现；须补齐后验收。
+9. HarmonyOS 的真实 product/out_dir/root_markers、测试 runner、设备和 Gerrit 规则仍需由目标工程 profile 提供；当前 P0 已按 profile 解析 build/test 入口并绑定 profile digest，但未核实的值仍会 fail-closed。
 10. 当前P4成功横幅是诊断信息，实际判定按退出码/错误横幅/产物等；P0编译probe有独立横幅要求，UI不可混用。
 
 ### 3.3 上游能力与实测边界
@@ -217,34 +216,60 @@ flowchart TB
 
 ## 6. 本地 codeagent 如何处理 SSH 代码
 
-### 6.1 一期标准模式：local-agent + remote-tools
+### 6.1 当前可运行模式：local-agent + SSHFS 受控挂载
 
-codeagent 在本地的每 run 空白 sandbox 中运行，通过本地 MCP 代理获得远端文件/命令工具：
+这是当前已经可以运行的本地 Agent 路径：CodeAgent 进程留在用户电脑，SSH 代码通过用户预先建立的
+SSHFS/受控挂载成为本地绝对目录，云端 Connector 只下发相对路径和固定 Agent id。Connector 的
+`LocalConnectorAgentService` 会重新发现本机 CLI，调用已有 `LocalCodeAgentExecutor`，并把结果、usage、
+artifact refs 和取消状态回传 DSH。P4–P8 的 Python gate、设备和发布仍通过 SSH Workspace Gateway 在
+代码主机执行，因此预检要求 Connector 与 Gateway 同时在线。
+
+SSHFS 模式下 codeagent 直接在受控挂载目录中运行：
 
 ```text
 本地 codeagent
-  → workspace.read / workspace.search / workspace.apply_patch
-  → Connector 通过已有 SSH 信道请求 Gateway
-  → SSH 工作区内执行，返回相对路径、摘要和内容
+  → Connector 校验 workspace_id、repo_relative、pipeline_relative
+  → 本地 CodeAgent 在 SSHFS 挂载的本地绝对 cwd 执行
+  → SSH 主机上的同一目录立即看到修改；Gate 通过 Gateway 执行
 ```
 
 远端执行 `exec_start` 后返回 operation_id，codeagent 轮询状态或订阅事件；日志和退出码由 Supervisor 回报。构建、UT、设备门控等使用 gate.run 的受限描述，不允许模型上传任意“成功证据”。
 
 | 工具 | 输入关键项 | 必须的行为 |
 |---|---|---|
-| workspace.read/search | workspace_id、相对路径/查询、页大小 | 不跟随越界符号链接；输出分页，返回来源 |
-| workspace.apply_patch | 文件预期 sha256、patch、operation_id | compare-and-swap；文件已变则冲突，不覆盖 |
-| workspace.exec_start | 已授权工具类型、argv、cwd_ref、超时、资源需求 | 持久意图后启动；受限执行身份；分离 gate/发布 |
-| workspace.exec_status/cancel | operation_id、epoch | 取消整个进程树，状态未知保持隔离 |
-| gate.run | task_id、gate ID、schema 参数 | 从固定 workflow 解析脚本，不接受替换脚本 |
-| artifact.collect | 明确文件集合/产物索引、版本 | 稳定快照、hash、范围校验、脱敏清单 |
+| agent.start | workspace_id、agent_id、相对代码根、attempt 上下文 | 仅允许 Connector 本机已发现且有固定 adapter 的 Agent；本地路径必须在 SSHFS 根内 |
+| agent.status/cancel | operation_id | 取消本地进程；状态未知保持隔离并由 scheduler 对账 |
+| workspace.probe/read/write/list/hash/diff/exec_profile | SSH Gateway Authority envelope | 只在代码主机执行，路径和 profile 白名单由 Gateway 校验 |
+| ar.delivery.* | 固定 gate profile、run revision | Python gate/advance 在 SSH 代码端执行，不能由模型提供脚本 |
 
-适配器必须限制原生本地文件/终端工具，确保代码读写走 remote-tools。仅保留协议或用户交互所需工具。配置生成后通过实际工具调用证明：修改发生在远端 sentinel 文件，本地没有同名源码副本；本地越界工具被拒绝。如果某个固定版本不能强制工具限制，注册为 unsupported，不悄悄退回本地执行。
+SSHFS 模式下文件读写发生在挂载根，Agent 的终端命令也在本地 Connector 主机执行；因此它适合
+开发与可控验证。Connector 会拒绝挂载根外路径、任意云端命令和未知 Agent。
 
-### 6.2 不作为默认的两种模式
+### 6.2 当前可运行模式：local-agent + remote-tools MCP
 
-- local-agent + SSHFS：文件可见但终端仍在本地，路径/锁/大型扫描性能容易不一致；本期不采用。
-- SSH-remote-agent：通过 SSH 把 codeagent 也启动在源码主机，工具兼容通常更简单，但改变了“本地 codeagent”位置和凭据部署。只有用户明确选择才启用；不是一期满足 FR03 的替代验收。
+不安装 SSHFS 时，Connector 可以在本地创建一次性 remote-tools broker。Claude Code、OpenCode、
+Codex 或自定义 argv Agent 通过生成的 MCP 配置调用受限的 `dsh_workspace_*` 工具；broker 在
+Connector 父进程内使用用户 SSH 配置访问代码主机，MCP 子进程只得到 Unix socket capability，
+不会得到 SSH 私钥。可调用的 `read/list/search/write/diff/hash/read_binary` 和管理员登记的
+`exec_profile` 仍由 WorkspaceConnector 的 root、符号链接、CAS、profile、资源锁和 Authority
+校验执行。CodeAgent stdout/stderr 会回写远端 pipeline evidence，临时本地 sandbox 在 run 后删除。
+
+Connector 配置使用 `workspace_access: "remote_tools"`、`remote_tools.enabled: true`、SSH
+连接信息和 `allowed_profiles`；完整样例见
+[`workspace-gateway/examples/local-connector-remote-tools.json`](../../../workspace-gateway/examples/local-connector-remote-tools.json)。
+Claude 使用 `--strict-mcp-config --mcp-config <file>` 加载 `mcpServers` JSON；OpenCode 使用
+`OPENCODE_CONFIG=<file>` 加载当前 OpenCode `mcp.dsh_remote` JSON；Codex 使用每次运行隔离的
+`CODEX_HOME/config.toml` 和 `[mcp_servers.dsh_remote]`；OpenCode 生成配置同时拒绝本地 bash/read/write
+等内置工具（通过官方 `permission` deny 规则）。Connector 会在隔离 Codex home 中复制可选的
+本机 `auth.json`/`credentials.json`，不会修改持久配置；API key 环境变量和系统钥匙串仍由本机 CLI
+处理。自定义 argv Agent 必须显式提供 `mcp_config_arg` 或 `{{mcp_config_file}}`。目标 CLI 若需要
+固定私有/旧版 OpenCode 可设置 `opencodeConfigShape: "v2"`；默认使用官方 flat `mcp` 结构。格式不匹配、远端根不可达或 profile
+未登记时 Connector 会阻断运行。P4–P8 仍由 SSH Workspace Gateway 的 AR gate profile 执行，remote-tools
+只负责本地 CodeAgent 的源码操作。
+
+### 6.3 仍待补齐的部署加固
+
+- SSH-remote-agent：通过 SSH 把 codeagent 也启动在源码主机，工具兼容通常更简单，但改变了“本地 codeagent”位置和凭据部署。当前仓库的 Gateway profile 就是这个过渡实现；它不能替代一期 FR03 的本地进程验收。
 
 技能和知识库通过只读“上下文包”提供给 codeagent；不要把本地技能绝对路径原样交给远端 shell。包包含内容 hash、来源、阶段必需段落、远端脚本引用。实际使用事件按 package_id/skill_id 采集，推荐清单不计为已使用。
 

@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "test_id": "ssh-remote-tools-smoke-20260916",
+  "tested_at": "2026-09-16",
+  "status": "passed_with_scope_limits",
+  "transport": "real-loopback-http-websocket-ssh",
+  "checks": [
+    {
+      "id": "ssh-authentication",
+      "status": "passed",
+      "observed": "A temporary OpenSSH server on 127.0.0.1:2222 accepted the pinned test key and the WorkspaceConnector completed real SSH commands."
+    },
+    {
+      "id": "remote-workspace-probe",
+      "status": "passed",
+      "observed": "LocalConnectorAgentService remote_tools preflight returned ready with a readable and writable registered SSH workspace."
+    },
+    {
+      "id": "cloud-websocket-to-ssh",
+      "status": "passed",
+      "observed": "ConnectorCodeAgentExecutor sent the relative agent.start request through a real loopback WebSocket upgrade and the connected local service completed the SSH-backed remote_tools run."
+    },
+    {
+      "id": "local-codeagent-edit",
+      "status": "passed",
+      "observed": "A deterministic custom argv CodeAgent connected to the short-lived MCP broker, read src/before.txt through dsh_workspace_read and wrote the changed content through dsh_workspace_write; a separate SSH cat verified the remote file."
+    },
+    {
+      "id": "remote-compile-profile",
+      "status": "passed_with_scope_limits",
+      "observed": "The CodeAgent invoked an administrator-registered compile_smoke profile through dsh_workspace_exec_profile and SSH verified evidence/P4/compile-smoke.txt; this is a transport/profile check, not an OpenHarmony build."
+    },
+    {
+      "id": "usage-and-artifacts",
+      "status": "passed",
+      "observed": "The Connector returned usage input=7, output=11, total=18 and projected P2 stdout/stderr artifact references back to the SSH pipeline."
+    }
+  ],
+  "scope_limits": [
+    "The CodeAgent was a deterministic local test executable so the transport and MCP boundary could be exercised without provider credentials; this does not claim a Claude Code, OpenCode or Codex provider run.",
+    "The SSH server and code root were temporary loopback fixtures. Production deployment still requires the user's SSH host, host-key policy, Connector pairing and TLS/mTLS termination.",
+    "The compile_smoke profile only creates a marker artifact. A real P4-P8 result requires a registered OpenHarmony environment profile, source checkout, hdc target, device artifacts and publication authority; this WSL host has none of those prerequisites."
+  ],
+  "implementation": [
+    "workspace-gateway/src/connector/workspace-connector.js now initializes target_real for a missing write leaf after validating the existing parent, so remote CodeAgent edits and later log/artifact creation work on new files.",
+    "platform/apps/local-console/src/connector-agent.js projects CodeAgent stdout/stderr and remote artifact refs back to the registered SSH pipeline and removes the temporary MCP sandbox after completion."
+  ]
+}

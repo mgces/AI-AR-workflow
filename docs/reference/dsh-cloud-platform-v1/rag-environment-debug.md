@@ -1,7 +1,7 @@
 # v1.1 扩展：代码 RAG、产物/设备调试与工程环境分支
 
 返回 [总方案](index.md)。版本1.1，2026-09-12；本章为一期必做范围，已同步到任务、契约与验收。
-本章定义新增实现；不是宣称本仓已具备这些云平台能力。
+本仓已经提供本地/Gateway 索引、模型适配器、调试状态和环境分支路由；本章同时标出生产部署仍需接入的外部服务，避免把本地切片当成完整云资源。
 
 ## 1. 三项新增目标
 
@@ -207,7 +207,7 @@ unbound → detecting → awaiting_environment_confirmation → profile_incomple
 | 本仓build入口 | build.sh，当前默认rk3568 | build_system.sh | build_vendor.sh |
 | 本仓其他参数 | --product-name rk3568 --ccache --build-target | ABI/device_type/root variant等由profile生成 | ABI/device_type/user variant及GN/内核等由profile生成 |
 | 产物根 | 当前out/rk3568 | 真实工程out_dir，当前源码占位待补 | 真实工程out_dir，当前源码占位待补 |
-| 根标志 | build.sh + developer_test | 根据真实仓确认；当前占位 | 根据真实仓确认；当前占位 |
+| 根标志 | 可执行 build.sh + developer_test/start.sh | 根据真实仓确认；当前占位 | 根据真实仓确认；当前占位 |
 | native UT | profile.product_form + 原developer_test路径 | 独立确认product和runner，不能沿用rk3568 | 独立确认product和runner |
 | ArkTS测试 | contract声明kind后选择对应runner | 同原则，使用本环境runner | 同原则，使用本环境runner |
 | 真机验证 | 已确认产品/ABI/系统与产物匹配 | 系统组件profile对应部署/加载/用例 | 芯片组件profile对应部署/加载/用例 |
@@ -222,9 +222,9 @@ P6/P7继续复用nonce、真实运行marker、主机/设备产物hash、实际�
 
 | 现有文件 | 当前事实 | 必须实施的改造 |
 |---|---|---|
-| `skills/ohos-ar-dev-phases/scripts/lib/environments.py` | HarmonyOS的product/out_dir/root_markers仍UNSET，编译模板已存在 | 增加按workspace绑定的版本化profile解析；由真实工程证据填值，不把样例值变默认 |
-| `skills/ohos-ar-dev-phases/scripts/gate_env_init.py` | 第163–166行仍固定检查build.sh；编译probe已有envs.build_argv | 构建入口存在性也按profile解析，HarmonyOS不能被build.sh误挡或误放 |
-| 同上 | .build-probe-ok只检查存在，写入目标字符串 | 缓存键增加环境/profile/产品/ABI/入口hash/工具链/target/工作区身份；旧标记不可跨profile继承 |
+| `skills/ohos-ar-dev-phases/scripts/lib/environments.py` | 已支持按 environment/component_type 解析内置或 `OHOS_ENV_PROFILE_FILE` 外部 profile；HarmonyOS 未填真实仓库值时仍 fail-closed | 为每个真实工程发布并签名 product/out_dir/root_markers/runner 值，不把样例值变默认 |
+| `skills/ohos-ar-dev-phases/scripts/gate_env_init.py` | 构建入口、测试 runner 和源码根标志均按 profile 解析；不再固定检查 build.sh | 对真实 HarmonyOS 仓库补齐 profile 并实测 build/test runner |
+| 同上 | `.build-probe-ok` 已绑定 profile digest 与 probe target | 继续把工具链、工作区身份等纳入真实云缓存策略；旧标记不可跨 profile 继承 |
 | `skills/ohos-ar-dev-phases/scripts/advance.py` | init要求environment及HarmonyOS subtype/device_type | 平台不允许缺省；保存人工确认记录/profile digest，后续阶段一致检查 |
 | `skills/ohos-ar-dev-phases/scripts/gate_test_ut.py` | 已有kind分支；ArkTS runner配置仍可UNSET | profile分别提供真实runner/report规则，全部契约用例真实执行 |
 | `skills/ohos-ar-dev-phases/scripts/gate_upload_ci.py` | Gerrit分支明确未实现并失败退出 | 实现真实Gerrit发布/状态查询、预检审批和patchset revision绑定；禁止退回GitCode |
@@ -232,8 +232,7 @@ P6/P7继续复用nonce、真实运行marker、主机/设备产物hash、实际�
 | `skills/ohos-ar-dev-phases/scripts/gate_device_func.py` | 已校验主机/设备sha256和运行时证据 | 调试界面与证据链复用这套结果，不能新造“设备PASS” |
 | `skills/ohos-ar-dev-phases/scripts/gate_build.py` | 当前P4成功横幅是诊断信息；exit0/无错误横幅/产物等才是实际判定 | UI保留真实gate理由，不硬编码“无成功横幅即失败”；P0编译probe仍有自己的横幅要求 |
 
-原environments.py部分注释比实现旧；以实际代码与真实工程为准。
-本次只是方案更新，不修改上述运行代码，不填入未核实的HarmonyOS值。
+以上“当前事实”以实现和测试为准；HarmonyOS 具体 product、产物目录、runner、设备和 Gerrit 规则仍必须由目标工程提供，不能用本仓默认值代替。
 
 ### 3.4 Profile契约与统一路由
 

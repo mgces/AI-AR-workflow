@@ -3,12 +3,28 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "exports": {
+    ".": "./src/connector/index.js",
+    "./authority": "./src/authority/envelope.js",
+    "./authority/signature": "./src/authority/signature.js",
+    "./gateway": "./src/connector/index.js",
+    "./supervisor/resource-locks": "./src/supervisor/resource-locks.js",
+    "./supervisor/process-supervisor": "./src/supervisor/process-supervisor.js"
+  },
+  "bin": {
+    "dsh-workspace-gateway": "./bin/workspace-gateway.js",
+    "dsh-ar-delivery": "./bin/dsh-ar-delivery.js",
+    "dsh-local-connector": "./bin/dsh-local-connector.js",
+    "dsh-connector-pair": "./bin/dsh-connector-pair.js",
+    "dsh-remote-tools-mcp": "./src/connector/remote-tools-mcp.js"
+  },
   "engines": {
     "node": ">=24"
   },
   "scripts": {
+    "start": "node bin/workspace-gateway.js",
     "test": "node --test",
-    "lint": "node --check src/authority/envelope.js",
-    "typecheck": "node --check src/authority/envelope.js"
+    "lint": "node --check src/authority/envelope.js && node --check src/authority/signature.js && node --check src/supervisor/resource-locks.js && node --check src/supervisor/process-supervisor.js && node --check src/connector/workspace-connector.js && node --check src/connector/jsonl-gateway.js && node --check src/connector/http-client.js && node --check src/connector/websocket.js && node --check src/connector/sshfs-mount.js && node --check src/connector/remote-tools-mcp.js && node --check src/connector/pairing-registry.js && node --check src/connector/index.js && node --check bin/workspace-gateway.js && node --check bin/dsh-ar-delivery.js && node --check bin/dsh-device-probe.js && node --check bin/dsh-local-connector.js && node --check bin/dsh-connector-pair.js",
+    "typecheck": "node --check src/authority/envelope.js && node --check src/authority/signature.js && node --check src/supervisor/resource-locks.js && node --check src/supervisor/process-supervisor.js && node --check src/connector/workspace-connector.js && node --check src/connector/jsonl-gateway.js && node --check src/connector/http-client.js && node --check src/connector/websocket.js && node --check src/connector/sshfs-mount.js && node --check src/connector/remote-tools-mcp.js && node --check src/connector/pairing-registry.js && node --check src/connector/index.js && node --check bin/workspace-gateway.js && node --check bin/dsh-ar-delivery.js && node --check bin/dsh-device-probe.js && node --check bin/dsh-local-connector.js && node --check bin/dsh-connector-pair.js"
   }
 }

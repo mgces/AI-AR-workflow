@@ -84,7 +84,11 @@ python3 $S/gate_upload_ci.py --pipeline-dir "$PDIR" --repo-slug owner/repo --bra
     --issue N \
     --local-review-report F --pr-review-report F \
     [--pr N] [--allow-push]
-# gerrit(harmonyos)后端:不需要 --repo-slug/--issue,push refs/for/<base>(命令占位待填)
+# gerrit(harmonyos)后端:不需要 --repo-slug/--issue；profile 必须提供真实 Gerrit 命令
+export OHOS_ENV_PROFILE_FILE=/secure/path/harmonyos-system-profile.json
+python3 $S/gate_upload_ci.py --pipeline-dir "$PDIR" --environment harmonyos \
+    --component-type system --branch B --base master \
+    --local-review-report F --pr-review-report F --allow-push
 ```
 
 ## 编排器脚本（ohos-ar-dev-workflow/scripts/）

@@ -1,13 +1,23 @@
 #!/usr/bin/env node
+import { createReadStream, createWriteStream, writeSync } from 'node:fs';
 import { createInterface } from 'node:readline';
 import { createRuntime } from '../runtime.js';
 import { McpServer } from './server.js';
 
 const runtime = createRuntime();
 const server = new McpServer({ catalog: runtime.tools });
-const lines = createInterface({ input: process.stdin, crlfDelay: Infinity });
+// Use explicit fd streams for child-process transports. In this WSL runtime
+// Node's process.stdin/stdout wrappers can observe a socket EOF before the
+// parent has written the first JSONL request, or buffer stdout past process
+// shutdown. The fd streams preserve the connection and flush each response.
+const input = createReadStream(null, { fd: 0, autoClose: false });
+const output = createWriteStream(null, { fd: 1, autoClose: false });
+const lines = createInterface({ input, crlfDelay: Infinity });
 
-console.error('ohos-dsh MCP server listening on stdio');
+// Keep the startup diagnostic synchronous: when a parent closes a stdio
+// child immediately after the final response, console.error's buffered write
+// can otherwise be lost along with the process.stderr socket.
+try { writeSync(2, 'ohos-dsh MCP server listening on stdio\n'); } catch { /* diagnostics are best effort */ }
 
 for await (const line of lines) {
   if (!line.trim()) continue;
@@ -25,5 +35,5 @@ for await (const line of lines) {
 runtime.close();
 
 function write(message) {
-  process.stdout.write(`${JSON.stringify(message)}\n`);
+  output.write(`${JSON.stringify(message)}\n`);
 }

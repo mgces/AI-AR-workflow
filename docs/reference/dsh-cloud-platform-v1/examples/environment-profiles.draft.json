@@ -28,6 +28,12 @@
       "root_markers": null,
       "build_entry": "build_system.sh",
       "upload_backend": "gerrit",
+      "gerrit_remote": null,
+      "gerrit_project": null,
+      "gerrit_push_ref": "HEAD:refs/for/{base}",
+      "gerrit_query_command": null,
+      "gerrit_change_url": null,
+      "gerrit_green_labels": null,
       "profile_digest": null,
       "status": "incomplete_real_workspace_values_required"
     },
@@ -41,6 +47,12 @@
       "root_markers": null,
       "build_entry": "build_vendor.sh",
       "upload_backend": "gerrit",
+      "gerrit_remote": null,
+      "gerrit_project": null,
+      "gerrit_push_ref": "HEAD:refs/for/{base}",
+      "gerrit_query_command": null,
+      "gerrit_change_url": null,
+      "gerrit_green_labels": null,
       "profile_digest": null,
       "status": "incomplete_real_workspace_values_required"
     }

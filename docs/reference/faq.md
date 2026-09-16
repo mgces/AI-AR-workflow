@@ -36,11 +36,14 @@
 | | openharmony(默认) | harmonyos |
 |---|---|---|
 | 代码来源 | gitcode 下载 | 不下载(内部已有) |
-| 编译命令 | `./build.sh --product-name rk3568 …` | 系统/芯片组件各不同(**占位待填**) |
+| 编译命令 | `./build.sh --product-name rk3568 …` | 由签名环境 profile 提供 system/chip 真实 argv |
 | 上库后端 | gitcode(`oh-gc` PR + OpenHarmony CI) | gerrit(`git push refs/for` + review 标签) |
 | 真机测试 | hdc/hilog(一致,复用) | hdc/hilog(一致,复用) |
 
-环境相关取值全部由 `lib/environments.py` 单点解析,门控不写死。HarmonyOS 编译命令/上库命令**目前为占位**,未填时门控硬失败并打印"待填"提示,绝不静默跑错。`--environment harmonyos` 时 `--component-type system|chip` 必填。
+环境相关取值全部由 `lib/environments.py` 单点解析，门控不写死。HarmonyOS 的产品根、
+编译/测试 runner、设备 profile 和 Gerrit `remote/project/push_ref/query_command/green_labels`
+必须从受保护的 `OHOS_ENV_PROFILE_FILE` 提供；缺任一值或命令不可执行时门控硬失败并给出
+可恢复错误，绝不静默跑错。`--environment harmonyos` 时 `--component-type system|chip` 必填。
 
 ## 为什么知识库不是源码真理？
 

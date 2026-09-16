@@ -90,6 +90,15 @@ export class TaskController {
     const workspaceRoot = optionalString(args.workspace_root, 'workspace_root', { max: 4096 });
     const deviceRef = optionalString(args.device_ref, 'device_ref', { max: 256 });
     const agent = optionalString(args.agent, 'agent', { max: 128 });
+    const config = args.config === undefined ? {} : expectObject(args.config, 'config');
+    let configJson;
+    try {
+      configJson = JSON.stringify(config);
+    } catch (error) {
+      invariant(false, 'invalid_input', `config must be JSON serializable: ${error.message}`);
+    }
+    invariant(typeof configJson === 'string' && Buffer.byteLength(configJson, 'utf8') <= 64 * 1024,
+      'invalid_input', 'config must be JSON serializable and at most 65536 bytes.');
     const requestedRunId = args.run_id === undefined
       ? null : expectId(args.run_id, 'run_id');
     const requestedInitialPhase = args.initial_phase === undefined
@@ -105,6 +114,7 @@ export class TaskController {
     const idempotencyKey = expectId(args.idempotency_key, 'idempotency_key');
     const payload = {
       workflow, inputRef, docsRoot, environmentProfile, pipelineDir, workspaceRoot, deviceRef, agent,
+      config,
       requestedRunId,
       requestedInitialPhase, requestedInitialStatus, completed,
     };
@@ -124,10 +134,10 @@ export class TaskController {
         INSERT INTO runs(
           id, workflow, revision, status, input_ref, docs_root,
           environment_profile, pipeline_dir, workspace_root, device_ref,
-          agent, input_digest, created_at, updated_at
-        ) VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          agent, config_json, input_digest, created_at, updated_at
+        ) VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(runId, workflow, runStatus, inputRef, docsRoot, environmentProfile, pipelineDir,
-        workspaceRoot, deviceRef, agent,
+        workspaceRoot, deviceRef, agent, configJson,
         inputDigest, now, now);
       this.initializeRun?.(runId);
       const taskId = completed ? null : this.insertTask({
@@ -314,9 +324,11 @@ export class TaskController {
              t.input_digest, t.workspace_ref, t.output_ref, t.policy_ref,
              r.id AS run_id, r.workflow, r.input_ref, r.docs_root,
              r.environment_profile, r.pipeline_dir, r.workspace_root, r.device_ref, r.agent
+             , r.config_json
       FROM tasks t JOIN runs r ON r.id = t.run_id WHERE t.id = ?
     `).get(attempt.task_id);
     invariant(row, 'task_not_found', `Task ${attempt.task_id} does not exist.`);
+    const config = parseJson(row.config_json ?? '{}', 'runs.config_json');
     const extension = this.workflows.get(row.workflow)?.taskContext?.(row, attempt) ?? {};
     return {
       schema_version: 1,
@@ -336,6 +348,8 @@ export class TaskController {
       workspace_root: row.workspace_root,
       device_ref: row.device_ref,
       agent: row.agent,
+      config,
+      ...(config.publication ? { publication: config.publication } : {}),
       workspace_ref: row.workspace_ref,
       output_ref: row.output_ref,
       policy_ref: row.policy_ref,
@@ -502,6 +516,7 @@ export class TaskController {
       workspace_root: run.workspace_root,
       device_ref: run.device_ref,
       agent: run.agent,
+      config: parseJson(run.config_json ?? '{}', 'runs.config_json'),
       tasks,
       events,
       next_cursor: events.length ? events.at(-1).seq : cursor,

@@ -52,6 +52,7 @@ export const DELIVERY_TOOLS = Object.freeze([
       task_id: id,
       phase: { type: 'integer', minimum: 0, maximum: 8 },
       token: { type: 'string', minLength: 1, maxLength: 1024 },
+      actor: { type: 'string', minLength: 1, maxLength: 256 },
       idempotency_key: id,
     }, ['run_id', 'task_id', 'phase', 'token', 'idempotency_key']),
     invoke: (controller, args, principal) => controller.delivery.consent(args, principal),
@@ -65,5 +66,16 @@ export const DELIVERY_TOOLS = Object.freeze([
       idempotency_key: id,
     }, ['run_id', 'idempotency_key']),
     invoke: (controller, args, principal) => controller.delivery.sync(args, principal),
+  },
+  {
+    name: 'ohos_delivery_cancel',
+    description: 'Request or complete a safe AR run cancellation; active owners must stop and release before the run becomes terminal.',
+    principals: ['parent', 'all'],
+    inputSchema: objectSchema({
+      run_id: id,
+      reason: { type: 'string', minLength: 1, maxLength: 1024 },
+      idempotency_key: id,
+    }, ['run_id', 'reason', 'idempotency_key']),
+    invoke: (controller, args, principal) => controller.delivery.cancel(args, principal),
   },
 ]);

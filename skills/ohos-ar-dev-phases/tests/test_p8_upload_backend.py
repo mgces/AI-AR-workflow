@@ -3,9 +3,9 @@
 """P8 upload-backend branching: the gate resolves the upload backend from the
 environment profile.
   * gitcode (openharmony / default): --repo-slug is required.
-  * gerrit (harmonyos): hard-fails as an unconfigured placeholder BEFORE any
-    irreversible action, with an actionable "configure the gerrit commands"
-    message — the same fail-closed stance as an unconfigured build command.
+  * gerrit (harmonyos): resolves commands from the external environment profile
+    and hard-fails BEFORE any irreversible action when that profile is absent or
+    incomplete, with an actionable configuration message.
 
 Both cases stop at the precheck substate (no push, no manifest emitted), so the
 test only has to stand up a state with phases 1..7 passed.
@@ -77,7 +77,7 @@ class TestUploadBackendBranch(unittest.TestCase):
              "--pipeline-dir", self.pdir, "--branch", "feat/x", *extra],
             text=True, capture_output=True)
 
-    def test_gerrit_backend_hard_fails_as_placeholder(self):
+    def test_gerrit_backend_hard_fails_without_profile(self):
         self._write_state(environment="harmonyos", component_type="system")
         cp = self._run()  # no --repo-slug needed for gerrit
         self.assertNotEqual(cp.returncode, 0)
@@ -204,6 +204,71 @@ class TestUploadConsentTarget(unittest.TestCase):
             self.assertEqual(cp.returncode, 0)
             self.assertEqual(cp.stdout.strip(), literal)
             self.assertFalse(os.path.exists(marker))
+
+
+class TestGerritReviewParsing(unittest.TestCase):
+    """The Gerrit adapter consumes a small JSON-lines contract so the same
+    deterministic gate can validate labels, patchset SHA and freshness."""
+
+    def test_extracts_change_revision_labels_and_timestamp(self):
+        change_id = "I" + "a" * 40
+        sha = "b" * 40
+        output = "\n".join([
+            json.dumps({"type": "stats", "rowCount": 1}),
+            json.dumps({
+                "change_id": change_id,
+                "current_revision": sha,
+                "labels": {
+                    "Code-Review": {"value": 2},
+                    "Verified": {"value": 1},
+                },
+                "end_timestamp": "2000",
+                "url": "https://review.example/c/1",
+            }),
+        ])
+        parsed = gate_upload_ci.parse_gerrit_review(output, change_id)
+        self.assertEqual(parsed["change_id"], change_id)
+        self.assertEqual(parsed["revision"], sha)
+        self.assertEqual(parsed["url"], "https://review.example/c/1")
+        self.assertTrue(gate_upload_ci.gerrit_labels_green(
+            parsed["labels"], {"Code-Review": 2, "Verified": 1}))
+        self.assertFalse(gate_upload_ci.gerrit_labels_green(
+            {"Code-Review": {"value": 1}, "Verified": {"value": 1}},
+            {"Code-Review": 2, "Verified": 1}))
+
+    def test_missing_or_mismatched_change_is_rejected(self):
+        with self.assertRaises(ValueError):
+            gate_upload_ci.parse_gerrit_review(
+                json.dumps({"current_revision": "b" * 40, "labels": {}}),
+                "I" + "a" * 40)
+
+    def test_change_id_parser_accepts_commit_trailer_only(self):
+        change_id = "I" + "c" * 40
+        self.assertEqual(gate_upload_ci.parse_change_id(
+            "Subject\n\nBody\nChange-Id: %s\n" % change_id), change_id)
+        self.assertIsNone(gate_upload_ci.parse_change_id("Subject\n\nno trailer\n"))
+
+    def test_missing_gerrit_query_executable_is_classified(self):
+        """A missing profile executable is a deterministic query failure.
+
+        It must not escape as an untyped FileNotFoundError (or be mistaken for
+        a transient network outage), because P8 needs an actionable repair
+        class and a resumable CI substate.
+        """
+        original = gate_upload_ci._query_ci_with_backoff
+
+        def missing(*_args, **_kwargs):
+            raise FileNotFoundError("gerrit-query")
+
+        gate_upload_ci._query_ci_with_backoff = missing
+        try:
+            with self.assertRaises(gate_upload_ci.GerritQueryUnavailable) as raised:
+                gate_upload_ci._query_gerrit_with_backoff(
+                    ["gerrit-query"], {}, max_attempts=1, base_delay=0)
+            self.assertEqual(raised.exception.code, "gerrit_query_failed")
+            self.assertIn("gerrit-query", str(raised.exception))
+        finally:
+            gate_upload_ci._query_ci_with_backoff = original
 
 
 if __name__ == "__main__":

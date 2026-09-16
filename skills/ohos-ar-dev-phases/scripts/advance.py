@@ -86,7 +86,13 @@ def _repo_anchor_candidates(repo_arg):
     an explicit --repo, then $OHOS_ROOT, then cwd. Resume walks these so a new
     window only needs to be opened somewhere sensible (ideally the source root)."""
     seen, out = set(), []
-    for base in (repo_arg, os.environ.get("OHOS_ROOT"), os.getcwd()):
+    # An explicit --repo/OHOS_ROOT is an authority boundary.  Do not fall back
+    # to the caller's cwd in that case: a stale ACTIVE pointer in an unrelated
+    # checkout could make `resume --repo <new-root>` attach to the wrong run.
+    roots = ((repo_arg, os.environ.get("OHOS_ROOT"))
+             if repo_arg or os.environ.get("OHOS_ROOT")
+             else (None, None, os.getcwd()))
+    for base in roots:
         if not base:
             continue
         a = os.path.join(os.path.abspath(base), "specs", "pipeline")
@@ -151,6 +157,14 @@ P8_FAILURE_TO_SUBSTATE = {
     "push_failed": "push_pr",
     "pr_create_failed": "push_pr",
     "pr_metadata_incomplete": "push_pr",
+    "publication_target_mismatch": "precheck",
+    "change_id_mismatch": "push_pr",
+    "change_id_missing": "push_pr",
+    "gerrit_push_failed": "push_pr",
+    "gerrit_query_failed": "ci_green",
+    "gerrit_labels_not_green": "ci_green",
+    "gerrit_revision_mismatch": "ci_green",
+    "gerrit_review_unparseable": "ci_green",
     "pr_review_blocked": "pr_review",
     "ci_not_green": "ci_green",
     "pr_head_sha_mismatch": "ci_green",
@@ -1099,6 +1113,15 @@ def _state_payload(pdir, state):
         "git_dir": state.get("git_dir"),
         "build_target": state.get("build_target"),
         "device_serial": state.get("device_serial"),
+        # Keep the branch decision visible at every adapter/UI boundary.  The
+        # signed state is the authority for whether this is OpenHarmony or a
+        # HarmonyOS system/chip run; status must not collapse it to the generic
+        # environment_profile label.
+        "environment": state.get("environment"),
+        "component_type": state.get("component_type"),
+        "device_type": state.get("device_type"),
+        "environment_profile_digest": state.get("environment_profile_digest"),
+        "product": state.get("product"),
         "current_phase": state.get("current_phase"),
         "current_phase_name": gl.PHASE_NAME.get(state.get("current_phase")),
         "control_protocol_version": next_action.get("control_protocol_version"),
@@ -1273,6 +1296,14 @@ def cmd_init(args):
         "environment": args.environment,
         "component_type": component_type,
         "device_type": device_type,
+        # Bind the run to the exact trusted environment profile resolved at
+        # init. If an operator changes product/build/test paths later, every
+        # accessor rejects the old run and forces a fresh P0 instead of
+        # reusing stale compile or device evidence.
+        "environment_profile_digest": envs.profile_digest({
+            "environment": args.environment,
+            "component_type": component_type,
+        }),
         "product": product,
         "device_serial": args.device_serial,
         "build_target": args.build_target,
@@ -1315,11 +1346,12 @@ def cmd_init(args):
     print("ACTIVE pointer: %s -> this run (new windows: `advance.py resume`)"
           % os.path.join(anchor, "ACTIVE"))
     print("secret: %s (mode 600)" % gl.secret_path(run_id))
-    print("environment: %s%s (upload=%s, product=%s)"
+    print("environment: %s%s (upload=%s, product=%s, profile=%s)"
           % (state["environment"],
              "/%s" % component_type if component_type else "",
              envs.upload_backend(state),
-             state["product"] if state["product"] is not None else "<unset>"))
+             state["product"] if state["product"] is not None else "<unset>",
+             state["environment_profile_digest"]))
     print("compiled component: git_dir=%s build_target=%s part=%s"
           % (state["git_dir"], state["build_target"], state["test"]["part"]))
     if _defaults_confirmed:

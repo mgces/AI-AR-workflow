@@ -45,7 +45,26 @@ test('all pre-refactor MCP tool names, principals and input schemas are preserve
   const actual = TOOL_DEFINITIONS.map(({ name, principals, inputSchema }) => ({ name, principals, inputSchema }))
     .sort((a, b) => a.name.localeCompare(b.name));
   const originalNames = new Set(expected.map((tool) => tool.name));
-  assert.deepEqual(actual.filter((tool) => originalNames.has(tool.name)), expected);
+  // The v0.3 contract remains a compatibility floor. New optional fields may
+  // be added to a tool without changing the required legacy shape; compare
+  // the captured fields first, then assert the extension explicitly below.
+  const legacy = actual.filter((tool) => originalNames.has(tool.name)).map((tool) => {
+    const captured = expected.find((item) => item.name === tool.name);
+    if (!captured) return tool;
+    const properties = Object.fromEntries(Object.keys(captured.inputSchema.properties)
+      .map((key) => [key, tool.inputSchema.properties[key]]));
+    return {
+      ...tool,
+      inputSchema: {
+        ...tool.inputSchema,
+        properties,
+      },
+    };
+  });
+  assert.deepEqual(legacy, expected);
+  const consent = actual.find((tool) => tool.name === 'ohos_delivery_consent');
+  assert.equal(consent.inputSchema.properties.actor.type, 'string');
+  assert.equal(consent.inputSchema.required.includes('actor'), false);
   assert.equal(new Set(actual.map((tool) => tool.name)).size, actual.length);
 });
 

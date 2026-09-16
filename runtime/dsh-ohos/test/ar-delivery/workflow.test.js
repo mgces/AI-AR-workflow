@@ -34,6 +34,15 @@ describe('DSH AR delivery workflow', () => {
       git_dir: 'base/hiviewdfx/hiview',
       build_target: 'hiview_package',
       part: 'hiviewdfx',
+      publication: {
+        backend: 'gitcode',
+        repo_slug: 'mgce1/AI-AR-workflow',
+        branch: 'codex/ar-run-42',
+        base: 'main',
+        issue: '#42',
+        local_review_report: 'reports/local-review.json',
+        pr_review_report: 'reports/pr-review.json',
+      },
       idempotency_key: 'delivery-start',
     };
     const started = await controller.startDelivery(startArgs);
@@ -41,6 +50,12 @@ describe('DSH AR delivery workflow', () => {
     assert.deepEqual(replayed, started);
     assert.equal(adapter.initializeCalls.length, 1);
     assert.equal(started.next.phase, 'P0');
+    const persistedRun = store.db.prepare('SELECT config_json FROM runs WHERE id = ?').get(started.run_id);
+    const persistedConfig = JSON.parse(persistedRun.config_json);
+    assert.deepEqual(persistedConfig.publication, startArgs.publication);
+    assert.equal(persistedConfig.environment, 'openharmony');
+    assert.equal(persistedConfig.component_type, null);
+    assert.equal(persistedConfig.device_type, null);
 
     let next = started.next;
     let completed;
@@ -61,6 +76,18 @@ describe('DSH AR delivery workflow', () => {
       });
       assert.equal(context.pipeline_dir, started.pipeline_dir);
       assert.equal(context.workspace_root, 'D:/openharmony');
+      assert.deepEqual(context.publication, {
+        backend: 'gitcode',
+        repo_slug: 'mgce1/AI-AR-workflow',
+        branch: 'codex/ar-run-42',
+        base: 'main',
+        issue: '#42',
+        local_review_report: 'reports/local-review.json',
+        pr_review_report: 'reports/pr-review.json',
+      });
+      if (claim.phase === 'P8-precheck') {
+        assert(context.constraints.some((line) => line.includes('--repo-slug mgce1/AI-AR-workflow')));
+      }
       assert(context.constraints.some((line) => line.includes('authoritative pipeline')));
       controller.submitTask({
         attempt_id: claim.attempt_id,
@@ -109,6 +136,21 @@ describe('DSH AR delivery workflow', () => {
     assert.deepEqual(adapter.validations.map((item) => [item.phase, item.uploadPrecheck]), [
       [1, false], [6, false], [7, false], [8, true],
     ]);
+    const waitEvents = store.db.prepare(`SELECT type, payload_json FROM events
+      WHERE run_id = ? AND type = 'task.awaiting_consent' ORDER BY seq`).all(started.run_id);
+    assert.equal(waitEvents.length, 4);
+    assert.equal(waitEvents.every((event) => typeof JSON.parse(event.payload_json).wait_id === 'string'), true);
+    const actionEvents = store.db.prepare(`SELECT type, payload_json FROM events
+      WHERE run_id = ? AND type = 'human.action_recorded' ORDER BY seq`).all(started.run_id);
+    assert.equal(actionEvents.length, 4);
+    assert.deepEqual(actionEvents.map((event) => JSON.parse(event.payload_json).wait_id),
+      waitEvents.map((event) => JSON.parse(event.payload_json).wait_id));
+    assert.deepEqual(actionEvents.map((event) => JSON.parse(event.payload_json).category), [
+      'required_workflow', 'required_workflow', 'required_workflow', 'required_workflow',
+    ]);
+    const gateEvents = store.db.prepare(`SELECT type FROM events
+      WHERE run_id = ? AND type = 'gate.passed' ORDER BY seq`).all(started.run_id);
+    assert.equal(gateEvents.length, 10);
   });
 
   test('a rejected Python gate requeues the same stage at a new revision', async () => {
@@ -171,6 +213,23 @@ describe('DSH AR delivery workflow', () => {
     ]);
   });
 
+  test('normalizes an empty optional device serial returned by the Python initializer', async () => {
+    adapter.state = {
+      ...pythonState({ runId: 'empty-device-ref', phase: 0 }),
+      device_serial: '',
+    };
+    const started = await controller.startDelivery({
+      input_ref: 'AR-empty-device',
+      pipeline_dir: 'D:/openharmony/specs/pipeline/empty-device-ref',
+      idempotency_key: 'empty-device-start',
+    });
+
+    assert.equal(started.run_id, 'empty-device-ref');
+    const persisted = store.db.prepare('SELECT device_ref FROM runs WHERE id = ?')
+      .get(started.run_id);
+    assert.equal(persisted.device_ref, null);
+  });
+
   test('skips already-valid non-consent evidence while attaching', async () => {
     adapter.state = pythonState({ runId: 'ready-p4', phase: 4, gate: true });
     const started = await controller.startDelivery({
@@ -226,6 +285,23 @@ describe('DSH AR delivery workflow', () => {
     assert(status.tasks.some((task) => task.phase === 'P1' && task.status === 'cancelled'));
     assert(status.tasks.some((task) => task.phase === 'P0'
       && task.revision === 2 && task.status === 'queued'));
+  });
+
+  test('cancelling a terminal delivery run is a no-op', async () => {
+    adapter.state = pythonState({ runId: 'already-complete-cancel', phase: 8, complete: true });
+    const started = await controller.startDelivery({
+      input_ref: 'AR-terminal-cancel',
+      pipeline_dir: 'D:/openharmony/specs/pipeline/terminal-cancel',
+      idempotency_key: 'terminal-cancel-start',
+    });
+    assert.equal(started.status, 'completed');
+    const cancelled = controller.delivery.cancel({
+      run_id: started.run_id,
+      reason: 'late operator click',
+      idempotency_key: 'terminal-cancel-request',
+    });
+    assert.equal(cancelled.status, 'completed');
+    assert.equal(controller.runStatus({ run_id: started.run_id }).status, 'completed');
   });
 
   test('exclusive build resources prevent conflicting delivery attempts', () => {

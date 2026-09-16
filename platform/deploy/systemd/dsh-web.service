@@ -1,0 +1,37 @@
+[Unit]
+Description=DeepSeek Harness Web with AI-AR workflow
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=dsh
+Group=dsh
+WorkingDirectory=/opt/dsh/AI-AR-workflow
+EnvironmentFile=/etc/dsh/dsh.env
+Environment=NODE_ENV=production
+Environment=DSH_HOME=/var/lib/dsh
+ExecStartPre=/usr/bin/test -x /opt/dsh/official/node_modules/.bin/dsh
+ExecStartPre=/usr/bin/test -r /opt/dsh/AI-AR-workflow/platform/deploy/cordis.cloud.patch.yml
+ExecStart=/opt/dsh/official/node_modules/.bin/dsh --profile web \
+  --patch /opt/dsh/AI-AR-workflow/platform/deploy/cordis.cloud.patch.yml \
+  --no-open --host 127.0.0.1 --port 8787
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=45
+KillMode=control-group
+Delegate=yes
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/dsh /var/log/dsh /srv/dsh/workspaces
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryMax=12G
+TasksMax=1024
+StandardOutput=append:/var/log/dsh/web.log
+StandardError=append:/var/log/dsh/web-error.log
+
+[Install]
+WantedBy=multi-user.target

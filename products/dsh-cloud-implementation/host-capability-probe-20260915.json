@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "probe_id": "wsl-host-capability-20260915-final",
+  "generated_at": "2026-09-15T13:53:31.000Z",
+  "host": "current WSL workspace",
+  "status": "partial",
+  "tools": {
+    "python3": {
+      "status": "available",
+      "path": "/usr/bin/python3",
+      "version": "Python 3.12.3"
+    },
+    "node": {
+      "status": "available",
+      "path": "/usr/bin/node",
+      "version": "v22.22.2",
+      "note": "below declared production engine >=24"
+    },
+    "git": {
+      "status": "available",
+      "path": "/usr/bin/git",
+      "version": "git version 2.43.0"
+    },
+    "codex": {
+      "status": "available",
+      "path": "/mnt/c/Users/mgces/.codex/bin/wsl/d52321d8cd5e913f/codex",
+      "version": "codex-cli 0.154.0-alpha.6.2"
+    },
+    "claude": {
+      "status": "probe_failed",
+      "path": "/mnt/c/Users/mgces/AppData/Roaming/npm/claude",
+      "reason": "WSL UtilBindVsockAnyPort socket failure"
+    },
+    "opencode": {
+      "status": "missing"
+    },
+    "sshfs": {
+      "status": "missing"
+    },
+    "hdc": {
+      "status": "missing"
+    },
+    "fusermount3": {
+      "status": "available",
+      "path": "/usr/bin/fusermount3"
+    },
+    "sshd": {
+      "status": "missing"
+    },
+    "ssh": {
+      "status": "available",
+      "path": "/usr/bin/ssh",
+      "localhost_probe": "failed",
+      "reason": "no listener / sandbox operation not permitted"
+    },
+    "cgroup_v2": {
+      "status": "present_but_not_delegated",
+      "root": "/sys/fs/cgroup",
+      "controllers_file": true,
+      "writable": false,
+      "supervisor_required_mode": "blocked",
+      "best_effort_mode": "available"
+    }
+  },
+  "workspace_markers": {
+    "build.sh": "missing",
+    "test/testfwk/developer_test": "missing",
+    "test/testfwk/developer_test/start.sh": "missing"
+  },
+  "conclusion": "代码级 Connector、Gateway、cgroup admission、部署 doctor 和 P0-P8 编排均已实现；当前 WSL 的 Node 版本低于生产基线，Claude CLI 探测失败，OpenCode/SSHFS/sshd/hdc/OHOS 源码入口缺失，因此本机不能把真实 SSH 修改、编译、真机或 P8 发布标为已完成。",
+  "deployment_doctor": {
+    "status": "blocked",
+    "can_start_p0": false,
+    "can_complete_p8": false,
+    "reason_codes": [
+      "below_declared_engine",
+      "codeagent_not_configured",
+      "source_marker_missing",
+      "cgroup_root_not_writable"
+    ],
+    "command": "node platform/deploy/doctor.mjs"
+  }
+}

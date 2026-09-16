@@ -10,6 +10,7 @@ const smokeReportPath = `${repoRoot}/products/dsh-cloud-implementation/smoke-tes
 let server;
 let baseUrl;
 let stateDir;
+let ragDir;
 
 const fakeArRuntime = {
   starts: [],
@@ -29,6 +30,7 @@ const fakeArRuntime = {
     };
   },
   async artifacts(runId) { return { pipeline_dir: `/tmp/${runId}`, artifacts: [], complete: false }; },
+  async artifactContent(runId, path) { return { run_id: runId, relative_path: path, role: 'report', content: 'full report' }; },
   async claim(input) { return { run_id: input.runId, task_id: `${input.runId}:P0:1`, phase: 'P0', role: input.role, revision: 1, attempt_id: 'attempt-1', lease_epoch: 1, task_credential: 'credential' }; },
   async context() { return { pipeline_dir: '/tmp/ar', phase: 'P0' }; },
   async submit() { return { status: 'validating' }; },
@@ -46,10 +48,12 @@ async function request(path, options = {}) {
 
 before(async () => {
   stateDir = await mkdtemp(join(tmpdir(), 'dsh-local-console-test-'));
+  ragDir = await mkdtemp(join(repoRoot, '.dsh-test-rag-'));
   server = createLocalConsoleServer({
     repoRoot,
     smokeReportPath,
     stateFile: join(stateDir, 'state.json'),
+    ragIndexFile: join(ragDir, 'index.json'),
     runtimeService: fakeArRuntime,
   });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -59,6 +63,7 @@ before(async () => {
 after(async () => {
   await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
   await rm(stateDir, { recursive: true, force: true });
+  await rm(ragDir, { recursive: true, force: true });
 });
 
 describe('local console HTTP surface', () => {
@@ -75,6 +80,29 @@ describe('local console HTTP surface', () => {
     assert.equal(value.ssh_smoke.status, 'passed_with_scope_limits');
     assert.ok(['available', 'missing', 'probe_failed'].includes(value.agents.claude_code.status));
     assert.ok(['available', 'missing', 'probe_failed'].includes(value.agents.opencode.status));
+  });
+
+  test('persists CodeAgent selection and model through the local API', async () => {
+    const initial = await request('/api/agent-settings');
+    assert.equal(initial.response.status, 200);
+    assert.equal(initial.json().settings.selected, 'claude-code');
+    const saved = await request('/api/agent-settings', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ selected: 'opencode', model: 'anthropic/claude-sonnet-4-5' }),
+    });
+    assert.equal(saved.response.status, 200);
+    assert.equal(saved.json().settings.selected, 'opencode');
+    assert.equal(saved.json().settings.model, 'anthropic/claude-sonnet-4-5');
+    const status = await request('/api/status');
+    assert.equal(status.json().agent_settings.selected, 'opencode');
+    const forbidden = await request('/api/agent-settings', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token: 'must-not-be-stored' }),
+    });
+    assert.equal(forbidden.response.status, 400);
+    assert.equal(forbidden.json().error.code, 'settings_secret_forbidden');
   });
 
   test('validates draft and installable AR manifests without starting work', async () => {
@@ -103,6 +131,12 @@ describe('local console HTTP surface', () => {
     const page = await request('/');
     assert.equal(page.response.status, 200);
     assert.match(page.body, /AR Runtime Debug Surface/);
+    assert.match(page.body, /启动真实 AR run/);
+    assert.match(page.body, /\/api\/ar\/runs/);
+    assert.match(page.body, /\/api\/ar\/preflight/);
+    assert.match(page.body, /id="preflight-ar-run"/);
+    assert.match(page.body, /device_serial/);
+    assert.match(page.body, /id="start-ar-run" disabled/);
     const missing = await request('/missing');
     assert.equal(missing.response.status, 404);
   });
@@ -156,6 +190,38 @@ describe('local console HTTP surface', () => {
     const debug = await request('/api/debug/status');
     assert.equal(debug.response.status, 200);
     assert.ok(['ready', 'partial', 'unavailable'].includes(debug.json().status));
+
+    const invalidRagQuery = await request('/api/rag/search', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ query: '!!! --- ???' }),
+    });
+    assert.equal(invalidRagQuery.response.status, 400);
+    assert.equal(invalidRagQuery.json().error.code, 'rag_query_invalid');
+  });
+
+  test('exposes a persisted RAG model configuration entry without accepting secrets', async () => {
+    const initial = await request('/api/rag/profile');
+    assert.equal(initial.response.status, 200);
+    assert.equal(initial.json().mode, 'local_lexical');
+    const saved = await request('/api/rag/profile', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'embedding_reranker', provider: 'qwen-compatible',
+        embedding_model: 'qwen3-embedding', reranker_model: 'qwen3-reranker',
+        endpoint: 'https://rag.example.test/v1',
+      }),
+    });
+    assert.equal(saved.response.status, 200);
+    assert.equal(saved.json().model_profile.execution, 'planned');
+    const forbidden = await request('/api/rag/profile', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ api_key: 'must-not-be-stored' }),
+    });
+    assert.equal(forbidden.response.status, 400);
+    assert.equal(forbidden.json().error.code, 'rag_model_profile_invalid');
   });
 
   test('persists an explicit environment branch without claiming a complete profile', async () => {
@@ -180,6 +246,100 @@ describe('local console HTTP surface', () => {
     assert.equal(response.json().error.code, 'source_root_outside_workspace');
   });
 
+  test('keeps AR pipeline, git and manifest paths inside the registered workspace', async () => {
+    for (const field of ['pipeline_dir', 'git_dir', 'ar_path']) {
+      const response = await request('/api/ar/runs', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ workspace_id: 'wsl-local', run_id: `unsafe-${field}`, environment: 'openharmony', [field]: '/tmp/outside' }),
+      });
+      assert.equal(response.response.status, 400);
+      assert.equal(response.json().error.code, 'path_outside_workspace');
+    }
+  });
+
+  test('checks local AR prerequisites before creating a real scheduler run', async () => {
+    const preflightCalls = [];
+    const guardedRuntime = {
+      ...fakeArRuntime,
+      starts: [],
+    };
+    const guardedServer = createLocalConsoleServer({
+      repoRoot,
+      smokeReportPath,
+      stateFile: join(stateDir, 'preflight-state.json'),
+      runtimeService: guardedRuntime,
+      preflight: async (input) => {
+        preflightCalls.push(input);
+        return {
+          status: 'blocked',
+          can_start_p0: false,
+          can_complete_p8: false,
+          checks: [{ id: 'codeagent_selected', status: 'blocked', reason: 'agent_unavailable' }],
+          execution_plan: { agent_load_strategy: 'local_cli_path' },
+        };
+      },
+    });
+    await new Promise((resolve) => guardedServer.listen(0, '127.0.0.1', resolve));
+    const guardedUrl = `http://127.0.0.1:${guardedServer.address().port}`;
+    try {
+      const preflight = await fetch(`${guardedUrl}/api/ar/preflight`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ workspace_id: 'wsl-local', environment: 'openharmony', agent: 'opencode' }),
+      });
+      assert.equal(preflight.status, 200);
+      assert.equal(preflightCalls.length, 1);
+      assert.equal(preflightCalls[0].environment, 'openharmony');
+
+      const blocked = await fetch(`${guardedUrl}/api/ar/runs`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ workspace_id: 'wsl-local', run_id: 'preflight-guarded', environment: 'openharmony', agent: 'opencode' }),
+      });
+      assert.equal(blocked.status, 400);
+      const value = await blocked.json();
+      assert.equal(value.error.code, 'preflight_blocked');
+      assert.equal(guardedRuntime.starts.length, 0);
+    } finally {
+      await new Promise((resolve, reject) => guardedServer.close((error) => (error ? reject(error) : resolve())));
+    }
+  });
+
+  test('does not replace an explicitly empty AR input with the bundled sample', async () => {
+    const preflightCalls = [];
+    const guardedServer = createLocalConsoleServer({
+      repoRoot,
+      smokeReportPath,
+      stateFile: join(stateDir, 'empty-ar-state.json'),
+      runtimeService: { ...fakeArRuntime, starts: [] },
+      preflight: async (input) => {
+        preflightCalls.push(input);
+        return {
+          status: 'blocked',
+          can_start_p0: false,
+          can_complete_p8: false,
+          checks: [{ id: 'ar_input', status: 'blocked', reason: 'ar_input_empty' }],
+          execution_plan: { agent_load_strategy: 'local_cli_path' },
+        };
+      },
+    });
+    await new Promise((resolve) => guardedServer.listen(0, '127.0.0.1', resolve));
+    const guardedUrl = `http://127.0.0.1:${guardedServer.address().port}`;
+    try {
+      const response = await fetch(`${guardedUrl}/api/ar/runs`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          workspace_id: 'wsl-local', run_id: 'empty-ar-input', environment: 'openharmony', ar_text: '',
+        }),
+      });
+      assert.equal(response.status, 400);
+      assert.equal(preflightCalls.length, 1);
+      assert.equal(preflightCalls[0].ar_text, '');
+      assert.equal(preflightCalls[0].ar_path, undefined);
+    } finally {
+      await new Promise((resolve, reject) => guardedServer.close((error) => (error ? reject(error) : resolve())));
+    }
+  });
+
   test('exposes the authoritative AR runtime and its worker operations', async () => {
     const started = await request('/api/ar/runs', {
       method: 'POST',
@@ -201,6 +361,9 @@ describe('local console HTTP surface', () => {
     assert.equal(status.json().observability.stage_count, 1);
     const artifacts = await request('/api/ar/runs/ar-http-test/artifacts');
     assert.equal(artifacts.response.status, 200);
+    const artifactContent = await request('/api/ar/runs/ar-http-test/artifacts/content?path=reports%2Fsummary.md');
+    assert.equal(artifactContent.response.status, 200);
+    assert.equal(artifactContent.json().content, 'full report');
     const claim = await request('/api/ar/runs/ar-http-test/claim', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -208,5 +371,61 @@ describe('local console HTTP surface', () => {
     });
     assert.equal(claim.response.status, 200);
     assert.equal(claim.json().phase, 'P0');
+  });
+
+  test('routes AR runs through the durable scheduler when one is configured', async () => {
+    const schedulerCalls = [];
+    const scheduler = {
+      async start(input) {
+        schedulerCalls.push(['start', input]);
+        return { run_id: input.runId, status: 'awaiting_host', scheduler: { status: 'queued' } };
+      },
+      job(runId) { return { run_id: runId, status: 'running' }; },
+      async consent(input) { schedulerCalls.push(['consent', input]); return { status: 'queued' }; },
+      async cancel(runId, reason) { schedulerCalls.push(['cancel', runId, reason]); return { run_id: runId, status: 'cancelled' }; },
+      listJobs() { return [{ run_id: 'scheduled-local', status: 'running' }]; },
+    };
+    const schedulerServer = createLocalConsoleServer({
+      repoRoot,
+      smokeReportPath,
+      stateFile: join(stateDir, 'scheduler-state.json'),
+      runtimeService: fakeArRuntime,
+      scheduler,
+    });
+    let schedulerUrl;
+    await new Promise((resolve) => schedulerServer.listen(0, '127.0.0.1', resolve));
+    schedulerUrl = `http://127.0.0.1:${schedulerServer.address().port}`;
+    try {
+      const start = await fetch(`${schedulerUrl}/api/ar/runs`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ workspace_id: 'wsl-local', repo_root: repoRoot, run_id: 'scheduled-local', environment: 'openharmony' }),
+      });
+      assert.equal(start.status, 202);
+      assert.equal((await start.json()).scheduler.status, 'queued');
+      assert.equal(schedulerCalls[0][0], 'start');
+
+      const job = await fetch(`${schedulerUrl}/api/ar/runs/scheduled-local/scheduler`);
+      assert.equal(job.status, 200);
+      assert.equal((await job.json()).status, 'running');
+
+      const consent = await fetch(`${schedulerUrl}/api/ar/runs/scheduled-local/consent`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ task_id: 'task-1', phase: 1, token: 'review-token', content: '继续', actor: 'reviewer' }),
+      });
+      assert.equal(consent.status, 200);
+      assert.deepEqual(schedulerCalls[1], ['consent', {
+        runId: 'scheduled-local', taskId: 'task-1', phase: 1, token: 'review-token',
+        content: '继续', actor: 'reviewer',
+      }]);
+
+      const cancel = await fetch(`${schedulerUrl}/api/ar/runs/scheduled-local/actions`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'cancel', reason: 'operator stop' }),
+      });
+      assert.equal(cancel.status, 200);
+      assert.deepEqual(schedulerCalls[2], ['cancel', 'scheduled-local', 'operator stop']);
+    } finally {
+      await new Promise((resolve, reject) => schedulerServer.close((error) => (error ? reject(error) : resolve())));
+    }
   });
 });

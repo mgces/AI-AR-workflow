@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "test_id": "official-dsh-connector-smoke-20260916",
+  "tested_at": "2026-09-16",
+  "status": "passed_with_scope_limits",
+  "entrypoint": "http://127.0.0.1:8794/",
+  "checks": [
+    {
+      "id": "official-index",
+      "status": "passed",
+      "observed": "The official @deepseek-ai/dsh Web profile served the standard DSH page and accepted the one-time root token exchange."
+    },
+    {
+      "id": "connector-upgrade",
+      "status": "passed",
+      "observed": "The current LocalConnectorAgentService + WebSocketConnectorClient completed a real WebSocket upgrade to /v1/connect, hello handshake and workspace registration; the CLI entrypoint uses these same components."
+    },
+    {
+      "id": "connector-overview",
+      "status": "passed",
+      "observed": "Authenticated /api/ohos-ar/overview returned HTTP 200 with workspace_mode=local_connector, workspace-1, device-8794 and connector.connected=true."
+    },
+    {
+      "id": "codeagent-catalog",
+      "status": "passed",
+      "observed": "The official page received the live Connector catalog: Claude Code and Codex were connector_online/dispatchable; missing CLIs were reported explicitly as connector_agent_missing."
+    },
+    {
+      "id": "preflight-boundary",
+      "status": "passed_with_scope_limits",
+      "observed": "Authenticated preflight returned HTTP 200 and status=blocked, so the page did not queue P0 without a registered SSH Workspace Gateway, OHOS source layout, hdc/device and environment/publication evidence."
+    },
+    {
+      "id": "run-submit-boundary",
+      "status": "passed_with_scope_limits",
+      "observed": "A deliberately incomplete POST /api/ohos-ar/runs returned HTTP 400 preflight_blocked with workspace/gateway/source/device reasons and queued no run."
+    }
+  ],
+  "scope_limits": [
+    "This smoke used loopback HTTP and a temporary profile; production TLS/mTLS, pairing, external secrets, tenancy and capacity are deployment gates.",
+    "The official-page smoke used a local test root because the temporary loopback SSH fixture is exercised separately; the CLI rejects an SSHFS configuration without an SSH binding or verified mount.",
+    "The separate real-loopback SSH smoke proves remote_tools read/write, registered profile execution and artifact projection, but it does not replace a user's production SSH host, SSHFS mount, TLS/mTLS pairing or credential policy.",
+    "The current WSL host has no persistent sshfs/hdc, real OHOS product root or device, so a live P0-P8 build/device/publish run cannot be claimed from this host.",
+    "The deterministic Connector network test separately proves cloud WebSocket -> local CodeAgent -> workspace edit, usage and artifact projection: platform/apps/local-console/test/connector-codeagent-executor.test.js (6/6)."
+  ]
+}

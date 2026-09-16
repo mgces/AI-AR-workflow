@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "test_id": "official-dsh-web-and-ar-tools-20260914",
+  "status": "passed_with_scope_limits",
+  "entrypoint": "http://127.0.0.1:8787/",
+  "checks": [
+    {
+      "id": "official-index",
+      "status": "passed",
+      "observed": "The restarted official @deepseek-ai/dsh Web profile served the upstream index and embedded @ai-ar/dsh-workflow client bundle."
+    },
+    {
+      "id": "browser-token",
+      "status": "passed",
+      "observed": "A one-time token URL exchanged for the authority-bound DSH browser cookie; no user login or API-key onboarding was used."
+    },
+    {
+      "id": "ar-overview",
+      "status": "passed",
+      "observed": "Authenticated /api/ohos-ar/overview returned the AR Delivery projection, scheduler, CodeAgent catalog, RAG and debug snapshots on the same DSH port."
+    },
+    {
+      "id": "codeagent-catalog",
+      "status": "passed",
+      "observed": "Claude Code provider and Codex CLI were reported available in this WSL process; missing OpenCode/Cursor/Trae remained explicit and non-dispatchable."
+    },
+    {
+      "id": "rag-and-debug-routes",
+      "status": "passed",
+      "observed": "Authenticated RAG profile and debug status routes returned structured results; embedding/reranker was marked planned and hdc was reported missing instead of inferred."
+    }
+  ],
+  "scope_limits": [
+    "The official DSH UI is a local trusted process on loopback; it is not a multi-tenant cloud deployment.",
+    "AR gate decisions still require the existing Python evidence and explicit human consent.",
+    "This WSL host has no hdc target or real OHOS product root, so a full P0-P8 run was not claimed.",
+    "Public WSS/mTLS pairing, OIDC/RLS, embedding worker and durable OS Supervisor remain deployment prerequisites."
+  ]
+}
