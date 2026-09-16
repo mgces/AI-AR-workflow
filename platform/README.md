@@ -1,4 +1,4 @@
-# DSH platform foundation and local console
+# DSH platform foundation
 
 这是 DSH 云端编排平台的可运行基础。它把环境、workflow、Authority、调度、CodeAgent、RAG、设备/产物和 AR 运行时接到同一条可审计链路：模型或 CLI 的文本不会直接改变阶段，只有真实 Python gate、`advance.py` 和人工 consent 能推进 P0–P8。
 
@@ -6,7 +6,7 @@
 
 - `packages/contracts` 校验 OpenHarmony、HarmonyOS-system、HarmonyOS-chip profile，并生成确定性摘要。
 - `packages/workflow-registry` 校验 AR manifest、阶段 DAG、路径安全和 P8 发布门。
-- `apps/local-console` 在 WSL `127.0.0.1:8787` 提供免登录本地入口；SQLite 持久化运行、任务、租约、事件、审核、人工输入、失败原因和 usage。
+- `apps/local-console` 提供 API 和自动化验收后端；SQLite 持久化运行、任务、租约、事件、审核、人工输入、失败原因和 usage。它不再提供浏览器页面，用户入口统一使用官方 DSH Web。
 - 本地 fallback 的 `GET/POST /api/ar/preflight` 会在真实 scheduler 创建 run 前验证代码根可写、运行时脚本、环境分支和 CodeAgent；预检失败不会创建 run。
 - 本地调度器实际启动非交互 Claude Code、OpenCode、Codex CLI；自定义 argv Agent 可配置，Cursor/Trae 在没有 adapter 时明确阻止派发。
 - RAG 索引会保存到工作区 `.dsh/rag-index.json`，源码变化后标为 stale；官方面板和 DSH 工具可以保存 provider、embedding/reranker 模型与 endpoint 配置。宿主注入 `DSH_RAG_ENDPOINT` 后通过 OpenAI-compatible `/embeddings` 和 `/rerank` 执行语义检索，否则明确使用词法 fallback；凭据从宿主 secret 读取，不写入 profile。
@@ -27,12 +27,14 @@ npm run console
 npm run deploy:doctor -- --repo-root /srv/dsh/workspaces/default/project --environment openharmony --human
 ```
 
-从 Windows 打开 `http://localhost:8787`。常用检查：
+`npm run console` 只启动本地 API fallback，用于脚本和自动化验收，不要把它当作 DSH 主页面。常用检查：
 
 ```bash
 curl http://127.0.0.1:8787/healthz
 curl http://127.0.0.1:8787/api/status
 ```
+
+浏览器入口请按 [官方 DSH Web 接入说明](../docs/reference/dsh-cloud-platform-v1/dsh-integration.md) 启动，并使用 `dsh-workflow/cordis.patch.yml` 加载 AR Delivery 面板。
 
 ## 官方 DSH
 

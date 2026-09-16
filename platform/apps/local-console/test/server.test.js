@@ -127,16 +127,12 @@ describe('local console HTTP surface', () => {
     assert.equal(installResult.json().error.code, 'manifest_digest_required');
   });
 
-  test('renders the console and rejects unknown routes', async () => {
+  test('does not expose the removed legacy UI and rejects unknown routes', async () => {
     const page = await request('/');
-    assert.equal(page.response.status, 200);
-    assert.match(page.body, /AR Runtime Debug Surface/);
-    assert.match(page.body, /启动真实 AR run/);
-    assert.match(page.body, /\/api\/ar\/runs/);
-    assert.match(page.body, /\/api\/ar\/preflight/);
-    assert.match(page.body, /id="preflight-ar-run"/);
-    assert.match(page.body, /device_serial/);
-    assert.match(page.body, /id="start-ar-run" disabled/);
+    assert.equal(page.response.status, 410);
+    assert.equal(page.json().error.code, 'legacy_local_console_ui_removed');
+    assert.match(page.json().error.message, /official DSH Web/u);
+    assert.doesNotMatch(page.body, /<html/iu);
     const missing = await request('/missing');
     assert.equal(missing.response.status, 404);
   });

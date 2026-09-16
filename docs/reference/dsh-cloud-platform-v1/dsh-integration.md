@@ -84,7 +84,8 @@ DSH_HOME=/path/to/dsh-home \
 
 官方 Web UI 的模型设置、工作区选择和权限审批仍由 DSH 管理；AR 通过上述工具和同页路由使用本仓的
 SQLite runtime 和 `advance.py`/`gate_*.py` 事实源。`platform/apps/local-console` 只保留自动化测试和
-故障隔离用途，不是用户入口，也不需要在运行 DSH Web 时另开端口。
+故障隔离用途，不是用户入口，也不需要在运行 DSH Web 时另开端口。仓库已经删除它原先提供的独立
+HTML 页面；误访问其根路径会收到 `410 legacy_local_console_ui_removed`，不会再显示一套容易混淆的旧界面。
 
 ## 生产部署约束
 

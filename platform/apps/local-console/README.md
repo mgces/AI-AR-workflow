@@ -1,6 +1,6 @@
 # DSH Local Console
 
-这是 Windows→WSL 开发模式下的可运行入口。它默认绑定 `127.0.0.1:8787`，无需登录；官方 DSH Web 部署时，官方页面和 AR Delivery 面板仍是唯一用户入口，本 console 只作为没有 DSH Web 时的本地 fallback 和自动化验收面。
+这是 Windows→WSL 开发模式下的 API 和自动化验收后端。它默认绑定 `127.0.0.1:8787`，不提供浏览器 UI；官方 DSH Web 页面和 AR Delivery 面板是唯一用户入口。本 console 只作为本地 fallback 和自动化验收面。
 
 ## 能力
 
@@ -19,7 +19,7 @@ npm --prefix platform ci --ignore-scripts
 npm --prefix platform run console
 ```
 
-从 Windows 浏览器打开 `http://localhost:8787`。端口或 WSL localhost 转发不可用时，检查 `ss -ltnp`，或使用 WSL 地址。服务可用性检查：
+服务启动后不要在浏览器打开根路径；旧的独立页面已移除，`GET /` 会返回 `410 legacy_local_console_ui_removed`。端口或 WSL localhost 转发不可用时，检查 `ss -ltnp`，或使用 WSL 地址。服务可用性检查：
 
 ```bash
 curl http://127.0.0.1:8787/healthz
