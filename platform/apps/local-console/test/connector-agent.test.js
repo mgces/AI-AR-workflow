@@ -1,9 +1,18 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { chmod, mkdtemp, readFile, rm, symlink, writeFile, access } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { LocalConnectorAgentService } from '../src/connector-agent.js';
+import { LocalConnectorAgentService, remoteToolsSocketPath } from '../src/connector-agent.js';
+
+test('remote tools uses a Windows named pipe instead of a filesystem socket', () => {
+  const first = remoteToolsSocketPath('C:\\Temp\\run-1', 'operation-1', 'win32');
+  const second = remoteToolsSocketPath('C:\\Temp\\run-1', 'operation-1', 'win32');
+  assert.match(first, /^\\\\\.\\pipe\\dsh-remote-tools-[a-f0-9]{32}$/u);
+  assert.equal(first, second);
+  assert.equal(remoteToolsSocketPath('/tmp/run-1', 'operation-1', 'linux'), '/tmp/run-1/remote-tools.sock');
+});
 
 test('local Connector agent service maps remote workspace paths to the controlled mount', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dsh-local-connector-'));
@@ -52,6 +61,203 @@ test('local Connector agent service maps remote workspace paths to the controlle
   }
 });
 
+test('local Connector probes its own hdc with the fixed read-only target command', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-local-connector-hdc-'));
+  const invocations = [];
+  try {
+    const service = new LocalConnectorAgentService({
+      workspaceId: 'workspace-hdc', deviceId: 'windows-hdc', localRoot: root, remoteRoot: '/srv/code',
+      executor: { async run() { throw new Error('CodeAgent must not run'); } },
+      agentCatalog: async () => ({}),
+      hdcCommand: 'C:/DevEco/hdc.exe',
+      hdcRunner: async (command, args, options) => {
+        invocations.push({ command, args, options });
+        return { stdout: 'List of devices attached\ndevice-01\tConnected\n', stderr: '' };
+      },
+    });
+
+    const result = await service.handleCommand({
+      kind: 'device.probe', payload: { workspace_id: 'workspace-hdc', command: 'format all disks' },
+    });
+
+    assert.equal(result.status, 'available');
+    assert.equal(result.source, 'local_connector');
+    assert.equal(result.command, 'hdc.exe');
+    assert.deepEqual(result.targets, [{ id: 'device-01', state: 'connected' }]);
+    assert.equal(invocations.length, 1);
+    assert.equal(invocations[0].args.join(' '), 'list targets');
+    assert.equal(invocations[0].options.shell, false);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('local Connector probes through the loopback HDC relay and reports its readiness', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-local-connector-hdc-relay-'));
+  const invocations = [];
+  try {
+    const service = new LocalConnectorAgentService({
+      workspaceId: 'workspace-hdc', deviceId: 'windows-hdc', localRoot: root, remoteRoot: '/srv/code',
+      executor: { async run() { throw new Error('CodeAgent must not run'); } },
+      agentCatalog: async () => ({}),
+      hdcCommand: 'hdc.exe',
+      deviceRelay: {
+        hdcProbeArgs: () => ['-s', '127.0.0.1:18710', 'list', 'targets'],
+        async status() { return { enabled: true, status: 'ready', remote_endpoint: '127.0.0.1:18711' }; },
+      },
+      hdcRunner: async (command, args, options) => {
+        invocations.push({ command, args, options });
+        return { stdout: 'List of devices attached\ndevice-01\tConnected\n', stderr: '' };
+      },
+    });
+
+    const result = await service.handleCommand({ kind: 'device.probe', payload: { workspace_id: 'workspace-hdc' } });
+    assert.equal(result.status, 'available');
+    assert.deepEqual(invocations[0].args, ['-s', '127.0.0.1:18710', 'list', 'targets']);
+    assert.deepEqual(result.device_relay, { enabled: true, status: 'ready', remote_endpoint: '127.0.0.1:18711' });
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('local Connector reports a missing hdc executable without exposing its local path', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-local-connector-hdc-missing-'));
+  try {
+    const service = new LocalConnectorAgentService({
+      workspaceId: 'workspace-hdc', localRoot: root, remoteRoot: '/srv/code',
+      executor: { async run() { throw new Error('CodeAgent must not run'); } },
+      agentCatalog: async () => ({}),
+      hdcCommand: 'C:/private/sdk/hdc.exe',
+      hdcRunner: async () => { throw Object.assign(new Error('spawn failed'), { code: 'ENOENT' }); },
+    });
+    const result = await service.handleCommand({ kind: 'device.probe', payload: {} });
+    assert.equal(result.status, 'missing');
+    assert.equal(result.reason, 'hdc_executable_not_found');
+    assert.equal(result.command, 'hdc.exe');
+    assert.doesNotMatch(JSON.stringify(result), /C:\/private/u);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('local Connector rejects a device probe bound to another workspace', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-local-connector-hdc-binding-'));
+  try {
+    const service = new LocalConnectorAgentService({
+      workspaceId: 'workspace-hdc', localRoot: root, remoteRoot: '/srv/code',
+      executor: { async run() { throw new Error('CodeAgent must not run'); } },
+      agentCatalog: async () => ({}),
+      hdcRunner: async () => { throw new Error('hdc must not run for a mismatched workspace'); },
+    });
+    await assert.rejects(
+      service.handleCommand({ kind: 'device.probe', payload: { workspace_id: 'workspace-other' } }),
+      (error) => error.code === 'connector_workspace_mismatch',
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('local Connector executes cloud workspace operations only through its SSH WorkspaceConnector', async () => {
+  const calls = [];
+  const service = new LocalConnectorAgentService({
+    workspaceId: 'workspace-1', deviceId: 'windows-1', remoteRoot: '/srv/code',
+    workspaceAccess: 'remote_tools',
+    remoteTools: { authorityContext: {
+      tenant_id: 'local-connector', workspace_id: 'workspace-1',
+      cloud_run_id: 'local-remote-tools', authority_run_id: 'authority-local-remote-tools',
+      revision: 1, phase_epoch: 'local-remote-tools', connection_epoch: 1,
+    } },
+    workspaceConnector: {
+      async execute(envelope) {
+        calls.push(envelope);
+        return { operation_id: envelope.operation_id, status: 'completed', result: { operation: 'probe', reachable: true } };
+      },
+    },
+    executor: { async run() { throw new Error('CodeAgent must not run'); } },
+    agentCatalog: async () => ({}),
+  });
+  const result = await service.handleCommand({ kind: 'workspace.execute', payload: {
+    workspace_id: 'workspace-1', operation_id: 'workspace-op-1',
+    envelope: {
+      schema_version: 1, message_type: 'operation.start', operation_id: 'workspace-op-1',
+      tenant_id: 'cloud', workspace_id: 'workspace-1', cloud_run_id: 'run-1', authority_run_id: 'authority-run-1',
+      revision: 1, phase_epoch: 'P0', connection_epoch: 1, nonce: 'cloud-nonce', sent_at: new Date().toISOString(),
+      payload: { operation_kind: 'workspace.probe', path: '.', expect: 'directory' },
+      signature: { key_id: 'cloud', value: 'ignored-at-local-capability-boundary' },
+    },
+  }});
+  assert.equal(result.result.reachable, true);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].operation_id, 'workspace-op-1');
+  assert.equal(calls[0].tenant_id, 'local-connector');
+  assert.equal(calls[0].workspace_id, 'workspace-1');
+  assert.equal(calls[0].cloud_run_id, 'local-remote-tools');
+  assert.equal(calls[0].authority_run_id, 'authority-local-remote-tools');
+  assert.equal(calls[0].phase_epoch, 'local-remote-tools');
+  assert.deepEqual(calls[0].payload, { operation_kind: 'workspace.probe', path: '.', expect: 'directory' });
+  assert.deepEqual(calls[0].signature, { key_id: 'local-connector', value: 'local-capability' });
+});
+
+test('local Connector downloads a selected workflow into the SSH code root and remembers the installation', async () => {
+  const runtimeRoot = await mkdtemp(join(tmpdir(), 'dsh-connector-workflows-'));
+  const calls = [];
+  const files = [
+    { path: 'scripts/advance.py', content: 'print("advance")\n' },
+    { path: 'runtime/delivery_bridge.py', content: 'print("bridge")\n' },
+  ].map((item) => ({
+    ...item,
+    bytes: Buffer.byteLength(item.content),
+    sha256: createHash('sha256').update(item.content).digest('hex'),
+  })).sort((left, right) => left.path.localeCompare(right.path));
+  const digest = createHash('sha256')
+    .update(files.map((file) => `${file.path}\0${file.sha256}\0${file.bytes}`).join('\n'))
+    .digest('hex');
+  const workspaceConnector = {
+    async execute(envelope) {
+      calls.push(envelope);
+      return { operation_id: envelope.operation_id, status: 'completed', result: { operation: 'write' } };
+    },
+  };
+  try {
+    const options = {
+      workspaceId: 'workspace-1', deviceId: 'windows-1', remoteRoot: '/srv/code',
+      workspaceAccess: 'remote_tools', workspaceConnector, runtimeRoot,
+      executor: { async run() { throw new Error('CodeAgent must not run'); } },
+      agentCatalog: async () => ({}),
+    };
+    const service = new LocalConnectorAgentService(options);
+    const bundle = {
+      schema_version: 1, id: 'ar-delivery', name: 'AR workflow',
+      install_path: '.dsh/workflows/ar-delivery/current', files,
+      bytes: files.reduce((sum, item) => sum + item.bytes, 0), sha256: digest,
+    };
+    await service.handleCommand({ kind: 'workflow.install.begin', payload: {
+      workspace_id: 'workspace-1',
+      bundle: { ...bundle, files: files.map(({ path, bytes, sha256 }) => ({ path, bytes, sha256 })) },
+    }});
+    for (const file of files) await service.handleCommand({ kind: 'workflow.install.file', payload: {
+      workspace_id: 'workspace-1', workflow_id: 'ar-delivery', bundle_sha256: digest, file,
+    }});
+    const installed = await service.handleCommand({ kind: 'workflow.install.commit', payload: {
+      workspace_id: 'workspace-1', workflow_id: 'ar-delivery', bundle_sha256: digest,
+    }});
+    assert.equal(installed.status, 'installed');
+    assert.equal(installed.id, 'ar-delivery');
+    assert.equal(calls.length, 3);
+    assert.equal(calls[0].payload.operation_kind, 'workspace.write');
+    assert.equal(calls[0].payload.path, `.dsh/workflows/ar-delivery/current/${files[0].path}`);
+    assert.equal(calls[2].payload.path, '.dsh/workflows/ar-delivery/current/manifest.json');
+
+    const restarted = new LocalConnectorAgentService(options);
+    const listed = await restarted.handleCommand({ kind: 'workflow.list', payload: { workspace_id: 'workspace-1' } });
+    assert.deepEqual(listed.installed.map((item) => item.id), ['ar-delivery']);
+    assert.equal(listed.installed[0].sha256, digest);
+  } finally {
+    await rm(runtimeRoot, { recursive: true, force: true });
+  }
+});
+
 test('local Connector agent service refuses path escapes and unknown agents', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dsh-local-connector-guard-'));
   try {
@@ -74,6 +280,36 @@ test('local Connector agent service refuses path escapes and unknown agents', as
       }}),
       (error) => error.code === 'connector_agent_unavailable',
     );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('local Connector returns a bounded executable diagnostic when an Agent fails', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-local-connector-diagnostic-'));
+  try {
+    const service = new LocalConnectorAgentService({
+      workspaceId: 'workspace-diagnostic', localRoot: root, remoteRoot: '/srv/code',
+      executor: { async run() {
+        const error = Object.assign(new Error('CodeAgent exited with 1'), {
+          code: 'codeagent_failed',
+          result: { exitCode: 1, stdout: '', stderr: 'The model requires a newer version. token=private-value' },
+        });
+        throw error;
+      } },
+      agentCatalog: async () => ({ codex: { available: true, command: 'codex' } }),
+    });
+    await assert.rejects(service.handleCommand({ kind: 'agent.start', payload: {
+      operation_id: 'diagnostic-operation', workspace_id: 'workspace-diagnostic', agent_id: 'codex',
+      repo_relative: '.', pipeline_relative: '.',
+      context: { run_id: 'run-diagnostic', attempt_id: 'attempt-diagnostic', phase: 'AI', role: 'diagnostician' },
+    }}), (error) => {
+      assert.equal(error.code, 'codeagent_failed');
+      assert.equal(error.details.exit_code, 1);
+      assert.match(error.details.diagnostic, /requires a newer version/u);
+      assert.doesNotMatch(error.details.diagnostic, /private-value/u);
+      return true;
+    });
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -228,6 +464,34 @@ test('remote-tools mode runs a local Agent with an MCP capability and keeps logs
   }
 });
 
+test('remote-tools probe preserves bounded SSH failure diagnostics for Connector startup', async () => {
+  const service = new LocalConnectorAgentService({
+    workspaceId: 'workspace-ssh-diagnostic', deviceId: 'device-ssh-diagnostic',
+    remoteRoot: '/home/builder/project', workspaceAccess: 'remote_tools',
+    workspaceConnector: {
+      async execute() {
+        const error = new Error('SSH operation exited with 255');
+        error.code = 'remote_command_failed';
+        error.details = { exit_code: 255, stderr: 'Permission denied (publickey).\\n' };
+        throw error;
+      },
+    },
+    executor: { async run() { throw new Error('CodeAgent must not run during probe'); } },
+    agentCatalog: async () => ({}),
+    hdcCommand: 'hdc-not-installed-for-test',
+  });
+
+  const probe = await service.probe();
+  assert.equal(probe.status, 'blocked');
+  assert.equal(probe.reason, 'remote_command_failed');
+  assert.deepEqual(probe.remote_workspace_diagnostic, {
+    code: 'remote_command_failed',
+    message: 'SSH operation exited with 255',
+    exit_code: 255,
+    stderr: 'Permission denied (publickey).\\n',
+  });
+});
+
 test('remote-tools Codex runs preserve file-backed local authentication in the isolated home', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dsh-remote-tools-codex-'));
   const runtimeRoot = await mkdtemp(join(tmpdir(), 'dsh-remote-tools-codex-runtime-'));
@@ -253,7 +517,7 @@ test('remote-tools Codex runs preserve file-backed local authentication in the i
       workspaceId: 'workspace-codex', deviceId: 'device-codex', remoteRoot: '/srv/code',
       workspaceAccess: 'remote_tools', workspaceConnector, runtimeRoot,
       env: { HOME: home, PATH: process.env.PATH },
-      remoteTools: { allowedProfiles: [] },
+      remoteTools: { allowedProfiles: [], mcp_config_format: 'claude' },
       remoteToolsBrokerFactory: async () => ({
         async start() {}, async stop() {}, mcpServerSpec() { return { command: process.execPath, args: ['remote-tools-mcp.js'], env: {} }; },
       }),

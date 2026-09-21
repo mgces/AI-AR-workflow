@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { delimiter as hostDelimiter, isAbsolute, join } from 'node:path';
+import { basename, delimiter as hostDelimiter, dirname, isAbsolute, join } from 'node:path';
 
 const WINDOWS_SCRIPT_EXTENSIONS = Object.freeze(new Set(['.bat', '.cmd']));
 const DEFAULT_PATHEXT = Object.freeze(['.COM', '.EXE', '.BAT', '.CMD']);
@@ -50,6 +50,30 @@ function isWindowsScript(path) {
   return [...WINDOWS_SCRIPT_EXTENSIONS].some((extension) => value.endsWith(extension));
 }
 
+function powershellShimFor(path) {
+  const value = String(path ?? '');
+  if (!value.toLowerCase().endsWith('.cmd')) return value;
+  const sibling = `${value.slice(0, -4)}.ps1`;
+  return existsSync(sibling) ? sibling : value;
+}
+
+function knownWindowsNpmShim(path, args, env) {
+  const root = dirname(path);
+  const name = basename(path).toLowerCase();
+  if (name === 'claude.cmd') {
+    const executable = join(root, 'node_modules', '@anthropic-ai', 'claude-code', 'bin', 'claude.exe');
+    if (existsSync(executable)) return { command: executable, args: [...args] };
+  }
+  if (name === 'codex.cmd') {
+    const entry = join(root, 'node_modules', '@openai', 'codex', 'bin', 'codex.js');
+    if (existsSync(entry)) {
+      const node = resolveCommandPath(env?.DSH_WINDOWS_NODE ?? 'node', env, 'win32') ?? process.execPath;
+      return { command: node, args: [entry, ...args] };
+    }
+  }
+  return null;
+}
+
 function powershellCommand(env) {
   const configured = typeof env?.DSH_POWERSHELL_COMMAND === 'string' && env.DSH_POWERSHELL_COMMAND.trim() !== ''
     ? env.DSH_POWERSHELL_COMMAND.trim() : null;
@@ -78,9 +102,16 @@ export function prepareCommandInvocation(command, args = [], { env = process.env
   if (platform !== 'win32' || !isWindowsScript(path ?? effectiveCommand)) {
     return { command: effectiveCommand, args: [...args], env, shell: false, wrapped: false };
   }
+  const nativeShim = knownWindowsNpmShim(effectiveCommand, args, env);
+  if (nativeShim) {
+    return { ...nativeShim, env, shell: false, wrapped: true, original_command: effectiveCommand, original_args: [...args] };
+  }
   const launchEnv = {
     ...env,
-    DSH_WINDOWS_COMMAND: effectiveCommand,
+    // npm installs both .cmd and .ps1 shims. PowerShell 5 can silently skip a
+    // .cmd shim in non-interactive child environments, while the sibling .ps1
+    // preserves the same argv contract and streams stdout/stderr normally.
+    DSH_WINDOWS_COMMAND: powershellShimFor(effectiveCommand),
     DSH_WINDOWS_ARGS: JSON.stringify(args),
   };
   return {

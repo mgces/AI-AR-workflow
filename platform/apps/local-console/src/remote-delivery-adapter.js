@@ -223,6 +223,17 @@ function optional(value) {
   return value === undefined || value === null ? '' : String(value);
 }
 
+function hdcHostOverride(value) {
+  if (value === null || value === undefined || value === '') return null;
+  if (typeof value !== 'string') fail('remote_delivery_input_invalid', 'deviceHdcHostOverride must be a loopback endpoint');
+  const match = /^127\.0\.0\.1:([0-9]{1,5})$/u.exec(value);
+  const port = match ? Number(match[1]) : 0;
+  if (!match || !Number.isSafeInteger(port) || port < 1024 || port > 65_535) {
+    fail('remote_delivery_input_invalid', 'deviceHdcHostOverride must be a 127.0.0.1 endpoint on a non-privileged port');
+  }
+  return value;
+}
+
 /**
  * Remote implementation of the Python delivery adapter. The Python authority
  * remains on the code host: every operation is a signed fixed Gateway profile
@@ -232,7 +243,8 @@ function optional(value) {
  * another operation's authority envelope.
  */
 export class RemotePythonDeliveryAdapter {
-  constructor({ gateway, remoteRoot, authorityContext, signature = null, sign = null, profiles = {}, scriptsRoot = null, bridgePath = null } = {}) {
+  constructor({ gateway, remoteRoot, authorityContext, signature = null, sign = null, profiles = {}, scriptsRoot = null, bridgePath = null,
+    deviceHdcHostOverride = null } = {}) {
     if (!gateway || typeof gateway.execute !== 'function') throw new TypeError('gateway.execute is required');
     this.gateway = gateway;
     this.remoteRoot = normalizeAbsolute(remoteRoot, 'remoteRoot');
@@ -252,6 +264,7 @@ export class RemotePythonDeliveryAdapter {
       ? null : pathUnder(this.remoteRoot, normalizeAbsolute(scriptsRoot, 'scriptsRoot'), 'scriptsRoot');
     this.bridgePath = bridgePath === null || bridgePath === undefined
       ? null : pathUnder(this.remoteRoot, normalizeAbsolute(bridgePath, 'bridgePath'), 'bridgePath');
+    this.deviceHdcHostOverride = hdcHostOverride(deviceHdcHostOverride);
   }
 
   async initialize(raw = {}) {
@@ -280,6 +293,7 @@ export class RemotePythonDeliveryAdapter {
       agent: optional(raw.agent),
       model: optional(raw.model),
       confirm_defaults: raw.confirm_defaults === true ? 'true' : 'false',
+      device_hdc_host_override: this.deviceHdcHostOverride ?? '',
       scripts_root: optional(raw.scripts_root),
       bridge_path: optional(raw.bridge_path),
     }, runId);
@@ -318,6 +332,7 @@ export class RemotePythonDeliveryAdapter {
     const result = (await this.#profile('validate', {
       pipeline_dir: path, pipeline_path: relativePath(this.remoteRoot, path, 'pipeline_dir'),
       repo_root: this.#repoRootFor(path), phase: String(phase), upload_precheck: uploadPrecheck ? 'true' : 'false',
+      device_hdc_host_override: this.deviceHdcHostOverride ?? '',
     }, runId)).value;
     return requireGatePass(result, 'validate');
   }
@@ -529,6 +544,7 @@ export class RemotePythonDeliveryAdapter {
     const profileVariables = { ...(variables ?? {}) };
     delete profileVariables.scripts_root;
     delete profileVariables.bridge_path;
+    profileVariables.device_hdc_host_override = this.deviceHdcHostOverride ?? '';
     // When no explicit bundle path is configured, resolve the standard bundle
     // beside the selected repository root for this run. This matters for a
     // code host that keeps only the project checkout plus the DSH gate bundle:

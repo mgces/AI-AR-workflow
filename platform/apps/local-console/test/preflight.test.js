@@ -32,6 +32,30 @@ test('preflight distinguishes a P0-ready workspace from a full P8-ready workspac
   assert.ok(result.checks.some((item) => item.id === 'device_transport' && item.status === 'blocked'));
 });
 
+test('preflight does not treat a Windows Connector device as available to an SSH-host gate', () => {
+  const result = evaluatePrerequisites({
+    workspaceMode: 'workspace_gateway',
+    workspace: { configured: true, reachable: true, writable: true },
+    transport: { configured: true, reachable: true },
+    runtime: { node: { status: 'pass' }, python: { status: 'pass' }, git: { status: 'pass' } },
+    workflow: { scripts: true, profiles: true, bridge: true },
+    agent: { id: 'opencode', available: true, dispatchable: true, execution_mode: 'workspace_gateway' },
+    environment: { selected: 'openharmony', profile_bound: true },
+    device: {
+      configured: true, reachable: false, source: 'local_connector', observed_status: 'available',
+      reason: 'local_device_not_forwarded_to_ssh_gate',
+    },
+    publication: { configured: true, authenticated: true },
+  });
+
+  const device = result.checks.find((item) => item.id === 'device_transport');
+  assert.equal(device.status, 'blocked');
+  assert.equal(device.source, 'local_connector');
+  assert.equal(device.observed_status, 'available');
+  assert.equal(device.reason, 'local_device_not_forwarded_to_ssh_gate');
+  assert.equal(result.can_complete_p8, false);
+});
+
 test('preflight leaves the CodeAgent reason empty when the selected adapter is dispatchable', () => {
   const result = evaluatePrerequisites({
     workspaceMode: 'local',
@@ -46,6 +70,26 @@ test('preflight leaves the CodeAgent reason empty when the selected adapter is d
   const selected = result.checks.find((item) => item.id === 'codeagent_selected');
   assert.equal(selected.status, 'pass');
   assert.equal(selected.reason, null);
+});
+
+test('preflight clears a stale device failure reason after the device becomes reachable', () => {
+  const result = evaluatePrerequisites({
+    workspaceMode: 'local_connector',
+    repoRoot: '/workspace/project',
+    workspace: { configured: true, reachable: true, writable: true },
+    transport: { configured: true, reachable: true },
+    connector: { configured: true, reachable: true, workspace_access: 'remote_tools' },
+    runtime: { node: { status: 'pass' }, python: { status: 'pass' }, git: { status: 'pass' } },
+    workflow: { scripts: true, profiles: true, bridge: true },
+    agent: { id: 'codex', available: true, dispatchable: true, execution_mode: 'local_connector' },
+    environment: { selected: 'openharmony', profile_bound: true, source_layout_verified: true },
+    device: { configured: true, reachable: true, reason: 'device_unreachable' },
+    publication: { configured: true, authenticated: true },
+  });
+
+  const device = result.checks.find((item) => item.id === 'device_transport');
+  assert.equal(device.status, 'pass');
+  assert.equal(device.reason, null);
 });
 
 test('execution plan marks local CLI and local workspace as direct editing', () => {

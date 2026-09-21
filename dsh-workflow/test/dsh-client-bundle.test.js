@@ -43,9 +43,7 @@ test('official DSH client bundle contributes one AR main panel and sidebar entry
   assert.match(source, /function formatTokenUsage/);
   assert.match(source, /formatTokenUsage\(observation\.token_usage\)/);
   assert.match(source, /device_serial/);
-  assert.match(source, /pipeline_dir/);
   assert.match(source, /environment === 'harmonyos'/);
-  assert.match(source, /needsDefaultConfirmation/);
   assert.match(source, /workspace_mode/);
   assert.match(source, /前置条件检查/);
   assert.match(source, /\/preflight/);
@@ -74,6 +72,90 @@ test('official DSH client bundle contributes one AR main panel and sidebar entry
   assert.doesNotMatch(source, /127\.0\.0\.1:8788/);
 });
 
+test('AR workbench separates platform CodeAgent readiness, workflow selection, and AR workflow steps', async () => {
+  const source = await readFile(new URL('../src/dsh/client.js', import.meta.url), 'utf8');
+  assert.match(source, /function PlatformNavigator/);
+  assert.match(source, /function ConnectorAgentSetup/);
+  assert.match(source, /function WorkflowDownloadPanel/);
+  assert.match(source, /function connectorOnline/);
+  assert.match(source, /const \[pageView, setPageView\] = useState\('agent'\)/);
+  assert.match(source, /pageView === 'agent' && h\(ConnectorAgentSetup/);
+  assert.match(source, /pageView === 'catalog' && h\(WorkflowCatalog, \{ overview, onSelect: selectWorkflow \}\)/);
+  assert.match(source, /pageView === 'workflow' && h\(ArWorkflowWorkspace/);
+  assert.match(source, /本机 Connector \+ CodeAgent/);
+  assert.match(source, /检测本机 Connector/);
+  assert.match(source, /api\('\/connector\/probe'/);
+  assert.match(source, /overview\?\.workspace_mode/);
+  assert.match(source, /execution_mode === 'local_connector'/);
+  assert.match(source, /Connector 未在线时不能测试 Agent，也不能进入 Workflow/);
+  assert.match(source, /下载 Workflow 到源码目录/);
+  assert.match(source, /云端源码：/);
+  assert.match(source, /SSH 下载目标：/);
+  assert.match(source, /api\(`\/workflows\/\$\{encodeURIComponent\(workflow\.id\)\}\/download`/);
+  assert.match(source, /workflow\.installed/);
+  assert.match(source, /const workflowsReady = workflows\.some\(\(workflow\) => workflow\.installed === true\)/);
+  assert.match(source, /disabled: !platformReady/);
+  assert.match(source, /选择工作流/);
+  assert.match(source, /function WorkflowCatalog/);
+  assert.match(source, /AR workflow/);
+  assert.match(source, /后续可加载更多 workflow/);
+  assert.match(source, /function ArWorkflowWorkspace/);
+  assert.match(source, /useState\('start'\)/);
+  assert.match(source, /workflowStep === 'start' && h\(StartCard/);
+  assert.match(source, /提交任务/);
+  assert.match(source, /运行与维测/);
+  assert.match(source, /源码目录/);
+  assert.match(source, /AR 描述/);
+  assert.match(source, /resolved_input/);
+});
+
+test('AI problem analysis always uses the selected CodeAgent and retains actionable P0 diagnostics', async () => {
+  const source = await readFile(new URL('../src/dsh/client.js', import.meta.url), 'utf8');
+  assert.match(source, /const inject = \['slots', 'layout'\]/);
+  assert.match(source, /function AIConversationPanel\(/);
+  assert.match(source, /function diagnosticPrompt\(context, userQuestion = ''\)/);
+  assert.match(source, /用户补充说明/);
+  assert.match(source, /const extra = draft\.trim\(\)/);
+  assert.doesNotMatch(source, /sessions\.create\(/);
+  assert.doesNotMatch(source, /sessions\.open\(/);
+  assert.doesNotMatch(source, /session\.beginSubmission\(/);
+  assert.doesNotMatch(source, /session\.prompt\(/);
+  assert.match(source, /分析当前问题/);
+  assert.match(source, /error\.preflight = result/);
+  assert.match(source, /required_for\?\.includes\('P0'\)/);
+  assert.match(source, /后续阶段待处理（不阻断 P0）/);
+  assert.match(source, /runtime_hdc/);
+  assert.match(source, /device_probe/);
+  assert.match(source, /source_tree_layout/);
+  assert.match(source, /failure_reasons/);
+  assert.match(source, /human_inputs/);
+  assert.match(source, /artifacts/);
+  assert.match(source, /sanitizeDiagnosticValue/);
+  assert.match(source, /api\('\/ai\/analyze'/);
+  assert.match(source, /所有 AI 对话都直接使用当前选中的 CodeAgent/);
+  assert.match(source, /overview\?\.codeagents\?\.selected_config/);
+  assert.match(source, /测试运行当前 Agent/);
+  assert.match(source, /\/ai\/cancel/);
+  assert.match(source, /ai_analysis/);
+  assert.match(source, /保存只选择 Agent/);
+  assert.doesNotMatch(source, /DSH 主模型/);
+  assert.doesNotMatch(source, /api\(['"]\/chat/);
+});
+
+test('CodeAgent setup diagnoses failures, tries local fallbacks, and exposes a repair loop', async () => {
+  const source = await readFile(new URL('../src/dsh/client.js', import.meta.url), 'utf8');
+  assert.match(source, /function eligibleLocalAgents/);
+  assert.match(source, /function codeAgentRepairAdvice/);
+  assert.match(source, /cause\.code/);
+  assert.match(source, /for \(const candidate of candidates\)/);
+  assert.match(source, /nextFailures\.push/);
+  assert.match(source, /智能检测并启用/);
+  assert.match(source, /修复后重试/);
+  assert.match(source, /自动尝试下一个可用 Agent/);
+  assert.match(source, /execution_mode !== 'local_connector'/);
+  assert.match(source, /h\('details', \{ className: 'aiArStartAdvanced' \}/);
+});
+
 test('official profile disables API-key onboarding and exposes Claude Code through the default preset', async () => {
   const patch = await readFile(new URL('../cordis.patch.yml', import.meta.url), 'utf8');
   const preset = await readFile(new URL('../config/presets/claude-code/agent.cordis.yml', import.meta.url), 'utf8');
@@ -83,4 +165,62 @@ test('official profile disables API-key onboarding and exposes Claude Code throu
   const claudeRow = preset.slice(preset.indexOf('- id: tool-subagent-claude-code'), preset.indexOf('- id: workflow-worker-thread'));
   assert.match(claudeRow, /toolName: subagent_claude_code/);
   assert.doesNotMatch(claudeRow, /disabled:/);
+});
+
+test('claude-code preset inherits the deployment persona without registering it twice', async () => {
+  const preset = await readFile(new URL('../config/presets/claude-code/agent.cordis.yml', import.meta.url), 'utf8');
+
+  assert.doesNotMatch(preset, /name: '@deepseek-ai\/dsh-persona'/);
+  assert.doesNotMatch(preset, /- id: persona\s*$/m);
+});
+
+test('AR workflow quick start asks only for source directory and AR description', async () => {
+  const source = await readFile(new URL('../src/dsh/client.js', import.meta.url), 'utf8');
+  const startCard = source.slice(source.indexOf('function StartCard('), source.indexOf('function PlatformNavigator('));
+  assert.match(startCard, /源码目录/);
+  assert.match(startCard, /AR 描述/);
+  assert.match(startCard, /resolved_input/);
+  assert.match(startCard, /confirm_defaults: true/);
+  assert.match(startCard, /系统自动识别/);
+  assert.doesNotMatch(startCard, /代码环境/);
+  assert.doesNotMatch(startCard, /HarmonyOS 设备类型/);
+  assert.doesNotMatch(startCard, /设备序列号/);
+  assert.doesNotMatch(startCard, /构建目标/);
+  assert.doesNotMatch(startCard, /P8 上库目标/);
+  assert.doesNotMatch(startCard, /aiArStartAdvanced/);
+  const workflow = source.slice(source.indexOf('function ArWorkflowWorkspace('), source.indexOf('function ArWorkbench('));
+  assert.match(workflow, /useState\('start'\)/);
+  assert.doesNotMatch(workflow, /h\(PreflightCard/);
+  assert.match(workflow, /提交任务/);
+  assert.match(workflow, /运行与维测/);
+});
+
+test('Connector offline state exposes human recovery controls in the official panel', async () => {
+  const source = await readFile(new URL('../src/dsh/client.js', import.meta.url), 'utf8');
+  assert.match(source, /\/connector\/recovery/u);
+  assert.match(source, /dsh-connector:\/\/start/u);
+  assert.match(source, /已安装？启动 Connector/u);
+  assert.match(source, /首次接入：下载 Connector 安装器/u);
+  assert.match(source, /从浏览器下载列表确认运行 Install-DSH-Connector\.cmd/u);
+  assert.match(source, /保持此窗口打开/u);
+  assert.match(source, /本页会自动检测在线|网页会自动检测连接状态/u);
+  assert.match(source, /Windows 无需预装 Node\.js.*缺少时安装器会下载并校验/u);
+  assert.match(source, /选择 WSL 或 SSH/u);
+  assert.match(source, /自动发现本机发行版/u);
+  assert.match(source, /下载到所选源码目录/u);
+  assert.match(source, /以后断线，点击“已安装？启动 Connector”/u);
+  assert.match(source, /aiArConnectorAdvanced/u);
+  assert.match(source, /其他连接方式与故障恢复/u);
+  assert.match(source, /复制启动命令/u);
+  assert.match(source, /connector\/client-installer/u);
+  assert.match(source, /下载便携客户端包/u);
+  assert.match(source, /connector\/client-package/u);
+  assert.match(source, /下载连接配置模板/u);
+  assert.match(source, /Connector 恢复/u);
+  assert.match(source, /Windows 安装启动器/u);
+  assert.match(source, /Start-DSH-Connector\.ps1/u);
+  assert.match(source, /浏览器要求用户确认运行本机程序/u);
+  assert.match(source, /LOCALAPPDATA/u);
+  assert.doesNotMatch(source, /本机 AI-AR-workflow 仓库位置/u);
+  assert.match(source, /不需要克隆完整的 AI-AR-workflow 仓库/u);
 });

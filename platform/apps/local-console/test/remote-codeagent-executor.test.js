@@ -32,6 +32,7 @@ test('remote executor writes auditable logs and invokes a registered gateway pro
       remoteRoot: root,
       authorityContext: authority,
       signature: { key_id: 'test-key', value: 'test-signature' },
+      deviceHdcHostOverride: '127.0.0.1:18710',
     });
     const result = await executor.run({
       definition: { id: 'opencode', adapter: 'opencode-cli', model: 'anthropic/claude-sonnet-4-5' },
@@ -42,6 +43,7 @@ test('remote executor writes auditable logs and invokes a registered gateway pro
     assert.equal(calls[1].payload.operation_kind, 'workspace.exec_profile');
     assert.equal(calls[1].payload.profile_id, 'codeagent.opencode');
     assert.equal(calls[1].payload.variables.model, 'anthropic/claude-sonnet-4-5');
+    assert.equal(calls[1].payload.variables.device_hdc_host_override, '127.0.0.1:18710');
     assert.match(calls[1].payload.variables.prompt, /phase: P2/);
     assert.equal(calls[2].payload.operation_kind, 'workspace.remove');
     assert.match(calls[2].payload.path, /\.dsh\/scheduler-prompts\/attempt-1\.md$/u);
@@ -55,6 +57,33 @@ test('remote executor writes auditable logs and invokes a registered gateway pro
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test('remote executor forwards an explicit analysis prompt without the AR scheduler wrapper', async () => {
+  const calls = [];
+  const gateway = {
+    async execute(envelope) {
+      calls.push(envelope);
+      const operation = envelope.payload.operation_kind;
+      if (operation === 'workspace.exec_profile') return { exit_code: 0, stdout: 'done', stderr: '' };
+      if (operation === 'workspace.list') return { entries: [] };
+      return {};
+    },
+  };
+  const executor = new RemoteCodeAgentExecutor({
+    gateway, remoteRoot: '/srv/code', authorityContext: authority,
+    signature: { key_id: 'test-key', value: 'test-signature' },
+  });
+  await executor.run({
+    definition: { id: 'opencode', adapter: 'opencode-cli' },
+    context: {
+      run_id: 'ai-analysis', attempt_id: 'ai-attempt', phase: 'AI', role: 'diagnostician',
+      workspace_root: '/srv/code', pipeline_dir: '/srv/code/.dsh/ai-analysis',
+      analysis_mode: true, prompt_override: '只返回远端诊断结论。',
+    },
+  });
+  const invocation = calls.find((call) => call.payload.operation_kind === 'workspace.exec_profile');
+  assert.equal(invocation.payload.variables.prompt, '只返回远端诊断结论。');
 });
 
 test('remote executor accepts CodeAgent id aliases in a profile map', async () => {

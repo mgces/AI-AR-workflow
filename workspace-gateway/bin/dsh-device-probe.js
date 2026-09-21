@@ -16,9 +16,23 @@ export function parseTargets(output) {
   return String(output ?? '').split(/\r?\n/u).map((line) => line.trim())
     .filter((line) => line && !/^list of devices attached/i.test(line))
     .map((line) => {
-      const [id, state = 'unknown'] = line.split(/\s+/u);
+      // `hdc list targets` commonly prints only the serial for an online
+      // device. Presence in that command's output is itself the connected
+      // signal; explicit offline/unauthorized states still take precedence.
+      const [id, state = 'device'] = line.split(/\s+/u);
       return { id, state: state.toLowerCase() };
     }).filter((item) => item.id && !/^[-=]+$/u.test(item.id));
+}
+
+export function hdcProbeArgs(env = process.env) {
+  const override = typeof env?.HDC_HOST_OVERRIDE === 'string' ? env.HDC_HOST_OVERRIDE.trim() : '';
+  if (!override) return ['list', 'targets'];
+  const match = /^127\.0\.0\.1:([0-9]{1,5})$/u.exec(override);
+  const port = match ? Number(match[1]) : 0;
+  if (!match || !Number.isSafeInteger(port) || port < 1024 || port > 65_535) {
+    fail('HDC_HOST_OVERRIDE must be 127.0.0.1 on a port between 1024 and 65535');
+  }
+  return ['-s', override, 'list', 'targets'];
 }
 
 function parseArgs(argv) {
@@ -36,7 +50,7 @@ function snapshot(hdc, result, error = null) {
   const status = error?.code === 'ENOENT' ? 'missing'
     : error || result?.error ? 'probe_failed'
       : targets.length === 0 ? 'no_device'
-        : targets.length === 1 && targets[0].state === 'device' ? 'available'
+        : targets.length === 1 && ['device', 'connected', 'online'].includes(targets[0].state) ? 'available'
           : targets.length > 1 ? 'ambiguous' : 'not_ready';
   return {
     status,
@@ -46,13 +60,14 @@ function snapshot(hdc, result, error = null) {
   };
 }
 
-export function main(argv = process.argv.slice(2)) {
+export function main(argv = process.argv.slice(2), { env = process.env, spawnSyncImpl = spawnSync } = {}) {
   const hdc = parseArgs(argv);
+  const args = hdcProbeArgs(env);
   let result;
   try {
-    result = spawnSync(hdc, ['list', 'targets'], {
+    result = spawnSyncImpl(hdc, args, {
       encoding: 'utf8', timeout: 4000, shell: false,
-      env: { ...process.env },
+      env: { ...env },
     });
   } catch (error) {
     process.stdout.write(`${JSON.stringify(snapshot(hdc, null, error))}\n`);

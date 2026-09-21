@@ -29,6 +29,8 @@ export class CodeAgentExecutionError extends Error {
 }
 
 function promptFor(context) {
+  if (context?.analysis_mode === true && typeof context.prompt_override === 'string'
+      && context.prompt_override.trim() !== '') return context.prompt_override.trim();
   const constraints = Array.isArray(context.constraints) ? context.constraints : [];
   const config = context.config && typeof context.config === 'object' ? context.config : {};
   const environment = context.environment_profile ?? config.environment ?? 'unresolved';
@@ -387,7 +389,7 @@ function commandAndArgs(definition, fields) {
     // Codex CLI 0.15x replaced the removed --ask-for-approval flag with
     // --approve-for-me. That option already selects the workspace-write
     // sandbox and is mutually exclusive with an explicit --sandbox flag.
-    args = ['exec', '--json', ...(remoteTools ? ['--sandbox', 'read-only'] : ['--approve-for-me']), '-C', fields.workspaceRoot];
+    args = ['exec', '--json', ...(remoteTools ? ['--sandbox', 'read-only', '--skip-git-repo-check'] : ['--approve-for-me']), '-C', fields.workspaceRoot];
     if (fields.model) args.push('--model', fields.model);
     if (fields.mcpConfigFile && mcpConfigArg) args.push(mcpConfigArg, fields.mcpConfigFile);
     args.push(fields.prompt);

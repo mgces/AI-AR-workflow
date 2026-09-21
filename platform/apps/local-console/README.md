@@ -8,7 +8,7 @@
 - Claude Code、OpenCode、Codex CLI 使用非交互执行协议；探测到的 Cursor/Trae 仍会显示，但没有对应 adapter 时会明确拒绝派发。自定义 Agent 可选择 `argv` 协议，Linux/macOS 命令通过 `shell:false` 执行。Windows 上常见的 npm `.cmd/.bat` 包装器会通过 PowerShell 的 JSON argv 桥启动，提示词中的 shell 字符仍作为参数传递；可用 `DSH_POWERSHELL_COMMAND` 指定受控的 `pwsh.exe` 或 `powershell.exe`。
 - CodeAgent 选择和模型保存到运行目录的 `codeagent-settings.json`。只保存命令配置，不接收 API key、token 或 SSH 私钥；凭据由各 CLI 自己的配置管理。
 - RAG 在本地模式使用工作区内持久索引；Workspace Gateway 模式使用 `RemoteRagIndex` 通过带 size/mtime 的 `workspace.list` 和 `workspace.read` 建索引，并在结果返回前回读 hash。设置 `DSH_RAG_ENDPOINT` 后会通过 OpenAI-compatible `/embeddings` 和 `/rerank` 真实执行语义检索，凭据从 `DSH_RAG_API_KEY` 读取且不写入 profile；未配置服务时明确显示词法 fallback。远端索引是否缓存到云端由 `workspaceGateway.ragEnabled` 控制。
-- 远端调试产物优先通过 Gateway `workspace.hash` 在代码端计算二进制 sha256/字节数，再展示到 DSH 页面；官方页面下载时使用受限 `workspace.read_binary` 返回 base64，并再次校验 hash/bytes。旧 Gateway 不支持这些操作时会明确降级为只读元数据。`debug.device_probe` 仍是只读固定 profile，不会代替 P6/P7 gate。
+- 远端调试产物优先通过 Gateway `workspace.hash` 在代码端计算二进制 sha256/字节数，再展示到 DSH 页面；官方页面下载时使用受限 `workspace.read_binary` 返回 base64，并再次校验 hash/bytes。旧 Gateway 不支持这些操作时会明确降级为只读元数据。`debug.device_probe` 仍是只读固定 profile；可选 HDC relay 通过 loopback SSH forward 将本机设备交给远端 gate，但不代替 P6/P7 测试报告。
 - `/api/debug/status` 和 `/api/debug/scan` 识别 hdc 目标以及 `.hap/.hsp/.so/.ko/.elf/.img/.bin` 产物，并把设备/产物状态接到 AR 页面；识别结果是事实和 advisory，不替代 P6/P7 gate。
 - OpenHarmony、HarmonyOS-system、HarmonyOS-chip 通过不同环境 profile 进入不同分支；当前仓库不是 OHOS 产品根目录时，P0 会保留阻塞原因。
 

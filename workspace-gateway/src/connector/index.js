@@ -5,6 +5,7 @@ export * from './websocket.js';
 export * from './sshfs-mount.js';
 export * from './remote-tools-mcp.js';
 export * from './pairing-registry.js';
+export * from './hdc-device-relay.js';
 export * from '../authority/signature.js';
 export * from '../supervisor/resource-locks.js';
 export * from '../supervisor/process-supervisor.js';

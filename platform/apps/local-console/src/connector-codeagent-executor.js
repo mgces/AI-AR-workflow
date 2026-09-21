@@ -142,9 +142,19 @@ export class ConnectorCodeAgentExecutor {
         if (signal?.aborted || cancelSent || ['connector_aborted', 'connector_disconnected'].includes(error?.code)) {
           throw new CodeAgentExecutionError('CodeAgent execution was cancelled', 'codeagent_cancelled', { operation_id: operationId });
         }
-        throw new CodeAgentExecutionError(error?.message ?? 'local Connector command failed', error?.code ?? 'connector_agent_failed', {
-          operation_id: operationId, cause: error?.details ?? {},
-        });
+        const causeDetails = error?.details && typeof error.details === 'object' && !Array.isArray(error.details)
+          ? structuredClone(error.details) : {};
+        const details = { ...causeDetails, operation_id: operationId };
+        const failure = new CodeAgentExecutionError(
+          error?.message ?? 'local Connector command failed',
+          error?.code ?? 'connector_agent_failed',
+          { operation_id: operationId, cause: causeDetails },
+        );
+        // CodeAgentExecutionError keeps process output in `result`, while the
+        // HTTP and UI error contract intentionally reads bounded diagnostics
+        // from `details`. Preserve both shapes at this transport boundary.
+        failure.details = details;
+        throw failure;
       }
       return normalizeResult(value, definition, context);
     } finally {

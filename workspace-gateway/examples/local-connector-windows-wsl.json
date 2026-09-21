@@ -1,0 +1,33 @@
+{
+  "url": "wss://dsh.example.com/v1/connect",
+  "token": "${DSH_CONNECTOR_TOKEN}",
+  "device_id": "windows-developer-01",
+  "workspace_id": "workspace-1",
+  "workspace_access": "remote_tools",
+  "workspace_transport": "wsl",
+  "wsl_distribution": "Ubuntu",
+  "wsl_command": "C:\\Windows\\System32\\wsl.exe",
+  "remote_root": "/srv/project",
+  "remote_tools": {
+    "enabled": true,
+    "allowed_profiles": [],
+    "mcp_config_format": "auto"
+  },
+  "ssh": {
+    "host": "",
+    "port": 22,
+    "username": "",
+    "ssh_command": "C:\\Windows\\System32\\OpenSSH\\ssh.exe",
+    "identity_file": "C:\\Users\\YOUR_USER\\.ssh\\id_ed25519",
+    "known_hosts_file": "C:\\Users\\YOUR_USER\\.ssh\\known_hosts"
+  },
+  "hdc_command": "C:\\DevEco\\Sdk\\openharmony\\toolchains\\hdc.exe",
+  "device_relay": {
+    "enabled": false,
+    "local_server_port": 8710,
+    "remote_port": 18710
+  },
+  "settings_file": "C:\\Users\\YOUR_USER\\.config\\dsh\\codeagent-settings.json",
+  "reconnect": true,
+  "reconnect_delay_ms": 1000
+}

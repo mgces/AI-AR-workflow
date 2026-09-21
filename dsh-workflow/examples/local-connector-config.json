@@ -15,6 +15,13 @@
     "known_hosts_file": "/home/user/.ssh/known_hosts",
     "options": ["reconnect", "ServerAliveInterval=15"]
   },
+  "device_relay": {
+    "enabled": false,
+    "hdc_command": "hdc",
+    "local_server_port": 8710,
+    "remote_port": 18710,
+    "startup_delay_ms": 250
+  },
   "auto_mount": false,
   "settings_file": "/home/user/.config/dsh/codeagent-settings.json",
   "reconnect": true,

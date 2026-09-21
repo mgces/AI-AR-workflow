@@ -8,6 +8,7 @@ import { ArRuntimeService } from '../../../platform/apps/local-console/src/ar-ru
 import { LocalCodeAgentExecutor } from '../../../platform/apps/local-console/src/codeagent-executor.js';
 import { RemoteCodeAgentExecutor } from '../../../platform/apps/local-console/src/remote-codeagent-executor.js';
 import { ConnectorCodeAgentExecutor } from '../../../platform/apps/local-console/src/connector-codeagent-executor.js';
+import { ConnectorWorkspaceGatewayClient } from '../../../platform/apps/local-console/src/connector-workspace-gateway.js';
 import { RemotePythonDeliveryAdapter } from '../../../platform/apps/local-console/src/remote-delivery-adapter.js';
 import { ArDeliveryScheduler } from '../../../platform/apps/local-console/src/scheduler.js';
 import { probeHostCapabilities } from '../../../platform/apps/local-console/src/capabilities.js';
@@ -15,6 +16,8 @@ import { HttpRagModelAdapter, LocalRagIndex, RemoteRagIndex } from '../../../pla
 import { probeDebugSurface, RemoteDebugSurface } from '../../../platform/apps/local-console/src/debug.js';
 import { createOfficialProviderRunner } from './official-provider.js';
 import { registerDeliveryWebRoutes } from './web-routes.js';
+import { createCodeAgentAnalyzer } from './ai-analyzer.js';
+import { createDefaultWorkflowPackageCatalog } from './workflow-packages.js';
 import { WorkspaceGatewayClient } from '../../../workspace-gateway/src/connector/http-client.js';
 import { createHmacSigner } from '../../../workspace-gateway/src/authority/signature.js';
 import { ConnectorWebSocketHub } from '../../../workspace-gateway/src/connector/websocket.js';
@@ -56,6 +59,18 @@ function resolveSecretReference(value, env = process.env) {
   if (typeof value !== 'string') return value ?? null;
   const match = value.match(/^\$\{([A-Za-z_][A-Za-z0-9_]*)\}$/u);
   return match ? (env?.[match[1]] ?? null) : value;
+}
+
+function connectorHdcHostOverride(config) {
+  const relay = config?.deviceRelay ?? config?.device_relay ?? null;
+  if (!relay || relay.enabled !== true) return null;
+  const port = relay.remotePort ?? relay.remote_port ?? 18_710;
+  if (!Number.isSafeInteger(port) || port < 1024 || port > 65_535) {
+    throw Object.assign(new Error('localConnector.deviceRelay.remotePort must be between 1024 and 65535'), {
+      code: 'connector_device_relay_config_invalid',
+    });
+  }
+  return `127.0.0.1:${port}`;
 }
 
 const HEADER_ENV_REFERENCE = /\$\{([A-Za-z_][A-Za-z0-9_]*)\}/gu;
@@ -260,9 +275,28 @@ function connectorProbeView(value) {
     local_root_writable: value.local_root_writable ?? null,
     remote_workspace_reachable: value.remote_workspace_reachable ?? null,
     remote_workspace_writable: value.remote_workspace_writable ?? null,
+    device_probe: value.device_probe && typeof value.device_probe === 'object' ? {
+      status: value.device_probe.status ?? null,
+      source: value.device_probe.source ?? null,
+      command: value.device_probe.command ?? null,
+      targets: Array.isArray(value.device_probe.targets) ? structuredClone(value.device_probe.targets) : [],
+      duration_ms: value.device_probe.duration_ms ?? null,
+      checked_at: value.device_probe.checked_at ?? null,
+      reason: value.device_probe.reason ?? null,
+    } : null,
+    device_relay: value.device_relay && typeof value.device_relay === 'object' ? {
+      enabled: value.device_relay.enabled === true,
+      status: value.device_relay.status ?? null,
+      server_mode: value.device_relay.server_mode ?? null,
+      local_endpoint: value.device_relay.local_endpoint ?? null,
+      remote_endpoint: value.device_relay.remote_endpoint ?? null,
+      reason: value.device_relay.reason ?? null,
+    } : null,
     remote_tools: value.workspace_access === 'remote_tools' || value.remote_tools === true,
     reason: value.reason ?? null,
     agents: value.agents && typeof value.agents === 'object' ? structuredClone(value.agents) : null,
+    workflows: value.workflows && typeof value.workflows === 'object'
+      ? structuredClone(value.workflows) : { installed: [] },
   };
 }
 
@@ -432,6 +466,66 @@ async function executeRemoteWorkspaceProbe({
   }
 }
 
+async function executeRemoteGitContext({ gateway, remoteConfig, repoRoot = null, sign = null, signature = null } = {}) {
+  if (!gateway || typeof gateway.execute !== 'function') return null;
+  const selected = remotePathInsideRoot(remoteConfig?.remoteRoot, repoRoot, 'repoRoot');
+  if (selected.reason) return null;
+  const context = preflightAuthorityContext(remoteConfig);
+  const fields = {
+    ...context,
+    message_type: 'operation.start',
+    operation_id: `preflight-git-context-${randomUUID()}`,
+    nonce: randomUUID(),
+    sent_at: new Date().toISOString(),
+    payload: { operation_kind: 'workspace.git_context', path: selected.relative },
+  };
+  try {
+    const unsigned = createAuthorityEnvelope(fields);
+    const detached = sign ? await sign(unsigned) : signature;
+    if (!detached || typeof detached !== 'object') return null;
+    const response = await gateway.execute(createAuthorityEnvelope({ ...fields, signature: detached }));
+    const result = response?.status === 'completed' && response.result && typeof response.result === 'object'
+      ? response.result : response;
+    if (result?.operation !== 'git_context' || !/^[a-f0-9]{40,64}$/u.test(result.head ?? '')
+        || !Array.isArray(result.remotes)) return null;
+    return result;
+  } catch {
+    return null;
+  }
+}
+
+function publicationFromGitContext(gitContext, environment) {
+  if (!gitContext || !Array.isArray(gitContext.remotes)) return null;
+  const remote = gitContext.remotes.find((item) => item?.name === 'origin')
+    ?? (gitContext.remotes.length === 1 ? gitContext.remotes[0] : null);
+  if (!remote || typeof remote.url !== 'string') return null;
+  let host = null;
+  let path = null;
+  try {
+    const parsed = new URL(remote.url);
+    host = parsed.hostname.toLowerCase();
+    path = parsed.pathname;
+  } catch {
+    const match = remote.url.match(/^(?:[^@/:]+@)?([^:/]+):(.+)$/u);
+    if (match) { host = match[1].toLowerCase(); path = match[2]; }
+  }
+  const project = path?.replace(/^\/+|\/+$/gu, '').replace(/\.git$/u, '') ?? '';
+  if (!host || !project || project.split('/').some((item) => !item || item === '.' || item === '..')) return null;
+  const currentBranch = typeof gitContext.branch === 'string' && gitContext.branch.trim() !== ''
+    ? gitContext.branch.trim() : null;
+  const branch = currentBranch && !['main', 'master'].includes(currentBranch)
+    ? currentBranch : `dsh/ar-${gitContext.head.slice(0, 12)}`;
+  if (host === 'gitcode.com' || host.endsWith('.gitcode.com')) {
+    const parts = project.split('/');
+    if (parts.length < 2) return null;
+    return { backend: 'gitcode', repo_slug: parts.slice(-2).join('/'), branch, base: 'main' };
+  }
+  if (environment === 'harmonyos') {
+    return { backend: 'gerrit', project, branch, base: currentBranch ?? 'main' };
+  }
+  return null;
+}
+
 async function probeRemoteWorkspace({ gateway, remoteConfig, repoRoot = null, sign = null, signature = null } = {}) {
   const selected = remotePathInsideRoot(remoteConfig?.remoteRoot, repoRoot, 'repoRoot');
   if (selected.reason) {
@@ -444,6 +538,65 @@ async function probeRemoteWorkspace({ gateway, remoteConfig, repoRoot = null, si
     gateway, remoteConfig, sign, signature, path: selected.relative, expect: 'directory', requireWrite: true,
     operationPrefix: 'workspace',
   });
+}
+
+async function detectRemoteSourceEnvironment({ gateway, remoteConfig, repoRoot, sign, signature } = {}) {
+  const candidates = [
+    {
+      environment: 'openharmony', component_type: null,
+      markers: [
+        { path: 'build.sh', expect: 'file', require_executable: true },
+        { path: 'test/testfwk/developer_test', expect: 'directory', require_executable: false },
+        { path: 'test/testfwk/developer_test/start.sh', expect: 'file', require_executable: true },
+      ],
+    },
+    {
+      environment: 'harmonyos', component_type: 'system',
+      markers: [{ path: 'build_system.sh', expect: 'file', require_executable: true }],
+    },
+    {
+      environment: 'harmonyos', component_type: 'chip',
+      markers: [{ path: 'build_vendor.sh', expect: 'file', require_executable: true }],
+    },
+  ];
+  const detected = [];
+  const evidence = [];
+  for (const candidate of candidates) {
+    const results = [];
+    for (const marker of candidate.markers) {
+      const path = remoteMarkerPath(remoteConfig?.remoteRoot, repoRoot, marker.path);
+      const result = path
+        ? await executeRemoteWorkspaceProbe({
+            gateway, remoteConfig, sign, signature, path, expect: marker.expect,
+            requireWrite: false, requireExecutable: marker.require_executable,
+            operationPrefix: `environment-${candidate.environment}-${candidate.component_type ?? 'root'}`,
+          })
+        : { reachable: false, readable: false, kind_verified: false, reason: 'repoRoot_outside_root' };
+      results.push({ ...marker, ...result });
+    }
+    const matched = results.every((item) => item.reachable === true
+      && item.readable === true && item.kind_verified === true
+      && (item.require_executable !== true || item.executable_verified === true));
+    evidence.push({ environment: candidate.environment, component_type: candidate.component_type, matched, markers: results });
+    if (matched) detected.push(candidate);
+  }
+  if (detected.length !== 1) {
+    return {
+      status: detected.length === 0 ? 'unknown' : 'ambiguous',
+      environment: null, component_type: null, source_layout_markers: null,
+      candidates: detected.map((item) => item.component_type
+        ? `${item.environment}/${item.component_type}` : item.environment),
+      evidence,
+    };
+  }
+  const [match] = detected;
+  return {
+    status: 'detected', environment: match.environment, component_type: match.component_type,
+    source_layout_markers: match.environment === 'harmonyos'
+      ? match.markers.map((item) => item.path) : null,
+    candidates: [match.component_type ? `${match.environment}/${match.component_type}` : match.environment],
+    evidence,
+  };
 }
 
 function remoteSourceMarkers(environment, componentType, configured = null) {
@@ -671,28 +824,92 @@ export function createDeliveryPreflight({
       || config.source_layout_verified === true
       || remoteConfig?.sourceLayoutVerified === true
       || remoteConfig?.source_layout_verified === true;
-    const profileBranchMatches = environment === 'harmonyos'
-      ? configuredProfileComponent === componentType
+    const explicitEnvironment = ['openharmony', 'harmonyos'].includes(environment) ? environment : null;
+    let resolvedEnvironment = explicitEnvironment
+      ?? (['openharmony', 'harmonyos'].includes(configuredProfileEnvironment)
+        ? configuredProfileEnvironment : null);
+    let resolvedComponentType = resolvedEnvironment === 'harmonyos'
+      ? (['system', 'chip'].includes(componentType) ? componentType
+        : ['system', 'chip'].includes(configuredProfileComponent) ? configuredProfileComponent : null)
+      : null;
+    let detectedSourceMarkers = null;
+    let environmentSource = explicitEnvironment
+      ? 'user_input' : resolvedEnvironment ? 'configured_profile' : 'unresolved';
+    if (!resolvedEnvironment && remoteGateway) {
+      const detectionRoot = remotePathInsideRoot(remoteConfig?.remoteRoot, repoRoot, 'repoRoot');
+      const detectionHealth = detectionRoot.reason ? { reachable: false } : await gatewayHealth(remoteGateway);
+      if (detectionHealth.reachable) {
+        const detection = await detectRemoteSourceEnvironment({
+          gateway: remoteGateway,
+          remoteConfig,
+          repoRoot: detectionRoot.path,
+          sign: remoteSigner,
+          signature: remoteSignature ?? remoteConfig?.signature ?? null,
+        });
+        if (detection.status === 'detected') {
+          resolvedEnvironment = detection.environment;
+          resolvedComponentType = detection.component_type;
+          detectedSourceMarkers = detection.source_layout_markers;
+          environmentSource = 'source_layout';
+        }
+      }
+    }
+    const resolvedDeviceType = deviceType
+      ?? configuredProfile?.device_type
+      ?? remoteConfig?.environmentProfile?.device_type
+      ?? null;
+    const profileBranchMatches = resolvedEnvironment === 'harmonyos'
+      ? configuredProfileComponent === resolvedComponentType
       : !configuredProfileComponent;
     const selectedEnvironment = {
-      selected: environment,
-      component_type: environment === 'harmonyos' ? componentType : null,
-      device_type: environment === 'harmonyos' ? deviceType : null,
+      selected: resolvedEnvironment,
+      component_type: resolvedEnvironment === 'harmonyos' ? resolvedComponentType : null,
+      device_type: resolvedEnvironment === 'harmonyos' ? resolvedDeviceType : null,
       // A digest without the requested environment is not a binding. This
       // keeps an OpenHarmony profile from being silently reused for the
       // HarmonyOS system/chip branches.
-      profile_bound: Boolean(environment && configuredProfileDigest
-        && configuredProfileEnvironment === environment && profileBranchMatches),
+      profile_bound: Boolean(resolvedEnvironment && configuredProfileDigest
+        && configuredProfileEnvironment === resolvedEnvironment && profileBranchMatches),
       profile_digest: configuredProfileDigest,
       profile_environment: configuredProfileEnvironment,
       profile_component_type: configuredProfileComponent,
-      source_layout_markers: Array.isArray(configuredSourceMarkers) ? configuredSourceMarkers : null,
+      source_layout_markers: Array.isArray(configuredSourceMarkers)
+        ? configuredSourceMarkers : detectedSourceMarkers,
       source_layout_verified: sourceLayoutVerified,
     };
-    const requestedPublication = publication ?? config.publication ?? null;
+    let requestedPublication = publication ?? config.publication ?? null;
+    let resolvedBaseCommit = null;
+    const withResolvedInput = (result, targetDevice = null) => {
+      const targets = Array.isArray(targetDevice?.targets)
+        ? targetDevice.targets.filter((item) => item && ['device', 'connected', 'online'].includes(item.state)) : [];
+      const resolvedDeviceSerial = deviceSerial ?? (targets.length === 1 ? targets[0].id : null);
+      const needsUserInput = (result?.checks ?? [])
+        .filter((item) => item.required_for?.includes('P0') && ['blocked', 'failed'].includes(item.status))
+        .map((item) => ({ id: item.id, label: item.label, reason: item.reason ?? '需要补充信息' }));
+      return {
+        ...result,
+        resolved_input: {
+          environment: resolvedEnvironment,
+          component_type: resolvedComponentType,
+          device_type: resolvedDeviceType,
+          device_serial: resolvedDeviceSerial,
+          publication: requestedPublication ? structuredClone(requestedPublication) : null,
+          base_commit: resolvedBaseCommit,
+          confirm_defaults: true,
+          detection: {
+            environment_source: environmentSource,
+            device_source: deviceSerial ? 'user_input' : resolvedDeviceSerial ? 'unique_hdc_target' : 'deferred',
+            publication_source: publication ? 'user_input'
+              : config.publication ? 'deployment_config'
+                : requestedPublication ? 'git_remote' : 'deferred_to_p8',
+          },
+          needs_user_input: needsUserInput,
+        },
+      };
+    };
     if (!remoteGateway && connector) {
       const connectorStatus = await connectorWorkspaceStatus(connector, connectorWorkspaceId, { probe: true });
-      return evaluatePrerequisites({
+      return withResolvedInput(evaluatePrerequisites({
         workspaceMode: 'local_connector',
         repoRoot: remoteConfig?.remoteRoot ?? null,
         remoteRoot: remoteConfig?.remoteRoot ?? null,
@@ -705,10 +922,10 @@ export function createDeliveryPreflight({
         workflow: { scripts: false, profiles: false, bridge: false, required: [...REQUIRED_AR_GATE_SCRIPTS], missing: [...REQUIRED_AR_GATE_SCRIPTS], reason: 'workspace_gateway_required_for_remote_gates' },
         agent: selected,
         environment: selectedEnvironment,
-        device: { configured: Boolean(deviceSerial || deviceType), reachable: false, serial: deviceSerial ?? null },
+        device: { configured: Boolean(deviceSerial || resolvedDeviceType), reachable: false, serial: deviceSerial ?? null },
         publication: { configured: publicationConfigured(requestedPublication), authenticated: false, backend: requestedPublication?.backend ?? null, target: publicationTarget(requestedPublication) },
         arInput: { status: 'blocked', source: null, path: null, reason: 'workspace_gateway_required_for_remote_gates' },
-      });
+      }));
     }
     if (!remoteGateway) {
       let debugSnapshot = null;
@@ -716,7 +933,7 @@ export function createDeliveryPreflight({
         debugSnapshot = { device_probe: { status: 'probe_failed', reason: error?.message ?? String(error) } };
       }
       const targetDevice = debugSnapshot?.device_probe ?? {};
-      return probeLocalPrerequisites({
+      return withResolvedInput(await probeLocalPrerequisites({
         repoRoot: repoRoot ?? config.repoRoot ?? config.workspaceRoot ?? defaultRepoRoot,
         deliveryScriptsRoot: config.deliveryScriptsRoot,
         deliveryBridgePath: config.deliveryBridgePath,
@@ -729,7 +946,7 @@ export function createDeliveryPreflight({
         agent: selected,
         environment: selectedEnvironment,
         device: {
-          configured: Boolean(deviceSerial || deviceType || config.deviceAccess === true),
+          configured: Boolean(deviceSerial || resolvedDeviceType || config.deviceAccess === true),
           reachable: targetDevice.status === 'available',
           serial: deviceSerial ?? null,
         },
@@ -742,7 +959,7 @@ export function createDeliveryPreflight({
         arPath: arPath ?? (!arText ? (config.defaultArPath ?? null) : null),
         arText,
         env: config.codeAgentEnv ?? process.env,
-      });
+      }), targetDevice);
     }
 
     const selectedRemote = remotePathInsideRoot(remoteConfig?.remoteRoot, repoRoot, 'repoRoot');
@@ -757,6 +974,19 @@ export function createDeliveryPreflight({
           signature: remoteSignature ?? remoteConfig?.signature ?? null,
         })
       : { reachable: false, readable: false, writable: false, reason: health.reason ?? 'gateway_unreachable' };
+    const gitContext = health.reachable && selectedRemoteRoot
+      ? await executeRemoteGitContext({
+          gateway: remoteGateway,
+          remoteConfig,
+          repoRoot: selectedRemoteRoot,
+          sign: remoteSigner,
+          signature: remoteSignature ?? remoteConfig?.signature ?? null,
+        })
+      : null;
+    resolvedBaseCommit = gitContext?.head ?? null;
+    if (!requestedPublication) {
+      requestedPublication = publicationFromGitContext(gitContext, resolvedEnvironment);
+    }
     const sourceLayout = health.reachable && selectedRemoteRoot
       ? await probeRemoteSourceLayout({
           gateway: remoteGateway,
@@ -764,8 +994,8 @@ export function createDeliveryPreflight({
           repoRoot: selectedRemoteRoot,
           sign: remoteSigner,
           signature: remoteSignature ?? remoteConfig?.signature ?? null,
-          environment,
-          componentType,
+          environment: resolvedEnvironment,
+          componentType: resolvedComponentType,
           sourceLayoutMarkers: selectedEnvironment.source_layout_markers,
         })
       : { status: 'blocked', source_layout_verified: false, markers: [], reason: selectedRemote.reason ?? 'gateway_unreachable' };
@@ -817,6 +1047,8 @@ export function createDeliveryPreflight({
       debugSnapshot = { device_probe: { status: 'probe_failed', reason: error?.message ?? String(error) } };
     }
     const targetDevice = debugSnapshot?.device_probe ?? {};
+    const localConnectorDevice = targetDevice.source === 'local_connector';
+    const relayedLocalDevice = targetDevice.source === 'local_connector_relay';
     const deliveryProfileNames = ['init', 'inspect', 'validate', 'advance', 'consent', 'failureSnapshot'];
     const deliveryProfilesConfigured = deliveryProfileNames.every((name) => {
       const value = remoteConfig?.deliveryProfiles?.[name] ?? remoteConfig?.profileByOperation?.[name];
@@ -837,7 +1069,7 @@ export function createDeliveryPreflight({
     const pythonStatus = deliveryProfilesConfigured && workflowBundle.scripts && workflowBundle.profiles && workflowBundle.bridge
       ? 'pass' : 'blocked';
     const connectorStatus = await connectorWorkspaceStatus(connector, connectorWorkspaceId, { probe: Boolean(connector) });
-    return evaluatePrerequisites({
+    return withResolvedInput(evaluatePrerequisites({
       workspaceMode: connector ? 'local_connector' : 'workspace_gateway',
       remoteRoot: remoteConfig.remoteRoot,
       repoRoot: selectedRemoteRoot ?? repoRoot ?? null,
@@ -868,9 +1100,14 @@ export function createDeliveryPreflight({
       agent: selected,
       environment: selectedEnvironment,
       device: {
-        configured: Boolean(deviceSerial || deviceType || remoteConfig.deviceProfile),
-        reachable: targetDevice.status === 'available',
+        configured: Boolean(deviceSerial || resolvedDeviceType || remoteConfig.deviceProfile || localConnectorDevice || relayedLocalDevice),
+        reachable: targetDevice.status === 'available' && (!localConnectorDevice || relayedLocalDevice),
         serial: deviceSerial ?? null,
+        source: targetDevice.source ?? null,
+        observed_status: targetDevice.status ?? null,
+        reason: targetDevice.reason ?? (localConnectorDevice && targetDevice.status === 'available'
+          ? 'local_device_not_forwarded_to_ssh_gate'
+          : targetDevice.status === 'available' ? null : 'device_unreachable'),
       },
       publication: {
         configured: publicationConfigured(requestedPublication),
@@ -879,7 +1116,7 @@ export function createDeliveryPreflight({
         target: publicationTarget(requestedPublication),
       },
       arInput: remoteArInput,
-    });
+    }), targetDevice);
   };
 }
 
@@ -981,6 +1218,13 @@ export function apply(ctx, config = {}) {
     const localConnectorConfig = config.localConnector && typeof config.localConnector === 'object'
       ? config.localConnector : null;
     const localConnectorEnabled = localConnectorConfig?.enabled === true;
+    const workflowPackages = config.workflowPackages ?? createDefaultWorkflowPackageCatalog();
+    if (config.requireLocalConnector === true && !localConnectorEnabled) {
+      throw Object.assign(new Error('requireLocalConnector needs localConnector.enabled=true'), {
+        code: 'connector_required_unconfigured',
+      });
+    }
+    const deviceHdcHostOverride = localConnectorEnabled ? connectorHdcHostOverride(localConnectorConfig) : null;
     const localCodeAgentExecutor = new LocalCodeAgentExecutor({
       timeoutMs: config.codeAgentTimeoutMs,
       maxOutputBytes: config.codeAgentMaxOutputBytes,
@@ -1013,9 +1257,6 @@ export function apply(ctx, config = {}) {
     const remoteAuthorityContext = remoteGateway
       ? resolveRemoteAuthorityContext({ remoteConfig, config, env: config.codeAgentEnv ?? process.env })
       : null;
-    const effectiveRemoteConfig = remoteGateway
-      ? { ...remoteConfig, authorityContext: remoteAuthorityContext }
-      : remoteConfig;
     const connectorWorkspaceId = localConnectorConfig?.workspaceId
       ?? localConnectorConfig?.workspace_id
       ?? remoteAuthorityContext?.workspace_id
@@ -1097,6 +1338,48 @@ export function apply(ctx, config = {}) {
         });
       }
     }
+    const connectorGateway = connectorHub
+      ? new ConnectorWorkspaceGatewayClient({
+          connector: connectorHub,
+          workspaceId: connectorWorkspaceId,
+          timeoutMs: localConnectorConfig?.requestTimeoutMs ?? config.codeAgentTimeoutMs,
+        })
+      : null;
+    const connectorAuthorityContext = connectorGateway ? {
+      tenant_id: 'local-connector',
+      workspace_id: connectorWorkspaceId,
+      cloud_run_id: 'connector-runtime',
+      authority_run_id: 'authority-connector-runtime',
+      revision: 1,
+      phase_epoch: 'connector-runtime',
+      connection_epoch: 1,
+    } : null;
+    const connectorSignature = connectorGateway
+      ? { key_id: 'local-connector', value: 'websocket-capability' }
+      : null;
+    const executionGateway = remoteGateway ?? connectorGateway;
+    const executionAuthorityContext = remoteGateway ? remoteAuthorityContext : connectorAuthorityContext;
+    const executionSignature = remoteGateway ? (remoteConfig.signature ?? null) : connectorSignature;
+    const executionSigner = remoteGateway ? remoteSigner : null;
+    const executionRemoteConfig = remoteGateway
+      ? { ...remoteConfig, authorityContext: remoteAuthorityContext }
+      : connectorGateway ? {
+          ...localConnectorConfig,
+          enabled: true,
+          remoteRoot: connectorRemoteRoot,
+          authorityContext: connectorAuthorityContext,
+          signature: connectorSignature,
+          deliveryScriptsRoot: localConnectorConfig?.deliveryScriptsRoot
+            ?? localConnectorConfig?.delivery_scripts_root
+            ?? posix.join(connectorRemoteRoot, '.dsh/workflows/ar-delivery/current/skills/ohos-ar-dev-phases/scripts'),
+          deliveryBridgePath: localConnectorConfig?.deliveryBridgePath
+            ?? localConnectorConfig?.delivery_bridge_path
+            ?? posix.join(connectorRemoteRoot, '.dsh/workflows/ar-delivery/current/runtime/dsh-ohos/src/workflows/ar-delivery/python/delivery_bridge.py'),
+          defaultArPath: localConnectorConfig?.defaultArPath
+            ?? localConnectorConfig?.default_ar_path
+            ?? config.defaultArPath
+            ?? null,
+        } : null;
     const codeAgentExecutor = connectorHub
       ? new ConnectorCodeAgentExecutor({
           connector: connectorHub,
@@ -1113,23 +1396,25 @@ export function apply(ctx, config = {}) {
           signature: remoteConfig.signature,
           sign: remoteSigner,
           profileByAdapter: Object.keys(remoteProfiles).length > 0 ? remoteProfiles : undefined,
+          deviceHdcHostOverride,
         })
       : localCodeAgentExecutor;
-    const remoteDeliveryAdapter = remoteGateway
+    const remoteDeliveryAdapter = executionGateway
       ? new RemotePythonDeliveryAdapter({
-          gateway: remoteGateway,
-          remoteRoot: remoteConfig.remoteRoot,
-          authorityContext: remoteAuthorityContext,
-          signature: remoteConfig.signature,
-          sign: remoteSigner,
-          profiles: remoteConfig.deliveryProfiles ?? remoteConfig.profileByOperation,
-          scriptsRoot: remoteConfig.deliveryScriptsRoot ?? remoteConfig.delivery_scripts_root ?? null,
-          bridgePath: remoteConfig.deliveryBridgePath ?? remoteConfig.delivery_bridge_path ?? null,
+          gateway: executionGateway,
+          remoteRoot: executionRemoteConfig.remoteRoot,
+          authorityContext: executionAuthorityContext,
+          signature: executionSignature,
+          sign: executionSigner,
+          profiles: executionRemoteConfig.deliveryProfiles ?? executionRemoteConfig.profileByOperation,
+          scriptsRoot: executionRemoteConfig.deliveryScriptsRoot ?? executionRemoteConfig.delivery_scripts_root ?? null,
+          bridgePath: executionRemoteConfig.deliveryBridgePath ?? executionRemoteConfig.delivery_bridge_path ?? null,
+          deviceHdcHostOverride,
         })
       : null;
     const deliveryAdapter = remoteDeliveryAdapter;
-    const capabilityRoot = remoteGateway
-      ? remoteConfig.remoteRoot
+    const capabilityRoot = executionGateway
+      ? executionRemoteConfig.remoteRoot
       : (config.repoRoot ?? config.workspaceRoot);
     const capabilityProbe = probeHostCapabilities({
       repoRoot: capabilityRoot,
@@ -1168,8 +1453,10 @@ export function apply(ctx, config = {}) {
       for (const key of ['native_subagent', 'isolated_context', 'workspace_write', 'model_observable', 'usage_observable', 'cancel_observable', 'background_execution']) {
         capabilityProbe.capabilities[key] = configured[key] !== false;
       }
-      capabilityProbe.capabilities.build_execution = remoteGateway !== null;
-      capabilityProbe.capabilities.device_access = remoteGateway !== null && configured.device_access === true;
+      capabilityProbe.capabilities.build_execution = connectorGateway !== null && configured.build_execution !== false;
+      capabilityProbe.capabilities.device_access = connectorGateway !== null
+        && deviceHdcHostOverride !== null && configured.device_access !== false;
+      capabilityProbe.capabilities.network_publish = connectorGateway !== null && configured.network_publish === true;
       capabilityProbe.capability_source = 'local-connector';
       capabilityProbe.diagnostics = {
         ...capabilityProbe.diagnostics,
@@ -1199,29 +1486,32 @@ export function apply(ctx, config = {}) {
           modelProfile: remoteRagConfig.modelProfile ?? remoteRagConfig.model_profile,
           modelAdapter: ragModelAdapter,
         })
-      : !remoteGateway && (config.repoRoot ?? config.workspaceRoot)
+      : !executionGateway && (config.repoRoot ?? config.workspaceRoot)
         ? new LocalRagIndex({ root: config.repoRoot ?? config.workspaceRoot, modelAdapter: ragModelAdapter })
         : null);
-    const debugRoot = remoteGateway ? null : (config.repoRoot ?? config.workspaceRoot);
-    const debug = config.debug ?? (remoteGateway
+    const debugRoot = executionGateway ? null : (config.repoRoot ?? config.workspaceRoot);
+    const debug = config.debug ?? (executionGateway
       ? new RemoteDebugSurface({
-          gateway: remoteGateway,
-          remoteRoot: remoteConfig.remoteRoot,
-          authorityContext: remoteAuthorityContext,
-          signature: remoteConfig.signature,
-          sign: remoteSigner,
-          deviceProfile: remoteConfig.deviceProfile ?? remoteConfig.debug?.deviceProfile,
+          gateway: executionGateway,
+          remoteRoot: executionRemoteConfig.remoteRoot,
+          authorityContext: executionAuthorityContext,
+          signature: executionSignature,
+          sign: executionSigner,
+          deviceProfile: executionRemoteConfig.deviceProfile ?? executionRemoteConfig.debug?.deviceProfile,
+          deviceConnector: localConnectorEnabled ? connectorHub : null,
+          connectorWorkspaceId: localConnectorEnabled ? connectorWorkspaceId : null,
+          deviceHdcHostOverride,
         })
       : debugRoot
         ? { status: () => probeDebugSurface(debugRoot), scan: () => probeDebugSurface(debugRoot) }
         : null);
     let localProcessSupervisor = null;
-    const remoteProcessSupervisor = remoteGateway
+    const remoteProcessSupervisor = executionGateway
       ? createRemoteProcessSupervisorView({
-          gateway: remoteGateway,
-          authorityContext: remoteAuthorityContext,
-          signature: remoteConfig.signature,
-          sign: remoteSigner,
+          gateway: executionGateway,
+          authorityContext: executionAuthorityContext,
+          signature: executionSignature,
+          sign: executionSigner,
         })
       : null;
     for (const definition of createDeliveryRuntimeTools({ ...config, service: lazy.proxy, rag })) {
@@ -1268,15 +1558,24 @@ export function apply(ctx, config = {}) {
         });
         const preflight = createDeliveryPreflight({
           config,
-          remoteConfig: effectiveRemoteConfig,
-          remoteGateway,
-          remoteSigner,
-          remoteSignature: remoteConfig?.signature ?? null,
+          remoteConfig: executionRemoteConfig,
+          remoteGateway: executionGateway,
+          remoteSigner: executionSigner,
+          remoteSignature: executionSignature,
           connector: connectorHub,
           connectorWorkspaceId,
           codeAgents,
           debug,
-          defaultRepoRoot: config.repoRoot ?? config.workspaceRoot ?? null,
+          defaultRepoRoot: executionGateway
+            ? executionRemoteConfig.remoteRoot
+            : (config.repoRoot ?? config.workspaceRoot ?? null),
+        });
+        const aiAnalyzer = createCodeAgentAnalyzer({
+          workspaceRoot: executionGateway
+            ? executionRemoteConfig.remoteRoot
+            : connectorHub ? connectorRemoteRoot : (config.repoRoot ?? config.workspaceRoot),
+          codeAgents,
+          executor: codeAgentExecutor,
         });
         const register = () => registerDeliveryWebRoutes(webCtx, {
           service: lazy.proxy,
@@ -1284,17 +1583,35 @@ export function apply(ctx, config = {}) {
           connection: webCtx.connection,
           subagents: webCtx.subagents,
           codeAgents,
+          aiAnalyzer,
           repoRoot: config.repoRoot,
           defaultArPath: config.defaultArPath,
-          remoteDefaultArPath: remoteGateway
-            ? (remoteConfig.defaultArPath ?? remoteConfig.default_ar_path ?? null)
+          remoteDefaultArPath: executionGateway
+            ? (executionRemoteConfig.defaultArPath ?? executionRemoteConfig.default_ar_path ?? null)
             : null,
           workspaceId: config.workspaceId,
           workflowId: config.workflowId,
-          remoteRoot: remoteGateway ? remoteConfig.remoteRoot : connectorHub ? connectorRemoteRoot : null,
-          remoteMode: Boolean(remoteGateway || connectorHub),
+          remoteRoot: executionGateway ? executionRemoteConfig.remoteRoot : null,
+          remoteMode: Boolean(executionGateway),
           connector: connectorHub,
           connectorWorkspaceId,
+          connectorRecovery: {
+            path: localConnectorConfig?.path ?? '/v1/connect',
+            publicBaseUrl: localConnectorConfig?.publicBaseUrl
+              ?? localConnectorConfig?.public_base_url
+              ?? localConnectorConfig?.recovery?.publicBaseUrl
+              ?? localConnectorConfig?.recovery?.public_base_url
+              ?? null,
+            workspace_id: connectorWorkspaceId,
+            device_id: localConnectorConfig?.deviceId ?? localConnectorConfig?.device_id ?? connectorWorkspaceId,
+            workspace_access: localConnectorConfig?.workspaceAccess ?? localConnectorConfig?.workspace_access ?? 'remote_tools',
+            remote_root: connectorRemoteRoot,
+            start_command: localConnectorConfig?.recovery?.startCommand
+              ?? localConnectorConfig?.recovery?.start_command
+              ?? null,
+          },
+          requireLocalConnector: config.requireLocalConnector === true,
+          workflowPackages,
           workspaceGateway: remoteGateway ? { enabled: true, base_url: remoteConfig.baseUrl ?? null } : { enabled: false },
           processSupervisor: localProcessSupervisor ?? remoteProcessSupervisor,
           rag,

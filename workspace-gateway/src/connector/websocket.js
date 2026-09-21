@@ -386,6 +386,7 @@ export class ConnectorWebSocketHub {
     this.heartbeatMs = heartbeatMs;
     this.sessions = new Map();
     this.connectionEpochs = new Map();
+    this.lastDisconnects = new Map();
     this.peers = new Set();
     this.outbox = new Map();
     this.pendingByOperation = new Map();
@@ -439,12 +440,13 @@ export class ConnectorWebSocketHub {
       if (message.ok === true) this.#settlePending(pending, { result: message.result });
       else this.#settlePending(pending, { error: new ConnectorWebSocketError(message.error?.code ?? 'connector_command_failed', message.error?.message ?? 'local Connector command failed', message.error?.details ?? {}) });
     };
-    const onClose = () => {
+    const onClose = (error = null) => {
       this.peers.delete(peer);
       if (this.sessions.get(safeWorkspaceId)?.peer === peer) this.sessions.delete(safeWorkspaceId);
       if (session.heartbeat_timer) clearInterval(session.heartbeat_timer);
       session.heartbeat_timer = null;
       this.#queueSessionPending(session);
+      this.#recordDisconnect(session, error);
     };
     peer.onMessage = onMessage;
     peer.onClose = onClose;
@@ -480,6 +482,23 @@ export class ConnectorWebSocketHub {
     if (!this.audit) return;
     try { Promise.resolve(this.audit(structuredClone(event))).catch(() => {}); }
     catch { /* auditing must never make the transport fail open or crash */ }
+  }
+
+  #recordDisconnect(session, error = null) {
+    if (!session) return;
+    this.lastDisconnects.set(session.workspace_id, {
+      workspace_id: session.workspace_id,
+      device_id: session.device_id,
+      connection_epoch: session.connection_epoch,
+      at: new Date().toISOString(),
+      last_heartbeat_at: session.last_heartbeat_at ?? null,
+      reason: typeof error?.code === 'string' && error.code ? error.code : 'socket_closed',
+    });
+    while (this.lastDisconnects.size > 32) {
+      const oldest = this.lastDisconnects.keys().next().value;
+      if (oldest === undefined) break;
+      this.lastDisconnects.delete(oldest);
+    }
   }
 
   #loadDurableOutbox() {
@@ -544,7 +563,14 @@ export class ConnectorWebSocketHub {
         };
         this.durableOutbox.set(this.#outboxKey(record.workspace_id, record.id), record);
       }
-      this.#trimDurableOutbox();
+      // Pending records loaded after a cloud restart have no in-memory waiter.
+      // Keep recent entries for idempotent retry, but reserve capacity for new
+      // commands instead of allowing an old outbox to permanently block them.
+      this.#trimDurableOutbox({
+        maxBytes: Math.floor(this.outboxMaxBytes * 0.75),
+        maxRecords: Math.floor(this.maxReplayPending * 0.75),
+        allowPendingEviction: true,
+      });
     } catch (error) {
       if (error?.code !== 'ENOENT') {
         this.outboxLoadError = error?.message ?? String(error);
@@ -568,7 +594,11 @@ export class ConnectorWebSocketHub {
     };
   }
 
-  #trimDurableOutbox() {
+  #trimDurableOutbox({
+    maxBytes = this.outboxMaxBytes,
+    maxRecords = this.maxReplayPending,
+    allowPendingEviction = false,
+  } = {}) {
     const now = Date.now();
     for (const [key, record] of this.durableOutbox.entries()) {
       const updated = Date.parse(record.updated_at ?? record.created_at ?? '');
@@ -577,15 +607,25 @@ export class ConnectorWebSocketHub {
         this.durableOutbox.delete(key);
       }
     }
-    const maxRecords = this.maxReplayPending;
     const records = [...this.durableOutbox.values()];
     while (records.length > maxRecords) {
       const removable = records
-        .filter((record) => record.state !== 'pending')
+        .filter((record) => record.state !== 'pending' || allowPendingEviction)
         .sort((left, right) => String(left.updated_at).localeCompare(String(right.updated_at)))[0];
       if (!removable) break;
       this.durableOutbox.delete(this.#outboxKey(removable.workspace_id, removable.id));
       records.splice(records.indexOf(removable), 1);
+    }
+    const serializedBytes = () => Buffer.byteLength(JSON.stringify({
+      schema_version: OUTBOX_SCHEMA_VERSION,
+      records: [...this.durableOutbox.values()],
+    }), 'utf8');
+    while (this.durableOutbox.size > 0 && serializedBytes() > maxBytes) {
+      const removable = [...this.durableOutbox.values()]
+        .filter((record) => record.state !== 'pending' || allowPendingEviction)
+        .sort((left, right) => String(left.updated_at).localeCompare(String(right.updated_at)))[0];
+      if (!removable) break;
+      this.durableOutbox.delete(this.#outboxKey(removable.workspace_id, removable.id));
     }
   }
 
@@ -593,7 +633,7 @@ export class ConnectorWebSocketHub {
     if (!this.outboxFilePath) return;
     this.#trimDurableOutbox();
     const records = [...this.durableOutbox.values()].map((record) => structuredClone(record));
-    const serialized = `${JSON.stringify({ schema_version: OUTBOX_SCHEMA_VERSION, records }, null, 2)}\n`;
+    const serialized = `${JSON.stringify({ schema_version: OUTBOX_SCHEMA_VERSION, records })}\n`;
     if (Buffer.byteLength(serialized, 'utf8') > this.outboxMaxBytes) {
       throw new ConnectorWebSocketError('connector_outbox_persist_failed', 'Connector replay outbox exceeds its configured size');
     }
@@ -667,7 +707,7 @@ export class ConnectorWebSocketHub {
     return pending;
   }
 
-  #detachPending(pending, { keepDurable = false } = {}) {
+  #detachPending(pending, { keepDurable = false, persist = true } = {}) {
     if (!pending) return;
     pending.session?.pending?.delete(pending.id);
     this.outbox.delete(this.#outboxKey(pending.workspaceId, pending.id));
@@ -680,14 +720,14 @@ export class ConnectorWebSocketHub {
     }
     if (!keepDurable) {
       this.durableOutbox.delete(this.#outboxKey(pending.workspaceId, pending.id));
-      this.#tryPersistDurableOutbox();
+      if (persist) this.#tryPersistDurableOutbox();
     } else if (this.outboxFilePath) {
       const record = this.durableOutbox.get(this.#outboxKey(pending.workspaceId, pending.id));
       if (record) {
         record.updated_at = new Date().toISOString();
         record.attempts = pending.attempts;
       }
-      this.#tryPersistDurableOutbox();
+      if (persist) this.#tryPersistDurableOutbox();
     }
   }
 
@@ -702,7 +742,10 @@ export class ConnectorWebSocketHub {
   #settlePending(pending, { result = undefined, error = null } = {}) {
     if (!pending) return;
     const durableKey = this.#outboxKey(pending.workspaceId, pending.id);
-    this.#detachPending(pending, { keepDurable: Boolean(pending.operationKey) });
+    // Persist once after the record is marked completed/failed. Persisting the
+    // intermediate pending state can strand it when the result itself causes
+    // byte-limit compaction.
+    this.#detachPending(pending, { keepDurable: Boolean(pending.operationKey), persist: false });
     if (pending.operationKey && this.outboxFilePath) {
       const record = this.durableOutbox.get(durableKey);
       if (record) {
@@ -935,7 +978,7 @@ export class ConnectorWebSocketHub {
         if (message.ok === true) this.#settlePending(pending, { result: message.result });
         else this.#settlePending(pending, { error: new ConnectorWebSocketError(message.error?.code ?? 'connector_command_failed', message.error?.message ?? 'local Connector command failed', message.error?.details ?? {}) });
       },
-      onClose: () => {
+      onClose: (error = null) => {
         if (helloTimer) clearTimeout(helloTimer);
         this.peers.delete(peer);
         if (session && this.sessions.get(session.workspace_id)?.peer === peer) this.sessions.delete(session.workspace_id);
@@ -943,6 +986,7 @@ export class ConnectorWebSocketHub {
           if (session.heartbeat_timer) clearInterval(session.heartbeat_timer);
           session.heartbeat_timer = null;
           this.#queueSessionPending(session);
+          this.#recordDisconnect(session, error);
           this.#audit({ event: 'closed', device_id: session.device_id, workspace_id: session.workspace_id,
             connection_epoch: session.connection_epoch, origin: security.origin ?? null, fingerprint: security.fingerprint ?? null });
         }
@@ -1042,6 +1086,8 @@ export class ConnectorWebSocketHub {
         local_root_writable: result.local_root_writable,
         remote_workspace_reachable: result.remote_workspace_reachable,
         remote_workspace_writable: result.remote_workspace_writable,
+        device_probe: result.device_probe ?? session.capabilities.device_probe ?? null,
+        device_relay: result.device_relay ?? session.capabilities.device_relay ?? null,
         remote_tools: result.workspace_access === 'remote_tools',
       };
     }
@@ -1083,6 +1129,7 @@ export class ConnectorWebSocketHub {
       replay_pending: this.outbox.size + durablePending,
       durable_outbox_records: this.durableOutbox.size,
       durable_outbox: durableOutbox,
+      last_disconnects: [...this.lastDisconnects.values()].map((item) => structuredClone(item)),
       workspaces: [...this.sessions.values()].map((session) => ({
         workspace_id: session.workspace_id,
         device_id: session.device_id,

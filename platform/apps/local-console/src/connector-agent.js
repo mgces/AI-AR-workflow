@@ -1,11 +1,15 @@
-import { access, chmod, copyFile, lstat, mkdir, realpath, rm, stat, writeFile } from 'node:fs/promises';
+import { access, chmod, copyFile, lstat, mkdir, readFile, realpath, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { constants } from 'node:fs';
-import { randomUUID } from 'node:crypto';
+import { execFile as execFileCallback } from 'node:child_process';
+import { createHash, randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { posix } from 'node:path';
+import { promisify } from 'node:util';
+import { prepareCommandInvocation } from './command.js';
 import { probeLocalAgent, probeLocalAgents } from './agents.js';
 import { createAuthorityEnvelope } from '../../../../workspace-gateway/src/authority/envelope.js';
+import { parseTargets } from '../../../../workspace-gateway/bin/dsh-device-probe.js';
 import { RemoteToolsBroker } from '../../../../workspace-gateway/src/connector/remote-tools-mcp.js';
 import { ConnectorOperationJournal } from './connector-operation-journal.js';
 
@@ -24,13 +28,49 @@ const AGENT_ADAPTERS = Object.freeze({
   custom: 'argv-cli',
 });
 const MAX_CONTEXT_BYTES = 512 * 1024;
+const MAX_WORKSPACE_ENVELOPE_BYTES = 9 * 1024 * 1024;
+const MAX_WORKFLOW_FILES = 128;
+const MAX_WORKFLOW_BYTES = 4 * 1024 * 1024;
 const DEFAULT_REMOTE_TOOLS_ROOT = resolve(process.env.TMPDIR ?? '/tmp', 'dsh-connector-remote-tools');
 const REMOTE_TOOLS_MCP_ENTRY = fileURLToPath(new URL('../../../../workspace-gateway/src/connector/remote-tools-mcp.js', import.meta.url));
 const REMOTE_TOOLS_FORMATS = new Set(['claude', 'opencode', 'toml']);
 const DEFAULT_CODEX_AUTH_FILES = Object.freeze(['auth.json', 'credentials.json']);
+const execFile = promisify(execFileCallback);
 
 function connectorError(code, message, details = {}) {
   return Object.assign(new Error(message), { code, details });
+}
+
+function boundedAgentFailure(error) {
+  const result = error?.result && typeof error.result === 'object' ? error.result : {};
+  const raw = [result.stderr, result.stdout].filter((value) => typeof value === 'string' && value.trim()).join('\n').trim();
+  const diagnostic = raw
+    .replace(/(authorization\s*[:=]\s*bearer\s+)[^\s"']+/giu, '$1[redacted]')
+    .replace(/((?:api[_-]?key|token|password|secret)\s*[:=]\s*)[^\s,;]+/giu, '$1[redacted]')
+    .slice(-4000);
+  return {
+    ...(Number.isInteger(result.exitCode) ? { exit_code: result.exitCode } : {}),
+    ...(result.signal ? { signal: String(result.signal) } : {}),
+    ...(diagnostic ? { diagnostic } : {}),
+  };
+}
+
+function boundedWorkspaceProbeDiagnostic(error) {
+  const details = error?.details && typeof error.details === 'object' ? error.details : {};
+  const stderr = String(details.stderr ?? '')
+    .replace(/\u001b\[[0-?]*[ -/]*[@-~]/gu, '')
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/gu, '')
+    .replace(/(authorization\s*[:=]\s*bearer\s+)[^\s"']+/giu, '$1[redacted]')
+    .replace(/((?:api[_-]?key|token|password|secret)\s*[:=]\s*)[^\s,;]+/giu, '$1[redacted]')
+    .trim()
+    .slice(-1200);
+  return {
+    code: typeof error?.code === 'string' ? error.code.slice(0, 128) : 'remote_workspace_probe_failed',
+    ...(typeof error?.message === 'string' && error.message.trim() ? { message: error.message.trim().slice(0, 256) } : {}),
+    ...(['ssh', 'wsl'].includes(details.transport) ? { transport: details.transport } : {}),
+    ...(Number.isInteger(details.exit_code) ? { exit_code: details.exit_code } : {}),
+    ...(stderr ? { stderr } : {}),
+  };
 }
 
 function id(value, field, max = 128) {
@@ -50,6 +90,21 @@ function safeRelative(value, field) {
     throw connectorError('connector_workspace_outside_root', `${field} escapes the registered workspace`, { field, value });
   }
   return normalized === '' ? '.' : normalized;
+}
+
+function sha256(value) {
+  return createHash('sha256').update(value).digest('hex');
+}
+
+export function remoteToolsSocketPath(temporaryRoot, operationId, platform = process.platform) {
+  if (platform === 'win32') {
+    return `\\\\.\\pipe\\dsh-remote-tools-${sha256(String(operationId)).slice(0, 32)}`;
+  }
+  return resolve(temporaryRoot, 'remote-tools.sock');
+}
+
+function workflowBundleDigest(files) {
+  return sha256(files.map((file) => `${file.path}\0${file.sha256}\0${file.bytes}`).join('\n'));
 }
 
 function inside(root, candidate) {
@@ -183,6 +238,10 @@ export class LocalConnectorAgentService {
     operationJournalPath = null,
     operationJournalMaxEntries = 2048,
     remoteToolsBrokerFactory = null,
+    hdcCommand = env.DSH_HDC_CLI ?? 'hdc',
+    hdcTimeoutMs = 4000,
+    hdcRunner = null,
+    deviceRelay = null,
   } = {}) {
     if (typeof workspaceId !== 'string' || workspaceId.trim() === '') throw new TypeError('workspaceId is required');
     if (typeof deviceId !== 'string' || deviceId.trim() === '') throw new TypeError('deviceId is required');
@@ -209,6 +268,9 @@ export class LocalConnectorAgentService {
     this.workspaceConnector = workspaceConnector;
     this.remoteTools = remoteTools && typeof remoteTools === 'object' ? structuredClone(remoteTools) : {};
     this.runtimeRoot = resolve(runtimeRoot);
+    this.workflowStatePath = resolve(this.runtimeRoot, 'workflow-installations.json');
+    this.workflowStatePromise = null;
+    this.workflowInstalls = new Map();
     if (operationJournal !== null && (!operationJournal
       || typeof operationJournal.reserve !== 'function'
       || typeof operationJournal.complete !== 'function'
@@ -223,7 +285,18 @@ export class LocalConnectorAgentService {
       maxEntries: operationJournalMaxEntries,
     });
     if (remoteToolsBrokerFactory !== null && typeof remoteToolsBrokerFactory !== 'function') throw new TypeError('remoteToolsBrokerFactory must be a function');
+    if (typeof hdcCommand !== 'string' || hdcCommand.trim() === '' || hdcCommand.length > 1024 || /[\0\r\n]/u.test(hdcCommand)) {
+      throw new TypeError('hdcCommand must be a bounded command string');
+    }
+    if (!Number.isSafeInteger(hdcTimeoutMs) || hdcTimeoutMs < 100 || hdcTimeoutMs > 30_000) throw new TypeError('hdcTimeoutMs is invalid');
+    if (hdcRunner !== null && typeof hdcRunner !== 'function') throw new TypeError('hdcRunner must be a function');
+    if (deviceRelay !== null && (!deviceRelay || typeof deviceRelay.hdcProbeArgs !== 'function'
+        || typeof deviceRelay.status !== 'function')) throw new TypeError('deviceRelay must expose hdcProbeArgs and status');
     this.remoteToolsBrokerFactory = remoteToolsBrokerFactory;
+    this.hdcCommand = hdcCommand.trim();
+    this.hdcTimeoutMs = hdcTimeoutMs;
+    this.hdcRunner = hdcRunner;
+    this.deviceRelay = deviceRelay;
     this.active = new Map();
   }
 
@@ -278,9 +351,18 @@ export class LocalConnectorAgentService {
       workspace_id: this.workspaceId,
       cloud_run_id: configured.cloud_run_id ?? runId,
       authority_run_id: configured.authority_run_id ?? `authority-${runId}`,
-      revision: Number.isInteger(context.revision) && context.revision > 0 ? context.revision : (configured.revision ?? 1),
-      phase_epoch: typeof context.phase_epoch === 'string' && context.phase_epoch.trim() !== '' ? context.phase_epoch : (configured.phase_epoch ?? `phase-${context.phase ?? 'remote-tools'}`),
-      connection_epoch: Number.isInteger(context.connection_epoch) && context.connection_epoch > 0 ? context.connection_epoch : (configured.connection_epoch ?? 1),
+      // The cloud envelope is an operation request, not the SSH authority for
+      // this Connector. Re-envelope it with the Connector's fixed local
+      // capability context so arbitrary cloud run epochs cannot fail or
+      // widen the WorkspaceConnector binding.
+      revision: Number.isInteger(configured.revision) && configured.revision > 0
+        ? configured.revision : (Number.isInteger(context.revision) && context.revision > 0 ? context.revision : 1),
+      phase_epoch: typeof configured.phase_epoch === 'string' && configured.phase_epoch.trim() !== ''
+        ? configured.phase_epoch
+        : (typeof context.phase_epoch === 'string' && context.phase_epoch.trim() !== '' ? context.phase_epoch : `phase-${context.phase ?? 'remote-tools'}`),
+      connection_epoch: Number.isInteger(configured.connection_epoch) && configured.connection_epoch > 0
+        ? configured.connection_epoch
+        : (Number.isInteger(context.connection_epoch) && context.connection_epoch > 0 ? context.connection_epoch : 1),
       message_type: 'operation.start',
       operation_id: operationId,
       nonce: randomUUID(),
@@ -306,14 +388,66 @@ export class LocalConnectorAgentService {
         ? { exists: true, writable: true, reason: null, result }
         : { exists: false, writable: false, reason: 'remote_workspace_probe_invalid', result };
     } catch (error) {
-      return { exists: false, writable: false, reason: error?.code ?? 'remote_workspace_probe_failed', error };
+      return {
+        exists: false,
+        writable: false,
+        reason: error?.code ?? 'remote_workspace_probe_failed',
+        diagnostic: boundedWorkspaceProbeDiagnostic(error),
+      };
     }
   }
 
+  async #probeDevice() {
+    const startedAt = Date.now();
+    let stdout = '';
+    let failure = null;
+    try {
+      const args = this.deviceRelay?.hdcProbeArgs?.() ?? ['list', 'targets'];
+      const invocation = prepareCommandInvocation(this.hdcCommand, args, { env: this.env });
+      const options = {
+        env: invocation.env,
+        shell: false,
+        timeout: this.hdcTimeoutMs,
+        maxBuffer: 64 * 1024,
+      };
+      const result = this.hdcRunner
+        ? await this.hdcRunner(invocation.command, invocation.args, options)
+        : await execFile(invocation.command, invocation.args, options);
+      stdout = String(result?.stdout ?? '');
+      if (Number.isInteger(result?.exitCode) && result.exitCode !== 0) {
+        failure = Object.assign(new Error(`hdc exited with ${result.exitCode}`), { code: 'HDC_EXIT_NONZERO' });
+      }
+    } catch (error) {
+      stdout = String(error?.stdout ?? '');
+      failure = error;
+    }
+    const targets = parseTargets(stdout);
+    const online = targets.filter((target) => ['device', 'connected', 'online'].includes(target.state));
+    const status = failure?.code === 'ENOENT' ? 'missing'
+      : failure ? 'probe_failed'
+        : online.length > 1 ? 'ambiguous'
+          : online.length === 1 ? 'available'
+            : targets.length === 0 ? 'no_device' : 'not_ready';
+    return {
+      status,
+      command: this.hdcCommand.split(/[\\/]/u).at(-1) || 'hdc',
+      source: 'local_connector',
+      targets,
+      duration_ms: Math.max(0, Date.now() - startedAt),
+      checked_at: new Date().toISOString(),
+      ...(this.deviceRelay ? { device_relay: await this.deviceRelay.status() } : {}),
+      ...(failure ? { reason: failure.code === 'ENOENT' ? 'hdc_executable_not_found'
+        : failure.code === 'ETIMEDOUT' ? 'hdc_probe_timeout'
+          : failure.code === 'HDC_EXIT_NONZERO' ? 'hdc_exit_nonzero' : 'hdc_probe_failed' } : {}),
+    };
+  }
+
   async probe() {
-    const [root, agents] = await Promise.all([
+    const [root, agents, device, workflows] = await Promise.all([
       this.workspaceAccess === 'remote_tools' ? this.#remoteProbe() : this.#localRootStatus(),
       this.#catalog(),
+      this.#probeDevice(),
+      this.#workflowList(),
     ]);
     return {
       status: root.exists && root.writable ? 'ready' : 'blocked',
@@ -327,8 +461,13 @@ export class LocalConnectorAgentService {
       local_root_realpath: root.realpath ?? null,
       remote_workspace_reachable: this.workspaceAccess === 'remote_tools' ? root.exists : null,
       remote_workspace_writable: this.workspaceAccess === 'remote_tools' ? root.writable : null,
+      ...(device.device_relay ? { device_relay: structuredClone(device.device_relay) } : {}),
       reason: root.reason,
+      ...(this.workspaceAccess === 'remote_tools' && root.diagnostic
+        ? { remote_workspace_diagnostic: root.diagnostic } : {}),
       agents,
+      workflows,
+      device_probe: device,
     };
   }
 
@@ -370,6 +509,82 @@ export class LocalConnectorAgentService {
     const kind = id(command.kind, 'command.kind', 64);
     const payload = command.payload && typeof command.payload === 'object' && !Array.isArray(command.payload) ? command.payload : {};
     if (kind === 'probe') return this.probe();
+    if (kind === 'device.probe') {
+      if (payload.workspace_id !== undefined && payload.workspace_id !== this.workspaceId) {
+        throw connectorError('connector_workspace_mismatch', 'Device probe workspace_id does not match this Connector', {
+          expected: this.workspaceId, actual: payload.workspace_id,
+        });
+      }
+      return this.#probeDevice();
+    }
+    if (['workflow.list', 'workflow.install', 'workflow.install.begin',
+      'workflow.install.file', 'workflow.install.commit'].includes(kind)) {
+      if (payload.workspace_id !== undefined && payload.workspace_id !== this.workspaceId) {
+        throw connectorError('connector_workspace_mismatch', 'Workflow command workspace_id does not match this Connector', {
+          expected: this.workspaceId, actual: payload.workspace_id,
+        });
+      }
+      if (kind === 'workflow.list') return this.#workflowList();
+      if (this.workspaceAccess !== 'remote_tools' || !this.workspaceConnector) {
+        throw connectorError('connector_remote_tools_unavailable', 'workflow download requires the Connector SSH remote-tools binding');
+      }
+      if (kind === 'workflow.install') return this.#installWorkflow(payload.bundle);
+      if (kind === 'workflow.install.begin') return this.#beginWorkflowInstall(payload.bundle);
+      if (kind === 'workflow.install.file') {
+        return this.#installWorkflowFile(payload.workflow_id, payload.bundle_sha256, payload.file);
+      }
+      return this.#commitWorkflowInstall(payload.workflow_id, payload.bundle_sha256);
+    }
+    if (kind === 'workspace.execute' || kind === 'workspace.cancel') {
+      if (this.workspaceAccess !== 'remote_tools' || !this.workspaceConnector) {
+        throw connectorError('connector_remote_tools_unavailable', 'workspace execution requires the Connector SSH remote-tools binding');
+      }
+      if (payload.workspace_id !== undefined && payload.workspace_id !== this.workspaceId) {
+        throw connectorError('connector_workspace_mismatch', 'Workspace command workspace_id does not match this Connector', {
+          expected: this.workspaceId, actual: payload.workspace_id,
+        });
+      }
+      if (kind === 'workspace.cancel') {
+        const targetOperationId = id(payload.target_operation_id, 'target_operation_id', 256);
+        const cancelOperationId = id(payload.operation_id ?? `cancel-${targetOperationId}`, 'operation_id', 256);
+        const fields = this.#authorityFields({}, cancelOperationId);
+        return this.workspaceConnector.execute(createAuthorityEnvelope({
+          ...fields,
+          message_type: 'operation.cancel',
+          operation_id: cancelOperationId,
+          payload: { target_operation_id: targetOperationId, reason: 'cancelled by DSH cloud orchestrator' },
+          signature: { key_id: 'local-connector', value: 'local-capability' },
+        }));
+      }
+      const envelope = payload.envelope;
+      if (!envelope || typeof envelope !== 'object' || Array.isArray(envelope)
+          || jsonBytes(envelope) > MAX_WORKSPACE_ENVELOPE_BYTES) {
+        throw connectorError('connector_workspace_envelope_invalid', 'workspace envelope must be a bounded object');
+      }
+      const operationId = id(payload.operation_id ?? envelope.operation_id, 'operation_id', 256);
+      if (envelope.operation_id !== operationId) {
+        throw connectorError('connector_workspace_envelope_invalid', 'workspace envelope operation_id does not match the command');
+      }
+      if (!['operation.start', 'operation.cancel', 'authority.inspect'].includes(envelope.message_type)) {
+        throw connectorError('connector_workspace_envelope_invalid', `workspace message ${envelope.message_type ?? ''} is not allowed`);
+      }
+      if (!envelope.payload || typeof envelope.payload !== 'object' || Array.isArray(envelope.payload)) {
+        throw connectorError('connector_workspace_envelope_invalid', 'workspace envelope payload must be an object');
+      }
+      const fields = this.#authorityFields({
+        run_id: envelope.cloud_run_id,
+        revision: envelope.revision,
+        phase_epoch: envelope.phase_epoch,
+        connection_epoch: envelope.connection_epoch,
+      }, operationId);
+      return this.workspaceConnector.execute(createAuthorityEnvelope({
+        ...fields,
+        message_type: envelope.message_type,
+        operation_id: operationId,
+        payload: structuredClone(envelope.payload),
+        signature: { key_id: 'local-connector', value: 'local-capability' },
+      }));
+    }
     if (kind === 'agent.status') {
       await this.operationJournal.ready?.();
       return { status: 'ready', workspace_id: this.workspaceId, active: [...this.active.values()].map((item) => ({
@@ -474,36 +689,34 @@ export class LocalConnectorAgentService {
         const remotePipelineDir = posix.normalize(posix.join(this.remoteRoot, pipelineRelative));
         const configuredProfiles = this.remoteTools.allowedProfiles ?? this.remoteTools.allowed_profiles;
         const allowedProfiles = Array.isArray(configuredProfiles) ? configuredProfiles : [];
+        const brokerSocketPath = remoteToolsSocketPath(temporaryRoot, operationId);
         remoteToolsBroker = this.remoteToolsBrokerFactory
           ? await this.remoteToolsBrokerFactory({
               connector: this.workspaceConnector,
               workspaceId: this.workspaceId,
               authorityContext: this.#authorityFields(contextInput, `remote-tools-${operationId}`),
               allowedProfiles,
-              socketPath: resolve(temporaryRoot, 'remote-tools.sock'),
+              socketPath: brokerSocketPath,
             })
           : new RemoteToolsBroker({
               connector: this.workspaceConnector,
               workspaceId: this.workspaceId,
               authorityContext: this.#authorityFields(contextInput, `remote-tools-${operationId}`),
               allowedProfiles,
-              socketPath: resolve(temporaryRoot, 'remote-tools.sock'),
+              socketPath: brokerSocketPath,
             });
         if (!remoteToolsBroker || typeof remoteToolsBroker.start !== 'function' || typeof remoteToolsBroker.mcpServerSpec !== 'function') {
           throw connectorError('connector_remote_tools_unavailable', 'remote tools broker factory returned an invalid broker');
         }
         await remoteToolsBroker.start();
         const spec = remoteToolsBroker.mcpServerSpec({ command: process.execPath, args: [REMOTE_TOOLS_MCP_ENTRY] });
-        const format = this.remoteTools.mcpConfigFormat ?? this.remoteTools.mcp_config_format
-          ?? (agentId === 'opencode' ? 'opencode' : agentId === 'codex' ? 'toml' : 'claude');
+        const configuredFormat = this.remoteTools.mcpConfigFormat ?? this.remoteTools.mcp_config_format ?? 'auto';
+        const expectedFormat = agentId === 'opencode' ? 'opencode' : agentId === 'codex' ? 'toml' : agentId === 'claude-code' ? 'claude' : null;
+        // Known adapters own their MCP config format. This lets the smart
+        // health check fall back between agents without restarting Connector.
+        const format = expectedFormat ?? (configuredFormat === 'auto' ? 'claude' : configuredFormat);
         if (!REMOTE_TOOLS_FORMATS.has(format)) {
           throw connectorError('connector_remote_tools_config_invalid', `unsupported remote_tools MCP config format: ${format}`);
-        }
-        const expectedFormat = agentId === 'opencode' ? 'opencode' : agentId === 'codex' ? 'toml' : agentId === 'claude-code' ? 'claude' : null;
-        if (expectedFormat && format !== expectedFormat) {
-          throw connectorError('connector_remote_tools_config_invalid', `${agentId} requires remote_tools MCP config format ${expectedFormat}`, {
-            agent_id: agentId, expected_format: expectedFormat, actual_format: format,
-          });
         }
         const mcpConfigFile = resolve(temporaryRoot, format === 'toml' ? 'remote-tools.toml' : 'remote-tools.json');
         const mcpContent = `${mcpConfig(format, spec, {
@@ -656,6 +869,7 @@ export class LocalConnectorAgentService {
       }
       const failure = connectorError(error?.code ?? 'connector_agent_failed', error?.message ?? 'local CodeAgent failed', {
         operation_id: operationId, agent_id: agentId, phase: contextPhase,
+        ...boundedAgentFailure(error),
       });
       await this.operationJournal.fail(operationId, failure);
       journalSettled = true;
@@ -695,6 +909,164 @@ export class LocalConnectorAgentService {
       }
     }
     return [...new Set(refs)];
+  }
+
+  async #readWorkflowState() {
+    if (this.workflowStatePromise) return this.workflowStatePromise;
+    this.workflowStatePromise = (async () => {
+      try {
+        const value = JSON.parse(await readFile(this.workflowStatePath, 'utf8'));
+        const installed = Array.isArray(value?.installed) ? value.installed.filter((item) => item
+          && typeof item.id === 'string' && item.status === 'installed') : [];
+        return { schema_version: 1, installed };
+      } catch (error) {
+        if (error?.code === 'ENOENT') return { schema_version: 1, installed: [] };
+        throw connectorError('connector_workflow_state_invalid', 'could not read Connector workflow state', {
+          cause: error?.code ?? error?.message ?? String(error),
+        });
+      }
+    })();
+    return this.workflowStatePromise;
+  }
+
+  async #writeWorkflowState(state) {
+    await mkdir(this.runtimeRoot, { recursive: true, mode: 0o700 });
+    const temporary = `${this.workflowStatePath}.${process.pid}.${randomUUID()}.tmp`;
+    await writeFile(temporary, `${JSON.stringify(state, null, 2)}\n`, { encoding: 'utf8', mode: 0o600 });
+    await rename(temporary, this.workflowStatePath);
+    this.workflowStatePromise = Promise.resolve(structuredClone(state));
+  }
+
+  async #workflowList() {
+    const state = await this.#readWorkflowState();
+    return { installed: structuredClone(state.installed) };
+  }
+
+  async #installWorkflow(rawBundle) {
+    await this.#beginWorkflowInstall({
+      ...rawBundle,
+      files: Array.isArray(rawBundle?.files)
+        ? rawBundle.files.map(({ path, bytes, sha256: digest }) => ({ path, bytes, sha256: digest })) : rawBundle?.files,
+    });
+    for (const file of rawBundle.files) {
+      await this.#installWorkflowFile(rawBundle.id, rawBundle.sha256, file);
+    }
+    return this.#commitWorkflowInstall(rawBundle.id, rawBundle.sha256);
+  }
+
+  async #beginWorkflowInstall(rawBundle) {
+    if (!rawBundle || typeof rawBundle !== 'object' || Array.isArray(rawBundle)
+        || rawBundle.schema_version !== 1
+        || typeof rawBundle.id !== 'string' || !/^[a-z][a-z0-9._-]{0,63}$/u.test(rawBundle.id)
+        || !Array.isArray(rawBundle.files) || rawBundle.files.length === 0 || rawBundle.files.length > MAX_WORKFLOW_FILES) {
+      throw connectorError('connector_workflow_bundle_invalid', 'workflow bundle metadata is invalid');
+    }
+    const expectedInstallPath = `.dsh/workflows/${rawBundle.id}/current`;
+    if (rawBundle.install_path !== expectedInstallPath) {
+      throw connectorError('connector_workflow_bundle_invalid', 'workflow install path does not match its id');
+    }
+    const files = [];
+    const paths = new Set();
+    let totalBytes = 0;
+    for (const rawFile of rawBundle.files) {
+      if (!rawFile || typeof rawFile !== 'object' || Array.isArray(rawFile)) {
+        throw connectorError('connector_workflow_bundle_invalid', 'workflow file metadata is invalid');
+      }
+      const path = safeRelative(rawFile.path, 'workflow_file.path');
+      if (path === 'manifest.json' || paths.has(path)
+          || !Number.isSafeInteger(rawFile.bytes) || rawFile.bytes < 0
+          || typeof rawFile.sha256 !== 'string' || !/^[a-f0-9]{64}$/u.test(rawFile.sha256)) {
+        throw connectorError('connector_workflow_bundle_invalid', `workflow file is invalid: ${path}`);
+      }
+      paths.add(path);
+      totalBytes += rawFile.bytes;
+      if (totalBytes > MAX_WORKFLOW_BYTES) throw connectorError('connector_workflow_bundle_too_large', 'workflow bundle exceeds the size limit');
+      files.push({ path, bytes: rawFile.bytes, sha256: rawFile.sha256 });
+    }
+    files.sort((left, right) => left.path.localeCompare(right.path));
+    const digest = workflowBundleDigest(files);
+    if (rawBundle.bytes !== totalBytes || rawBundle.sha256 !== digest) {
+      throw connectorError('connector_workflow_integrity_failed', 'workflow bundle integrity check failed');
+    }
+    this.workflowInstalls.set(rawBundle.id, {
+      id: rawBundle.id,
+      name: typeof rawBundle.name === 'string' ? rawBundle.name.slice(0, 160) : rawBundle.id,
+      installPath: expectedInstallPath,
+      sha256: digest,
+      bytes: totalBytes,
+      files,
+      byPath: new Map(files.map((file, index) => [file.path, { ...file, index }])),
+      received: new Set(),
+    });
+    return { id: rawBundle.id, status: 'receiving', sha256: digest, file_count: files.length, received_count: 0 };
+  }
+
+  async #installWorkflowFile(workflowId, bundleSha256, rawFile) {
+    const workflow = this.workflowInstalls.get(workflowId);
+    if (!workflow || workflow.sha256 !== bundleSha256) {
+      throw connectorError('connector_workflow_install_missing', 'workflow download must begin before files are sent');
+    }
+    if (!rawFile || typeof rawFile !== 'object' || Array.isArray(rawFile)) {
+      throw connectorError('connector_workflow_bundle_invalid', 'workflow file metadata is invalid');
+    }
+    const path = safeRelative(rawFile.path, 'workflow_file.path');
+    const expected = workflow.byPath.get(path);
+    if (!expected || typeof rawFile.content !== 'string' || rawFile.content.includes('\0')) {
+      throw connectorError('connector_workflow_bundle_invalid', `workflow file is invalid: ${path}`);
+    }
+    const bytes = Buffer.byteLength(rawFile.content, 'utf8');
+    const digest = sha256(rawFile.content);
+    if (rawFile.bytes !== expected.bytes || bytes !== expected.bytes
+        || rawFile.sha256 !== expected.sha256 || digest !== expected.sha256) {
+      throw connectorError('connector_workflow_integrity_failed', `workflow file integrity check failed: ${path}`);
+    }
+    await this.#remoteExecute('workspace.write', {
+      path: posix.join(workflow.installPath, path),
+      content: rawFile.content,
+    }, {}, `workflow-${workflow.id}-${workflow.sha256.slice(0, 12)}-${expected.index}`);
+    workflow.received.add(path);
+    return { id: workflow.id, status: 'receiving', sha256: workflow.sha256,
+      file_count: workflow.files.length, received_count: workflow.received.size };
+  }
+
+  async #commitWorkflowInstall(workflowId, bundleSha256) {
+    const workflow = this.workflowInstalls.get(workflowId);
+    if (!workflow || workflow.sha256 !== bundleSha256) {
+      throw connectorError('connector_workflow_install_missing', 'workflow download must begin before it is committed');
+    }
+    const missing = workflow.files.filter((file) => !workflow.received.has(file.path)).map((file) => file.path);
+    if (missing.length > 0) {
+      throw connectorError('connector_workflow_install_incomplete', 'workflow download is incomplete', { missing });
+    }
+    const manifest = {
+      schema_version: 1,
+      id: workflow.id,
+      name: workflow.name,
+      sha256: workflow.sha256,
+      bytes: workflow.bytes,
+      files: workflow.files.map(({ path, bytes, sha256: fileHash }) => ({ path, bytes, sha256: fileHash })),
+    };
+    await this.#remoteExecute('workspace.write', {
+      path: posix.join(workflow.installPath, 'manifest.json'),
+      content: `${JSON.stringify(manifest, null, 2)}\n`,
+    }, {}, `workflow-${workflow.id}-${workflow.sha256.slice(0, 12)}-manifest`);
+    const state = await this.#readWorkflowState();
+    const record = {
+      id: workflow.id,
+      name: manifest.name,
+      status: 'installed',
+      install_path: workflow.installPath,
+      sha256: workflow.sha256,
+      bytes: workflow.bytes,
+      file_count: workflow.files.length,
+      installed_at: new Date().toISOString(),
+    };
+    const installed = state.installed.filter((item) => item.id !== workflow.id);
+    installed.push(record);
+    installed.sort((left, right) => left.id.localeCompare(right.id));
+    await this.#writeWorkflowState({ schema_version: 1, installed });
+    this.workflowInstalls.delete(workflow.id);
+    return structuredClone(record);
   }
 }
 

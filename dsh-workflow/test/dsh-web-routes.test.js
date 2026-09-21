@@ -127,7 +127,12 @@ test('official DSH AR route exposes and refreshes the local Connector status', a
     },
     async probeWorkspace(workspaceId, options) {
       calls.push([workspaceId, options]);
-      return { status: 'ready', workspace_id: workspaceId, local_root_writable: true };
+      return {
+        status: 'ready', workspace_id: workspaceId, local_root_writable: true,
+        local_root: 'C:/private/project',
+        device_probe: { status: 'available', source: 'local_connector', command: 'hdc.exe',
+          targets: [{ id: 'windows-usb-01', state: 'connected' }], duration_ms: 14 },
+      };
     },
   };
   const handler = createDeliveryRouteHandler({
@@ -149,7 +154,174 @@ test('official DSH AR route exposes and refreshes the local Connector status', a
   assert.equal(probeBody.last_probe.status, 'ready');
   assert.equal('local_root' in probeBody.last_probe, false);
   assert.equal('local_root_realpath' in probeBody.last_probe, false);
+  assert.equal(probeBody.last_probe.device_probe.source, 'local_connector');
+  assert.equal(probeBody.last_probe.device_probe.targets[0].id, 'windows-usb-01');
   assert.deepEqual(calls, [['workspace-1', { timeoutMs: 30_000 }]]);
+});
+
+test('official DSH AR route exposes a human-actionable Connector recovery plan when offline', async () => {
+  const connector = {
+    snapshot() {
+      return {
+        transport: 'websocket',
+        connected: false,
+        replay_pending: 2,
+        workspaces: [],
+        security: { persistent_outbox_enabled: true, outbox_load_error: null },
+      };
+    },
+  };
+  const handler = createDeliveryRouteHandler({
+    service: { listRuns() { return []; } },
+    connector,
+    connectorWorkspaceId: 'workspace-1',
+    remoteRoot: '/srv/project',
+    remoteMode: true,
+    connectorRecovery: { publicBaseUrl: 'https://dsh.public.example.test' },
+    connection: { requestRejection: () => undefined },
+  });
+
+  const recovery = response();
+  await handler(request('GET', '/api/ohos-ar/connector/recovery', null, {
+    host: 'attacker.invalid', 'x-forwarded-proto': 'http',
+  }), recovery);
+  assert.equal(recovery.statusCode, 200);
+  const body = JSON.parse(recovery.body);
+  assert.equal(body.status, 'offline');
+  assert.equal(body.workspace_id, 'workspace-1');
+  assert.equal(body.actions.some((item) => item.id === 'probe'), true);
+  assert.equal(body.actions.some((item) => item.id === 'start_local_connector'), true);
+  assert.equal(body.actions.find((item) => item.id === 'start_local_connector')?.uri, 'dsh-connector://start');
+  assert.equal(body.actions.some((item) => item.id === 'download_connector_client'), true);
+  assert.equal(body.actions.find((item) => item.id === 'download_connector_client')?.endpoint, '/api/ohos-ar/connector/client-installer');
+  assert.equal(body.actions.find((item) => item.id === 'download_connector_client')?.label, '下载 Windows 安装启动器');
+  assert.equal(body.actions.some((item) => item.id === 'download_connector_portable'), true);
+  assert.match(body.start_command, /Start-DSH-Connector\.ps1/u);
+  assert.equal(body.start_uri, 'dsh-connector://start');
+  assert.match(body.start_command, /Join-Path \$env:LOCALAPPDATA/u);
+  assert.doesNotMatch(body.start_command, /Read-Host/u);
+  assert.doesNotMatch(body.start_command, /AI-AR-workflow 仓库/u);
+  assert.match(body.platform_commands.windows, /LOCALAPPDATA/u);
+  assert.match(body.platform_commands.wsl, /read -r/u);
+  assert.equal(body.config_template.token, '${DSH_CONNECTOR_TOKEN}');
+  assert.equal(body.websocket_url, 'wss://dsh.public.example.test/v1/connect');
+  assert.equal(body.config_template.url, 'wss://dsh.public.example.test/v1/connect');
+  assert.equal(body.config_template.remote_tools.enabled, true);
+  assert.equal(body.config_template.workspace_transport, '');
+  assert.equal(body.config_template.wsl_distribution, '');
+  assert.equal(body.config_template.ssh.host, '');
+  assert.match(body.recovery_steps.join(' '), /选择 WSL 或 SSH/u);
+  assert.match(body.recovery_steps[0], /浏览器.*确认运行/u);
+  assert.match(body.recovery_steps[0], /没有 Node\.js 24\+.*官方源下载并校验/u);
+  assert.match(body.recovery_steps[0], /保持.*窗口/u);
+  assert.match(body.recovery_steps.join(' '), /云端配置的源码目录.*WSL/u);
+  assert.match(body.recovery_steps.join(' '), /SSH 目标连接失败.*重新选择 WSL\/SSH/u);
+  assert.equal(body.client_package.required_node, '>=24');
+  assert.equal(body.client_package.windows_node_runtime, 'auto_bootstrap_verified');
+  assert.equal(body.client_package.filename, 'Install-DSH-Connector.cmd');
+  assert.equal(body.client_package.start_uri, 'dsh-connector://start');
+  assert.equal(body.client_package.portable_filename, 'dsh-local-connector-client.zip');
+  assert.equal(JSON.stringify(body).includes('connector-secret'), false);
+});
+
+test('official DSH AR route downloads a standalone local Connector client package', async () => {
+  const handler = createDeliveryRouteHandler({
+    service: { listRuns() { return []; } },
+    connector: { snapshot() { return { workspaces: [] }; } },
+    connectorWorkspaceId: 'workspace-client-test',
+    remoteRoot: '/srv/project',
+    remoteMode: true,
+    connection: { requestRejection: () => undefined },
+  });
+  const clientPackage = response();
+  await handler(request('GET', '/api/ohos-ar/connector/client-package', null, {
+    host: 'dsh.example.test', 'x-forwarded-proto': 'https',
+  }), clientPackage);
+  assert.equal(clientPackage.statusCode, 200);
+  assert.match(clientPackage.headers['content-type'], /application\/zip/u);
+  assert.match(clientPackage.headers['content-disposition'], /dsh-local-connector-client\.zip/u);
+  assert.equal(Buffer.isBuffer(clientPackage.body), true);
+  assert.equal(clientPackage.body.readUInt32LE(0), 0x04034b50);
+});
+
+test('official DSH AR route downloads a one-click Windows Connector installer', async () => {
+  const handler = createDeliveryRouteHandler({
+    service: { listRuns() { return []; } },
+    connector: { snapshot() { return { workspaces: [] }; } },
+    connectorWorkspaceId: 'workspace-client-test',
+    remoteRoot: '/srv/project',
+    remoteMode: true,
+    connection: { requestRejection: () => undefined },
+  });
+  const installer = response();
+  await handler(request('GET', '/api/ohos-ar/connector/client-installer', null, {
+    host: 'dsh.example.test', 'x-forwarded-proto': 'https',
+  }), installer);
+  assert.equal(installer.statusCode, 200);
+  assert.match(installer.headers['content-disposition'], /Install-DSH-Connector\.cmd/u);
+  assert.equal(Buffer.isBuffer(installer.body), true);
+  assert.match(installer.body.toString('utf8'), /::DSH_CONNECTOR_PAYLOAD_BEGIN::/u);
+});
+
+test('official DSH AR route downloads a selected cloud workflow through the Local Connector', async () => {
+  const commands = [];
+  const installed = [];
+  const connector = {
+    snapshot() {
+      return { transport: 'websocket', workspaces: [{ workspace_id: 'workspace-1', connected: true }] };
+    },
+    async request(workspaceId, command) {
+      commands.push({ workspaceId, command });
+      if (command.kind === 'workflow.list') return { installed: [...installed] };
+      if (command.kind === 'workflow.install.begin' || command.kind === 'workflow.install.file') {
+        return { status: 'receiving' };
+      }
+      if (command.kind === 'workflow.install.commit') {
+        const record = { id: command.payload.workflow_id, name: 'AR workflow',
+          status: 'installed', sha256: command.payload.bundle_sha256 };
+        installed.push(record);
+        return record;
+      }
+      throw new Error(`unexpected command ${command.kind}`);
+    },
+  };
+  const bundle = { schema_version: 1, id: 'ar-delivery', name: 'AR workflow',
+    install_path: '.dsh/workflows/ar-delivery/current',
+    files: [{ path: 'scripts/advance.py', content: 'pass\n', bytes: 5, sha256: 'b'.repeat(64) }],
+    bytes: 5, sha256: 'a'.repeat(64) };
+  const workflowPackages = {
+    async bundle(id) { assert.equal(id, 'ar-delivery'); return bundle; },
+    async list(records) {
+      return [{ id: 'ar-delivery', name: 'AR workflow', installed: records.some((item) => item.id === 'ar-delivery') }];
+    },
+  };
+  const handler = createDeliveryRouteHandler({
+    service: { listRuns() { return []; } },
+    connector,
+    connectorWorkspaceId: 'workspace-1',
+    remoteRoot: '/srv/project',
+    remoteMode: true,
+    requireLocalConnector: true,
+    workflowPackages,
+    connection: { requestRejection: () => undefined },
+  });
+
+  const before = response();
+  await handler(request('GET', '/api/ohos-ar/workflows'), before);
+  assert.equal(JSON.parse(before.body).workflows[0].installed, false);
+
+  const download = response();
+  await handler(request('POST', '/api/ohos-ar/workflows/ar-delivery/download'), download);
+  assert.equal(download.statusCode, 200);
+  assert.equal(JSON.parse(download.body).workflow.status, 'installed');
+  const begin = commands.find((item) => item.command.kind === 'workflow.install.begin').command.payload.bundle;
+  assert.equal(begin.files[0].content, undefined);
+  assert.equal(commands.filter((item) => item.command.kind === 'workflow.install.file').length, 1);
+  assert.equal(commands.find((item) => item.command.kind === 'workflow.install.commit').command.payload.bundle_sha256, bundle.sha256);
+
+  const overview = response();
+  await handler(request('GET', '/api/ohos-ar/overview'), overview);
+  assert.equal(JSON.parse(overview.body).workflows[0].installed, true);
 });
 
 test('official DSH AR route exposes the prerequisite and execution plan before starting a run', async () => {
@@ -201,6 +373,46 @@ test('preflight keeps HarmonyOS component selection explicit at the route bounda
   assert.equal(result.statusCode, 200);
   assert.equal(JSON.parse(result.body).status, 'blocked');
   assert.equal(received.deviceSerial, null);
+});
+
+test('run creation accepts only AR text and source root and applies authoritative automatic resolution', async () => {
+  let started;
+  let preflightInput;
+  const publication = { backend: 'gitcode', repo_slug: 'owner/project', branch: 'main' };
+  const handler = createDeliveryRouteHandler({
+    service: {
+      listRuns() { return []; },
+      async start(input) { started = input; return { run_id: 'auto-run', status: 'accepted' }; },
+    },
+    repoRoot: process.cwd(),
+    connection: { requestRejection: () => undefined },
+    preflight: async (input) => {
+      preflightInput = input;
+      return {
+        status: 'ready_for_p0', can_start_p0: true, can_complete_p8: false, checks: [], execution_plan: {},
+        resolved_input: {
+          environment: 'openharmony', component_type: null, device_type: 'rk3568',
+          device_serial: 'usb-01', publication,
+          base_commit: '0123456789abcdef0123456789abcdef01234567', confirm_defaults: true,
+        },
+      };
+    },
+    codeAgents: {
+      async resolveSelected() { return { id: 'codex', name: 'Codex', available: true, dispatchable: true }; },
+    },
+  });
+  const result = response();
+  await handler(request('POST', '/api/ohos-ar/runs', {
+    ar_text: '# implement feature', repo_root: process.cwd(), idempotency_key: 'auto-start',
+  }), result);
+  assert.equal(result.statusCode, 202);
+  assert.equal(preflightInput.environment, null);
+  assert.equal(started.environment, 'openharmony');
+  assert.equal(started.deviceType, 'rk3568');
+  assert.equal(started.deviceSerial, 'usb-01');
+  assert.equal(started.baseCommit, '0123456789abcdef0123456789abcdef01234567');
+  assert.equal(started.confirmDefaults, true);
+  assert.deepEqual(started.publication, publication);
 });
 
 test('run creation rechecks P0 prerequisites and refuses a blocked preflight', async () => {
@@ -832,6 +1044,44 @@ test('official DSH AR route exposes read-only device and artifact debugging stat
   assert.deepEqual(calls, ['status', 'status', 'scan']);
 });
 
+test('official DSH AR route persists local Connector device discovery in the runtime audit store', async () => {
+  const records = [];
+  const deviceProbe = {
+    status: 'available', source: 'local_connector_relay', command: 'hdc.exe',
+    targets: [{ id: 'usb-01', state: 'connected' }], duration_ms: 9,
+    local_targets: [{ id: 'usb-01', state: 'connected' }],
+    device_relay: { enabled: true, status: 'ready', server_mode: 'reused', local_endpoint: '127.0.0.1:8710', remote_endpoint: '127.0.0.1:18710' },
+    checked_at: '2026-09-16T10:00:00.000Z',
+  };
+  const handler = createDeliveryRouteHandler({
+    service: {
+      listRuns() { return []; },
+      recordDeviceProbe(value) { records.push(value); return { id: 'device-probe-audit-1' }; },
+      listDeviceProbes({ workspaceId, limit }) {
+        assert.equal(workspaceId, 'workspace-1');
+        assert.equal(limit, 10);
+        return [{ id: 'device-probe-audit-1', device_id: 'windows-1', ...deviceProbe }];
+      },
+    },
+    connector: { snapshot() { return { workspaces: [{ workspace_id: 'workspace-1', device_id: 'windows-1' }] }; } },
+    connectorWorkspaceId: 'workspace-1',
+    debug: { async status() { return { status: 'ready', artifacts: { artifacts: [] }, device_probe: deviceProbe }; } },
+    connection: { requestRejection: () => undefined },
+  });
+
+  const status = response();
+  await handler(request('GET', '/api/ohos-ar/debug/status'), status);
+  const value = JSON.parse(status.body);
+  assert.equal(status.statusCode, 200);
+  assert.equal(records.length, 1);
+  assert.equal(records[0].workspaceId, 'workspace-1');
+  assert.equal(records[0].deviceId, 'windows-1');
+  assert.equal(value.device_probe_persistence.status, 'persisted');
+  assert.equal(value.device_probe_persistence.storage, 'dsh_runtime_sqlite');
+  assert.equal(value.device_probe_history[0].targets[0].id, 'usb-01');
+  assert.equal(records[0].probe.device_relay.status, 'ready');
+});
+
 test('official DSH AR route maps remote execution configuration failures to actionable statuses', async () => {
   const makeHandler = (code) => createDeliveryRouteHandler({
     service: {
@@ -858,4 +1108,79 @@ test('official DSH AR route maps remote execution configuration failures to acti
     assert.equal(result.statusCode, expectedStatus);
     assert.equal(JSON.parse(result.body).error.code, code);
   }
+});
+
+test('official DSH AR route exposes an authenticated selected-CodeAgent analysis fallback', async () => {
+  const calls = [];
+  const handler = createDeliveryRouteHandler({
+    service: { listRuns() { return []; } },
+    connection: { requestRejection: () => undefined },
+    aiAnalyzer: async (input) => {
+      calls.push(input);
+      return { backend: 'codeagent', agent: { id: 'claude-code', name: 'Claude Code' }, message: '诊断完成' };
+    },
+  });
+  const result = response();
+  await handler(request('POST', '/api/ohos-ar/ai/analyze', {
+    prompt: '分析当前 P0 错误',
+    history: [{ role: 'user', content: 'hdc 在终端中可用' }],
+  }), result);
+  assert.equal(result.statusCode, 200);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].prompt, '分析当前 P0 错误');
+  assert.deepEqual(calls[0].history, [{ role: 'user', content: 'hdc 在终端中可用' }]);
+  assert.equal(JSON.parse(result.body).message, '诊断完成');
+
+  const missing = response();
+  await handler(request('POST', '/api/ohos-ar/ai/analyze', { prompt: ' ' }), missing);
+  assert.equal(missing.statusCode, 400);
+  assert.equal(JSON.parse(missing.body).error.code, 'ai_prompt_required');
+});
+
+test('official DSH AR route fail-closes cloud execution when local Connector is required', async () => {
+  let analyzed = false;
+  const handler = createDeliveryRouteHandler({
+    service: { listRuns() { return []; } },
+    connection: { requestRejection: () => undefined },
+    requireLocalConnector: true,
+    aiAnalyzer: async () => { analyzed = true; return { message: 'must not run' }; },
+  });
+
+  const overview = response();
+  await handler(request('GET', '/api/ohos-ar/overview'), overview);
+  const overviewBody = JSON.parse(overview.body);
+  assert.equal(overviewBody.execution_policy.require_local_connector, true);
+  assert.equal(overviewBody.execution_policy.connector_ready, false);
+  assert.equal(overviewBody.execution_policy.cloud_codeagent_allowed, false);
+
+  const result = response();
+  await handler(request('POST', '/api/ohos-ar/ai/analyze', { prompt: 'test' }), result);
+  assert.equal(result.statusCode, 503);
+  assert.equal(JSON.parse(result.body).error.code, 'local_connector_required');
+  assert.equal(analyzed, false);
+});
+
+test('official DSH AR route exposes and cancels the live CodeAgent analysis state', async () => {
+  const analyzer = async () => ({ message: 'unused' });
+  analyzer.status = () => ({ running: true, request_id: 'analysis-1', agent: { id: 'claude-code' } });
+  analyzer.cancel = (reason) => ({ cancelled: true, request_id: 'analysis-1', reason });
+  const handler = createDeliveryRouteHandler({
+    service: { listRuns() { return []; } },
+    connection: { requestRejection: () => undefined },
+    aiAnalyzer: analyzer,
+  });
+
+  const status = response();
+  await handler(request('GET', '/api/ohos-ar/ai/status'), status);
+  assert.equal(status.statusCode, 200);
+  assert.equal(JSON.parse(status.body).running, true);
+
+  const cancel = response();
+  await handler(request('POST', '/api/ohos-ar/ai/cancel', { reason: 'user requested' }), cancel);
+  assert.equal(cancel.statusCode, 200);
+  assert.equal(JSON.parse(cancel.body).cancelled, true);
+
+  const overview = response();
+  await handler(request('GET', '/api/ohos-ar/overview'), overview);
+  assert.equal(JSON.parse(overview.body).ai_analysis.request_id, 'analysis-1');
 });

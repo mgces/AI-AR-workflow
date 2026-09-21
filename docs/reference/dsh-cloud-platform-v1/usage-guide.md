@@ -1,11 +1,136 @@
 # DSH 云端 Agent 编排平台使用手册
 
-版本：1.2 · 日期：2026-09-15
+版本：2.0 · 日期：2026-09-20
 适用范围：官方 DSH Web 页面中的 AR Delivery Workbench、CodeAgent 选择、AR P0–P8 run 和维测查看。
 
 这份手册面向实际使用者、测试人员和负责接入 CodeAgent 的工程师。部署步骤见 [迁移到计算云部署手册](deploy-to-compute-cloud.md)。
 
-## 先了解当前边界
+## 第一次使用：按顺序完成一次 AR run
+
+本节是推荐操作路线，按顺序完成即可。这里以“云端运行 DSH、Windows 打开网页、Windows 本地运行 CodeAgent、WSL 或 SSH 提供源码”为例。当前页面的完整工作流入口要求本机 Connector 真实在线，不能用云端 CLI 冒充本机 CodeAgent。
+
+开始前，请由部署管理员确认云端已启用 `localConnector` 和 `workspaceGateway`、已登记 AR gate 与 CodeAgent profiles，并为你准备好 Connector token、`workspace_id` 和 SSH 代码根。首次部署配置见[部署手册](deploy-to-compute-cloud.md)。RAG 不是运行 AR workflow 的前置条件；只有设备接在本机、而 P6/P7 gate 要在 SSH 主机运行时，才需要配置 HDC relay。
+
+### 第 1 步：打开官方 DSH 页面
+
+1. 打开部署管理员提供的 DSH 地址。若页面提示 `dsh web authentication required`，使用 DSH 启动时输出的有效 URL 重新打开；Connector token 不能代替网页会话认证。
+2. 页面加载后确认这是官方 DSH Web 页面，并能进入 **AR Delivery**。
+
+**完成标志：** 页面显示 AR Delivery 工作台。看不到入口时，先检查部署 patch 和插件加载情况，见下方“第一次打开 DSH”章节。
+
+### 第 2 步：下载并启动本机 Connector 客户端
+
+1. 准备本地 CodeAgent 并完成其登录；需要设备调试时确认本机能运行 `hdc.exe`。只有选择 SSH 时才需要 Windows OpenSSH Client。Windows 无需预装 Node.js。
+2. 打开 **本机 Connector**，点击 **首次接入：下载 Connector 安装器**。浏览器会把 `Install-DSH-Connector.cmd` 保存到“下载”目录；在下载列表运行一次后，安装器会放到 `%LOCALAPPDATA%\DSH\Connector`，创建开始菜单入口，并注册网页启动链接。若本机没有 Node.js 24+，安装器会从官方 Node.js 源下载固定版本并校验 SHA-256，然后放入 Connector 私有目录，不修改系统 PATH。不需要手工解压或克隆 AI-AR-workflow 仓库。浏览器和 Windows 仍会要求用户确认运行下载文件。
+3. 安装器会在同一窗口启动 Connector，选择 **WSL** 或 **SSH**：
+
+   - 选择 **WSL**：客户端自动发现发行版；只有一个时自动选择，多个时显示列表。它通过 `wsl.exe` 直接检查并访问所选发行版里的源码目录，不需要安装或启动 `sshd`。`remote_root` 必须是该发行版中真实存在且可写的 POSIX 目录。
+   - 选择 **SSH**：确认远端 SSH 可连通并知道代码根目录。私钥和 `known_hosts` 留在 Windows 本机。若已在 `~/.ssh/config` 配置 Host 别名，可直接测试：
+
+```powershell
+ssh wsl-dev "pwd && test -d /srv/project && test -w /srv/project"
+```
+
+   把 `wsl-dev` 替换成自己的 SSH Host 别名，或使用 `builder@127.0.0.1`。首次连接前核对 SSH 主机指纹并保存到 `known_hosts`。
+
+4. 按提示输入部署管理员提供的 Connector token。token 以隐藏输入方式读取，不会写入 JSON；Windows 使用当前用户 DPAPI 加密保存，后续启动无需重复输入。Connector 随后连接 DSH；页面自动检测状态，无需手动刷新。
+   `remote_tools.mcp_config_format` 默认为 `auto`；Connector 会为 Claude Code、OpenCode 和 Codex 生成各自的 MCP 配置，使 Agent 失败后的自动切换无需重启 Connector。
+
+**完成标志：** 终端输出 `connected`，DSH 页面显示 Connector 在线、所选源码工作区可读写。保持该窗口运行，直到本次 AR run 完成。Connector 在 Windows 本机启动 CodeAgent，再通过受限工作区操作修改 WSL 或 SSH 源码；本机只保存 Connector 客户端，不保存整套 AI-AR-workflow 仓库或远端源码副本。
+
+### Connector 掉线时：页面内恢复
+
+如果页面显示 **本机 Connector offline**，不要重新创建 run。AR Delivery 会每 5 秒自动检查一次连接，并在 **Connector 恢复**区域提供恢复入口：
+
+1. 安装过 Windows 客户端时，点击 **启动已安装的 Connector**；若浏览器询问是否打开本机应用，选择允许。页面会自动显示连接结果。
+2. 如果 Connector 正在重连或刚启动，点击 **检测连接**。
+3. 如果本机客户端尚未安装或文件损坏，重新运行下载列表中的 `Install-DSH-Connector.cmd`。仍不需要仓库路径或手工编辑配置。WSL/Linux 用户展开备用选项下载便携 ZIP。
+4. 如果管理员轮换了 Connector token，删除 `%LOCALAPPDATA%\DSH\Connector\connector-token.dpapi`，再启动 Connector 输入新 token。
+
+页面同时显示工作区、最近心跳、最近断开原因、待回放操作、最近探测原因和 outbox 错误。若提示 `outbox_load_failed`，先修复或恢复 Connector 的 outbox 文件再启动；不要删除操作库，也不要创建第二个 run。云端网页出于浏览器安全边界不能直接启动用户电脑进程，因此本机 Connector 客户端负责运行 CodeAgent、SSH 和 HDC；网页负责下载客户端、编排 workflow、展示审核与维测数据。
+
+**如果 USB 设备接在 Windows 本机：** 先确认本机 `hdc list targets` 能看到设备，再按部署手册的 HDC relay 步骤配置隧道。没有配置 relay 时，P6/P7 要求设备能被 SSH gate 主机直接访问。
+
+### 第 3 步：下载要使用的 Workflow 到所选代码目录
+
+1. 在 **本机 Connector** 页面找到 **下载 Workflow 到源码目录**。
+2. 在 AR workflow 卡片点击 **下载到源码目录**。
+3. 等待页面显示已下载。Workflow 内容经本机 Connector 写入所选 WSL 或 SSH 代码根的 `.dsh/workflows/ar-delivery/current`，不是下载 AI-AR-workflow 仓库或 Connector 程序，不需要手工复制。
+4. 卡片会分别显示**云端源码位置**（如 `workspace-gateway/bin/dsh-ar-delivery.js`、`runtime/dsh-ohos/src/workflows/ar-delivery/python/delivery_bridge.py`、`skills/ohos-ar-dev-phases/scripts/`）和**下载目标**（`<所选代码根>/.dsh/workflows/ar-delivery/current`）。本机 Connector 客户端另行保存在 `%LOCALAPPDATA%\DSH\Connector`。
+
+**完成标志：** AR workflow 显示 `installed`。只有下载完成的 workflow 才能进入选择和运行页面。
+
+### 第 4 步：智能检测并启用 CodeAgent
+
+1. 在 **CodeAgent 设置**点击 **智能检测并启用**。
+2. 页面会刷新本机发现结果，先真实运行当前首选 Agent；调用失败时会记录错误码、原因和修复步骤，并自动尝试下一个可用的本机 Agent。
+3. 显示“测试成功”后再进入工作流。若全部失败，按页面列出的步骤在本机修复登录、命令路径、网络或适配器，然后点击 **修复后重试**。
+4. 只有需要固定某个 Agent、模型或自定义命令时，才展开 **高级手动设置**；保存配置本身不等于 Agent 已经运行成功。
+
+**完成标志：** 页面显示 Agent 已在本机 Connector 真实运行，执行模式为 `local_connector`，并解锁“下一步：选择工作流”。只被发现、但真实调用失败或没有 adapter 的 Agent不会解锁工作流。
+
+### 第 5 步：选择 AR workflow
+
+进入 **选择工作流**，点击已下载的 **AR workflow**。进入后直接显示“提交任务”，不再要求先填写一页环境参数。
+
+**完成标志：** 页面只显示“源码目录”和“AR 描述”两个业务输入。
+
+### 第 6 步：填写两项并自动启动
+
+1. **源码目录**：填写相对 Connector `remote_root` 的项目目录，例如 `openharmony` 或 `product/system`；如果登记根本身就是源码根，填写 `.`。
+2. **AR 描述**：写清要实现的能力、预期行为和验收条件。
+3. 点击 **自动检查并启动 P0 →**。
+
+系统会自动完成以下工作：
+
+- 通过环境 profile 或真实源码标志识别 OpenHarmony、HarmonyOS system、HarmonyOS chip；
+- 使用已测试成功的本机 CodeAgent；
+- 探测 SSH 读写、Python、Git、workflow gate 和 bridge；
+- 唯一 HDC 设备自动选中，并核对 HDC relay；
+- 读取 Git HEAD、当前分支和已清洗凭据的 remote，自动推导基线及 GitCode/Gerrit 发布目标；
+- 记录默认构建参数确认并创建 P0 run。
+
+**完成标志：** Run 列表出现新的 `run_id`，详情进入 P0。后续继续同一个 run。
+
+### 第 7 步：只在系统提示时补充
+
+无法唯一识别环境、检测到多个设备、没有可用 Git remote、发布认证不可用或到达人工审核点时，页面会显示“系统需要你补充信息”，并列出具体检查项。补齐后在同一任务继续；不要为了绕过阻断创建第二个 run，也不要手工伪造预检通过。
+
+终端里能运行 `hdc` 只证明该终端的 PATH 可用。系统会分别核对 Windows Connector、HDC relay 和 SSH gate 主机；`source_tree_layout`、`device_transport` 等结果会标明实际探测位置及影响阶段。
+
+### 第 8 步：按阶段推进 P0–P8
+
+在 Run 详情查看当前阶段和下一步状态。每个阶段都要经过“领取任务 → 执行 → 提交产物 → 确定性 gate 验证 → 同步状态”；页面或 DSH worker 要求继续时，在同一个 DSH Session 中继续该 `run_id`。
+
+| 阶段 | 主要工作 | 需要留意 |
+|---|---|---|
+| P0 | 工程初始化、环境和依赖预检 | 确认工程分支、工具链和工作区 |
+| P1 | 设计和接口方案 | 查看设计产物后审核 |
+| P2–P3 | 开发和测试用例 | 确认代码变更、测试内容和 gate 证据 |
+| P4–P5 | 编译和单元测试 | 失败时修复后在同一 run 重新验证 |
+| P6–P7 | 端到端设备测试和质量验证 | 核对设备、产物和真实测试报告；按要求审核 |
+| P8 | 上库前检查和发布 | 先审核 diff/目标，再执行授权发布并核对远端回执 |
+
+**遇到暂停时：** `awaiting_consent` 表示等人工审核；`needs_reconcile` 表示要先确认旧进程停止并对账；`connector_offline` 表示本机连接器掉线。不要通过创建第二个 run 绕过这些状态。详细处理见“失败和重试”及“状态含义速查”。
+
+### 第 9 步：审核并记录人工输入
+
+出现 **需要人工审核** 时，先打开当前 run 的阶段和产物，核对 revision、文件 hash、源码提交、设备信息及 gate 报告，再按页面提示提交审核。意见或补充要求写入人工输入框；只有 authority 为当前 run/阶段生成的有效 token 才能完成 consent。
+
+**完成标志：** 审核记录出现在当前 run 的事件和维测中，阶段按 Python authority 的结果继续推进。不要把普通备注、模型总结或旧 run 的批准当作通过。
+
+### 第 10 步：确认完成、查看产物并导出记录
+
+1. 打开 **阶段与人工审核**、**产物**和**事件**页签，检查每个阶段的状态、失败原因、人工介入、耗时和审核记录。
+2. 打开报告或审核产物全文；对二进制文件查看 Gateway 计算的大小和 SHA-256，按需下载原始文件。
+3. 仅当页面显示 run `completed`、Python authority 的 `complete=true`，且 P8 有可查询的发布回执时，才报告完整完成。
+4. 需要留档时，下载 JSON 或 CSV 审计记录。
+
+**数据保存位置：** run/阶段事件、耗时、人工输入和审核、失败原因、真实 token usage、设备探测和 relay 状态保存在云端 DSH runtime SQLite；云端 `dataRoot` 必须挂持久盘并纳入备份。源码和编译产物仍保存在 SSH 工作区，页面经 Gateway 读取/校验后展示，不会自动将整个仓库复制到云对象存储。若 Agent 没有返回结构化 token 用量，页面会显示 `unknown`，不会按耗时估算。
+
+后面的章节用于查字段、处理异常和使用 RAG/API；第一次跑 workflow 时，按以上步骤即可，不需要先配置 RAG 或调用 API。
+
+## 运行方式和能力边界
 
 平台有两个运行形态。使用前先确认你部署的是哪一种：
 
@@ -19,14 +144,17 @@
 | 代码位置 | 必须是 DSH 所在主机的绝对路径 | Connector 的 SSHFS 本地目录或 remote-tools broker 映射到 SSH 代码根；Gate 通过 Workspace Gateway 访问同一远端根 |
 | OpenHarmony/HarmonyOS AR runtime | 由同一主机上的 Python gate/advance 执行 | 由 SSH 主机 authority 执行，云端只保存投影 |
 | RAG | 本地/Gateway 模式均支持受限词法索引；配置 OpenAI-compatible endpoint 后真实执行 embedding、reranker，并在命中返回前回读 hash | 生产级 pgvector、ACL 过滤、分块流水线和离线评测仍需按部署规模配置；无 endpoint 时明确使用词法 fallback |
-| 设备和产物调试 | 当前以只读识别和 artifact 展示为主；远端二进制通过 `workspace.hash` 在代码端计算摘要 | Connector/SSH 主机完成受管传输、部署和正式证据 |
+| 设备和产物调试 | 本机 Connector 可只读发现设备；可选的 loopback SSH HDC relay 可将同一设备提供给远端 gate | 已接通 relay 与设备身份核对；真实 P6/P7 仍以 SSH gate 产生的测试报告为准 |
 
 “能发现 Agent”不等于“能执行 Agent”，“能看到产物”不等于“产物已经通过 gate”。所有 P0–P8 通过和完成状态仍由对应环境的 Python authority、gate 和 `advance.py` 决定。
 
 目标云模式中的“用户电脑本地 CodeAgent + SSHFS 挂载”以及“不挂载源码的 remote-tools MCP”均已接入：
 运行 Connector 后，页面会显示 `local_connector`、本机 Agent、`workspace_access` 和远端工作区探测结果。
 两条路径都只下发固定 Agent id 与相对远端路径；完整 P0–P8 仍要求 SSH Workspace Gateway、真实环境
-profile、设备和发布凭据通过预检。
+profile、设备通道和发布凭据通过预检。本机 USB 设备可以通过可选的 loopback SSH HDC relay 暴露给远端 gate；
+只有 Connector 与 SSH 端的唯一 serial 完全匹配，预检才会认可设备可达。
+
+下面第 1–7 章是上方步骤的详细说明，按需要查阅对应章节即可；RAG、API 和状态表属于参考内容，不是额外的启动步骤。
 
 ## 1. 第一次打开 DSH
 
@@ -51,20 +179,31 @@ http://127.0.0.1:8787/?token=<DSH_PRINTED_TOKEN>
 
 ### 1.2 页面布局
 
-AR Delivery 页面分成四块：
+AR Delivery 页面分成五块：
 
 - 顶部 KPI：当前运行/等待审核、成功运行数、人工审核次数和数据来源；
 - 左侧 CodeAgent 设置、启动 AR 工作流和 run 列表；
 - 右侧当前 run 的阶段、审核、产物和事件；
+- 右侧 **AI 问题分析**窗口：可直接追问，也可将本次 P0 预检或当前 run 诊断提交给 DSH Agent；
 - 页面顶部“刷新”和“新建运行”操作。
 
 页面自动每 3.5 秒刷新 run 列表。长时间构建、设备测试或 SSH 任务不要靠浏览器一直开着来维持执行；目标云架构由 Connector/Supervisor 保持任务，浏览器只负责查看和审核。
 
+点击 **分析当前问题** 会把本次预检的结构化检查结果、执行端信息和阻断原因发送给当前 DSH Session/Agent；对运行中的问题会额外带上阶段状态、失败原因、最近事件、人工输入和最多 3 份文本产物片段。二进制产物不会上传到对话，诊断会限制长度并遮蔽常见凭据字段。AI 回复和后续追问保存在 DSH Session 中。未点击分析或发送前，页面不会把诊断内容提交给模型。
+
 ## 2. 配置 CodeAgent
 
-### 2.1 获取本地主机 Agent 列表
+### 2.1 智能发现、真实测试和自动切换
 
-在左侧 **CodeAgent 设置**卡片点击 **刷新本地 Agent**。DSH 会在运行它的主机上执行受限的 `--version` 探测，并展示：
+点击 **智能检测并启用** 后，DSH 依次执行以下闭环：
+
+1. 要求本机 Connector 在线，并重新执行受限的 `--version` 探测；
+2. 只选择 `available=true`、有适配器且 `execution_mode=local_connector` 的候选；
+3. 首先测试当前首选 Agent，然后按 Claude Code、Codex、OpenCode 等候选顺序自动回退；
+4. 每个候选都必须通过 `/ai/analyze` 发起一次真实、只读的非交互调用；发现命令并不算成功；
+5. 成功后保存实际可用的 Agent 并解锁 workflow；全部失败时显示每个 Agent 的错误码、原始消息和修复步骤。
+
+探测结果会展示：
 
 - Agent 名称和类型；
 - `available`/`missing`/`probe_failed` 状态；
@@ -72,9 +211,9 @@ AR Delivery 页面分成四块：
 - 版本首行和失败原因；
 - 是否有已加载的 DSH 宿主适配器。
 
-探测的是实际执行主机的 PATH。单云节点模式探测云主机；目标云模式由 Connector 在用户电脑上重新探测，
-不会因为 Windows 安装了某个 CLI 就自动让 WSL 或云主机看到它。Connector 在线后点击“刷新 CodeAgent”，
-页面会显示 `source=local-connector` 和 `execution_mode=local_connector`。
+探测的是 Connector 进程实际使用的本机 PATH，不是浏览器、WSL shell 或云主机的 PATH。不会因为另一个终端能运行 CLI 就自动让 Connector 看见它。页面应显示 `source=local-connector` 和 `execution_mode=local_connector`。
+
+常见失败会形成可重试的修复建议：命令不存在时检查 Connector PATH 或配置完整路径；认证失败时在本机终端完成 Agent 登录；网络超时时检查本机代理和模型服务；Connector 断线时先重新检测 Connector。修复完成后点击 **修复后重试**，无需重新创建 workflow run。
 
 对应 API：
 
@@ -171,6 +310,18 @@ provider、本机 CLI 路径或 Gateway profile）、凭据应由哪台主机的
 阻断原因。`pending` 表示还没有绑定或验证，不能当作通过；尤其环境 profile 或发布凭据为
 `pending` 时，P8 一定保持不可完成。
 
+预检失败时，启动错误只把 `required_for` 包含 P0 的失败项列为 P0 阻断；其他失败项显示为
+“后续阶段待处理（不阻断 P0）”。例如 `device_transport`/`runtime_hdc` 仅要求 P6–P8 时，真正的
+P0 阻断可能是另一个检查，如 `source_tree_layout`。点右侧 **分析当前问题** 后，AI 对话会收到原始
+预检 checks（包括每项的 `required_for`、探测结果和缺失标志）。可以先在 AI 对话输入框补充现象，例如
+“我的 PowerShell 可以运行 hdc”，再点 **分析当前问题**；这段补充会和结构化预检一起提交，也可以继续追问应该在哪台主机验证 PATH、设备 relay 或源码根。
+
+对“本机 shell 能运行 `hdc`，页面却显示 `executable_not_found`”先区分检查端：若预检由 DSH 服务执行，
+需要让服务进程获得正确的 `HDC_BIN`/`DSH_HDC_CLI` 或配置的 `hdcCommand`，然后重启服务并重新检查；
+若 HDC 只在 Windows Connector 上，本机设备要供 SSH gate 使用还需配置 HDC relay，单纯改云端 PATH
+不会让 SSH 主机看到 Windows 的设备。`source_layout_markers_missing` 则说明实际探测的源码根没有满足
+当前 OpenHarmony/HarmonyOS profile 声明的入口标志；确认所选 `repo_root`，再按真实工程更新受信 profile。
+
 远端 workspace 的检查不是只请求 Gateway `/healthz`：DSH 预检会在签名 Authority envelope 中发送
 `workspace.probe`，让 SSH 代码端解析登记的 `remoteRoot` 或其下本次 run 的 `repo_root`，确认它是目录并同时具备读、写权限。
 因此“Gateway 进程在线”与“当前 SSH 代码根可用”会分别显示；任何一项失败都会阻断 P0。预检请求
@@ -245,6 +396,12 @@ port、mount_point、identity_file、known_hosts_file、固定 options），它�
 调用 `sshfs`，验证 `/proc/self/mountinfo` 后才发送 hello，退出时卸载本次创建的挂载。未挂载的
 空目录会被阻断；完整示例见仓库文件 `workspace-gateway/README.md`。
 
+如果是 **Windows 打开网页、WSL 保存源码**，Windows 安装启动器里的 **WSL** 方式会直接调用 `wsl.exe`，
+自动发现并选择发行版，然后用管理员下发的 `remote_root` 检查源码目录；无需在 WSL 开启 `sshd`，
+也无需手工编辑 SSH 别名。高级手动配置可参考
+[`local-connector-windows-wsl.json`](../../../workspace-gateway/examples/local-connector-windows-wsl.json)。
+需要连接独立 Linux 服务器时，选择 **SSH** 并使用 Windows OpenSSH 配置。
+
 复制仓库示例 `dsh-workflow/examples/local-connector-config.json` 并填写真实的 DSH URL、工作区、
 本地挂载目录和远端根。SSHFS 模式还必须填写 `ssh.host`（以及 user、密钥和 known_hosts）；Connector
 不会把一个普通本地目录冒充 SSH 代码端。token 可改为环境变量 `DSH_CONNECTOR_TOKEN`，不要提交配置文件中的长期密钥。
@@ -257,24 +414,56 @@ node workspace-gateway/bin/dsh-local-connector.js \
 ```
 
 Connector 启动时会探测 Claude Code、OpenCode、Codex、Cursor、Trae 和自定义命令的 `--version`，
-并把可用 Agent 清单随 hello 发送到云端。云端 Overview 的 `connector.workspaces` 变为在线后，
+并通过固定的 `hdc list targets` 只读探测本机设备；Agent 清单和设备探测结果随 hello 发送到云端。云端 Overview 的 `connector.workspaces` 变为在线后，
 CodeAgent 卡片会显示本地 Agent；选择它再执行预检，预检必须同时通过：
 
 1. `connector_transport`：Connector 在线、workspace_id 与 SSHFS/remote-tools 工作区绑定一致；
 2. `workspace_binding`/`workspace_transport`：SSH Workspace Gateway 可读写远端根；
 3. `source_tree_layout`：OpenHarmony 或 HarmonyOS 对应入口已核验；
-4. `workflow_scripts` 和 `runtime_python`：所有 P0–P8 gate/bridge/profile 在 SSH 代码端可执行。
+4. `workflow_scripts` 和 `runtime_python`：所有 P0–P8 gate/bridge/profile 在 SSH 代码端可执行；
+5. `device_transport`：P6/P7 所用设备必须能被 SSH gate 主机访问；只在 Connector 上发现设备不会满足此项。启用并验证 HDC 反向隧道后，预检会要求 SSH 端返回同一 serial。
 
 运行时不需要浏览器保持打开。关闭浏览器只停止查看；取消按钮会向本地 Connector 发送
 `agent.cancel`，本地进程退出后 scheduler 才会释放该阶段。SSHFS 断开或本地电脑休眠时，页面会显示
 `connector_offline`/`needs_reconcile`，不要再次点击“启动 P0”创建第二个 run。
 
-当前 Connector 命令面是固定的 `probe`、`agent.start`、`agent.status`、`agent.cancel`，并且只接受
-相对登记工作区的路径；它不接受云端任意 shell、任意本地路径或未发现的 Agent。若不使用 SSHFS，
+当前 Connector 命令面是固定的 `probe`、`device.probe`、`agent.start`、`agent.status`、`agent.cancel`。
+`device.probe` 在本机只执行固定的 `hdc list targets`（启用 relay 时固定到配置的 loopback HDC server 端口），不接受云端传入的 HDC 命令、shell 或本地路径；Connector
+也不接收云端任意 shell、任意本地路径或未发现的 Agent。设备探测会回传来源、在线目标、耗时和检查时间。若不使用 SSHFS，
 将配置改为 `workspace_access: "remote_tools"` 并提供 `remote_tools.allowed_profiles`；Connector
 会为每次 Agent run 生成 MCP 配置和一次性 socket，支持 `dsh_workspace_read/list/search/write/diff/
 hash/read_binary/exec_profile`。远端 profile 仍只允许运行管理员登记的固定命令，P4–P8 的 gate 仍由
 SSH Workspace Gateway 执行。
+
+### 3.7 云端页面调用本机能力与数据回传
+
+浏览器本身不能直接启动本机 `hdc`、`ssh` 或 CodeAgent。需要在持有这些程序和凭据的电脑/WSL 上运行
+`dsh-local-connector`；它主动通过 WSS 连接云端 DSH。页面上的操作由 DSH 经该连接发给 Connector，
+Connector 再按已绑定的工作区、固定命令和已发现的 Agent 执行。关闭网页不会停止已经派发的阶段；
+Connector 下线时，新请求会阻断或显示需要对账。
+
+目前可调用范围是：
+
+- **本地 CodeAgent**：Connector 用本机已登录的 Claude Code、OpenCode、Codex 或已配置 argv adapter 执行；
+  结果状态、退出码、耗时、可观测的 token usage 和 artifact 引用通过 WSS 回到云端。
+- **SSH 代码**：SSHFS 模式由本机 Connector 保持挂载，Agent 对挂载根内的文件读写；remote-tools 模式由
+  Connector 使用配置的 SSH 身份，经受限 MCP 操作访问同一远端代码根。Gateway 的编译和 AR gate 在
+  SSH 代码主机运行，完成回执、日志摘要和产物引用回云端。
+- **本机 HDC**：Connector 只允许固定只读的本机设备探测，不接收云端任意 HDC 参数或本地 shell。可选的
+  `device_relay` 已实现为 HDC server + SSH reverse forward：本机有服务时复用现有实例，没有服务时才启动并托管一个；
+  遵守 HDC 每个运行环境只允许单一服务实例的限制。本机监听和 SSH 远端监听都绑定 `127.0.0.1`，
+  Gateway 的固定设备 profile 与 P0/P4–P7 gate 通过 `HDC_HOST_OVERRIDE` 使用该隧道。云端会要求本机与 SSH 端
+  profile 返回完全相同的唯一 serial 才将设备标记为可达。启用前需满足：本机 Connector 的 SSH host 指向
+  DSH Workspace Gateway 的同一代码主机；SSH 服务端允许 remote forwarding；本机 `hdc` 能看到目标设备；
+  Gateway profile 将 `HDC_HOST_OVERRIDE` 绑定到 `{{device_hdc_host_override}}`。详细示例见部署手册。
+- 当前已经接通隧道启停、设备 serial 对照和 gate 环境传递，但此开发环境没有接入真实 USB 设备，
+  因此不能据此声称真实设备的 HAP 安装、刷机或 P6/P7 已完成。只有对应 gate 产生真实报告并通过后，AR 阶段才会通过。
+
+DSH 把 run/阶段状态、事件、阶段耗时、人工输入与审核记录、真实 usage 回执、失败原因、本机和 SSH 端
+HDC 探测结果、设备 serial 对照与 relay 状态保存到云端 DSH runtime SQLite（`dataRoot/controller.sqlite3`）。云端需把 `dataRoot` 配到持久盘并
+纳入备份；临时开发默认目录不适合作为云端留存位置。源码和编译产物仍在 SSH 工作区，由云端通过 Gateway
+读取或计算 hash；当前没有自动把整个 SSH 工作区复制到对象存储。生产部署示例把 `dataRoot` 设为
+`/var/lib/dsh/runtime`，备份步骤见部署手册“日志、备份和升级”。
 
 如果本机不能安装 SSHFS，使用下面的最小 remote-tools 配置片段（完整文件见
 `workspace-gateway/examples/local-connector-remote-tools.json`）：
@@ -285,7 +474,7 @@ SSH Workspace Gateway 执行。
   "remote_tools": {
     "enabled": true,
     "allowed_profiles": ["codeagent.build"],
-    "mcp_config_format": "claude"
+    "mcp_config_format": "auto"
   },
   "remote_root": "/srv/project",
   "ssh": {
@@ -302,7 +491,9 @@ run 创建短时 MCP 配置和 Unix socket；本地 Agent 只能使用 `dsh_work
 落在 SSH 主机。Claude 使用 `--strict-mcp-config --mcp-config` 加载 JSON，OpenCode 使用
 `OPENCODE_CONFIG` 加载官方 flat `mcp.dsh_remote` JSON（通过官方 `permission` deny 规则拒绝本地 bash/read/write 工具），Codex 使用隔离 `CODEX_HOME/config.toml` 加载
 `[mcp_servers.dsh_remote]`；Codex 会复制本机存在的 `auth.json`/`credentials.json` 到本次临时
-home，API key 环境变量和钥匙串继续由本机 CLI 使用。固定私有/旧版 OpenCode 可显式设置
+home，API key 环境变量和钥匙串继续由本机 CLI 使用。由于这个临时 home/工作目录只是受限 MCP
+启动目录，不是 SSH 源码仓，DSH 在 `remote_tools` 模式下会自动向 Codex 加入
+`--skip-git-repo-check`；源码仍只能通过允许的 `dsh_workspace_*` 工具访问。固定私有/旧版 OpenCode 可显式设置
 `opencodeConfigShape: "v2"`；默认仍是官方 flat 结构。自定义 argv Agent 必须显式设置 `mcp_config_arg` 或在固定参数
 中使用 `{{mcp_config_file}}`；页面中 `编辑策略` 会显示 `connector_remote_tools_mcp`，远端根不可达
 或没有允许的 profile 时 P0 直接阻断。
@@ -311,17 +502,12 @@ home，API key 环境变量和钥匙串继续由本机 CLI 使用。固定私有
 
 ### 4.1 用页面启动
 
-在 **启动 AR 工作流**卡片按以下顺序填写：
+在 **提交 AR 任务**卡片只填写：
 
-1. **代码环境**：选择 OpenHarmony 或 HarmonyOS；
-2. **HarmonyOS 分支**：环境为 HarmonyOS 时选择 `system` 或 `chip`；OpenHarmony 时该项禁用；
-3. **SSH 项目目录**（Gateway 或 Connector 模式）：如果登记的 `remoteRoot` 是多个项目的父目录，填写项目根的相对路径；留空表示直接使用登记根。页面会先用 `workspace.probe` 验证目录、读写权限和源码标志；绝对路径也必须落在登记根内；
-4. **AR 文件**：本机模式可留空使用仓库示例；Gateway/Connector 模式请填写所选 SSH 项目目录下的相对路径，或使用下面的内联需求框；
-5. **直接粘贴 AR 需求**：可直接粘贴本次需求。填写后以文本内容为准；留空才读取 AR 文件；
-6. 勾选“我确认使用 AR 示例默认组件”，确认你了解默认组件参数；
-7. 点击 **启动 P0 →**。
+1. **源码目录**：相对 Connector/Gateway 登记根的源码根，登记根本身可填 `.`；
+2. **AR 描述**：非空的需求、预期行为与验收条件。
 
-启动按钮在没有代码根或没有勾选确认时保持禁用。服务端还会检查路径边界、AR 内容（文件或非空内联文本）、环境值、幂等 key 和 Python 初始化结果。
+点击 **自动检查并启动 P0 →**。服务端会再次执行权威预检，并把自动识别的环境分支、唯一设备、Git HEAD、发布目标和默认构建确认写入 run。无法唯一识别的字段不会猜测，页面会返回需要补充的检查项。
 
 启动成功后：
 
@@ -341,17 +527,13 @@ curl -X POST 'https://dsh.example.com/api/ohos-ar/runs' \
   -H 'Cookie: <DSH_SESSION_COOKIE>' \
   -H 'Idempotency-Key: ar-demo-001' \
   --data '{
-    "input_ref": "user://demo/ar-001",
-    "ar_path": "docs/reference/dsh-cloud-platform-v1/examples/ar-delivery.workflow.json",
-    "repo_root": "/srv/dsh/workspaces/default/project",
-    "environment": "openharmony",
-    "confirm_defaults": true,
-    "agent": "claude-code",
+    "repo_root": "project",
+    "ar_text": "实现示例能力，并完成编译、真机验证和上库",
     "idempotency_key": "ar-demo-001"
   }'
 ```
 
-如果不使用文件，传入非空的 `ar_text`。重试同一个请求必须复用相同的 `idempotency_key` 和请求内容；同 key 不同内容会被拒绝。
+API 同样只要求 `repo_root` 和非空 `ar_text`；`idempotency_key` 建议由调用方提供。服务端会应用与页面相同的自动识别结果。重试同一个请求必须复用相同 key 和请求内容；同 key 不同内容会被拒绝。
 
 ## 5. P0–P8 的实际使用流程
 
@@ -506,7 +688,7 @@ P1、P6、P7、P8-precheck/publish 可能进入 `awaiting_consent`。详情卡�
 
 用事件判断“什么时候发生了什么”，用阶段状态判断“现在是否可操作”，用 Python gate/advance 证据判断“是否真的通过”。三者不能互相替代。
 
-## 8. RAG 使用方式
+## 8. 可选功能：RAG
 
 ### 8.1 当前状态
 
@@ -531,7 +713,7 @@ P1、P6、P7、P8-precheck/publish 可能进入 `awaiting_consent`。详情卡�
 
 RAG 只提供上下文线索，不能决定 OpenHarmony/HarmonyOS 分支、不能修改 gate、不能生成 consent、不能宣布 AR run 成功。详细约束见 [RAG、工程初始化与调试扩展](rag-environment-debug.md)。
 
-## 9. SSH、产物和设备调试
+## 9. 进阶参考：SSH、产物和设备调试
 
 ### 9.1 SSH 代码操作
 
@@ -563,7 +745,7 @@ RAG 只提供上下文线索，不能决定 OpenHarmony/HarmonyOS 分支、不�
 
 设备识别不会自动刷机。正式 P6/P7 证据必须来自受管部署、实际加载和对应 gate；云端页面展示的本地调试结果若未绑定 authority receipt，只能作为诊断信息。
 
-## 10. 常用 API
+## 10. API 参考（首跑非必需）
 
 所有 API 都走同一个 DSH Web Server 和浏览器会话。下面的 `<COOKIE>`、`<RUN_ID>`、`<TASK_ID>`、`<REVISION>` 要替换成真实值。
 
@@ -641,7 +823,7 @@ curl -X POST -b '<COOKIE>' \
 
 API 返回的 HTTP 202 只表示 run intent 已接受，不表示 gate 或发布成功；最终状态要读取 status、events 和 Python evidence。
 
-## 12. 状态含义速查
+## 11. 状态含义速查
 
 | 状态 | 使用者动作 |
 |---|---|
@@ -655,26 +837,7 @@ API 返回的 HTTP 202 只表示 run intent 已接受，不表示 gate 或发布
 | `failed`/`rejected` | 根据失败事件和 gate 输出修复，不把模型总结当原因 |
 | `cancelled` | 任务停止；重新开始必须创建新 run 或按协议 resume |
 
-## 13. 典型完整操作示例
-
-下面是一条 OpenHarmony 的安全操作路径：
-
-1. 登录/打开 DSH 官方页面，进入 AR Delivery；
-2. 刷新 CodeAgent，确认 Claude Code 为 `available`；
-3. 确认代码根、`build.sh`、developer_test 和 Python gate 存在；
-4. 选择 OpenHarmony，输入 AR 文件，勾选默认组件确认；
-5. 启动 P0，等待环境报告和 profile 结果；
-6. 让 DSH worker 按 `claim → context → heartbeat → submit → validate` 完成 P0；
-7. 查看 P0 证据，确认环境和源码根；
-8. P1 进入 `awaiting_consent` 时，检查设计文件和 hash，提交真实 consent；
-9. P2/P3/P4/P5 按阶段 gate 运行，失败则修复同一个 workspace 并重新提交；
-10. P6 先核对产物与设备 ABI/product/profile，再进行受管设备测试；
-11. P7 审核质量、覆盖率、性能和稳定性报告；
-12. P8-precheck 审核 diff、目标仓库、Change-Id/PR 和发布策略；
-13. P8-publish 只在最终授权后执行，回包丢失时先查询远端 SHA/Change 状态，不重复发布；
-14. 确认 run 为 `completed`，导出带 run/revision/profile/artifact hash 的审计结果。
-
-## 14. 安全和数据处理
+## 12. 安全和数据处理
 
 - 不把 SSH 私钥、CodeAgent 登录 token、模型 API key、HMAC secret 放进 AR 输入、artifact 正文、Git 或页面截图；
 - 只给 Agent 当前阶段需要的 workspace、工具和输出路径；
@@ -685,7 +848,7 @@ API 返回的 HTTP 202 只表示 run intent 已接受，不表示 gate 或发布
 - 关闭浏览器不会自动停止目标云架构中的 Connector/Supervisor 作业；重新打开页面后通过 cursor/reconcile 恢复视图；
 - 免登录模式只适合私有网络。公网部署必须使用 OIDC/SSO、HTTPS 和租户隔离。
 
-## 15. 故障排查
+## 13. 故障排查
 
 | 问题 | 处理方式 |
 |---|---|
@@ -694,6 +857,7 @@ API 返回的 HTTP 202 只表示 run intent 已接受，不表示 gate 或发布
 | CodeAgent 列表为空 | 以 DSH 服务用户执行 refresh；检查 PATH 和 `DSH_*_CLI` |
 | Claude provider missing | 检查官方 Claude bundle、preset root 和 DSH 重启日志 |
 | OpenCode/Codex 已发现但不能启动 | 检查本机 CLI 的非交互协议、Gateway profile、Authority 签名和 scheduler `last_error`；这是 adapter/连接错误，不是 AR gate 失败 |
+| Codex 提示 `Not inside a trusted directory` | 确认执行模式为 `local_connector` 且编辑策略为 `connector_remote_tools_mcp`；该模式会自动加入 `--skip-git-repo-check`。如果仍失败，在 AI 分析窗口查看透传的 `diagnostic`、`exit_code` 和 `operation_id`，不要把 SSH 源码复制到本地临时目录 |
 | P0 repo_root 越界 | 使用 patch 配置根下面的绝对路径；不要传 SSH URL |
 | 页面显示待审核但没有产物 | 先查看 run events 和 pipeline 的 evidence/reports/controls 是否已写入，再同步 |
 | consent 被拒绝 | 核对 task id、phase、revision、run 和 authority token 是否对应同一证据包 |
@@ -701,7 +865,7 @@ API 返回的 HTTP 202 只表示 run intent 已接受，不表示 gate 或发布
 | 设备很多或属性 unknown | 不自动选择/部署；先完成设备选择和 profile 匹配 |
 | SSH 断开后想重跑 | 先查 Supervisor/authority 是否仍有进程和锁，完成 reconcile 后再继续 |
 
-## 16. 使用完成判定
+## 14. 使用完成判定
 
 一次 AR run 只有同时满足以下条件，才可以向用户报告完成：
 

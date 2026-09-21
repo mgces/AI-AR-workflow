@@ -65,6 +65,63 @@ const VERIFIED_CAPABILITIES = Object.freeze({
 });
 
 describe('authoritative AR runtime service', () => {
+  test('persists Connector device probe facts in the DSH SQLite runtime', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-device-probe-audit-'));
+    const dataRoot = join(root, 'runtime');
+    const checkedAt = '2026-09-16T10:00:00.000Z';
+    let runtime = createRuntime({ dataRoot, principal: 'all' });
+    let service = new ArRuntimeService({ runtime });
+    try {
+      const recorded = service.recordDeviceProbe({
+        workspaceId: 'workspace-1', deviceId: 'windows-1',
+        probe: {
+          status: 'available', source: 'local_connector', command: 'C:/private/sdk/hdc.exe',
+          targets: [{ id: 'usb-01', state: 'connected' }], duration_ms: 16, checked_at: checkedAt,
+          local_targets: [{ id: 'usb-01', state: 'connected' }],
+          device_relay: {
+            enabled: true, status: 'ready', server_mode: 'reused', local_endpoint: '127.0.0.1:8710',
+            remote_endpoint: '127.0.0.1:18710', reason: null,
+          },
+        },
+      });
+      assert.equal(recorded.status, 'available');
+      assert.match(recorded.id, /^device-probe-/u);
+      assert.equal(recorded.source, 'local_connector');
+      assert.equal(recorded.command, 'hdc.exe');
+      assert.equal(recorded.device_relay.status, 'ready');
+      assert.equal(recorded.device_relay.server_mode, 'reused');
+      assert.equal(recorded.local_targets[0].id, 'usb-01');
+      assert.equal(JSON.stringify(recorded).includes('C:/private'), false);
+
+      const duplicate = service.recordDeviceProbe({
+        workspaceId: 'workspace-1', deviceId: 'windows-1',
+        probe: {
+          status: 'available', source: 'local_connector', command: 'hdc.exe',
+          targets: [{ id: 'usb-01', state: 'connected' }], duration_ms: 16, checked_at: checkedAt,
+        },
+      });
+      assert.equal(duplicate.id, recorded.id);
+      assert.equal(service.listDeviceProbes({ workspaceId: 'workspace-1' }).length, 1);
+    } finally {
+      service.close();
+    }
+
+    runtime = createRuntime({ dataRoot, principal: 'all' });
+    service = new ArRuntimeService({ runtime });
+    try {
+      const history = service.listDeviceProbes({ workspaceId: 'workspace-1' });
+      assert.equal(history.length, 1);
+      assert.equal(history[0].device_id, 'windows-1');
+      assert.equal(history[0].targets[0].id, 'usb-01');
+      assert.equal(history[0].device_relay.remote_endpoint, '127.0.0.1:18710');
+      assert.equal(history[0].local_targets[0].state, 'connected');
+      assert.equal(history[0].checked_at, checkedAt);
+    } finally {
+      service.close();
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   test('drives all ten AR tasks and exposes auditable observability', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-ar-runtime-'));
     const pipelineDir = join(root, 'pipeline');

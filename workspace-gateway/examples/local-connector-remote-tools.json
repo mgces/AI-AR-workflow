@@ -8,7 +8,7 @@
   "remote_tools": {
     "enabled": true,
     "allowed_profiles": ["codeagent.build", "codeagent.test"],
-    "mcp_config_format": "claude"
+    "mcp_config_format": "auto"
   },
   "ssh": {
     "host": "code-host.example",

@@ -71,6 +71,7 @@ test('remote delivery adapter initializes and validates through signed gateway p
   assert.equal(initialized.pipeline_run_id, 'run-1');
   assert.equal(calls[0].payload.operation_kind, 'workspace.exec_profile');
   assert.equal(calls[0].payload.profile_id, 'ar.delivery.init');
+  assert.equal(calls[0].payload.variables.device_hdc_host_override, '');
   assert.equal(calls[0].payload.variables.scripts_root, '/srv/project/skills/ohos-ar-dev-phases/scripts');
   assert.equal(calls[0].payload.variables.bridge_path, '/srv/project/runtime/dsh-ohos/src/workflows/ar-delivery/python/delivery_bridge.py');
   assert.equal(calls[1].payload.operation_kind, 'workspace.write');
@@ -80,6 +81,28 @@ test('remote delivery adapter initializes and validates through signed gateway p
   const gate = await adapter.validateGate('/srv/project/specs/pipeline/run-1', 0);
   assert.equal(gate.ok, true);
   assert.equal(calls.at(-1).payload.profile_id, 'ar.delivery.validate');
+});
+
+test('remote delivery adapter binds device gate validation to the configured loopback HDC relay', async () => {
+  const calls = [];
+  const adapter = new RemotePythonDeliveryAdapter({
+    gateway: fakeGateway(calls),
+    remoteRoot: '/srv/project',
+    authorityContext,
+    signature: { key_id: 'test', algorithm: 'hmac-sha256', value: 'signed' },
+    deviceHdcHostOverride: '127.0.0.1:18710',
+  });
+  await adapter.initialize({ run_id: 'run-1', repo_root: '/srv/project', environment: 'openharmony', ar_text: '# remote AR' });
+  const init = calls.find((item) => item.payload.profile_id === 'ar.delivery.init');
+  assert.equal(init.payload.variables.device_hdc_host_override, '127.0.0.1:18710');
+  await adapter.validateGate('/srv/project/specs/pipeline/run-1', 6);
+  await adapter.inspect('/srv/project/specs/pipeline/run-1');
+  await adapter.advance('/srv/project/specs/pipeline/run-1', 6);
+  await adapter.consent('/srv/project/specs/pipeline/run-1', 6, 'consent-token');
+  await adapter.failureSnapshot('/srv/project/specs/pipeline/run-1');
+  const deliveryProfiles = calls.filter((item) => item.payload.operation_kind === 'workspace.exec_profile');
+  assert.ok(deliveryProfiles.length >= 6);
+  assert.ok(deliveryProfiles.every((item) => item.payload.variables.device_hdc_host_override === '127.0.0.1:18710'));
 });
 
 test('remote delivery adapter passes only deployment-owned gate bundle paths to profiles', async () => {

@@ -556,7 +556,10 @@ export function evaluatePrerequisites({
       configured: device.configured === true,
       reachable: device.reachable === true,
       serial: device.serial ?? null,
-      reason: device.configured !== true ? 'device_not_configured' : 'device_unreachable',
+      source: device.source ?? null,
+      observed_status: device.observed_status ?? null,
+      reason: device.configured === true && device.reachable === true
+        ? null : device.reason ?? (device.configured !== true ? 'device_not_configured' : 'device_unreachable'),
     }, ['P6', 'P7', 'P8']),
     check('publication_target', 'P8 发布目标和回执', publication.configured === true && publication.authenticated === true ? 'pass' : 'pending', {
       backend: publication.backend ?? null,

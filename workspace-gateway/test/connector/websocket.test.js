@@ -33,6 +33,49 @@ test('ConnectorWebSocketHub attaches a local session and correlates commands', a
   assert.deepEqual(result, { status: 'ready', echoed: 42 });
 });
 
+test('Connector workspace probe refreshes the local device discovery facts', async () => {
+  const hub = new ConnectorWebSocketHub({ heartbeatMs: 0 });
+  const peer = {
+    onMessage: null,
+    onClose: null,
+    send(message) {
+      if (message.type === 'command') setImmediate(() => this.onMessage?.({
+        type: 'response', id: message.id, ok: true,
+        result: {
+          status: 'ready', workspace_id: 'workspace-device', workspace_access: 'remote_tools',
+          remote_workspace_reachable: true, remote_workspace_writable: true,
+          device_probe: {
+            status: 'available', source: 'local_connector', command: 'hdc.exe',
+            targets: [{ id: 'usb-device', state: 'connected' }],
+          },
+        },
+      }));
+    },
+    close() { this.onClose?.(); },
+  };
+  hub.attachPeer(peer, { deviceId: 'windows-device', workspaceId: 'workspace-device' });
+
+  const result = await hub.probeWorkspace('workspace-device');
+  const workspace = hub.snapshot().workspaces[0];
+
+  assert.equal(result.device_probe.source, 'local_connector');
+  assert.equal(workspace.capabilities.device_probe.status, 'available');
+  assert.equal(workspace.capabilities.device_probe.targets[0].id, 'usb-device');
+});
+
+test('Connector hub retains bounded last-disconnect evidence for human recovery', () => {
+  const hub = new ConnectorWebSocketHub({ heartbeatMs: 0 });
+  const peer = { send() {}, close() { this.onClose?.(); } };
+  hub.attachPeer(peer, { deviceId: 'windows-recovery', workspaceId: 'workspace-recovery' });
+  peer.close();
+  const snapshot = hub.snapshot();
+  assert.equal(snapshot.workspaces.length, 0);
+  assert.equal(snapshot.last_disconnects[0].workspace_id, 'workspace-recovery');
+  assert.equal(snapshot.last_disconnects[0].device_id, 'windows-recovery');
+  assert.equal(snapshot.last_disconnects[0].reason, 'socket_closed');
+  assert.equal(typeof snapshot.last_disconnects[0].at, 'string');
+});
+
 test('ConnectorWebSocketHub rejects an invalid transport token before hello', async () => {
   const hub = new ConnectorWebSocketHub({ authToken: 'expected', heartbeatMs: 0 });
   const socket = { writes: [], write(value) { this.writes.push(String(value)); }, destroy() { this.destroyed = true; } };
@@ -260,6 +303,37 @@ test('ConnectorWebSocketHub replays a durable completed result and rejects opera
     (error) => error.code === 'connector_operation_replay_conflict',
   );
   recoveredHub.close();
+  await rm(root, { recursive: true, force: true });
+});
+
+test('ConnectorWebSocketHub evicts old completed results before the durable outbox reaches its byte limit', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-connector-bounded-outbox-'));
+  const outboxFilePath = join(root, 'outbox.json');
+  const hub = new ConnectorWebSocketHub({
+    heartbeatMs: 0, replayPending: true, outboxFilePath, outboxMaxBytes: 64 * 1024,
+  });
+  const peer = {
+    onMessage: null, onClose: null,
+    send(message) {
+      if (message.type === 'command') setImmediate(() => this.onMessage?.({
+        type: 'response', id: message.id, ok: true,
+        result: { status: 'completed', payload: 'x'.repeat(8 * 1024) },
+      }));
+    },
+    close() { this.onClose?.(); },
+  };
+  hub.attachPeer(peer, { deviceId: 'device-bounded', workspaceId: 'workspace-bounded' });
+  for (let index = 0; index < 20; index += 1) {
+    const result = await hub.request('workspace-bounded', {
+      kind: 'workspace.list', payload: { operation_id: `bounded-${index}` },
+    });
+    assert.equal(result.status, 'completed');
+  }
+  const persisted = JSON.parse(await readFile(outboxFilePath, 'utf8'));
+  assert.ok(Buffer.byteLength(JSON.stringify(persisted), 'utf8') <= 64 * 1024);
+  assert.ok(persisted.records.length < 20);
+  assert.ok(persisted.records.every((record) => record.state === 'completed'));
+  hub.close();
   await rm(root, { recursive: true, force: true });
 });
 

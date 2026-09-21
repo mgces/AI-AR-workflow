@@ -110,6 +110,8 @@ localConnector: {
 
 `workspace.probe` 是启动 P0 前的实际代码端探测。它在登记的 SSH 主机上解析 `remoteRoot`，确认目标仍是目录并具备读权限；调用方传入 `require_write: true` 时还必须具备写权限。传入 `expect: "file"` 时会额外确认目标是普通文件，供源码入口（例如 `build.sh`）和 AR 文件检查使用；默认 `expect: "directory"`。Gateway 返回的 `realpath` 只作为脱敏绑定证据，不能被请求覆盖。SSH/HTTP Gateway 的 `/healthz` 只能证明进程存活，不能替代这个工作区探测；DSH 远端预检只有在两者都通过时才会把代码端标为可写。
 
+`workspace.git_context` 是预检专用的只读固定操作：在所选源码目录读取 Git 根、HEAD、当前分支和最多 20 个 push remote。Connector 在结果离开代码端前移除 HTTP 用户名/密码和 SSH 用户名；不会返回 Git 配置、凭据文件或环境变量。DSH 用该结果自动生成基线提交和 GitCode/Gerrit 发布候选，无法唯一识别 remote 时保留 P8 待补充状态。
+
 DSH 预检会先探测本次 run 的 `repo_root`（它可以是登记 `remoteRoot` 下的项目子目录），再按所选环境探测源码入口：OpenHarmony 默认要求可执行的 `build.sh` 文件、`test/testfwk/developer_test` 目录和可执行的 `start.sh` 测试入口；HarmonyOS 的 system/chip 入口和其他 root markers 必须由对应环境 profile 显式登记，缺少时保持阻断。AR 文件也必须在选定项目根内并通过 `expect: "file"` 探测；远端没有本地示例文件时，调用方应传远端相对路径或 `ar_text`。
 
 ## Gateway profile
@@ -178,10 +180,13 @@ remote-tools 配置示例见 [`examples/local-connector-remote-tools.json`](exam
 返回 `workspace_access: "remote_tools"`、远端目录读写状态和可用 Agent，官方 DSH 预检据此阻断
 不可达的 SSH 工作区。
 
-启动本地 Connector（Windows 可在 WSL 中运行）。`local_root` 必须是 SSHFS 挂载目录；可以先手工挂载，也可以让 Connector 用受限 argv 自动挂载并在退出时卸载。Windows 原生运行时如果 CLI 是 npm 生成的 `.cmd/.bat` 包装器，Connector 会通过 PowerShell JSON argv 桥调用，不会把提示词拼进 shell；必要时用 `DSH_POWERSHELL_COMMAND` 指定 `pwsh.exe`/`powershell.exe`：
+普通 Windows 使用者不需要克隆本仓库：从 DSH 页面下载 `Install-DSH-Connector.cmd`，在浏览器下载列表运行后，它会自动安装到当前用户目录、创建开始菜单入口并注册 `dsh-connector://start` 网页启动链接。首次启动选择 WSL 或 SSH。WSL 模式会自动发现发行版，唯一发行版直接使用，多个发行版显示编号供选择；之后通过 `wsl.exe` 直接在选中的发行版检查和访问源码，无需安装 sshd。SSH 模式输入 Host 别名或 `user@host`，并沿用 Windows OpenSSH 配置。Connector token 隐藏输入一次后以当前用户 DPAPI 加密保存，不进入 JSON 配置。浏览器不会自动执行下载文件，Windows 可能要求确认运行。WSL/Linux 用户可下载便携 ZIP。下面的命令只适用于开发者已经检出完整仓库的情况；`workspace-gateway/bin/...` 是相对于仓库根目录的路径，不能直接从 `C:/Users/...` 这样的任意当前目录运行。
+
+开发模式启动本地 Connector（Windows 可在 WSL 中运行）。`local_root` 必须是 SSHFS 挂载目录；可以先手工挂载，也可以让 Connector 用受限 argv 自动挂载并在退出时卸载。Windows 原生运行时如果 CLI 是 npm 生成的 `.cmd/.bat` 包装器，Connector 会通过 PowerShell JSON argv 桥调用，不会把提示词拼进 shell；必要时用 `DSH_POWERSHELL_COMMAND` 指定 `pwsh.exe`/`powershell.exe`：
 
 ```bash
 sshfs builder@code-host:/srv/project /mnt/dsh-code -o StrictHostKeyChecking=yes
+# 必须从 AI-AR-workflow 仓库根目录运行；普通客户端用户请使用上方的下载包。
 node workspace-gateway/bin/dsh-local-connector.js --config /absolute/path/connector.json
 ```
 
@@ -294,6 +299,16 @@ profile 变量由 Gateway 逐项 shell quote；空的可选 flag 会被成对省
 安装为 `/usr/local/bin/dsh-device-probe`，并在云端 patch 的 `workspaceGateway` 中设置
 `deviceProfile: 'debug.device_probe'`。它只执行 `hdc list targets`，返回设备状态和候选
 序列号；设备属性、产物兼容性和 P6/P7 gate 仍由目标仓库的正式脚本确认。
+
+如果设备只插在本地 Connector 主机上，Connector 配置可启用 `device_relay`。HDC 每个运行环境只允许一个
+server：Connector 会复用配置端口上的服务，只有端口空闲时才启动并托管一个前台服务。随后通过
+SSH `-R 127.0.0.1:<remotePort>:127.0.0.1:<localPort>` 转发到代码主机；
+云端 `localConnector.deviceRelay.remotePort` 必须与其一致，Gateway profile 的环境模板设置为
+`HDC_HOST_OVERRIDE={{device_hdc_host_override}}`。`dsh-device-probe` 和 AR gates 随后都固定访问该
+loopback endpoint。SSH 端必须允许远程端口转发，且两端 profile 探测到的唯一 device serial 必须匹配。
+仅发现设备或隧道状态为 ready 不构成 P6/P7 通过；仍须执行目标环境的真实 gate。两端的 HDC server
+都只绑定 loopback，不要配置为公网监听。端口启动方式和单实例约束参见
+[OpenHarmony HDC 官方文档](https://gitee.com/openharmony/docs/blob/cfe2f20652890eb686ba2a5555287f465d8758bf/zh-cn/application-dev/dfx/hdc.md)。
 
 远端模式默认开启 `RemoteRagIndex`：云端索引通过 Gateway 的 `workspace.list/read` 获取
 允许的文本源码，并在每次检索返回前重新读取并校验 hash。索引内容会写入 DSH 的

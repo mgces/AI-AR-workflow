@@ -19,14 +19,11 @@
 
 # ── identity ────────────────────────────────────────────────────────────────
 
-# The preset's own persona, shadowing the deployment default for this agent.
-# `{{model}}` and `{{cwd}}` resolve from the agent's own route and workspace.
-- id: persona
-  name: '@deepseek-ai/dsh-persona'
-  config:
-    suffix: Your working directory is {{cwd}}.
-    prefix: >-
-      You are a coding agent powered by the {{model}} model.
+# The Web deployment already owns the same coding persona and cwd suffix in
+# `dsh-system-prompt`. Inheriting that deployment section also keeps this
+# custom preset compatible with hosts that apply loader entries outside an
+# individual `agent.ctx`; mounting `dsh-persona` there would register
+# `deployment:persona-prefix` twice and make session creation fail.
 
 - id: agent-instructions
   name: '@deepseek-ai/dsh-agent-instructions'

@@ -163,6 +163,25 @@ function parseProfileOutput(result, profile) {
   };
 }
 
+function connectedTargetIds(targets = []) {
+  return targets.map((target) => {
+    if (typeof target === 'string') return target;
+    const state = String(target?.state ?? '').toLowerCase();
+    if (state && !['device', 'connected', 'online'].includes(state)) return null;
+    return typeof target?.id === 'string' ? target.id : null;
+  }).filter((value) => typeof value === 'string' && value !== '').sort();
+}
+
+function validHdcLoopbackEndpoint(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const match = typeof value === 'string' ? /^127\.0\.0\.1:([0-9]{1,5})$/u.exec(value) : null;
+  const port = match ? Number(match[1]) : 0;
+  if (!match || !Number.isSafeInteger(port) || port < 1024 || port > 65_535) {
+    remoteDebugError('remote_debug_config_invalid', 'device HDC relay endpoint must be loopback on a non-privileged port');
+  }
+  return value;
+}
+
 /**
  * Read-only diagnostics for a remote SSH/WSL workspace. Artifact hashes are
  * obtained from the Gateway and device discovery is an optional fixed profile;
@@ -176,6 +195,9 @@ export class RemoteDebugSurface {
     signature = null,
     sign = null,
     deviceProfile = null,
+    deviceConnector = null,
+    connectorWorkspaceId = null,
+    deviceHdcHostOverride = null,
   } = {}) {
     if (!gateway || typeof gateway.execute !== 'function') throw new TypeError('gateway.execute is required');
     if (typeof remoteRoot !== 'string' || !posix.isAbsolute(remoteRoot.trim())) {
@@ -192,6 +214,12 @@ export class RemoteDebugSurface {
     this.signature = signature;
     this.sign = sign;
     this.deviceProfile = deviceProfile;
+    if (deviceConnector !== null && typeof deviceConnector.request !== 'function') {
+      throw new TypeError('deviceConnector.request is required');
+    }
+    this.deviceConnector = deviceConnector;
+    this.connectorWorkspaceId = connectorWorkspaceId;
+    this.deviceHdcHostOverride = validHdcLoopbackEndpoint(deviceHdcHostOverride);
   }
 
   async status() {
@@ -278,9 +306,78 @@ export class RemoteDebugSurface {
   }
 
   async #probeDevice() {
+    if (this.deviceConnector) {
+      if (typeof this.connectorWorkspaceId !== 'string' || this.connectorWorkspaceId.trim() === '') {
+        return { status: 'unconfigured', targets: [], source: 'local_connector', reason: 'connector_workspace_unconfigured' };
+      }
+      try {
+        const result = await this.deviceConnector.request(this.connectorWorkspaceId, {
+          kind: 'device.probe', payload: { workspace_id: this.connectorWorkspaceId },
+        }, { timeoutMs: 10_000 });
+        const localProbe = {
+          status: result?.status ?? 'probe_failed',
+          command: result?.command ?? 'hdc',
+          targets: Array.isArray(result?.targets) ? result.targets : [],
+          source: 'local_connector',
+          ...(result?.device_relay && typeof result.device_relay === 'object'
+            ? { device_relay: structuredClone(result.device_relay) } : {}),
+          ...(Number.isSafeInteger(result?.duration_ms) ? { duration_ms: result.duration_ms } : {}),
+          ...(typeof result?.checked_at === 'string' ? { checked_at: result.checked_at } : {}),
+          ...(typeof result?.reason === 'string' ? { reason: result.reason } : {}),
+        };
+        if (localProbe.device_relay?.enabled === true && localProbe.device_relay.status === 'ready'
+            && this.deviceProfile && this.deviceHdcHostOverride
+            && localProbe.device_relay.remote_endpoint === this.deviceHdcHostOverride) {
+          try {
+            const remoteResult = await this.#call('workspace.exec_profile', {
+              profile_id: this.deviceProfile,
+              variables: { device_hdc_host_override: this.deviceHdcHostOverride },
+            });
+            const remoteProbe = parseProfileOutput(remoteResult, this.deviceProfile);
+            const localIds = connectedTargetIds(localProbe.targets);
+            const remoteIds = connectedTargetIds(remoteProbe.targets);
+            const sameTarget = localIds.length === 1 && remoteIds.length === 1 && localIds[0] === remoteIds[0];
+            const status = localProbe.status === 'available' && remoteProbe.status === 'available' && sameTarget
+              ? 'available'
+              : remoteProbe.status === 'available' || localProbe.status === 'available'
+                ? 'device_relay_target_mismatch' : (localProbe.status !== 'available' ? localProbe.status : remoteProbe.status);
+            return {
+              ...remoteProbe,
+              status,
+              command: localProbe.command,
+              source: 'local_connector_relay',
+              local_targets: localProbe.targets,
+              device_relay: localProbe.device_relay,
+              ...(status === 'device_relay_target_mismatch' ? { reason: 'device_relay_target_mismatch' } : {}),
+            };
+          } catch (error) {
+            return {
+              ...localProbe,
+              status: 'probe_failed',
+              source: 'local_connector_relay',
+              reason: error.code ?? 'remote_device_probe_failed',
+            };
+          }
+        }
+        if (localProbe.device_relay?.enabled === true && localProbe.device_relay.status === 'ready'
+            && this.deviceProfile && localProbe.device_relay.remote_endpoint !== this.deviceHdcHostOverride) {
+          return {
+            ...localProbe,
+            status: 'device_relay_config_mismatch',
+            reason: 'device_relay_config_mismatch',
+          };
+        }
+        return localProbe;
+      } catch (error) {
+        return { status: 'probe_failed', targets: [], source: 'local_connector', reason: error.message };
+      }
+    }
     if (!this.deviceProfile) return { status: 'unconfigured', targets: [], source: 'workspace_gateway' };
     try {
-      const result = await this.#call('workspace.exec_profile', { profile_id: this.deviceProfile, variables: {} });
+      const result = await this.#call('workspace.exec_profile', {
+        profile_id: this.deviceProfile,
+        variables: { device_hdc_host_override: this.deviceHdcHostOverride ?? '' },
+      });
       return parseProfileOutput(result, this.deviceProfile);
     } catch (error) {
       return { status: 'probe_failed', targets: [], source: 'workspace_gateway', reason: error.message };

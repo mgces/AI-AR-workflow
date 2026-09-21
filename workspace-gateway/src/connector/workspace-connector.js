@@ -18,7 +18,7 @@ const DEFAULT_PROFILES = Object.freeze({
 const OPERATION_KINDS = new Set([
   'workspace.inspect', 'workspace.read', 'workspace.write', 'workspace.list',
   'workspace.hash', 'workspace.read_binary', 'workspace.exec_profile', 'workspace.diff',
-  'workspace.probe', 'workspace.search',
+  'workspace.probe', 'workspace.search', 'workspace.git_context',
   'workspace.remove',
 ]);
 
@@ -59,6 +59,20 @@ function shellQuote(value) {
   return `'${String(value).replaceAll("'", "'\\''")}'`;
 }
 
+function sanitizeGitRemoteUrl(value) {
+  const raw = boundedText(value, 'git_remote_url', 4096);
+  try {
+    const parsed = new URL(raw);
+    parsed.username = '';
+    parsed.password = '';
+    return parsed.toString();
+  } catch {
+    const scp = raw.match(/^(?:[^@/:]+@)?([^:/]+):(.+)$/u);
+    if (scp) return `${scp[1]}:${scp[2]}`;
+    return raw.replace(/^[^@/]+@/u, '');
+  }
+}
+
 export function normalizeProfiles(profiles) {
   const source = profiles ?? DEFAULT_PROFILES;
   const entries = source instanceof Map ? [...source.entries()] : Object.entries(source);
@@ -76,6 +90,12 @@ export function normalizeProfiles(profiles) {
     if (!Array.isArray(args) || args.length > MAX_PROFILE_ARGS || args.some((arg) => typeof arg !== 'string' || arg.length > 4096 || /[\0\r\n]/u.test(arg))) {
       fail('profile_invalid', `profile ${id} args are invalid`, { id });
     }
+    const env = raw.env ?? {};
+    if (!env || typeof env !== 'object' || Array.isArray(env) || Object.keys(env).length > 32
+        || Object.entries(env).some(([key, value]) => !/^[A-Z_][A-Z0-9_]{0,63}$/u.test(key)
+          || typeof value !== 'string' || value.length > 4096 || /[\0\r\n]/u.test(value))) {
+      fail('profile_invalid', `profile ${id} env is invalid`, { id });
+    }
     const resourceLock = raw.resource_lock === undefined || raw.resource_lock === null
       ? null : boundedText(raw.resource_lock, `${id}.resource_lock`, 256);
     if (resourceLock && /[/:\\\s]/u.test(resourceLock)) {
@@ -84,6 +104,7 @@ export function normalizeProfiles(profiles) {
     result.set(id, {
       command,
       args: [...args],
+      env: { ...env },
       capabilities: Array.isArray(raw.capabilities) ? [...raw.capabilities] : [],
       resource_lock: resourceLock,
     });
@@ -91,18 +112,18 @@ export function normalizeProfiles(profiles) {
   return result;
 }
 
-function commandResultError(result, operation) {
+function commandResultError(result, operation, transport = 'ssh') {
   if (result?.exitCode === 0) return null;
   return new WorkspaceConnectorError(
     'remote_command_failed',
     `${operation} exited with ${result?.exitCode ?? result?.signal ?? 'unknown'}`,
-    { exit_code: result?.exitCode ?? null, signal: result?.signal ?? null, stderr: result?.stderr ?? '' },
+    { transport, exit_code: result?.exitCode ?? null, signal: result?.signal ?? null, stderr: result?.stderr ?? '' },
   );
 }
 
 function defaultCommandRunner(command, args, {
   cwd, input = '', signal, timeoutMs = DEFAULT_TIMEOUT_MS, operationId = null,
-  parentOperationId = null, supervisor = null, privateInvocation = false,
+  parentOperationId = null, supervisor = null, privateInvocation = false, transport = 'ssh',
 } = {}) {
   const supervisedRun = supervisor && (typeof supervisor.run === 'function'
     ? supervisor.run.bind(supervisor) : (typeof supervisor.start === 'function' ? supervisor.start.bind(supervisor) : null));
@@ -133,7 +154,7 @@ function defaultCommandRunner(command, args, {
         stdio: ['pipe', 'pipe', 'pipe'],
       });
     } catch (error) {
-      reject(new WorkspaceConnectorError('ssh_spawn_failed', error.message));
+      reject(new WorkspaceConnectorError(transport === 'wsl' ? 'workspace_command_spawn_failed' : 'ssh_spawn_failed', error.message, { transport }));
       return;
     }
     const stdout = [];
@@ -184,7 +205,10 @@ function defaultCommandRunner(command, args, {
       settled = true;
       clearTimeout(timer);
       signal?.removeEventListener('abort', onAbort);
-      reject(new WorkspaceConnectorError('ssh_command_failed', error.message, { cause: error.code }));
+      reject(new WorkspaceConnectorError(transport === 'wsl' ? 'workspace_command_failed' : 'ssh_command_failed', error.message, {
+        transport,
+        cause: error.code,
+      }));
     });
     child.once('close', (exitCode, signalName) => finish({ exitCode, signal: signalName }));
     if (input) child.stdin.end(input);
@@ -214,11 +238,14 @@ function normalizeRunnerResult(value) {
  */
 export class WorkspaceConnector {
   constructor({
+    transport = 'ssh',
     host,
     username = null,
     port = 22,
     remoteRoot = '/',
     sshCommand = 'ssh',
+    wslDistribution = null,
+    wslCommand = 'wsl.exe',
     identityFile = null,
     knownHostsFile = null,
     commandRunner = defaultCommandRunner,
@@ -231,14 +258,26 @@ export class WorkspaceConnector {
     timeoutMs = DEFAULT_TIMEOUT_MS,
     journalLimit = MAX_JOURNAL_ENTRIES,
   } = {}) {
-    if (typeof host !== 'string' || host.trim() === '' || /[\0\r\n]/u.test(host)) fail('host_invalid', 'SSH host is required');
-    if (!Number.isInteger(port) || port < 1 || port > 65535) fail('port_invalid', 'SSH port must be between 1 and 65535');
+    if (!['ssh', 'wsl'].includes(transport)) fail('workspace_transport_invalid', 'workspace transport must be ssh or wsl');
+    if (transport === 'ssh' && (typeof host !== 'string' || host.trim() === '' || /[\0\r\n]/u.test(host))) {
+      fail('host_invalid', 'SSH host is required');
+    }
+    if (transport === 'wsl' && (typeof wslDistribution !== 'string' || wslDistribution.trim() === ''
+        || wslDistribution.startsWith('-') || /[\0\r\n]/u.test(wslDistribution))) {
+      fail('wsl_distribution_invalid', 'a valid WSL distribution is required');
+    }
+    if (transport === 'ssh' && (!Number.isInteger(port) || port < 1 || port > 65535)) {
+      fail('port_invalid', 'SSH port must be between 1 and 65535');
+    }
     if (typeof remoteRoot !== 'string' || !isAbsolute(remoteRoot)) fail('remote_root_invalid', 'remoteRoot must be an absolute POSIX path');
-    this.host = host.trim();
+    this.transport = transport;
+    this.host = transport === 'ssh' ? host.trim() : null;
     this.username = username === null ? null : boundedText(username, 'username', 256);
-    this.port = port;
+    this.port = transport === 'ssh' ? port : 22;
     this.remoteRoot = posix.normalize(remoteRoot);
     this.sshCommand = boundedText(sshCommand, 'sshCommand', 512);
+    this.wslDistribution = transport === 'wsl' ? wslDistribution.trim() : null;
+    this.wslCommand = boundedText(wslCommand, 'wslCommand', 512);
     this.identityFile = identityFile;
     this.knownHostsFile = knownHostsFile;
     this.commandRunner = commandRunner;
@@ -400,6 +439,7 @@ export class WorkspaceConnector {
     if (kind === 'workspace.diff') return this.#diff(payload, signal, operationId);
     if (kind === 'workspace.probe') return this.#probe(payload, signal, operationId);
     if (kind === 'workspace.search') return this.#search(payload, signal, operationId);
+    if (kind === 'workspace.git_context') return this.#gitContext(payload, signal, operationId);
     return this.#profile(payload, signal, operationId);
   }
 
@@ -450,12 +490,20 @@ export class WorkspaceConnector {
     return args;
   }
 
+  #remoteArgs(remoteCommand) {
+    if (this.transport === 'wsl') {
+      return ['--distribution', this.wslDistribution, '--exec', 'bash', '-lc', remoteCommand];
+    }
+    return this.#sshArgs(remoteCommand);
+  }
+
   async #remote(remoteCommand, { input = '', signal, operationId = null, privateInvocation = false } = {}) {
-    if (signal?.aborted) fail('operation_cancelled', 'operation was cancelled before SSH started');
+    if (signal?.aborted) fail('operation_cancelled', 'operation was cancelled before workspace command started', { transport: this.transport });
     const supervisedOperationId = operationId
       ? `${operationId}:remote:${++this.remoteSequence}`
       : null;
-    const result = normalizeRunnerResult(await this.commandRunner(this.sshCommand, this.#sshArgs(remoteCommand), {
+    const command = this.transport === 'wsl' ? this.wslCommand : this.sshCommand;
+    const result = normalizeRunnerResult(await this.commandRunner(command, this.#remoteArgs(remoteCommand), {
       shell: false,
       input,
       signal,
@@ -463,21 +511,24 @@ export class WorkspaceConnector {
       operationId: supervisedOperationId,
       parentOperationId: operationId,
       supervisor: this.processSupervisor,
+      transport: this.transport,
       ...(privateInvocation ? { privateInvocation: true } : {}),
     }));
-    if (result.aborted || signal?.aborted) fail('operation_cancelled', 'operation was cancelled');
-    if (result.timedOut) fail('remote_command_timeout', 'SSH operation timed out');
-    if (result.stdout.length > MAX_OUTPUT_BYTES || result.stderr.length > MAX_OUTPUT_BYTES) fail('remote_output_limit', 'SSH operation output exceeded the configured limit');
-    if (result.exitCode === 91) fail('path_outside_workspace', 'remote path resolved outside the registered workspace root');
-    if (result.exitCode === 92) fail('path_symlink_rejected', 'remote path is a symbolic link and cannot be used by the workspace connector');
-    if (result.exitCode === 93) fail('path_not_allowed', 'remote remove target is not a regular file');
-    if (result.exitCode === 94) fail('workspace_unavailable', 'registered remote workspace is missing or outside its root');
-    if (result.exitCode === 95) fail('workspace_not_directory', 'registered remote workspace path is not a directory');
-    if (result.exitCode === 96) fail('workspace_not_readable', 'registered remote workspace is not readable');
-    if (result.exitCode === 97) fail('workspace_not_writable', 'registered remote workspace is not writable');
-    if (result.exitCode === 98) fail('workspace_not_file', 'registered remote workspace path is not a regular file');
-    if (result.exitCode === 99) fail('workspace_not_executable', 'registered remote workspace path is not executable');
-    const commandError = commandResultError(result, 'SSH operation');
+    if (result.aborted || signal?.aborted) fail('operation_cancelled', `${this.transport.toUpperCase()} operation was cancelled`, { transport: this.transport });
+    if (result.timedOut) fail('remote_command_timeout', `${this.transport.toUpperCase()} operation timed out`, { transport: this.transport });
+    if (result.stdout.length > MAX_OUTPUT_BYTES || result.stderr.length > MAX_OUTPUT_BYTES) {
+      fail('remote_output_limit', `${this.transport.toUpperCase()} operation output exceeded the configured limit`, { transport: this.transport });
+    }
+    if (result.exitCode === 91) fail('path_outside_workspace', 'remote path resolved outside the registered workspace root', { transport: this.transport });
+    if (result.exitCode === 92) fail('path_symlink_rejected', 'remote path is a symbolic link and cannot be used by the workspace connector', { transport: this.transport });
+    if (result.exitCode === 93) fail('path_not_allowed', 'remote remove target is not a regular file', { transport: this.transport });
+    if (result.exitCode === 94) fail('workspace_unavailable', 'registered remote workspace is missing or outside its root', { transport: this.transport });
+    if (result.exitCode === 95) fail('workspace_not_directory', 'registered remote workspace path is not a directory', { transport: this.transport });
+    if (result.exitCode === 96) fail('workspace_not_readable', 'registered remote workspace is not readable', { transport: this.transport });
+    if (result.exitCode === 97) fail('workspace_not_writable', 'registered remote workspace is not writable', { transport: this.transport });
+    if (result.exitCode === 98) fail('workspace_not_file', 'registered remote workspace path is not a regular file', { transport: this.transport });
+    if (result.exitCode === 99) fail('workspace_not_executable', 'registered remote workspace path is not executable', { transport: this.transport });
+    const commandError = commandResultError(result, `${this.transport === 'wsl' ? 'WSL' : 'SSH'} operation`, this.transport);
     if (commandError) throw commandError;
     return result;
   }
@@ -677,6 +728,33 @@ export class WorkspaceConnector {
     };
   }
 
+  async #gitContext(payload, signal, operationId) {
+    const path = this.#remotePath(payload.path ?? '.', { allowRoot: true });
+    const guard = this.#remoteGuard(path.full);
+    const command = `${guard} && cd "$target_real" && git rev-parse --show-toplevel && git rev-parse --verify HEAD && git branch --show-current && git remote | head -n 20 | while IFS= read -r name; do printf '%s\t%s\n' "$name" "$(git remote get-url --push -- "$name")"; done`;
+    const result = await this.#remote(command, { signal, operationId });
+    const lines = result.stdout.split(/\r?\n/u);
+    const root = lines.shift()?.trim() ?? '';
+    const head = lines.shift()?.trim() ?? '';
+    const branchValue = lines.shift()?.trim() ?? '';
+    if (!isAbsolute(root) || !/^[a-f0-9]{40,64}$/u.test(head)
+        || branchValue.length > 256 || /[\0\r\n]/u.test(branchValue)) {
+      fail('git_context_invalid', 'remote Git context response was invalid');
+    }
+    const remotes = lines.filter(Boolean).slice(0, 20).map((line) => {
+      const separator = line.indexOf('\t');
+      if (separator < 1) return null;
+      const name = line.slice(0, separator);
+      const url = line.slice(separator + 1);
+      if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u.test(name) || !url) return null;
+      return { name, url: sanitizeGitRemoteUrl(url) };
+    }).filter(Boolean);
+    return {
+      operation: 'git_context', relative_path: path.relativePath,
+      git_root: root, head, branch: branchValue || null, remotes,
+    };
+  }
+
   async #diff(payload, signal, operationId) {
     const path = payload.path ? this.#remotePath(payload.path, { allowRoot: true }) : null;
     const suffix = path ? ` -- ${shellQuote(path.full)}` : '';
@@ -720,7 +798,20 @@ export class WorkspaceConnector {
       if (modelBlank && raw === '{{model}}') continue;
       args.push(expanded);
     }
-    const command = `${shellQuote(profile.command)}${args.length > 0 ? ` ${args.map(shellQuote).join(' ')}` : ''}`;
+    const environment = Object.entries(profile.env).map(([key, raw]) => {
+      const value = raw.replaceAll(/\{\{([a-zA-Z0-9_.-]+)\}\}/gu, (match, variable) => {
+        if (!Object.hasOwn(variables, variable)) {
+          fail('profile_variable_missing', `profile ${id} requires variable ${variable}`, { profile_id: id, variable });
+        }
+        const resolved = variables[variable] === null || variables[variable] === undefined ? '' : String(variables[variable]);
+        if (resolved.length > 4096 || /[\0\r\n]/u.test(resolved)) {
+          fail('profile_variable_invalid', `profile ${id} variable ${variable} is invalid`, { profile_id: id, variable });
+        }
+        return resolved;
+      });
+      return `${key}=${shellQuote(value)}`;
+    });
+    const command = `${environment.length > 0 ? `${environment.join(' ')} ` : ''}${shellQuote(profile.command)}${args.length > 0 ? ` ${args.map(shellQuote).join(' ')}` : ''}`;
     const lock = profile.resource_lock && this.resourceLocks
       ? await this.resourceLocks.acquire({
           resourceKey: `${this.remoteRoot}:${profile.resource_lock}`,

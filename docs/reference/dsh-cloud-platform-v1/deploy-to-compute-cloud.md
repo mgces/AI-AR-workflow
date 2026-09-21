@@ -1,6 +1,6 @@
 # 迁移到计算云部署手册
 
-版本：1.2 · 日期：2026-09-15
+版本：1.3 · 日期：2026-09-16
 适用范围：`AI-AR-workflow` 当前仓库、官方 DSH Web、AR Delivery 面板、CodeAgent 探测与选择。
 
 本文给出从当前 WSL 开发环境迁移到一台 Linux 计算云主机的可执行步骤。命令中的路径、域名、用户和端口都是示例，部署时必须替换成自己的值。
@@ -579,9 +579,9 @@ product、out_dir、root markers、测试 runner 和 Gerrit 参数。缺少环�
 
 1. 云端保留 DSH、workflow manifest、审核、指标和对象存储；不要让云端直接读取用户 SSH 私钥。
 2. 用户电脑安装 Connector，主动通过 WSS 443 出站连接；用户电脑不开放公网入站端口。当前 WSS 协议已经能完成 hello、心跳、命令相关、超时、取消、重连、Origin/TLS/mTLS 策略、持久配对 token 的撤销/轮换和 ACK；启用 hub 的 `replayPending: true` 与绝对 `outboxFilePath` 后，pending/completed/failed 记录会原子写入云端文件，云端重启可按 `operation_id` 重绑或回放。生产仍需在 DSH 或反向代理实际部署证书、配置证书指纹和真实连接审计。
-3. Connector 启动前探测本地 CodeAgent 的命令、版本和固定 adapter，并把结果随 hello 发送；“探测存在”与“允许执行”分开记录。页面刷新会再次请求 `probe`，不会使用云主机的 PATH 冒充用户电脑状态。
-4. Connector 只接收固定 schema 的 `probe`、`agent.start`、`agent.status`、`agent.cancel`，不接收任意 shell 字符串或绝对本地路径。`agent.start` 只允许已发现的 Claude/OpenCode/Codex/自定义 argv adapter；SSHFS 模式把相对路径映射到挂载根，remote-tools 模式把相对路径映射到受限 MCP broker。
-5. 当前 Workspace Gateway 在 SSH 主机执行 `workspace.inspect/probe/read/write/list/search/hash/read_binary/diff/exec_profile` 白名单操作；路径解析、CAS hash 和资源锁在 Gateway 边界完成。AR gate 与远端 CodeAgent profile 通过固定 `exec_profile` 调用，不能把模型提供的脚本或命令直接传给 SSH。P0 先用 `workspace.probe` 解析 `remoteRoot` 并验证目录、读权限和写权限；Gateway `/healthz` 通过但 probe 失败时仍阻断。`hash` 只回传二进制产物的 sha256 与字节数，`read_binary` 只在大小上限内返回 base64，官方下载路由会二次校验后返回原始字节。Connector 的 `remote_tools` 模式会以一次性 MCP socket 提供 `read/list/search/write/diff/hash/read_binary` 和管理员登记的 profile；该模式不复制源码，P4–P8 gate 仍走 SSH Gateway。
+3. Connector 启动前探测本地 CodeAgent 的命令、版本和固定 adapter，并执行固定只读命令 `hdc list targets`；Agent 与设备探测结果随 hello 发送到云端。页面刷新会再次请求 `probe`，不会使用云主机的 PATH 冒充用户电脑状态。可选设备 relay 把本机 HDC server 经 SSH reverse forward 暴露给代码主机的 loopback profile。
+4. Connector 只接收固定 schema 的 `probe`、`device.probe`、`agent.start`、`agent.status`、`agent.cancel`。`device.probe` 不接受云端命令参数；Connector 不接收任意 shell 字符串或绝对本地路径。`agent.start` 只允许已发现的 Claude/OpenCode/Codex/自定义 argv adapter；SSHFS 模式把相对路径映射到挂载根，remote-tools 模式把相对路径映射到受限 MCP broker。
+5. 当前 Workspace Gateway 在 SSH 主机执行 `workspace.inspect/probe/read/write/list/search/hash/read_binary/diff/exec_profile` 白名单操作；路径解析、CAS hash 和资源锁在 Gateway 边界完成。AR gate 与远端 CodeAgent profile 通过固定 `exec_profile` 调用，不能把模型提供的脚本或命令直接传给 SSH。P0 先用 `workspace.probe` 解析 `remoteRoot` 并验证目录、读权限和写权限；Gateway `/healthz` 通过但 probe 失败时仍阻断。`hash` 只回传二进制产物的 sha256 与字节数，`read_binary` 只在大小上限内返回 base64，官方下载路由会二次校验后返回原始字节。Connector 的 `remote_tools` 模式会以一次性 MCP socket 提供 `read/list/search/write/diff/hash/read_binary` 和管理员登记的 profile；该模式不复制源码，P4–P8 gate 仍走 SSH Gateway。启用设备 relay 时，SSH 端固定 profile 会探测同一台本机 USB 设备。
 6. 云端为每个 run 固定 `tenant_id/workspace_id/agent_profile_id/environment_profile_digest`，阶段切换或环境切换时生成新 revision。
 7. 本地 Agent 进程结束、断线或恢复都要通过 Connector/Supervisor 回执；SSH channel 断开不等于构建或发布停止。Remote executor 取消时会发送 `operation.cancel`，Connector operation journal 会按 `operation_id` 回放完成结果并把重启中断的 operation 标为 `unknown`；服务重启后仍需根据 revision/lease 做 reconcile。
 8. 云端只接受 Gateway 签名的 gate/consent/完成回执；CodeAgent 文本不能推进 P0–P8。若 gate 仍只在云端本地路径执行，远端工作区只能用于实验，必须先补远端 gate profile 或安全挂载。
@@ -600,8 +600,8 @@ prompt 只会让 Agent 产生不可执行的命令，或把文件写到错误主
 |---|---|---|---|
 | DSH 与代码同机 | 云主机本地绝对路径 | Agent、Python gate、编译和产物共享文件系统，速度最好 | 单云节点直接使用 |
 | Gateway 远端 profile | SSH 代码主机的 `remoteRoot` | 不复制源码；Gateway 用固定 profile 在代码主机启动 CodeAgent 和 gate，云端只编排、验签和展示 | 计算云 + 用户 SSH 代码的推荐方式 |
-| 本地 Connector + SSHFS/受控挂载 | 远端目录挂载到本地路径；本地 Connector 启动 CodeAgent，Gateway 运行 gate | 大仓扫描、软链接、权限、断线和锁恢复会受挂载影响；必须同时保持 Connector 与 Gateway 在线 | 当前可用，可跑完整 P0–P8；按仓库实测性能决定是否改用 Gateway 远端 profile |
-| 本地 Connector + remote-tools MCP | 本地 Connector 启动 CodeAgent；CodeAgent 通过一次性 MCP socket 调用 SSH read/search/write/diff 和登记 profile；Gateway 运行 gate | 不复制源码、不需要 FUSE；每次工具调用有网络往返，CLI 配置格式需匹配 | 当前可用，可跑完整 P0–P8；配置见 `workspace-gateway/examples/local-connector-remote-tools.json` |
+| 本地 Connector + SSHFS/受控挂载 | 远端目录挂载到本地路径；本地 Connector 启动 CodeAgent，Gateway 运行 gate | 大仓读写、软链接、权限、断线和锁恢复会受挂载影响；必须同时保持 Connector 与 Gateway 在线 | 可覆盖 P0–P8；P6/P7 仍以设备隧道连通和真实 gate 报告为准 |
+| 本地 Connector + remote-tools MCP | 本地 Connector 启动 CodeAgent；CodeAgent 通过一次性 MCP socket 调用 SSH read/search/write/diff 和登记 profile；Gateway 运行 gate | 不复制源码、不需要 FUSE；每次工具调用有网络往返，CLI 配置格式需匹配 | 可覆盖 P0–P8；P6/P7 仍以设备隧道连通和真实 gate 报告为准；配置见 `workspace-gateway/examples/local-connector-remote-tools.json` |
 
 推荐的 Gateway 方式不需要让本地 CodeAgent“费劲地改 SSH 文件”：在代码端安装 Claude Code/OpenCode，
 完成各自原生认证；在 `DSH_GATEWAY_PROFILES_FILE` 指向的 JSON 中登记 `codeagent.claude`、`codeagent.opencode`
@@ -615,7 +615,9 @@ SSHFS 模式拒绝没有 SSH 绑定的普通本地目录，避免 CodeAgent 修�
 云端 patch 同时启用 `localConnector` 和 `workspaceGateway`，不要把 `ssh://` URL 传给 AR。挂载断开、文件
 hash 变化或权限不一致时，P0/P4/P6/P8 会停在阻断或 `needs_reconcile`，不能用重新上传文件绕过源码快照和资源锁。
 当前仓库的远端 `workspace.read/write/list/search/hash/read_binary/diff/exec_profile` 能力用于 Gateway 和
-remote-tools 模式；云端不会下发任意 shell。remote-tools 模式的本地 Connector 配置不需要 `local_root`，
+remote-tools 模式；云端不会下发任意 shell。要让 P6/P7 使用只连在用户电脑上的设备，按下节配置可选
+HDC reverse forward；未启用时，设备必须直接对 SSH gate 主机可见。
+remote-tools 模式的本地 Connector 配置不需要 `local_root`，
 但必须提供 `workspace_access: "remote_tools"`、SSH host/known_hosts/identity、登记的 profile 和目标 CLI
 对应的 MCP 配置格式。P4–P8 的 gate、设备与发布仍必须由 SSH Workspace Gateway 执行。
 
@@ -623,8 +625,69 @@ canonical patch 默认把 `localConnector.enabled` 设为 `false`，这样只部
 缺少用户 token 阻断官方 DSH 启动。要实现“本地网页调用本地 CodeAgent”，先在 `/etc/dsh/dsh.env` 注入
 `DSH_CONNECTOR_TOKEN`，把 patch 改为 `localConnector.enabled: true`，然后在用户电脑启动 Connector，配置同一
 `workspace_id=workspace-1`、`remote_root=/srv/project` 和 token。Connector 主动通过 WSS 连接云端；浏览器不直接
-执行本机命令，云端只下发固定的 `agent.start/status/cancel` 意图。连接成功后页面的 CodeAgent 来源显示
+执行本机命令，云端只下发固定的 Agent 意图和 `device.probe`（本机只执行 `hdc list targets`）。连接成功后页面的 CodeAgent 来源显示
 `local-connector`，本地 Agent 修改会通过 SSHFS 或 remote-tools 作用到相同代码根，P4–P8 仍由 Gateway 编译和验收。
+
+首次 Windows 安装包会把 Connector 放在当前用户目录；若机器没有 Node.js 24+，安装器从官方 Node.js 发布源下载
+固定版本的 Windows x64/ARM64 压缩包，先校验固定 SHA-256，再把 `node.exe` 与许可证放入 Connector 私有目录，
+不要求管理员权限，也不修改系统 PATH。客户端需能访问 `nodejs.org`；无法访问时安装器会给出明确错误，用户可先安装
+Node.js 24+ 再重试。WSL/Linux 便携 ZIP 仍由用户自行准备 Node.js 24+。
+
+生产部署必须将 `localConnector.publicBaseUrl` 设置成用户浏览器可访问的 DSH 公开 origin，例如
+`https://dsh.example.com`（只填 scheme + host + 可选端口，不含路径）。Connector 安装包据此固定生成 `wss://` 地址，
+不依赖代理传来的任意 `Host` 或 `X-Forwarded-Proto`。未部署公开 TLS 时可在受信任的内网环境设置 `http://...`；
+公网服务必须使用 HTTPS/WSS，并由反向代理提供 TLS。修改 DSH plugin patch 后需要重启 DSH 服务，再从网页下载新版安装器。
+
+### 11.4 本机 USB 设备经 SSH 隧道供远端 gate 使用
+
+仅当设备插在运行 Connector 的电脑上时需要此配置。隧道两端都绑定 `127.0.0.1`，不会在本机或 SSH 主机的
+公网接口开放 HDC。实际执行 P6/P7 的仍是 SSH Workspace Gateway 上的固定 Python gate；Gateway 通过
+`HDC_HOST_OVERRIDE` 访问本机 HDC server。Connector 先复用配置端口上的现有服务；没有服务时才启动并负责关闭
+一个前台实例，遵守 OpenHarmony HDC 每个运行环境只允许一个服务实例的限制。设备连通预检会比较 Connector 与 SSH 端
+返回的唯一 serial；不一致、找不到设备或隧道掉线都会阻断。
+
+1. 确认 Connector 的 `ssh.host`、用户名、端口、密钥与 `workspaceGateway.remoteRoot` 对应同一台代码主机，
+   本机安装可执行的 `hdc`/`ssh`，目标设备在本机 `hdc list targets` 中处于 connected。
+2. 在本机 Connector JSON 中启用 relay，分别配置本机 HDC server 端口和 SSH 远端 loopback forward 端口：本机端口必须与当前 HDC 服务端口一致，远端端口需在 SSH 主机上未被占用。
+
+```json
+"device_relay": {
+  "enabled": true,
+  "hdc_command": "hdc",
+  "local_server_port": 8710,
+  "remote_port": 18710
+}
+```
+
+`local_server_port` 必须与当前 HDC 服务端口一致；默认使用 `8710`，若已设置 `OHOS_HDC_SERVER_PORT`，省略该项即可跟随环境变量。
+如果本机已有 HDC 服务正在运行，Connector 会复用且不会在退出时关闭它；若配置端口冲突或探测不到服务，relay 会失败关闭。
+
+3. 在云端 `cordis.cloud.patch.yml` 中设置同一远端端口，并确保 `workspaceGateway.deviceProfile` 指向设备探测 profile：
+
+```yaml
+localConnector:
+  enabled: true
+  deviceRelay:
+    enabled: true
+    remotePort: 18710
+workspaceGateway:
+  deviceProfile: 'debug.device_probe'
+```
+
+4. 在 `DSH_GATEWAY_PROFILES_FILE` 所引用的 Gateway profiles 中，为 `ar.delivery.init`、`ar.delivery.validate`、
+   `ar.delivery.advance` 和 `debug.device_probe` 配置：
+
+```json
+"env": { "HDC_HOST_OVERRIDE": "{{device_hdc_host_override}}" }
+```
+
+模板 `workspace-gateway/examples/ar-delivery-profiles.json` 已包含该环境映射。profile 环境变量由 Gateway
+按固定 schema 展开；不要把任意 shell 或用户输入拼入命令。SSH 服务端必须允许 remote forwarding（例如受控配置
+`AllowTcpForwarding remote`，可用 `PermitListen 127.0.0.1:18710` 限定端口），SSH 主机密钥通过 `known_hosts` 校验。
+
+Connector 启动后应看到 relay `ready` 以及 `server_mode=reused|started`；云端 **设备 / 产物调试** 应显示 `local_connector_relay`、相同 serial、
+远端 loopback endpoint 和 `device_probe_persistence=persisted`。这只证明转发链路和设备身份一致；完整 P6/P7
+仍要运行实际 gate 并检查真实测试报告。当前开发环境没有 USB 真机，因此该真实硬件闭环尚未验收。
 
 ## 12. RAG 在云上的迁移边界
 

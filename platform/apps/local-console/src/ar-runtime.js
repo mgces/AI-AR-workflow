@@ -8,6 +8,8 @@ const MAX_ARTIFACTS = 500;
 const MAX_ARTIFACT_BYTES = 4 * 1024 * 1024;
 const MAX_INLINE_BYTES = 512 * 1024;
 const MAX_HUMAN_INPUT_BYTES = 256 * 1024;
+const MAX_DEVICE_PROBE_TARGETS = 128;
+const MAX_DEVICE_PROBE_HISTORY = 1000;
 const MAX_FAILURE_CODE_LENGTH = 128;
 const MAX_FAILURE_MESSAGE_BYTES = 4096;
 const MAX_FAILURE_DETAILS_BYTES = 16 * 1024;
@@ -50,6 +52,46 @@ function id(prefix) {
 
 function operationKey(prefix, value) {
   return `${prefix}-${sha256(JSON.stringify(value)).slice(0, 32)}`;
+}
+
+function ensureDeviceProbeTable(db) {
+  db.exec(`CREATE TABLE IF NOT EXISTS dsh_device_probe_events (
+    id TEXT PRIMARY KEY,
+    dedupe_key TEXT NOT NULL UNIQUE,
+    workspace_id TEXT NOT NULL,
+    device_id TEXT,
+    status TEXT NOT NULL,
+    source TEXT NOT NULL,
+    command TEXT NOT NULL,
+    targets_json TEXT NOT NULL,
+    duration_ms INTEGER,
+    reason TEXT,
+    device_relay_json TEXT,
+    local_targets_json TEXT NOT NULL DEFAULT '[]',
+    checked_at TEXT NOT NULL,
+    received_at TEXT NOT NULL
+  );`);
+  const columns = new Set(db.prepare('PRAGMA table_info(dsh_device_probe_events)').all().map((row) => row.name));
+  if (!columns.has('device_relay_json')) db.exec('ALTER TABLE dsh_device_probe_events ADD COLUMN device_relay_json TEXT');
+  if (!columns.has('local_targets_json')) db.exec("ALTER TABLE dsh_device_probe_events ADD COLUMN local_targets_json TEXT NOT NULL DEFAULT '[]'");
+}
+
+function deviceProbeRow(row) {
+  return {
+    id: row.id,
+    workspace_id: row.workspace_id,
+    device_id: row.device_id,
+    status: row.status,
+    source: row.source,
+    command: row.command,
+    targets: safeJson(row.targets_json),
+    local_targets: safeJson(row.local_targets_json) ?? [],
+    device_relay: safeJson(row.device_relay_json),
+    duration_ms: row.duration_ms,
+    reason: row.reason,
+    checked_at: row.checked_at,
+    received_at: row.received_at,
+  };
 }
 
 function hostRegistrationKey({ bindingId, hostKind, hostVersion, executionMode, capabilities, capabilitySource }) {
@@ -131,6 +173,12 @@ function safeJson(value) {
   } catch {
     return { raw: value };
   }
+}
+
+function safeHdcRelayEndpoint(value) {
+  const match = typeof value === 'string' ? /^127\.0\.0\.1:([0-9]{1,5})$/u.exec(value) : null;
+  const port = match ? Number(match[1]) : 0;
+  return match && Number.isSafeInteger(port) && port >= 1024 && port <= 65_535 ? value : null;
 }
 
 function errorFromTool(tool, response) {
@@ -338,6 +386,101 @@ export class ArRuntimeService {
     });
     this.hostRegistered = true;
     return result;
+  }
+
+  recordDeviceProbe({ workspaceId, deviceId = null, probe = null } = {}) {
+    const db = this.runtime.store?.db;
+    if (!db) throw Object.assign(new Error('runtime store is unavailable'), { code: 'runtime_tool_unavailable' });
+    if (typeof workspaceId !== 'string' || workspaceId.trim() === '' || workspaceId.length > 160
+        || /[\0\r\n]/u.test(workspaceId)) {
+      throw Object.assign(new Error('device probe workspace_id is invalid'), { code: 'invalid_input' });
+    }
+    if (deviceId !== null && (typeof deviceId !== 'string' || deviceId.trim() === '' || deviceId.length > 160
+        || /[\0\r\n]/u.test(deviceId))) {
+      throw Object.assign(new Error('device probe device_id is invalid'), { code: 'invalid_input' });
+    }
+    if (!probe || typeof probe !== 'object' || Array.isArray(probe)) {
+      throw Object.assign(new Error('device probe result is required'), { code: 'invalid_input' });
+    }
+    const checkedAt = typeof probe.checked_at === 'string' && Number.isFinite(Date.parse(probe.checked_at))
+      ? new Date(probe.checked_at).toISOString() : null;
+    if (!checkedAt) throw Object.assign(new Error('device probe checked_at is invalid'), { code: 'invalid_input' });
+    const status = typeof probe.status === 'string' && probe.status.length <= 64 ? probe.status : 'unknown';
+    const source = typeof probe.source === 'string' && probe.source.length <= 64 ? probe.source : 'unknown';
+    const command = typeof probe.command === 'string' && probe.command.trim() !== ''
+      ? probe.command.split(/[\\/]/u).at(-1).slice(0, 128) : 'hdc';
+    const targets = (Array.isArray(probe.targets) ? probe.targets : []).slice(0, MAX_DEVICE_PROBE_TARGETS)
+      .map((target) => {
+        const idValue = typeof target === 'string' ? target : target?.id;
+        const stateValue = typeof target === 'object' && target !== null ? target.state : null;
+        if (typeof idValue !== 'string' || idValue.trim() === '' || idValue.length > 256 || /[\0\r\n]/u.test(idValue)) return null;
+        return {
+          id: idValue,
+          ...(typeof stateValue === 'string' && stateValue.length <= 64 && !/[\0\r\n]/u.test(stateValue)
+            ? { state: stateValue } : {}),
+        };
+      }).filter(Boolean);
+    const durationMs = Number.isSafeInteger(probe.duration_ms) && probe.duration_ms >= 0
+      ? Math.min(probe.duration_ms, 30_000) : null;
+    const reason = typeof probe.reason === 'string' && /^[a-zA-Z0-9_.:-]{1,128}$/u.test(probe.reason)
+      ? probe.reason : null;
+    const relayValue = probe.device_relay && typeof probe.device_relay === 'object' && !Array.isArray(probe.device_relay)
+      ? {
+          enabled: probe.device_relay.enabled === true,
+          status: typeof probe.device_relay.status === 'string' && probe.device_relay.status.length <= 64
+            ? probe.device_relay.status : 'unknown',
+          server_mode: ['started', 'reused'].includes(probe.device_relay.server_mode)
+            ? probe.device_relay.server_mode : null,
+          local_endpoint: safeHdcRelayEndpoint(probe.device_relay.local_endpoint),
+          remote_endpoint: safeHdcRelayEndpoint(probe.device_relay.remote_endpoint),
+          reason: typeof probe.device_relay.reason === 'string'
+              && /^[a-zA-Z0-9_.:-]{1,128}$/u.test(probe.device_relay.reason)
+            ? probe.device_relay.reason : null,
+        }
+      : null;
+    const localTargets = (Array.isArray(probe.local_targets) ? probe.local_targets : []).slice(0, MAX_DEVICE_PROBE_TARGETS)
+      .map((target) => {
+        const idValue = typeof target === 'string' ? target : target?.id;
+        const stateValue = typeof target === 'object' && target !== null ? target.state : null;
+        if (typeof idValue !== 'string' || idValue.trim() === '' || idValue.length > 256 || /[\0\r\n]/u.test(idValue)) return null;
+        return {
+          id: idValue,
+          ...(typeof stateValue === 'string' && stateValue.length <= 64 && !/[\0\r\n]/u.test(stateValue)
+            ? { state: stateValue } : {}),
+        };
+      }).filter(Boolean);
+    const dedupeKey = sha256(JSON.stringify({ workspaceId, deviceId, checkedAt, source }));
+    const probeId = `device-probe-${dedupeKey.slice(0, 40)}`;
+    ensureDeviceProbeTable(db);
+    const receivedAt = now();
+    db.prepare(`INSERT OR IGNORE INTO dsh_device_probe_events
+      (id, dedupe_key, workspace_id, device_id, status, source, command, targets_json,
+       duration_ms, reason, device_relay_json, local_targets_json, checked_at, received_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(probeId, dedupeKey, workspaceId, deviceId, status, source, command,
+        JSON.stringify(targets), durationMs, reason, relayValue ? JSON.stringify(relayValue) : null,
+        JSON.stringify(localTargets), checkedAt, receivedAt);
+    db.prepare(`DELETE FROM dsh_device_probe_events WHERE workspace_id = ? AND id NOT IN (
+      SELECT id FROM dsh_device_probe_events WHERE workspace_id = ?
+      ORDER BY checked_at DESC, received_at DESC LIMIT ?
+    )`).run(workspaceId, workspaceId, MAX_DEVICE_PROBE_HISTORY);
+    const row = db.prepare('SELECT * FROM dsh_device_probe_events WHERE id = ?').get(probeId);
+    return deviceProbeRow(row);
+  }
+
+  listDeviceProbes({ workspaceId, limit = 20 } = {}) {
+    const db = this.runtime.store?.db;
+    if (!db) throw Object.assign(new Error('runtime store is unavailable'), { code: 'runtime_tool_unavailable' });
+    if (typeof workspaceId !== 'string' || workspaceId.trim() === '' || workspaceId.length > 160
+        || /[\0\r\n]/u.test(workspaceId)) {
+      throw Object.assign(new Error('device probe workspace_id is invalid'), { code: 'invalid_input' });
+    }
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
+      throw Object.assign(new Error('device probe history limit is invalid'), { code: 'invalid_input' });
+    }
+    ensureDeviceProbeTable(db);
+    return db.prepare(`SELECT * FROM dsh_device_probe_events WHERE workspace_id = ?
+      ORDER BY checked_at DESC, received_at DESC LIMIT ?`).all(workspaceId, limit).map(deviceProbeRow);
   }
 
   async start({

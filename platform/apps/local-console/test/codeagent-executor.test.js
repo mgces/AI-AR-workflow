@@ -141,6 +141,30 @@ test('executor can run an official DSH provider through an injected provider ada
   }
 });
 
+test('executor uses an explicit analysis prompt without the AR scheduler wrapper', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-executor-analysis-'));
+  try {
+    let receivedPrompt = null;
+    const executor = new LocalCodeAgentExecutor({
+      providerRunner: async ({ prompt }) => {
+        receivedPrompt = prompt;
+        return { output: 'analysis complete' };
+      },
+    });
+    await executor.run({
+      definition: { id: 'claude-code', kind: 'official-provider', provider: 'claude-code' },
+      context: {
+        run_id: 'ai-analysis', attempt_id: 'ai-attempt', phase: 'AI', role: 'diagnostician',
+        workspace_root: root, pipeline_dir: join(root, '.dsh', 'ai-analysis'),
+        analysis_mode: true, prompt_override: '只返回诊断结论。',
+      },
+    });
+    assert.equal(receivedPrompt, '只返回诊断结论。');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('executor preserves partial usage and elapsed time when a CodeAgent exits unsuccessfully', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dsh-executor-failure-'));
   try {
@@ -283,6 +307,7 @@ test('executor loads remote-tools MCP through each CLI native configuration cont
     assert.equal(captured.includes('--config'), false);
     assert.equal(captured.includes('--sandbox'), true);
     assert.equal(captured.includes('read-only'), true);
+    assert.equal(captured.includes('--skip-git-repo-check'), true);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

@@ -28,6 +28,8 @@ function safeSegment(value, field, fallback = 'unknown') {
 }
 
 function promptFor(context) {
+  if (context?.analysis_mode === true && typeof context.prompt_override === 'string'
+      && context.prompt_override.trim() !== '') return context.prompt_override.trim();
   const constraints = Array.isArray(context.constraints) ? context.constraints : [];
   const config = context.config && typeof context.config === 'object' ? context.config : {};
   const environment = context.environment_profile ?? config.environment ?? 'unresolved';
@@ -48,6 +50,18 @@ function promptFor(context) {
 
 function numeric(value) {
   return Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+function normalizeHdcHostOverride(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const match = typeof value === 'string' ? /^127\.0\.0\.1:([0-9]{1,5})$/u.exec(value) : null;
+  const port = match ? Number(match[1]) : 0;
+  if (!match || !Number.isSafeInteger(port) || port < 1024 || port > 65_535) {
+    throw Object.assign(new Error('deviceHdcHostOverride must be loopback on a non-privileged port'), {
+      code: 'remote_device_relay_config_invalid',
+    });
+  }
+  return value;
 }
 
 function usageFrom(value) {
@@ -165,7 +179,8 @@ function authorityForRun(base, context, payload) {
 }
 
 export class RemoteCodeAgentExecutor {
-  constructor({ gateway, remoteRoot, authorityContext, signature = null, sign = null, profileByAdapter = PROFILE_BY_ADAPTER } = {}) {
+  constructor({ gateway, remoteRoot, authorityContext, signature = null, sign = null, profileByAdapter = PROFILE_BY_ADAPTER,
+    deviceHdcHostOverride = null } = {}) {
     if (!gateway || typeof gateway.execute !== 'function') throw new TypeError('gateway.execute is required');
     if (typeof remoteRoot !== 'string' || !posix.isAbsolute(remoteRoot)) throw new TypeError('remoteRoot must be an absolute POSIX path');
     if (!authorityContext || typeof authorityContext !== 'object') throw new TypeError('authorityContext is required');
@@ -177,6 +192,7 @@ export class RemoteCodeAgentExecutor {
     this.signature = signature;
     this.sign = sign;
     this.profileByAdapter = { ...profileByAdapter };
+    this.deviceHdcHostOverride = normalizeHdcHostOverride(deviceHdcHostOverride);
   }
 
   async run({ definition, context, signal } = {}) {
@@ -210,6 +226,7 @@ export class RemoteCodeAgentExecutor {
         variables: {
           run_id: String(context?.run_id ?? ''), attempt_id: attemptId,
           phase, role: String(context?.role ?? ''), model: String(definition?.model ?? context?.model ?? ''),
+          device_hdc_host_override: this.deviceHdcHostOverride ?? '',
           workspace_root: workspaceRoot, pipeline_dir: pipelineDir,
           workspace_path: workspacePath, pipeline_path: pipelinePath,
           prompt_file: posix.join(this.remoteRoot, promptPath), prompt_file_relative: promptPath,

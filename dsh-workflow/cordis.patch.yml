@@ -8,8 +8,33 @@
         defaultArPath: 'docs/reference/dsh-cloud-platform-v1/examples/ar-delivery.workflow.json'
         workspaceId: 'wsl-local'
         workflowId: 'ar-delivery'
-# This deployment uses the local AR workbench and Claude Code child provider.
-# It does not require the DeepSeek API-key onboarding dialog.
+        requireLocalConnector: true
+        buildExecution: true
+        deviceAccess: true
+        localConnector:
+          enabled: true
+          workspaceId: 'wsl-local'
+          remoteRoot: '/home/mgces/code/AI-AR-workflow'
+          token: '${DSH_CONNECTOR_TOKEN}'
+          path: '/v1/connect'
+          requireTls: false
+          outboxFilePath: '/tmp/dsh-ohos-official/connector-outbox.json'
+          deviceProfile: 'debug.device_probe'
+          deviceRelay:
+            enabled: true
+            remotePort: 18710
+          capabilities:
+            build_execution: true
+            device_access: true
+          deliveryProfiles:
+            init: 'ar.delivery.init'
+            inspect: 'ar.delivery.inspect'
+            validate: 'ar.delivery.validate'
+            advance: 'ar.delivery.advance'
+            consent: 'ar.delivery.consent'
+            failureSnapshot: 'ar.delivery.failure_snapshot'
+# This deployment requires a user-hosted Connector. Cloud-hosted CodeAgents are
+# deliberately fail-closed; the provider remains installed only for DSH compatibility.
 - id: ui-settings-models
   name: '@deepseek-ai/dsh-client-ui-settings-models'
   disabled: true

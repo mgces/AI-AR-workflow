@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, test } from 'node:test';
 import { createHash } from 'node:crypto';
 import {
@@ -47,21 +50,39 @@ function fakeRunner(calls) {
 describe('WorkspaceConnector', () => {
   test('default command runner terminates the whole local process group on abort', async () => {
     const controller = new AbortController();
+    const tempDir = await mkdtemp(join(tmpdir(), 'dsh-workspace-connector-'));
+    const pidFile = join(tempDir, 'grandchild.pid');
     const childScript = [
       "const { spawn } = require('node:child_process');",
+      "const { writeFileSync } = require('node:fs');",
       "const child = spawn('/bin/sleep', ['30']);",
-      "process.stdout.write(String(child.pid) + '\\n');",
+      `writeFileSync(${JSON.stringify(pidFile)}, String(child.pid));`,
       'setInterval(() => {}, 1000);',
     ].join('');
     const pending = defaultCommandRunner(process.execPath, ['-e', childScript], {
       signal: controller.signal,
       timeoutMs: 10_000,
     });
-    setTimeout(() => controller.abort(), 100);
-    const result = await pending;
+    let grandchildPid = null;
+    let result;
+    try {
+      const deadline = Date.now() + 5_000;
+      while (Date.now() < deadline && !Number.isInteger(grandchildPid)) {
+        try {
+          const candidate = Number(await readFile(pidFile, 'utf8'));
+          if (Number.isInteger(candidate) && candidate > 0) grandchildPid = candidate;
+        } catch { /* wait for the child process to publish its PID */ }
+        if (!Number.isInteger(grandchildPid)) await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      assert.ok(Number.isInteger(grandchildPid) && grandchildPid > 0, 'grandchild should start before abort');
+      controller.abort();
+      result = await pending;
+    } finally {
+      controller.abort();
+      await pending.catch(() => {});
+      await rm(tempDir, { recursive: true, force: true });
+    }
     assert.equal(result.aborted, true);
-    const grandchildPid = Number(result.stdout.trim());
-    assert.ok(Number.isInteger(grandchildPid) && grandchildPid > 0);
     await new Promise((resolve) => setTimeout(resolve, 50));
     assert.throws(() => process.kill(grandchildPid, 0), /ESRCH/u);
   });
@@ -133,6 +154,56 @@ describe('WorkspaceConnector', () => {
     assert.equal(calls.every((call) => call.options.shell === false), true);
   });
 
+  test('executes workspace operations directly in the selected WSL distribution', async () => {
+    const calls = [];
+    const connector = new WorkspaceConnector({
+      transport: 'wsl',
+      wslDistribution: 'Ubuntu 24.04',
+      wslCommand: 'wsl.exe',
+      port: 0,
+      remoteRoot: '/home/builder/project',
+      authorityContext: context,
+      commandRunner: fakeRunner(calls),
+    });
+
+    const result = await connector.execute(envelope({ operation_kind: 'workspace.read', path: 'README.md' }));
+
+    assert.equal(result.status, 'completed');
+    assert.equal(result.result.content, 'ok\n');
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].command, 'wsl.exe');
+    assert.deepEqual(calls[0].args.slice(0, 5), ['--distribution', 'Ubuntu 24.04', '--exec', 'bash', '-lc']);
+    assert.match(calls[0].args[5], /realpath -e/u);
+    assert.match(calls[0].args[5], /cat -- "\$target_real"/u);
+    assert.equal(calls[0].args.includes('--'), false);
+    assert.equal(calls[0].options.shell, false);
+  });
+
+  test('reads bounded Git context without exposing credentials from remote URLs', async () => {
+    const calls = [];
+    const connector = new WorkspaceConnector({
+      host: 'code.example.test', remoteRoot: '/code', authorityContext: context,
+      commandRunner: async (command, args, options = {}) => {
+        calls.push({ command, args, options });
+        return {
+          stdout: '/code\n0123456789abcdef0123456789abcdef01234567\nfeature/ar\norigin\thttps://token-user:secret@gitcode.com/owner/project.git\n',
+          stderr: '', exitCode: 0,
+        };
+      },
+    });
+    const result = await connector.execute(envelope({
+      operation_kind: 'workspace.git_context', path: '.',
+    }, { operation_id: 'operation-git-context', nonce: 'nonce-git-context' }));
+    assert.equal(result.status, 'completed');
+    assert.equal(result.result.operation, 'git_context');
+    assert.equal(result.result.branch, 'feature/ar');
+    assert.equal(result.result.head, '0123456789abcdef0123456789abcdef01234567');
+    assert.deepEqual(result.result.remotes, [{ name: 'origin', url: 'https://gitcode.com/owner/project.git' }]);
+    assert.doesNotMatch(JSON.stringify(result), /secret|token-user/u);
+    assert.match(calls[0].args.at(-1), /git rev-parse/u);
+    assert.match(calls[0].args.at(-1), /git remote get-url --push/u);
+  });
+
   test('initializes the remote target for a workspace.write of a new file', async () => {
     const calls = [];
     const connector = new WorkspaceConnector({
@@ -172,6 +243,43 @@ describe('WorkspaceConnector', () => {
     assert.equal(supervised[0].persistArgs, false);
     assert.equal(supervised[0].persistOutput, false);
     assert.ok(supervised[0].args.some((arg) => arg.includes('private task text')));
+  });
+
+  test('expands registered profile environment templates into a quoted remote invocation', async () => {
+    const calls = [];
+    const connector = new WorkspaceConnector({
+      host: 'code.example.test', remoteRoot: '/code', authorityContext: context,
+      commandRunner: fakeRunner(calls),
+      profiles: {
+        device_probe: {
+          command: '/usr/local/bin/dsh-device-probe', args: [],
+          env: { HDC_HOST_OVERRIDE: '{{device_hdc_host_override}}' },
+        },
+      },
+    });
+    const result = await connector.execute(envelope({
+      operation_kind: 'workspace.exec_profile', profile_id: 'device_probe',
+      variables: { device_hdc_host_override: '127.0.0.1:18710' },
+    }, { operation_id: 'operation-device-probe', nonce: 'nonce-device-probe' }));
+    assert.equal(result.status, 'completed');
+    assert.match(calls.at(-1).args.at(-1), /HDC_HOST_OVERRIDE='127\.0\.0\.1:18710' '\/usr\/local\/bin\/dsh-device-probe'/u);
+  });
+
+  test('rejects invalid profile environment names and missing environment variables', async () => {
+    assert.throws(() => new WorkspaceConnector({
+      host: 'code.example.test', remoteRoot: '/code', authorityContext: context,
+      profiles: { bad: { command: 'hdc', env: { 'LD_PRELOAD;rm': '/tmp/x' } } },
+    }), (error) => error.code === 'profile_invalid');
+
+    const connector = new WorkspaceConnector({
+      host: 'code.example.test', remoteRoot: '/code', authorityContext: context,
+      profiles: { device_probe: { command: 'hdc', env: { HDC_HOST_OVERRIDE: '{{device_hdc_host_override}}' } } },
+      commandRunner: fakeRunner([]),
+    });
+    await assert.rejects(connector.execute(envelope({
+      operation_kind: 'workspace.exec_profile', profile_id: 'device_probe', variables: {},
+    }, { operation_id: 'operation-device-probe-missing', nonce: 'nonce-device-probe-missing' })),
+    (error) => error.code === 'profile_variable_missing');
   });
 
   test('authority.inspect includes redacted supervised process state', async () => {

@@ -107,6 +107,41 @@ test('cloud ConnectorCodeAgentExecutor cancels a local process after a response 
   assert.deepEqual(calls, ['agent.start', 'agent.cancel']);
 });
 
+test('cloud ConnectorCodeAgentExecutor preserves local diagnostic details for repair guidance', async () => {
+  const executor = new ConnectorCodeAgentExecutor({
+    connector: {
+      async request() {
+        throw Object.assign(new Error('CodeAgent exited with 1'), {
+          code: 'codeagent_failed',
+          details: {
+            operation_id: 'diagnostic-attempt',
+            agent_id: 'codex',
+            exit_code: 1,
+            diagnostic: 'Not inside a trusted directory and --skip-git-repo-check was not specified.',
+          },
+        });
+      },
+    },
+    workspaceId: 'workspace-1', remoteRoot: '/srv/code',
+  });
+
+  await assert.rejects(
+    executor.run({
+      definition: { id: 'codex', adapter: 'codex-cli' },
+      context: { run_id: 'r', attempt_id: 'diagnostic-attempt', phase: 'AI', role: 'diagnostician',
+        workspace_root: '/srv/code', pipeline_dir: '/srv/code/pipeline' },
+    }),
+    (error) => {
+      assert.equal(error.code, 'codeagent_failed');
+      assert.equal(error.details.operation_id, 'diagnostic-attempt');
+      assert.equal(error.details.agent_id, 'codex');
+      assert.equal(error.details.exit_code, 1);
+      assert.match(error.details.diagnostic, /trusted directory/u);
+      return true;
+    },
+  );
+});
+
 test('cloud executor and local service form a complete mounted-workspace edit loop', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dsh-connector-e2e-'));
   try {
