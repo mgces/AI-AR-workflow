@@ -135,7 +135,8 @@ python3 "$S/advance.py" --pipeline-dir "$PDIR" failures --json
 ```
 
 `fix` 保存人工查明的根因与实际修改说明，默认 `pending_verification`；后续同门禁 PASS 才成为 `resolved`，
-后续 FAIL 成为 `not_resolved`，并生成独立的新失败记录。未经记录修改而重跑 PASS 标为
+后续同原因 FAIL 成为 `not_resolved`；若 FAIL 的原因变化，则标为
+`gate_still_failed_different_reason`（门禁仍未通过，原根因是否解决待确认），并生成独立的新失败记录。未经记录修改而重跑 PASS 标为
 `passed_without_recorded_fix`，不冒称修复生效。不同门禁的 PASS 不会解除这次失败。P8
 `gate_upload_ci.py:consent-precheck` 的 FAIL 属于 `expected_review_hold`，应走正常人工确认，
 不是“代码修复失败”。不要在 `--action` 或 `--change-ref` 中写入令牌、账号、密钥或设备序列号。

@@ -91,17 +91,26 @@ class FailureHistoryTests(unittest.TestCase):
         self.assertEqual(failure["fixes"][0]["root_cause"],
                          "GN target omitted library X")
 
-    def test_failed_retest_marks_fix_ineffective_and_new_failure_is_separate(self):
+    def test_failed_retest_with_new_reason_does_not_claim_original_cause_persists(self):
         failed = gl.emit(self.pdir, 4, "gate_build.py", verdict="FAIL", reason="compile error A")
         gl.record_gate_fix(self.pdir, "manifest:%d" % failed["seq"],
                            "change include", change_ref="src/a.cpp",
                            root_cause="include order was wrong")
         gl.emit(self.pdir, 4, "gate_build.py", verdict="FAIL", reason="compile error B")
         history = self.attempts()
-        self.assertEqual(history[0]["resolution_status"], "not_resolved")
+        self.assertEqual(history[0]["resolution_status"], "gate_still_failed_different_reason")
         self.assertEqual(history[0]["fixes"][0]["verification_verdict"], "FAIL")
         self.assertEqual(history[1]["reason"], "compile error B")
         self.assertEqual(history[1]["resolution_status"], "unresolved")
+
+    def test_same_reason_after_fix_is_recorded_as_not_resolved(self):
+        failed = gl.emit(self.pdir, 4, "gate_build.py", verdict="FAIL",
+                         reason="missing symbol X")
+        gl.record_gate_fix(self.pdir, "manifest:%d" % failed["seq"],
+                           "edit linkage", root_cause="library X omitted")
+        gl.emit(self.pdir, 4, "gate_build.py", verdict="FAIL",
+                reason="missing symbol X")
+        self.assertEqual(self.attempts()[0]["resolution_status"], "not_resolved")
 
     def test_pass_without_recorded_change_is_not_claimed_as_fixed(self):
         gl.emit(self.pdir, 4, "gate_build.py", verdict="FAIL", reason="transient error")

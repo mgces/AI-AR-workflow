@@ -2005,7 +2005,10 @@ def observe_gate_attempt(pdir, phase, verdict, gate, *, entry=None, reason=None)
                         previous.get("failure_kind") == "expected_review_hold" else
                         "resolved" if verdict == "PASS" and fixes else
                         "passed_without_recorded_fix" if verdict == "PASS" else
-                        "not_resolved" if fixes else "failed_again_without_recorded_fix")
+                        "not_resolved" if fixes and
+                        previous.get("reason") == (entry.get("reason") if entry else reason) else
+                        "gate_still_failed_different_reason" if fixes else
+                        "failed_again_without_recorded_fix")
                     previous["verified_by"] = attempt_id
                     previous["verified_at_utc"] = (
                         entry.get("ts_utc") if entry is not None else _utc_now())

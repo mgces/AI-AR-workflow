@@ -4,7 +4,7 @@ const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;
 const labels={completed:'已完成',running:'进行中',blocked:'受阻',waiting:'等待人工',pending:'未开始',passed:'已通过',failed:'失败'};
 const phaseNames={P0:'环境准备',P1:'设计',P2:'代码开发',P3:'测试开发',P4:'编译验证',P5:'单元测试',P6:'功能测试',P7:'质量验证',P8:'上库评审',R1:'需求导入',R2:'可行性',R3:'架构决策',R4:'特性基线',R5:'评审门禁',R6:'评审决策',R7:'IR / SR',R8:'交接',R9:'生成 AR'};
 const interventionLabels={required_workflow:'流程内审核',blocked_unplanned:'非计划解阻',user_correction:'用户纠偏'};
-const resolutionLabels={unresolved:'尚未复验',pending_verification:'修改已记录，待重跑',resolved:'修改后门禁通过',not_resolved:'修改后仍失败',passed_without_recorded_fix:'重跑通过，未记录修改',failed_again_without_recorded_fix:'再次失败，未记录修改',review_hold_released:'人工确认后放行'};
+const resolutionLabels={unresolved:'尚未复验',pending_verification:'修改已记录，待重跑',resolved:'修改后门禁通过',not_resolved:'相同原因仍失败',gate_still_failed_different_reason:'门禁仍失败，但报错已变化；原根因是否解决待确认',passed_without_recorded_fix:'重跑通过，未记录修改',failed_again_without_recorded_fix:'再次失败，未记录修改',review_hold_released:'人工确认后放行'};
 let data={runs:[],warnings:[]};
 let selected=[];
 const fmt=n=>known(n)?n.toLocaleString('zh-CN',{maximumFractionDigits:1}):'—';
