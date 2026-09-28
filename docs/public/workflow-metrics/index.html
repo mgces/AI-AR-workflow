@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Workflow 运行观测 · OpenHarmony</title>
+  <meta name="description" content="基于仓库 workflow_metrics.json 的运行统计，分析有效耗时、人工等待、门禁失败及原因。">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23172542'/%3E%3Cpath d='M7 22V14h4v8zm7 0V7h4v15zm7 0V11h4v11z' fill='%235cbdff'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./style.css"><script type="module" src="./app.mjs"></script>
+</head>
+<body>
+<a class="skip" href="#overview">跳转到统计内容</a>
+<aside class="sidebar">
+  <a class="brand" href="#overview"><span class="brand-icon" aria-hidden="true">▥</span><span>WORKFLOW<small>运行观测</small></span></a>
+  <div class="nav-label">工作空间</div>
+  <nav aria-label="主导航">
+    <a class="active" href="#overview"><span aria-hidden="true">▦</span>运行总览</a>
+    <a href="#timing"><span aria-hidden="true">◷</span>阶段耗时</a>
+    <a href="#failures"><span aria-hidden="true">⊗</span>失败分析</a>
+    <a href="#runs"><span aria-hidden="true">≡</span>运行记录</a>
+    <a href="#method"><span aria-hidden="true">ⓘ</span>统计口径</a>
+  </nav>
+  <div class="sidebar-foot"><div class="repo-icon">OH</div><div>OpenHarmony<small>研发工作流 · Metrics v2</small></div></div>
+</aside>
+<div class="workspace">
+  <header class="topbar"><span>工作空间 <b>/</b> AI-AR-workflow</span><span class="snapshot-tag">仓库数据快照</span></header>
+  <main id="overview">
+    <div class="page-heading"><div><p class="eyebrow">WORKFLOW ANALYTICS</p><h1>运行总览</h1><p class="muted">看清时间花在哪里，以及流程为什么停下来。</p></div><button id="refresh" class="button">↻ <span>刷新快照</span></button></div>
+    <div class="snapshot-line"><span id="snapshot-time">正在读取指标…</span><span id="source-info"></span></div>
+    <div id="load-error" class="notice error" role="alert" hidden></div>
+    <section class="filters" aria-label="筛选运行">
+      <label class="search"><span aria-hidden="true">⌕</span><input id="search" placeholder="搜索运行名称、模型…" aria-label="搜索运行"></label>
+      <label><span>工作流</span><select id="kind"><option value="">全部工作流</option></select></label>
+      <label><span>模型</span><select id="model"><option value="">全部模型</option></select></label>
+      <label><span>状态</span><select id="status"><option value="">全部状态</option><option value="completed">已完成</option><option value="running">进行中</option><option value="blocked">受阻</option><option value="waiting">等待人工</option><option value="pending">未开始</option></select></label>
+      <button id="reset" class="text-button">重置</button>
+    </section>
+    <div id="live-summary" class="sr-only" aria-live="polite"></div>
+    <section id="metrics" class="metric-grid" aria-label="核心指标"></section>
+    <div class="analysis-grid">
+      <section class="panel" id="timing"><div class="panel-title"><div><h2>阶段耗时分布</h2><p>跨运行累计 · 按记录的阶段时长统计</p></div><select id="time-mode" aria-label="耗时口径"><option value="effective">有效耗时</option><option value="wall">含人工等待</option></select></div><div class="legend"><span><i class="blue"></i>有效耗时</span><span><i class="light-blue"></i>人工等待</span></div><div id="phase-chart" class="phase-chart"></div><div class="panel-foot" id="timing-note"></div></section>
+      <section class="panel" id="failures"><div class="panel-title"><div><h2>门禁失败分布</h2><p>包含重试及恢复前的全部已记录失败</p></div><span class="small-tag">按阶段</span></div><div id="failure-chart"></div><div class="panel-foot" id="failure-note"></div></section>
+    </div>
+    <section class="panel records" id="runs"><div class="panel-title"><div><h2>运行记录 <span id="run-count" class="count"></span></h2><p>选择一条运行，查看阶段明细、失败原因与人工介入说明</p></div><span class="muted small">按指标更新时间降序</span></div><div class="table-wrap"><table><thead><tr><th>运行 / 模型</th><th>快照状态</th><th>有效耗时</th><th>人工等待</th><th>门禁失败</th><th>阶段进度</th><th><span class="sr-only">操作</span></th></tr></thead><tbody id="run-rows"></tbody></table></div><div id="empty" class="empty" hidden>没有符合筛选条件的运行。<button class="text-button" id="empty-reset">重置筛选</button></div></section>
+    <div class="analysis-grid bottom-grid">
+      <section class="panel"><div class="panel-title"><div><h2>失败原因记录</h2><p>证据中的原始原因；缺失原因不作推断</p></div></div><div id="reason-list" class="reason-list"></div></section>
+      <section class="panel"><div class="panel-title"><div><h2>非计划人工介入</h2><p>解阻与纠偏说明 · 不等同于门禁失败原因</p></div></div><div id="intervention-list" class="intervention-list"></div></section>
+    </div>
+    <section class="method" id="method"><h2>读懂这些数字</h2><div class="method-grid"><p><b>有效耗时</b>优先使用记录器汇总值，扣除人工等待。重走阶段的耗时已累计；不随浏览页面的时间增长。</p><p><b>失败次数 ≠ 失败运行数</b>以 fail_attempts 计数。失败率 = 失败门禁尝试 / 全部门禁尝试；已恢复运行仍保留失败历史。FAIL 也可能是人工确认门禁。</p><p><b>有边界的数据</b>“—”表示未记录。Requirement 只有最近结果时，不推算历史失败数。快照状态按记录推断，不能证明进程仍在运行。</p></div><div id="quality-notes"></div></section>
+    <footer><span>WORKFLOW / OBSERVABILITY</span><span>来源：workflow_metrics.json · 时间显示为北京时间</span></footer>
+  </main>
+</div>
+<dialog id="detail" aria-labelledby="detail-title"><div class="dialog-head"><div><p class="eyebrow">RUN INSPECTOR</p><h2 id="detail-title"></h2></div><button id="close-detail" class="close" aria-label="关闭运行详情">×</button></div><div id="detail-content"></div></dialog>
+</body></html>

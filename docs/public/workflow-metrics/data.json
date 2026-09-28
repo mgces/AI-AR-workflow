@@ -1,0 +1,1609 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-28T07:05:38.378078+00:00",
+  "source_label": "AI-AR-workflow",
+  "source_count": 6,
+  "duplicate_count": 0,
+  "warnings": [],
+  "runs": [
+    {
+      "id": "20260924-hiperf-symbol-mem",
+      "workflow": "ar-development",
+      "kind": "AR",
+      "status": "blocked",
+      "current_phase": "P4",
+      "agent": "cursor",
+      "model": "grok-4.7",
+      "updated_at": "2026-09-24T08:49:41Z",
+      "started_at": "2026-09-24T03:33:55Z",
+      "source": "公开快照 / 运行 1",
+      "phases": [
+        {
+          "id": "P0",
+          "name": "P0",
+          "status": "passed",
+          "wall_seconds": 1,
+          "wait_seconds": 0,
+          "effective_seconds": 1,
+          "gate_attempts": 1,
+          "pass_attempts": 1,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 1,
+          "skills": [],
+          "gate": "gate_env_init.py",
+          "opened_at": "2026-09-24T03:33:55Z",
+          "closed_at": "2026-09-24T03:33:56Z"
+        },
+        {
+          "id": "P1",
+          "name": "P1",
+          "status": "passed",
+          "wall_seconds": 856,
+          "wait_seconds": 759,
+          "effective_seconds": 97,
+          "gate_attempts": 2,
+          "pass_attempts": 2,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 2,
+          "skills": [],
+          "gate": "gate_design.py",
+          "opened_at": "2026-09-24T03:59:29Z",
+          "closed_at": "2026-09-24T03:59:29Z"
+        },
+        {
+          "id": "P2",
+          "name": "P2",
+          "status": "passed",
+          "wall_seconds": 853,
+          "wait_seconds": 0,
+          "effective_seconds": 853,
+          "gate_attempts": 8,
+          "pass_attempts": 5,
+          "fail_attempts": 3,
+          "stage_attempts": null,
+          "rounds": 5,
+          "skills": [],
+          "gate": "gate_develop.py",
+          "opened_at": "2026-09-24T08:41:19Z",
+          "closed_at": "2026-09-24T08:43:09Z"
+        },
+        {
+          "id": "P3",
+          "name": "P3",
+          "status": "passed",
+          "wall_seconds": 276,
+          "wait_seconds": 0,
+          "effective_seconds": 276,
+          "gate_attempts": 6,
+          "pass_attempts": 5,
+          "fail_attempts": 1,
+          "stage_attempts": null,
+          "rounds": 5,
+          "skills": [],
+          "gate": "gate_test_develop.py",
+          "opened_at": "2026-09-24T08:43:09Z",
+          "closed_at": "2026-09-24T08:43:35Z"
+        },
+        {
+          "id": "P4",
+          "name": "P4",
+          "status": "failed",
+          "wall_seconds": 3717,
+          "wait_seconds": 0,
+          "effective_seconds": 3717,
+          "gate_attempts": 5,
+          "pass_attempts": 1,
+          "fail_attempts": 4,
+          "stage_attempts": null,
+          "rounds": 2,
+          "skills": [],
+          "gate": "gate_build.py",
+          "opened_at": "2026-09-24T08:43:35Z",
+          "closed_at": ""
+        },
+        {
+          "id": "P5",
+          "name": "P5",
+          "status": "passed",
+          "wall_seconds": 3486,
+          "wait_seconds": 0,
+          "effective_seconds": 3486,
+          "gate_attempts": 4,
+          "pass_attempts": 1,
+          "fail_attempts": 3,
+          "stage_attempts": null,
+          "rounds": 1,
+          "skills": [],
+          "gate": "gate_test_ut.py",
+          "opened_at": "2026-09-24T04:59:31Z",
+          "closed_at": "2026-09-24T05:57:37Z"
+        },
+        {
+          "id": "P6",
+          "name": "P6",
+          "status": "passed",
+          "wall_seconds": 1085,
+          "wait_seconds": 555,
+          "effective_seconds": 530,
+          "gate_attempts": 1,
+          "pass_attempts": 1,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 1,
+          "skills": [],
+          "gate": "gate_device_func.py",
+          "opened_at": "2026-09-24T05:57:37Z",
+          "closed_at": "2026-09-24T06:15:42Z"
+        },
+        {
+          "id": "P7",
+          "name": "P7",
+          "status": "passed",
+          "wall_seconds": 3754,
+          "wait_seconds": 171,
+          "effective_seconds": 3583,
+          "gate_attempts": 3,
+          "pass_attempts": 1,
+          "fail_attempts": 2,
+          "stage_attempts": null,
+          "rounds": 1,
+          "skills": [],
+          "gate": "gate_integration.py",
+          "opened_at": "2026-09-24T06:15:42Z",
+          "closed_at": "2026-09-24T07:18:16Z"
+        },
+        {
+          "id": "P8",
+          "name": "P8",
+          "status": "failed",
+          "wall_seconds": 5485,
+          "wait_seconds": 1630,
+          "effective_seconds": 3855,
+          "gate_attempts": 3,
+          "pass_attempts": 0,
+          "fail_attempts": 3,
+          "stage_attempts": null,
+          "rounds": 1,
+          "skills": [],
+          "gate": "gate_upload_ci.py",
+          "opened_at": "2026-09-24T07:18:16Z",
+          "closed_at": ""
+        }
+      ],
+      "failure_details": [
+        {
+          "phase": "P2",
+          "gate": "",
+          "reason": "未记录具体失败原因",
+          "count": 3,
+          "category": "原因缺失",
+          "at": "2026-09-24T08:42:58Z",
+          "source": "公开指标快照"
+        },
+        {
+          "phase": "P3",
+          "gate": "",
+          "reason": "未记录具体失败原因",
+          "count": 1,
+          "category": "测试与验证",
+          "at": "2026-09-24T08:43:24Z",
+          "source": "公开指标快照"
+        },
+        {
+          "phase": "P4",
+          "gate": "",
+          "reason": "未记录具体失败原因",
+          "count": 4,
+          "category": "编译构建",
+          "at": "2026-09-24T08:49:41Z",
+          "source": "公开指标快照"
+        },
+        {
+          "phase": "P5",
+          "gate": "",
+          "reason": "未记录具体失败原因",
+          "count": 3,
+          "category": "测试与验证",
+          "at": "2026-09-24T05:57:21Z",
+          "source": "公开指标快照"
+        },
+        {
+          "phase": "P7",
+          "gate": "",
+          "reason": "未记录具体失败原因",
+          "count": 2,
+          "category": "原因缺失",
+          "at": "2026-09-24T07:15:25Z",
+          "source": "公开指标快照"
+        },
+        {
+          "phase": "P8",
+          "gate": "",
+          "reason": "未记录具体失败原因",
+          "count": 3,
+          "category": "原因缺失",
+          "at": "2026-09-24T07:48:14Z",
+          "source": "公开指标快照"
+        }
+      ],
+      "failures": 16,
+      "gate_attempts": 33,
+      "human_interventions": [
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P6"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P7"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P8"
+        }
+      ],
+      "open_waits": 0,
+      "effective_seconds": 16398,
+      "wall_seconds": 19513,
+      "wait_seconds": 3115
+    },
+    {
+      "id": "20260923-resmon",
+      "workflow": "ar-development",
+      "kind": "AR",
+      "status": "waiting",
+      "current_phase": "P8",
+      "agent": "claude",
+      "model": "deepseek-flash",
+      "updated_at": "2026-09-24T07:26:56Z",
+      "started_at": "2026-09-23T12:19:59Z",
+      "source": "公开快照 / 运行 2",
+      "phases": [
+        {
+          "id": "P0",
+          "name": "P0",
+          "status": "passed",
+          "wall_seconds": 4,
+          "wait_seconds": 0,
+          "effective_seconds": 4,
+          "gate_attempts": 1,
+          "pass_attempts": 1,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 1,
+          "skills": [],
+          "gate": "gate_env_init.py",
+          "opened_at": "2026-09-23T12:19:59Z",
+          "closed_at": "2026-09-23T12:20:03Z"
+        },
+        {
+          "id": "P1",
+          "name": "P1",
+          "status": "passed",
+          "wall_seconds": 47874,
+          "wait_seconds": 47420,
+          "effective_seconds": 454,
+          "gate_attempts": 1,
+          "pass_attempts": 1,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 1,
+          "skills": [],
+          "gate": "gate_design.py",
+          "opened_at": "2026-09-23T12:20:03Z",
+          "closed_at": "2026-09-24T01:37:57Z"
+        },
+        {
+          "id": "P2",
+          "name": "P2",
+          "status": "passed",
+          "wall_seconds": 1660,
+          "wait_seconds": 0,
+          "effective_seconds": 1660,
+          "gate_attempts": 5,
+          "pass_attempts": 4,
+          "fail_attempts": 1,
+          "stage_attempts": null,
+          "rounds": 4,
+          "skills": [],
+          "gate": "gate_develop.py",
+          "opened_at": "2026-09-24T05:45:11Z",
+          "closed_at": "2026-09-24T05:45:16Z"
+        },
+        {
+          "id": "P3",
+          "name": "P3",
+          "status": "passed",
+          "wall_seconds": 1263,
+          "wait_seconds": 0,
+          "effective_seconds": 1263,
+          "gate_attempts": 5,
+          "pass_attempts": 4,
+          "fail_attempts": 1,
+          "stage_attempts": null,
+          "rounds": 4,
+          "skills": [],
+          "gate": "gate_test_develop.py",
+          "opened_at": "2026-09-24T05:45:16Z",
+          "closed_at": "2026-09-24T05:45:19Z"
+        },
+        {
+          "id": "P4",
+          "name": "P4",
+          "status": "passed",
+          "wall_seconds": 1640,
+          "wait_seconds": 0,
+          "effective_seconds": 1640,
+          "gate_attempts": 3,
+          "pass_attempts": 3,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 3,
+          "skills": [],
+          "gate": "gate_build.py",
+          "opened_at": "2026-09-24T05:45:19Z",
+          "closed_at": "2026-09-24T05:47:40Z"
+        },
+        {
+          "id": "P5",
+          "name": "P5",
+          "status": "passed",
+          "wall_seconds": 3232,
+          "wait_seconds": 3232,
+          "effective_seconds": 0,
+          "gate_attempts": 3,
+          "pass_attempts": 2,
+          "fail_attempts": 1,
+          "stage_attempts": null,
+          "rounds": 2,
+          "skills": [],
+          "gate": "gate_test_ut.py",
+          "opened_at": "2026-09-24T05:42:48Z",
+          "closed_at": "2026-09-24T06:09:16Z"
+        },
+        {
+          "id": "P6",
+          "name": "P6",
+          "status": "passed",
+          "wall_seconds": 10843,
+          "wait_seconds": 160,
+          "effective_seconds": 10683,
+          "gate_attempts": 3,
+          "pass_attempts": 1,
+          "fail_attempts": 2,
+          "stage_attempts": null,
+          "rounds": 1,
+          "skills": [],
+          "gate": "gate_device_func.py",
+          "opened_at": "2026-09-24T03:13:07Z",
+          "closed_at": "2026-09-24T06:13:50Z"
+        },
+        {
+          "id": "P7",
+          "name": "P7",
+          "status": "passed",
+          "wall_seconds": 3150,
+          "wait_seconds": 1471,
+          "effective_seconds": 1679,
+          "gate_attempts": 2,
+          "pass_attempts": 1,
+          "fail_attempts": 1,
+          "stage_attempts": null,
+          "rounds": 1,
+          "skills": [],
+          "gate": "gate_integration.py",
+          "opened_at": "2026-09-24T06:13:50Z",
+          "closed_at": "2026-09-24T07:06:20Z"
+        },
+        {
+          "id": "P8",
+          "name": "P8",
+          "status": "failed",
+          "wall_seconds": 1236,
+          "wait_seconds": 97,
+          "effective_seconds": 1139,
+          "gate_attempts": 2,
+          "pass_attempts": 0,
+          "fail_attempts": 2,
+          "stage_attempts": null,
+          "rounds": 1,
+          "skills": [],
+          "gate": "gate_upload_ci.py",
+          "opened_at": "2026-09-24T07:06:20Z",
+          "closed_at": ""
+        }
+      ],
+      "failure_details": [
+        {
+          "phase": "P2",
+          "gate": "",
+          "reason": "未记录具体失败原因",
+          "count": 1,
+          "category": "原因缺失",
+          "at": "2026-09-24T05:45:14Z",
+          "source": "公开指标快照"
+        },
+        {
+          "phase": "P3",
+          "gate": "",
+          "reason": "未记录具体失败原因",
+          "count": 1,
+          "category": "测试与验证",
+          "at": "2026-09-24T05:45:18Z",
+          "source": "公开指标快照"
+        },
+        {
+          "phase": "P5",
+          "gate": "",
+          "reason": "未记录具体失败原因",
+          "count": 1,
+          "category": "测试与验证",
+          "at": "2026-09-24T06:09:06Z",
+          "source": "公开指标快照"
+        },
+        {
+          "phase": "P6",
+          "gate": "",
+          "reason": "未记录具体失败原因",
+          "count": 2,
+          "category": "设备连接",
+          "at": "2026-09-24T06:11:10Z",
+          "source": "公开指标快照"
+        },
+        {
+          "phase": "P7",
+          "gate": "",
+          "reason": "未记录具体失败原因",
+          "count": 1,
+          "category": "原因缺失",
+          "at": "2026-09-24T06:41:49Z",
+          "source": "公开指标快照"
+        },
+        {
+          "phase": "P8",
+          "gate": "",
+          "reason": "未记录具体失败原因",
+          "count": 2,
+          "category": "原因缺失",
+          "at": "2026-09-24T07:26:56Z",
+          "source": "公开指标快照"
+        }
+      ],
+      "failures": 8,
+      "gate_attempts": 25,
+      "human_interventions": [
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P1"
+        },
+        {
+          "category": "blocked_unplanned",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P5"
+        },
+        {
+          "category": "blocked_unplanned",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P6"
+        },
+        {
+          "category": "user_correction",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P6"
+        },
+        {
+          "category": "user_correction",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P6"
+        },
+        {
+          "category": "blocked_unplanned",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P5"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P6"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P7"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P8"
+        }
+      ],
+      "open_waits": 1,
+      "effective_seconds": 18522,
+      "wall_seconds": 70902,
+      "wait_seconds": 52380
+    },
+    {
+      "id": "20260923-unwinder-memcpy",
+      "workflow": "ar-development",
+      "kind": "AR",
+      "status": "waiting",
+      "current_phase": "P5",
+      "agent": "claude-code",
+      "model": "glm-5.2",
+      "updated_at": "2026-09-24T04:06:21Z",
+      "started_at": "2026-09-23T02:18:40Z",
+      "source": "公开快照 / 运行 3",
+      "phases": [
+        {
+          "id": "P0",
+          "name": "P0",
+          "status": "passed",
+          "wall_seconds": 2025,
+          "wait_seconds": 0,
+          "effective_seconds": 2025,
+          "gate_attempts": 2,
+          "pass_attempts": 1,
+          "fail_attempts": 1,
+          "stage_attempts": null,
+          "rounds": 1,
+          "skills": [],
+          "gate": "gate_env_init.py",
+          "opened_at": "2026-09-23T02:18:40Z",
+          "closed_at": "2026-09-23T02:52:25Z"
+        },
+        {
+          "id": "P1",
+          "name": "P1",
+          "status": "passed",
+          "wall_seconds": 3551,
+          "wait_seconds": 1968,
+          "effective_seconds": 1583,
+          "gate_attempts": 5,
+          "pass_attempts": 5,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 5,
+          "skills": [],
+          "gate": "gate_design.py",
+          "opened_at": "2026-09-24T03:01:52Z",
+          "closed_at": "2026-09-24T03:31:20Z"
+        },
+        {
+          "id": "P2",
+          "name": "P2",
+          "status": "passed",
+          "wall_seconds": 5065,
+          "wait_seconds": 0,
+          "effective_seconds": 5065,
+          "gate_attempts": 10,
+          "pass_attempts": 4,
+          "fail_attempts": 6,
+          "stage_attempts": null,
+          "rounds": 4,
+          "skills": [],
+          "gate": "gate_develop.py",
+          "opened_at": "2026-09-24T02:57:51Z",
+          "closed_at": "2026-09-24T03:35:03Z"
+        },
+        {
+          "id": "P3",
+          "name": "P3",
+          "status": "passed",
+          "wall_seconds": 1863,
+          "wait_seconds": 0,
+          "effective_seconds": 1863,
+          "gate_attempts": 8,
+          "pass_attempts": 4,
+          "fail_attempts": 4,
+          "stage_attempts": null,
+          "rounds": 4,
+          "skills": [],
+          "gate": "gate_test_develop.py",
+          "opened_at": "2026-09-24T03:35:03Z",
+          "closed_at": "2026-09-24T03:35:04Z"
+        },
+        {
+          "id": "P4",
+          "name": "P4",
+          "status": "passed",
+          "wall_seconds": 13088,
+          "wait_seconds": 0,
+          "effective_seconds": 13088,
+          "gate_attempts": 7,
+          "pass_attempts": 2,
+          "fail_attempts": 5,
+          "stage_attempts": null,
+          "rounds": 2,
+          "skills": [],
+          "gate": "gate_build.py",
+          "opened_at": "2026-09-24T03:35:04Z",
+          "closed_at": "2026-09-24T03:56:22Z"
+        },
+        {
+          "id": "P5",
+          "name": "P5",
+          "status": "failed",
+          "wall_seconds": 1790,
+          "wait_seconds": 0,
+          "effective_seconds": 1790,
+          "gate_attempts": 5,
+          "pass_attempts": 1,
+          "fail_attempts": 4,
+          "stage_attempts": null,
+          "rounds": 2,
+          "skills": [],
+          "gate": "gate_test_ut.py",
+          "opened_at": "2026-09-24T03:56:22Z",
+          "closed_at": ""
+        },
+        {
+          "id": "P6",
+          "name": "P6",
+          "status": "passed",
+          "wall_seconds": 2136,
+          "wait_seconds": 227,
+          "effective_seconds": 1909,
+          "gate_attempts": 4,
+          "pass_attempts": 1,
+          "fail_attempts": 3,
+          "stage_attempts": null,
+          "rounds": 1,
+          "skills": [],
+          "gate": "gate_device_func.py",
+          "opened_at": "2026-09-23T08:03:30Z",
+          "closed_at": "2026-09-23T08:39:06Z"
+        },
+        {
+          "id": "P7",
+          "name": "P7",
+          "status": "passed",
+          "wall_seconds": 2738,
+          "wait_seconds": 90,
+          "effective_seconds": 2648,
+          "gate_attempts": 4,
+          "pass_attempts": 1,
+          "fail_attempts": 3,
+          "stage_attempts": null,
+          "rounds": 1,
+          "skills": [],
+          "gate": "gate_integration.py",
+          "opened_at": "2026-09-23T08:39:06Z",
+          "closed_at": "2026-09-23T09:24:44Z"
+        },
+        {
+          "id": "P8",
+          "name": "P8",
+          "status": "failed",
+          "wall_seconds": 67297,
+          "wait_seconds": 136,
+          "effective_seconds": 67161,
+          "gate_attempts": 4,
+          "pass_attempts": 0,
+          "fail_attempts": 4,
+          "stage_attempts": null,
+          "rounds": 1,
+          "skills": [],
+          "gate": "gate_upload_ci.py",
+          "opened_at": "2026-09-23T09:24:44Z",
+          "closed_at": ""
+        }
+      ],
+      "failure_details": [
+        {
+          "phase": "P0",
+          "gate": "",
+          "reason": "未记录具体失败原因",
+          "count": 1,
+          "category": "原因缺失",
+          "at": "2026-09-23T02:50:08Z",
+          "source": "公开指标快照"
+        },
+        {
+          "phase": "P2",
+          "gate": "",
+          "reason": "未记录具体失败原因",
+          "count": 6,
+          "category": "原因缺失",
+          "at": "2026-09-24T03:31:21Z",
+          "source": "公开指标快照"
+        },
+        {
+          "phase": "P3",
+          "gate": "",
+          "reason": "未记录具体失败原因",
+          "count": 4,
+          "category": "测试与验证",
+          "at": "2026-09-24T03:35:04Z",
+          "source": "公开指标快照"
+        },
+        {
+          "phase": "P4",
+          "gate": "",
+          "reason": "未记录具体失败原因",
+          "count": 5,
+          "category": "编译构建",
+          "at": "2026-09-24T03:55:43Z",
+          "source": "公开指标快照"
+        },
+        {
+          "phase": "P5",
+          "gate": "",
+          "reason": "未记录具体失败原因",
+          "count": 4,
+          "category": "测试与验证",
+          "at": "2026-09-24T03:57:29Z",
+          "source": "公开指标快照"
+        },
+        {
+          "phase": "P6",
+          "gate": "",
+          "reason": "未记录具体失败原因",
+          "count": 3,
+          "category": "设备连接",
+          "at": "2026-09-23T08:35:19Z",
+          "source": "公开指标快照"
+        },
+        {
+          "phase": "P7",
+          "gate": "",
+          "reason": "未记录具体失败原因",
+          "count": 3,
+          "category": "原因缺失",
+          "at": "2026-09-23T09:23:14Z",
+          "source": "公开指标快照"
+        },
+        {
+          "phase": "P8",
+          "gate": "",
+          "reason": "未记录具体失败原因",
+          "count": 4,
+          "category": "原因缺失",
+          "at": "2026-09-24T01:06:34Z",
+          "source": "公开指标快照"
+        }
+      ],
+      "failures": 30,
+      "gate_attempts": 49,
+      "human_interventions": [
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P6"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P7"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P8"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P8"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P1"
+        },
+        {
+          "category": "user_correction",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P5"
+        }
+      ],
+      "open_waits": 1,
+      "effective_seconds": 97132,
+      "wall_seconds": 99553,
+      "wait_seconds": 2421
+    },
+    {
+      "id": "20260921-hdc-client-diagnostics-compatible",
+      "workflow": "ar-development",
+      "kind": "AR",
+      "status": "running",
+      "current_phase": "P8",
+      "agent": "codex",
+      "model": "GPT-6",
+      "updated_at": "2026-09-23T01:25:26Z",
+      "started_at": "2026-09-21T06:39:24Z",
+      "source": "公开快照 / 运行 4",
+      "phases": [
+        {
+          "id": "P0",
+          "name": "P0",
+          "status": "passed",
+          "wall_seconds": 44,
+          "wait_seconds": 0,
+          "effective_seconds": 44,
+          "gate_attempts": 1,
+          "pass_attempts": 1,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 1,
+          "skills": [],
+          "gate": "gate_env_init.py",
+          "opened_at": "2026-09-21T06:39:24Z",
+          "closed_at": "2026-09-21T06:40:08Z"
+        },
+        {
+          "id": "P1",
+          "name": "P1",
+          "status": "passed",
+          "wall_seconds": 6716,
+          "wait_seconds": 2026,
+          "effective_seconds": 4690,
+          "gate_attempts": 2,
+          "pass_attempts": 2,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 2,
+          "skills": [],
+          "gate": "gate_design.py",
+          "opened_at": "2026-09-21T08:46:57Z",
+          "closed_at": "2026-09-21T08:54:37Z"
+        },
+        {
+          "id": "P2",
+          "name": "P2",
+          "status": "passed",
+          "wall_seconds": 1092,
+          "wait_seconds": 0,
+          "effective_seconds": 1092,
+          "gate_attempts": 7,
+          "pass_attempts": 3,
+          "fail_attempts": 4,
+          "stage_attempts": null,
+          "rounds": 3,
+          "skills": [],
+          "gate": "gate_develop.py",
+          "opened_at": "2026-09-21T09:23:32Z",
+          "closed_at": "2026-09-21T09:23:34Z"
+        },
+        {
+          "id": "P3",
+          "name": "P3",
+          "status": "passed",
+          "wall_seconds": 18,
+          "wait_seconds": 0,
+          "effective_seconds": 18,
+          "gate_attempts": 3,
+          "pass_attempts": 3,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 3,
+          "skills": [],
+          "gate": "gate_test_develop.py",
+          "opened_at": "2026-09-21T09:23:34Z",
+          "closed_at": "2026-09-21T09:23:35Z"
+        },
+        {
+          "id": "P4",
+          "name": "P4",
+          "status": "passed",
+          "wall_seconds": 373,
+          "wait_seconds": 0,
+          "effective_seconds": 373,
+          "gate_attempts": 3,
+          "pass_attempts": 3,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 3,
+          "skills": [],
+          "gate": "gate_host_cli.py",
+          "opened_at": "2026-09-21T09:23:35Z",
+          "closed_at": "2026-09-21T09:26:23Z"
+        },
+        {
+          "id": "P5",
+          "name": "P5",
+          "status": "passed",
+          "wall_seconds": 2905,
+          "wait_seconds": 0,
+          "effective_seconds": 2905,
+          "gate_attempts": 3,
+          "pass_attempts": 1,
+          "fail_attempts": 2,
+          "stage_attempts": null,
+          "rounds": 1,
+          "skills": [],
+          "gate": "gate_host_cli.py",
+          "opened_at": "2026-09-21T08:42:34Z",
+          "closed_at": "2026-09-21T09:30:59Z"
+        },
+        {
+          "id": "P6",
+          "name": "P6",
+          "status": "passed",
+          "wall_seconds": 352,
+          "wait_seconds": 38,
+          "effective_seconds": 314,
+          "gate_attempts": 1,
+          "pass_attempts": 1,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 1,
+          "skills": [],
+          "gate": "gate_host_cli.py",
+          "opened_at": "2026-09-21T09:30:59Z",
+          "closed_at": "2026-09-21T09:36:51Z"
+        },
+        {
+          "id": "P7",
+          "name": "P7",
+          "status": "passed",
+          "wall_seconds": 142065,
+          "wait_seconds": 141445,
+          "effective_seconds": 620,
+          "gate_attempts": 1,
+          "pass_attempts": 1,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 1,
+          "skills": [],
+          "gate": "gate_host_cli.py",
+          "opened_at": "2026-09-21T09:36:51Z",
+          "closed_at": "2026-09-23T01:04:36Z"
+        },
+        {
+          "id": "P8",
+          "name": "P8",
+          "status": "running",
+          "wall_seconds": 1250,
+          "wait_seconds": 0,
+          "effective_seconds": 1250,
+          "gate_attempts": 0,
+          "pass_attempts": 0,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 1,
+          "skills": [],
+          "gate": "",
+          "opened_at": "2026-09-23T01:04:36Z",
+          "closed_at": ""
+        }
+      ],
+      "failure_details": [
+        {
+          "phase": "P2",
+          "gate": "",
+          "reason": "未记录具体失败原因",
+          "count": 4,
+          "category": "原因缺失",
+          "at": "2026-09-21T09:23:34Z",
+          "source": "公开指标快照"
+        },
+        {
+          "phase": "P5",
+          "gate": "",
+          "reason": "未记录具体失败原因",
+          "count": 2,
+          "category": "原因缺失",
+          "at": "2026-09-21T09:30:38Z",
+          "source": "公开指标快照"
+        }
+      ],
+      "failures": 6,
+      "gate_attempts": 21,
+      "human_interventions": [
+        {
+          "category": "blocked_unplanned",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P6"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P6"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P7"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P7"
+        }
+      ],
+      "open_waits": 0,
+      "effective_seconds": 11306,
+      "wall_seconds": 154815,
+      "wait_seconds": 143509
+    },
+    {
+      "id": "20260922-fd-leak-detection",
+      "workflow": "ar-development",
+      "kind": "AR",
+      "status": "completed",
+      "current_phase": "P7",
+      "agent": "claude-code",
+      "model": "unknown",
+      "updated_at": "2026-09-22T12:27:09Z",
+      "started_at": "2026-09-22T01:41:05Z",
+      "source": "公开快照 / 运行 5",
+      "phases": [
+        {
+          "id": "P0",
+          "name": "P0",
+          "status": "passed",
+          "wall_seconds": 13,
+          "wait_seconds": 0,
+          "effective_seconds": 13,
+          "gate_attempts": 1,
+          "pass_attempts": 1,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 1,
+          "skills": [],
+          "gate": "gate_env_init.py",
+          "opened_at": "2026-09-22T01:41:05Z",
+          "closed_at": "2026-09-22T01:41:18Z"
+        },
+        {
+          "id": "P1",
+          "name": "P1",
+          "status": "passed",
+          "wall_seconds": 1451,
+          "wait_seconds": 1009,
+          "effective_seconds": 442,
+          "gate_attempts": 4,
+          "pass_attempts": 3,
+          "fail_attempts": 1,
+          "stage_attempts": null,
+          "rounds": 2,
+          "skills": [],
+          "gate": "gate_design.py",
+          "opened_at": "2026-09-22T03:19:11Z",
+          "closed_at": "2026-09-22T03:22:31Z"
+        },
+        {
+          "id": "P2",
+          "name": "P2",
+          "status": "passed",
+          "wall_seconds": 5001,
+          "wait_seconds": 0,
+          "effective_seconds": 5001,
+          "gate_attempts": 4,
+          "pass_attempts": 3,
+          "fail_attempts": 1,
+          "stage_attempts": null,
+          "rounds": 3,
+          "skills": [],
+          "gate": "gate_develop.py",
+          "opened_at": "2026-09-22T08:33:11Z",
+          "closed_at": "2026-09-22T08:33:13Z"
+        },
+        {
+          "id": "P3",
+          "name": "P3",
+          "status": "passed",
+          "wall_seconds": 1326,
+          "wait_seconds": 0,
+          "effective_seconds": 1326,
+          "gate_attempts": 4,
+          "pass_attempts": 3,
+          "fail_attempts": 1,
+          "stage_attempts": null,
+          "rounds": 3,
+          "skills": [],
+          "gate": "gate_test_develop.py",
+          "opened_at": "2026-09-22T08:33:13Z",
+          "closed_at": "2026-09-22T08:33:13Z"
+        },
+        {
+          "id": "P4",
+          "name": "P4",
+          "status": "passed",
+          "wall_seconds": 2705,
+          "wait_seconds": 0,
+          "effective_seconds": 2705,
+          "gate_attempts": 4,
+          "pass_attempts": 2,
+          "fail_attempts": 2,
+          "stage_attempts": null,
+          "rounds": 2,
+          "skills": [],
+          "gate": "gate_build.py",
+          "opened_at": "2026-09-22T08:33:13Z",
+          "closed_at": "2026-09-22T08:41:48Z"
+        },
+        {
+          "id": "P5",
+          "name": "P5",
+          "status": "passed",
+          "wall_seconds": 3687,
+          "wait_seconds": 0,
+          "effective_seconds": 3687,
+          "gate_attempts": 2,
+          "pass_attempts": 2,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 2,
+          "skills": [],
+          "gate": "gate_test_ut.py",
+          "opened_at": "2026-09-22T08:41:48Z",
+          "closed_at": "2026-09-22T08:46:45Z"
+        },
+        {
+          "id": "P6",
+          "name": "P6",
+          "status": "passed",
+          "wall_seconds": 4014,
+          "wait_seconds": 414,
+          "effective_seconds": 3600,
+          "gate_attempts": 5,
+          "pass_attempts": 2,
+          "fail_attempts": 3,
+          "stage_attempts": null,
+          "rounds": 2,
+          "skills": [],
+          "gate": "gate_device_func.py",
+          "opened_at": "2026-09-22T08:46:45Z",
+          "closed_at": "2026-09-22T08:55:54Z"
+        },
+        {
+          "id": "P7",
+          "name": "P7",
+          "status": "passed",
+          "wall_seconds": 3841,
+          "wait_seconds": 609,
+          "effective_seconds": 3232,
+          "gate_attempts": 3,
+          "pass_attempts": 2,
+          "fail_attempts": 1,
+          "stage_attempts": null,
+          "rounds": 2,
+          "skills": [],
+          "gate": "gate_integration.py",
+          "opened_at": "2026-09-22T08:55:54Z",
+          "closed_at": "2026-09-22T09:00:39Z"
+        },
+        {
+          "id": "P8",
+          "name": "P8",
+          "status": "passed",
+          "wall_seconds": 18619,
+          "wait_seconds": 50,
+          "effective_seconds": 18569,
+          "gate_attempts": 5,
+          "pass_attempts": 1,
+          "fail_attempts": 4,
+          "stage_attempts": null,
+          "rounds": 1,
+          "skills": [],
+          "gate": "gate_upload_ci.py",
+          "opened_at": "2026-09-22T07:16:50Z",
+          "closed_at": "2026-09-22T12:27:09Z"
+        }
+      ],
+      "failure_details": [
+        {
+          "phase": "P1",
+          "gate": "",
+          "reason": "未记录具体失败原因",
+          "count": 1,
+          "category": "原因缺失",
+          "at": "2026-09-22T03:19:11Z",
+          "source": "公开指标快照"
+        },
+        {
+          "phase": "P2",
+          "gate": "",
+          "reason": "未记录具体失败原因",
+          "count": 1,
+          "category": "原因缺失",
+          "at": "2026-09-22T08:33:13Z",
+          "source": "公开指标快照"
+        },
+        {
+          "phase": "P3",
+          "gate": "",
+          "reason": "未记录具体失败原因",
+          "count": 1,
+          "category": "测试与验证",
+          "at": "2026-09-22T08:33:13Z",
+          "source": "公开指标快照"
+        },
+        {
+          "phase": "P4",
+          "gate": "",
+          "reason": "未记录具体失败原因",
+          "count": 2,
+          "category": "编译构建",
+          "at": "2026-09-22T08:38:20Z",
+          "source": "公开指标快照"
+        },
+        {
+          "phase": "P6",
+          "gate": "",
+          "reason": "未记录具体失败原因",
+          "count": 3,
+          "category": "设备连接",
+          "at": "2026-09-22T08:52:25Z",
+          "source": "公开指标快照"
+        },
+        {
+          "phase": "P7",
+          "gate": "",
+          "reason": "未记录具体失败原因",
+          "count": 1,
+          "category": "原因缺失",
+          "at": "2026-09-22T08:56:15Z",
+          "source": "公开指标快照"
+        },
+        {
+          "phase": "P8",
+          "gate": "",
+          "reason": "未记录具体失败原因",
+          "count": 4,
+          "category": "原因缺失",
+          "at": "2026-09-22T12:26:49Z",
+          "source": "公开指标快照"
+        }
+      ],
+      "failures": 13,
+      "gate_attempts": 32,
+      "human_interventions": [
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P6"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P7"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P8"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P6"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P7"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P8"
+        }
+      ],
+      "open_waits": 0,
+      "effective_seconds": 38575,
+      "wall_seconds": 40657,
+      "wait_seconds": 2082
+    },
+    {
+      "id": "20260921-data-clean-mode",
+      "workflow": "ar-development",
+      "kind": "AR",
+      "status": "running",
+      "current_phase": "P5",
+      "agent": "unknown",
+      "model": "unknown",
+      "updated_at": "2026-09-21T12:17:19Z",
+      "started_at": "2026-09-21T07:34:16Z",
+      "source": "公开快照 / 运行 6",
+      "phases": [
+        {
+          "id": "P0",
+          "name": "P0",
+          "status": "passed",
+          "wall_seconds": 646,
+          "wait_seconds": 0,
+          "effective_seconds": 646,
+          "gate_attempts": 1,
+          "pass_attempts": 1,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 1,
+          "skills": [],
+          "gate": "gate_env_init.py",
+          "opened_at": "2026-09-21T07:34:16Z",
+          "closed_at": "2026-09-21T07:45:02Z"
+        },
+        {
+          "id": "P1",
+          "name": "P1",
+          "status": "passed",
+          "wall_seconds": 3123,
+          "wait_seconds": 2112,
+          "effective_seconds": 1011,
+          "gate_attempts": 14,
+          "pass_attempts": 11,
+          "fail_attempts": 3,
+          "stage_attempts": null,
+          "rounds": 7,
+          "skills": [],
+          "gate": "gate_design.py",
+          "opened_at": "2026-09-21T11:39:41Z",
+          "closed_at": "2026-09-21T11:42:10Z"
+        },
+        {
+          "id": "P2",
+          "name": "P2",
+          "status": "passed",
+          "wall_seconds": 1060,
+          "wait_seconds": 0,
+          "effective_seconds": 1060,
+          "gate_attempts": 14,
+          "pass_attempts": 12,
+          "fail_attempts": 2,
+          "stage_attempts": null,
+          "rounds": 12,
+          "skills": [],
+          "gate": "gate_develop.py",
+          "opened_at": "2026-09-21T11:46:28Z",
+          "closed_at": "2026-09-21T11:46:29Z"
+        },
+        {
+          "id": "P3",
+          "name": "P3",
+          "status": "passed",
+          "wall_seconds": 393,
+          "wait_seconds": 0,
+          "effective_seconds": 393,
+          "gate_attempts": 13,
+          "pass_attempts": 12,
+          "fail_attempts": 1,
+          "stage_attempts": null,
+          "rounds": 12,
+          "skills": [],
+          "gate": "gate_test_develop.py",
+          "opened_at": "2026-09-21T11:46:29Z",
+          "closed_at": "2026-09-21T11:46:30Z"
+        },
+        {
+          "id": "P4",
+          "name": "P4",
+          "status": "passed",
+          "wall_seconds": 5840,
+          "wait_seconds": 0,
+          "effective_seconds": 5840,
+          "gate_attempts": 14,
+          "pass_attempts": 3,
+          "fail_attempts": 11,
+          "stage_attempts": null,
+          "rounds": 3,
+          "skills": [],
+          "gate": "gate_build.py",
+          "opened_at": "2026-09-21T11:34:51Z",
+          "closed_at": "2026-09-21T11:50:26Z"
+        },
+        {
+          "id": "P5",
+          "name": "P5",
+          "status": "passed",
+          "wall_seconds": 1019,
+          "wait_seconds": 0,
+          "effective_seconds": 1019,
+          "gate_attempts": 4,
+          "pass_attempts": 3,
+          "fail_attempts": 1,
+          "stage_attempts": null,
+          "rounds": 3,
+          "skills": [],
+          "gate": "gate_test_ut.py",
+          "opened_at": "2026-09-21T11:50:26Z",
+          "closed_at": "2026-09-21T11:51:47Z"
+        },
+        {
+          "id": "P6",
+          "name": "P6",
+          "status": "running",
+          "wall_seconds": 7235,
+          "wait_seconds": 0,
+          "effective_seconds": 7235,
+          "gate_attempts": 0,
+          "pass_attempts": 0,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 1,
+          "skills": [],
+          "gate": "",
+          "opened_at": "2026-09-21T10:16:44Z",
+          "closed_at": ""
+        },
+        {
+          "id": "P7",
+          "name": "P7",
+          "status": "pending",
+          "wall_seconds": null,
+          "wait_seconds": 0,
+          "effective_seconds": null,
+          "gate_attempts": 0,
+          "pass_attempts": 0,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 0,
+          "skills": [],
+          "gate": "",
+          "opened_at": "",
+          "closed_at": ""
+        },
+        {
+          "id": "P8",
+          "name": "P8",
+          "status": "pending",
+          "wall_seconds": null,
+          "wait_seconds": 0,
+          "effective_seconds": null,
+          "gate_attempts": 0,
+          "pass_attempts": 0,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 0,
+          "skills": [],
+          "gate": "",
+          "opened_at": "",
+          "closed_at": ""
+        }
+      ],
+      "failure_details": [
+        {
+          "phase": "P1",
+          "gate": "",
+          "reason": "未记录具体失败原因",
+          "count": 3,
+          "category": "原因缺失",
+          "at": "2026-09-21T11:39:41Z",
+          "source": "公开指标快照"
+        },
+        {
+          "phase": "P2",
+          "gate": "",
+          "reason": "未记录具体失败原因",
+          "count": 2,
+          "category": "原因缺失",
+          "at": "2026-09-21T11:46:29Z",
+          "source": "公开指标快照"
+        },
+        {
+          "phase": "P3",
+          "gate": "",
+          "reason": "未记录具体失败原因",
+          "count": 1,
+          "category": "测试与验证",
+          "at": "2026-09-21T11:46:30Z",
+          "source": "公开指标快照"
+        },
+        {
+          "phase": "P4",
+          "gate": "",
+          "reason": "未记录具体失败原因",
+          "count": 11,
+          "category": "编译构建",
+          "at": "2026-09-21T11:50:26Z",
+          "source": "公开指标快照"
+        },
+        {
+          "phase": "P5",
+          "gate": "",
+          "reason": "未记录具体失败原因",
+          "count": 1,
+          "category": "测试与验证",
+          "at": "2026-09-21T11:51:47Z",
+          "source": "公开指标快照"
+        }
+      ],
+      "failures": 18,
+      "gate_attempts": 60,
+      "human_interventions": [
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "详细说明仅在本地版提供",
+          "phase": "P1"
+        }
+      ],
+      "open_waits": 0,
+      "effective_seconds": 17204,
+      "wall_seconds": 19316,
+      "wait_seconds": 2112
+    }
+  ],
+  "redacted": true
+}
