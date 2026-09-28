@@ -5,10 +5,17 @@ export function summarize(runs) {
   const measured = runs.filter(r => known(r.failures) && known(r.gate_attempts));
   const failures = sum(measured.map(r => r.failures));
   const attempts = sum(measured.map(r => r.gate_attempts));
+  const firstSamples = runs.filter(r => known(r.first_gate_attempts));
+  const firstAttempts = sum(firstSamples.map(r => r.first_gate_attempts));
+  const firstPasses = sum(firstSamples.map(r => r.first_gate_passes));
+  const firstFailures = sum(firstSamples.map(r => r.first_gate_failures));
+  const firstReviewHolds = sum(firstSamples.map(r => r.first_gate_review_holds));
   return {count:runs.length, completed:runs.filter(r=>r.status==='completed').length,
     effective:sum(durations), wait:sum(runs.map(r=>r.wait_seconds)), wall:sum(runs.map(r=>r.wall_seconds)),
     average:durations.length ? sum(durations)/durations.length : null, durationSamples:durations.length,
     failures, attempts, failureRate:attempts ? failures/attempts*100 : null,
+    firstAttempts,firstPasses,firstFailures,firstReviewHolds,
+    firstPassRate:firstAttempts ? firstPasses/firstAttempts*100 : null,
     failureRuns:runs.filter(r=>r.failures>0).length,
     unknownFailureRuns:runs.filter(r=>!known(r.failures)).length};
 }

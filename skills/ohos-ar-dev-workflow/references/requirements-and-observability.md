@@ -29,6 +29,9 @@ P1 先形成 Given/When/Then 验收矩阵，再做依赖可行性调查。人工
 - gate/证据误判：修 gate 并重新取证，不为迁就门禁修改产品设计。
 
 历史签名证据不覆盖；新一轮通过 evidence epoch 与 `phases[].runs` 单独计时。
+每条新门禁 PASS/FAIL 在 `phases.<N>.attempt_history` 留存签名 manifest 序号、真实原因、阶段轮次及是否首次尝试。
+查明的根因与修复动作由 `advance.py fix --root-cause ... --action ...` 指定失败序号并记录；其结果只能由后续同一门禁的签名重跑判定，
+不能把自述修改当作 PASS。旧版 metrics 只有计数、没有逐次记录时不推断首轮结果或历史修复。
 
 ## 统一维测文件
 

@@ -137,6 +137,54 @@ class ExportTests(unittest.TestCase):
             self.assertNotIn(secret, text)
         self.assertTrue(public['redacted'])
 
+    def test_attempt_history_reports_each_fix_and_first_failure_without_duplication(self):
+        metrics = self.metrics()
+        metrics['phases']['0']['attempt_history'] = [
+            dict(id='manifest:0', manifest_seq=0, gate='gate_env_init.py',
+                 verdict='FAIL', reason='missing build.sh', at_utc='2026-09-14T18:00:00Z',
+                 round=1, first_attempt=True, failure_kind='gate_failure',
+                 resolution_status='not_resolved', fixes=[dict(root_cause='wrong OHOS_ROOT', action='set source root',
+                 change_ref='env:OHOS_ROOT', verification_verdict='FAIL')]),
+            dict(id='manifest:1', manifest_seq=1, gate='gate_env_init.py',
+                 verdict='FAIL', reason='developer_test absent', round=1,
+                 first_attempt=False, failure_kind='gate_failure',
+                 resolution_status='resolved', verified_by='manifest:2',
+                 fixes=[dict(action='sync developer_test', change_ref='repo sync',
+                 verification_verdict='PASS')]),
+        ]
+        metrics['summary'] = dict(first_gate_attempts_total=1,
+                                  first_gate_failures_total=1,
+                                  first_gate_passes_total=0,
+                                  first_gate_review_holds_total=0)
+        event = dict(seq=0, phase=0, verdict='FAIL', gate='gate_env_init.py',
+                     reason='missing build.sh')
+        data = self.export({'a/workflow_metrics.json': metrics,
+                            'a/evidence/manifest.jsonl': json.dumps(event)})
+        run = data['runs'][0]
+        self.assertEqual(len(run['failure_details']), 2)
+        self.assertEqual([d['reason'] for d in run['failure_details']],
+                         ['missing build.sh', 'developer_test absent'])
+        self.assertTrue(run['failure_details'][0]['first_attempt'])
+        self.assertIn('root_cause', run['failure_details'][0]['fixes'][0])
+        self.assertEqual(run['failure_details'][0]['fixes'][0]['root_cause'], 'wrong OHOS_ROOT')
+        self.assertEqual(run['failure_details'][1]['fixes'][0]['verification_verdict'], 'PASS')
+        self.assertEqual(run['first_gate_failures'], 1)
+
+    def test_public_snapshot_hides_fix_action_and_change_reference(self):
+        snapshot = {'runs': [{'source': 'private', 'human_interventions': [], 'phases': [],
+                              'failure_details': [{'reason': 'missing build.sh',
+                              'source': 'internal', 'gate': 'gate_build.py',
+                              'fixes': [{'action': 'edit /home/alice/secret.cpp',
+                                         'root_cause': 'uses 172.23.160.1 /private/key.pem',
+                                         'change_ref': 'private config',
+                                         'verification_verdict': 'PASS'}]}]}]}
+        public = module.public_snapshot(snapshot)
+        serialized = json.dumps(public)
+        self.assertNotIn('/home/alice', serialized)
+        self.assertNotIn('private config', serialized)
+        self.assertEqual(public['runs'][0]['failure_details'][0]['fixes'][0]
+                         ['verification_verdict'], 'PASS')
+
 
 if __name__ == '__main__':
     unittest.main()

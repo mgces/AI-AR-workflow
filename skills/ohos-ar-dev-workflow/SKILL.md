@@ -39,7 +39,12 @@ workflow 的串行文件交接：本 workflow 仍需独立初始化 P0-P8，并�
    > ② 若**改过功能代码/配置**:先 `advance.py reset --reason "<改了什么>"` 回 P1,再从 P1 顺序重走(见护栏 6)。
    > 任何"让用户手动修改签名"的念头都是错的,停下按上面两条走。
 3. **门控失败 → 留在本阶段**。读 `evidence/phaseN/` 里的真实失败日志,修复后**重跑门控**;
-   最多自动重试 3 次,仍失败则停下并把真实失败日志呈现给用户。
+   最多自动重试 3 次,仍失败则停下并把真实失败日志呈现给用户。每次 FAIL 后运行
+   `advance.py --pipeline-dir "$PDIR" failures` 查看 `manifest:<seq>` 与具体原因；实际修改完成后、重跑门控前
+   执行 `advance.py --pipeline-dir "$PDIR" fix --attempt-id manifest:<seq> --root-cause "<查明的根因>" --action "<如何修改>"`
+   （可加 `--change-ref <文件/提交/配置>`）。同一门禁的下一条签名 PASS/FAIL 才判定这次修改是否解决问题；
+   没有登记修改的重试即使 PASS，也不能归功于某项修复。P8 的 `consent-precheck` FAIL 是预期审核停点，
+   应走 consent，不记录为代码缺陷。
 4. **真机/真实日志是阶段产出**。P5/P6/P7 的结束证据必须是设备上真实跑出来的报告/hilog,
    不是你写的文字。设备 RTC 错乱,新鲜度靠 nonce + `/proc/uptime` + 新建报告目录,不靠时间戳。
 5. **P1 设计固化、P6 端到端结果、P7 质量/review 报告 与 P8 上库 需人工确认**。
@@ -108,7 +113,7 @@ workflow 的串行文件交接：本 workflow 仍需独立初始化 P0-P8，并�
   > (防止弱模型把证据/文档写到源码根之外)。
 - init 自动创建 `$PDIR/workflow_metrics.json`；每阶段实际调用 skill 时立即执行
   `advance.py use-skill --name <skill>`。文件统一记录阶段各轮墙钟耗时、人工等待排除时间、有效耗时、
-  gate 尝试及三类人工介入。正常 consent 自动开闭等待并记为 `required_workflow`；流程意外卡死和用户主动
+  每次 gate 的签名证据序号、首次尝试结果、失败原因、修改与复验结果，以及三类人工介入。正常 consent 自动开闭等待并记为 `required_workflow`；流程意外卡死和用户主动
   纠偏若需等回复，用 `human-wait start/end`，等待期间不累计有效耗时；当场介入才用 `intervene`。
   完整使用口径见 `docs/workflow/observability-usage.md`。
 - 跑 P0 预检并推进:

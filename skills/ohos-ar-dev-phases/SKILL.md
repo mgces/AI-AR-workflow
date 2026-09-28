@@ -18,7 +18,9 @@ description: >
   1. 用本阶段命名的 ohos-* 技能做事(写代码 / 生成测试 / 部署 / 建 PR)。
   2. `python3 $S/gate_<phase>.py --pipeline-dir "$PDIR" [参数]` —— 跑真实动作、产签名证据。
   3. 门控 PASS 后 `python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase N`。
-- 门控 FAIL:读 `$PDIR/evidence/phaseN/` 真实日志定位,修复后重跑门控(≤3 次),仍失败停下报告。
+- 门控 FAIL:读 `$PDIR/evidence/phaseN/` 真实日志定位，运行 `advance.py --pipeline-dir "$PDIR" failures` 获取失败序号；
+  实际修改后使用 `advance.py --pipeline-dir "$PDIR" fix --attempt-id manifest:<seq> --root-cause "<根因>" --action "<修改>"` 记录，
+  再重跑同一门控(≤3 次)。PASS/FAIL 的复验结果由签名门禁自动写入指标，仍失败则停下报告。
 - 任何阶段都不得用文字"宣布通过";`advance.py` 不认文字,只认签名证据。
 
 各阶段详情见 `phase1-design.md` … `phase8-upload-review.md`(物理 phase 1–8;phase0 是 bootstrap 预检,无独立文档)。

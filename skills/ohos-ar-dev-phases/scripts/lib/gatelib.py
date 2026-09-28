@@ -1816,6 +1816,10 @@ def _refresh_metrics_totals(data):
         category = item.get("category")
         if category in by_category:
             by_category[category] += 1
+    recorded_attempts = [attempt for phase in phases.values()
+                         for attempt in (phase.get("attempt_history") or [])]
+    first_attempts = [attempt for attempt in recorded_attempts
+                      if attempt.get("first_attempt") is True]
     data["summary"] = {
         "phase_wall_elapsed_seconds": {
             key: value.get("elapsed_seconds") for key, value in phases.items()
@@ -1838,6 +1842,18 @@ def _refresh_metrics_totals(data):
         "human_wait_open_count": sum(1 for wait in waits if not wait.get("ended_at_utc")),
         "gate_attempts_total": sum(
             int(value.get("gate_attempts", 0)) for value in phases.values()),
+        "first_gate_attempts_total": len(first_attempts),
+        "first_gate_passes_total": sum(
+            attempt.get("verdict") == "PASS" for attempt in first_attempts),
+        "first_gate_failures_total": sum(
+            attempt.get("verdict") == "FAIL" for attempt in first_attempts),
+        "first_gate_review_holds_total": sum(
+            attempt.get("failure_kind") == "expected_review_hold"
+            for attempt in first_attempts),
+        "unrecorded_gate_attempts_total": sum(
+            max(0, int(phase.get("gate_attempts", 0)) -
+                len(phase.get("attempt_history") or []))
+            for phase in phases.values()),
     }
     data["updated_at_utc"] = now
     return data
@@ -1881,6 +1897,7 @@ def init_workflow_metrics(pdir, run_id, *, agent="", model="", skills=None):
             "runs": ([{"opened_at_utc": now, "closed_at_utc": None}]
                      if i == 0 else []),
             "gate_attempts": 0, "pass_attempts": 0, "fail_attempts": 0,
+            "attempt_history": [],
             "skills_used": (list(dict.fromkeys(skills or [])) if i == 0 else []),
         }
         for i, name in PHASES
@@ -1954,7 +1971,8 @@ def observe_phase_closed(pdir, phase, closed_at=None):
     return write_workflow_metrics(pdir, data) if data else None
 
 
-def observe_gate_attempt(pdir, phase, verdict, gate):
+def observe_gate_attempt(pdir, phase, verdict, gate, *, entry=None, reason=None):
+    """Mirror signed gate evidence into advisory, per-attempt metrics history."""
     data = read_workflow_metrics(pdir)
     item = (data.get("phases") or {}).get(str(phase))
     if item is not None:
@@ -1965,6 +1983,54 @@ def observe_gate_attempt(pdir, phase, verdict, gate):
             runs.append({"opened_at_utc": item["opened_at_utc"],
                          "closed_at_utc": None})
         if verdict in ("PASS", "FAIL"):
+            history = item.setdefault("attempt_history", [])
+            old_count = int(item.get("gate_attempts", 0))
+            round_number = len(runs)
+            same_gate_round = [attempt for attempt in history
+                               if attempt.get("gate") == gate and
+                               attempt.get("round") == round_number]
+            attempt_id = ("manifest:%s" % entry["seq"] if entry is not None and
+                          isinstance(entry.get("seq"), int) else
+                          "metrics:%s:%s" % (phase, old_count + 1))
+            for previous in reversed(history):
+                same_gate = (previous.get("gate") == gate or
+                             (previous.get("failure_kind") == "expected_review_hold" and
+                              previous.get("gate", "").split(":", 1)[0] == gate))
+                if (same_gate and previous.get("verdict") == "FAIL"
+                        and previous.get("resolution_status") in
+                        ("unresolved", "pending_verification")):
+                    fixes = previous.get("fixes") or []
+                    previous["resolution_status"] = (
+                        "review_hold_released" if verdict == "PASS" and
+                        previous.get("failure_kind") == "expected_review_hold" else
+                        "resolved" if verdict == "PASS" and fixes else
+                        "passed_without_recorded_fix" if verdict == "PASS" else
+                        "not_resolved" if fixes else "failed_again_without_recorded_fix")
+                    previous["verified_by"] = attempt_id
+                    previous["verified_at_utc"] = (
+                        entry.get("ts_utc") if entry is not None else _utc_now())
+                    for fix in fixes:
+                        if fix.get("verification_verdict") is None:
+                            fix["verification_verdict"] = verdict
+                            fix["verification_attempt_id"] = attempt_id
+                    break
+            first_attempt = (not same_gate_round if old_count == len(history)
+                             else None)
+            history.append({
+                "id": attempt_id,
+                "manifest_seq": entry.get("seq") if entry is not None else None,
+                "at_utc": entry.get("ts_utc") if entry is not None else _utc_now(),
+                "gate": gate, "verdict": verdict,
+                "reason": entry.get("reason") if entry is not None else reason,
+                "round": round_number,
+                "attempt_in_round": len(same_gate_round) + 1,
+                "first_attempt": first_attempt,
+                "failure_kind": ("expected_review_hold" if verdict == "FAIL" and
+                                 gate.endswith(":consent-precheck") else
+                                 "gate_failure" if verdict == "FAIL" else None),
+                "resolution_status": "unresolved" if verdict == "FAIL" else None,
+                "fixes": [],
+            })
             item["gate_attempts"] = int(item.get("gate_attempts", 0)) + 1
             key = "pass_attempts" if verdict == "PASS" else "fail_attempts"
             item[key] = int(item.get(key, 0)) + 1
@@ -1988,6 +2054,51 @@ def observe_gate_attempt(pdir, phase, verdict, gate):
         start_human_wait(
             pdir, phase, "required_workflow", wait_reason,
             source="gate:auto-wait", record_intervention=False)
+    return result
+
+
+def record_gate_fix(pdir, attempt_id, action, *, root_cause, change_ref=""):
+    """Record a claimed change; only a later signed same-gate result verifies it."""
+    action = str(action or "").strip()
+    if not action:
+        raise ValueError("fix action must describe what changed")
+    root_cause = str(root_cause or "").strip()
+    if not root_cause:
+        raise ValueError("root cause diagnosis is required")
+    if not isinstance(attempt_id, str) or not attempt_id.startswith("manifest:"):
+        raise ValueError("fix must reference a signed FAIL attempt id")
+    try:
+        sequence = int(attempt_id.split(":", 1)[1])
+    except ValueError as error:
+        raise ValueError("invalid manifest attempt id") from error
+    valid, detail, entries = verify_chain(pdir)
+    if not valid:
+        raise ValueError("cannot link fix to invalid manifest: %s" % detail)
+    if sequence < 0 or sequence >= len(entries) or entries[sequence].get("verdict") != "FAIL":
+        raise ValueError("attempt id does not name a signed FAIL")
+    data = read_workflow_metrics(pdir)
+    attempt = next((event for phase in (data.get("phases") or {}).values()
+                    for event in phase.get("attempt_history", [])
+                    if event.get("id") == attempt_id and event.get("verdict") == "FAIL"), None)
+    if attempt is None or attempt.get("resolution_status") not in (
+            "unresolved", "pending_verification"):
+        raise ValueError("failure is not present or already has a retry result")
+    signed = entries[sequence]
+    if (attempt.get("gate") != signed.get("gate") or
+            attempt.get("reason") != signed.get("reason") or
+            str(signed.get("phase")) not in (data.get("phases") or {}) or
+            attempt not in data["phases"][str(signed["phase"])].get("attempt_history", [])):
+        raise ValueError("metrics failure does not match signed evidence")
+    attempt.setdefault("fixes", []).append({
+        "action": action, "change_ref": str(change_ref or "").strip(),
+        "root_cause": root_cause,
+        "recorded_at_utc": _utc_now(), "verification_verdict": None,
+        "verification_attempt_id": None,
+    })
+    attempt["resolution_status"] = "pending_verification"
+    result = write_workflow_metrics(pdir, data)
+    if result is None:
+        raise OSError("could not write workflow metrics fix")
     return result
 
 
@@ -3153,7 +3264,7 @@ def emit(pdir, phase, gate, *, verdict, reason, cmd="", argv=None,
         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
     # Observability is intentionally downstream of the signed truth write and
     # best-effort: metrics can describe a gate, never authorize it.
-    observe_gate_attempt(pdir, phase, verdict, gate)
+    observe_gate_attempt(pdir, phase, verdict, gate, entry=entry)
     return entry
 
 

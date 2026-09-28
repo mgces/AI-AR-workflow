@@ -1725,6 +1725,57 @@ def cmd_repair(args):
     print("If acceptance, dependency, public API or behavior changed, stop and use reset.")
 
 
+def cmd_fix(args):
+    """Attach a described change to one signed FAIL; the next gate verifies it."""
+    pdir = gl.pipeline_dir(args.pipeline_dir)
+    try:
+        gl.record_gate_fix(pdir, args.attempt_id, args.action,
+                           change_ref=args.change_ref,
+                           root_cause=args.root_cause)
+    except (ValueError, OSError) as error:
+        sys.exit("ERROR: %s" % error)
+    print("recorded fix for %s; resolution pending next signed same-gate retry"
+          % args.attempt_id)
+
+
+def cmd_failures(args):
+    """Show why first attempts failed and whether described fixes were verified."""
+    pdir = gl.pipeline_dir(args.pipeline_dir)
+    data = gl.read_workflow_metrics(pdir)
+    if not data:
+        sys.exit("ERROR: workflow_metrics.json unavailable")
+    attempts = [dict(phase=phase, **attempt)
+                for phase, item in (data.get("phases") or {}).items()
+                for attempt in item.get("attempt_history", [])]
+    summary = data.get("summary") or {}
+    if args.json:
+        print(json.dumps({"summary": summary, "attempts": attempts},
+                         ensure_ascii=False, indent=2))
+        return
+    print("first gate attempts: %s passed / %s failed (%s expected review holds)"
+          % (summary.get("first_gate_passes_total", 0),
+             summary.get("first_gate_failures_total", 0),
+             summary.get("first_gate_review_holds_total", 0)))
+    if summary.get("unrecorded_gate_attempts_total"):
+        print("historical attempts without individual reasons: %s"
+              % summary["unrecorded_gate_attempts_total"])
+    for attempt in attempts:
+        if attempt.get("verdict") != "FAIL":
+            continue
+        first = " first-attempt" if attempt.get("first_attempt") is True else ""
+        print("P%s %s %s%s: %s" % (
+            attempt["phase"], attempt.get("id"), attempt.get("gate"), first,
+            attempt.get("reason") or "reason not recorded"))
+        for fix in attempt.get("fixes") or []:
+            print("  root cause: %s  change: %s  ref: %s  retry: %s" % (
+                fix.get("root_cause") or "not diagnosed", fix.get("action"),
+                fix.get("change_ref") or "—",
+                fix.get("verification_verdict") or "pending"))
+        print("  resolution: %s%s" % (
+            attempt.get("resolution_status") or "unknown",
+            " by " + attempt["verified_by"] if attempt.get("verified_by") else ""))
+
+
 def cmd_intervene(args):
     """Record a human touch that is not already captured by `consent`."""
     pdir = gl.pipeline_dir(args.pipeline_dir)
@@ -2182,6 +2233,17 @@ def main():
     p = sub.add_parser("repair", help="rewalk from P2 for implementation-only changes under signed v3 scope")
     p.add_argument("--reason", required=True)
     p.set_defaults(func=cmd_repair)
+
+    p = sub.add_parser("fix", help="record how one signed FAIL was addressed; retry verifies outcome")
+    p.add_argument("--attempt-id", required=True, help="manifest:<seq> from failures")
+    p.add_argument("--root-cause", required=True, help="diagnosed cause of the failed first/retry attempt")
+    p.add_argument("--action", required=True, help="what was changed to address this failure")
+    p.add_argument("--change-ref", default="", help="file, commit, configuration or other change reference")
+    p.set_defaults(func=cmd_fix)
+
+    p = sub.add_parser("failures", help="show first-attempt reasons, fixes and signed retry outcomes")
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(func=cmd_failures)
 
     p = sub.add_parser("context", help="update agent/model/skills in workflow_metrics.json")
     p.add_argument("--agent", default="")

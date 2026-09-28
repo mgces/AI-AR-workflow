@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-28T07:05:38.378078+00:00",
+  "generated_at": "2026-09-28T07:45:12.748991+00:00",
   "source_label": "AI-AR-workflow",
   "source_count": 6,
   "duplicate_count": 0,
@@ -258,6 +258,11 @@
         }
       ],
       "open_waits": 0,
+      "first_gate_attempts": null,
+      "first_gate_failures": null,
+      "first_gate_passes": null,
+      "first_gate_review_holds": null,
+      "unrecorded_gate_attempts": null,
       "effective_seconds": 16398,
       "wall_seconds": 19513,
       "wait_seconds": 3115
@@ -534,6 +539,11 @@
         }
       ],
       "open_waits": 1,
+      "first_gate_attempts": null,
+      "first_gate_failures": null,
+      "first_gate_passes": null,
+      "first_gate_review_holds": null,
+      "unrecorded_gate_attempts": null,
       "effective_seconds": 18522,
       "wall_seconds": 70902,
       "wait_seconds": 52380
@@ -833,6 +843,11 @@
         }
       ],
       "open_waits": 1,
+      "first_gate_attempts": null,
+      "first_gate_failures": null,
+      "first_gate_passes": null,
+      "first_gate_review_holds": null,
+      "unrecorded_gate_attempts": null,
       "effective_seconds": 97132,
       "wall_seconds": 99553,
       "wait_seconds": 2421
@@ -1063,6 +1078,11 @@
         }
       ],
       "open_waits": 0,
+      "first_gate_attempts": null,
+      "first_gate_failures": null,
+      "first_gate_passes": null,
+      "first_gate_review_holds": null,
+      "unrecorded_gate_attempts": null,
       "effective_seconds": 11306,
       "wall_seconds": 154815,
       "wait_seconds": 143509
@@ -1343,6 +1363,11 @@
         }
       ],
       "open_waits": 0,
+      "first_gate_attempts": null,
+      "first_gate_failures": null,
+      "first_gate_passes": null,
+      "first_gate_review_holds": null,
+      "unrecorded_gate_attempts": null,
       "effective_seconds": 38575,
       "wall_seconds": 40657,
       "wait_seconds": 2082
@@ -1600,6 +1625,11 @@
         }
       ],
       "open_waits": 0,
+      "first_gate_attempts": null,
+      "first_gate_failures": null,
+      "first_gate_passes": null,
+      "first_gate_review_holds": null,
+      "unrecorded_gate_attempts": null,
       "effective_seconds": 17204,
       "wall_seconds": 19316,
       "wait_seconds": 2112

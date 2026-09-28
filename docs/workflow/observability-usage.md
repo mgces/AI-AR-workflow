@@ -111,7 +111,36 @@ python3 $S/advance.py --pipeline-dir "$PDIR" intervene \
 | `blocked_unplanned` | 不由人处理就无法继续 | 否 |
 | `user_correction` | 用户主动修正目标、输入、输出或预期 | 否 |
 
-## 6. 提交维测文件前检查
+## 6. 逐次失败与修复
+
+每次 P0-P8 门禁签名 PASS/FAIL 都会自动写入该阶段的 `attempt_history`：`id=manifest:<seq>`、
+`round`、`first_attempt`、`verdict`、门禁名和真实 `reason`。首次尝试以“同一阶段轮次内的同一门禁”为口径；
+`summary.first_gate_attempts_total/first_gate_passes_total/first_gate_failures_total` 给出首轮通过情况，
+`first_gate_review_holds_total` 单列 P8 预期的 consent 预检停点。旧文件只有汇总次数而没有逐次记录时，
+`first_attempt` 是 `null`，`unrecorded_gate_attempts_total` 显示缺失次数，不反推失败原因。
+
+实际修改完成后、重跑同一门禁前，先查看失败序号并记录修改：
+
+```bash
+# 在含有已初始化 PDIR 的源码仓中运行，命令只更新 PDIR/workflow_metrics.json；
+# 签名证据仍由 gate_*.py 产生，不由以下命令改动。
+S="$SKILLS_DIR/ohos-ar-dev-phases/scripts"
+python3 "$S/advance.py" --pipeline-dir "$PDIR" failures
+python3 "$S/advance.py" --pipeline-dir "$PDIR" fix \
+  --attempt-id manifest:3 --root-cause "目标 BUILD.gn 遗漏依赖" \
+  --action "补全 BUILD.gn 中缺失的目标依赖" \
+  --change-ref "base/hiviewdfx/hiview/BUILD.gn"
+# 再运行当前阶段 gate_*.py；同一门禁下一次签名结果决定复验状态。
+python3 "$S/advance.py" --pipeline-dir "$PDIR" failures --json
+```
+
+`fix` 保存人工查明的根因与实际修改说明，默认 `pending_verification`；后续同门禁 PASS 才成为 `resolved`，
+后续 FAIL 成为 `not_resolved`，并生成独立的新失败记录。未经记录修改而重跑 PASS 标为
+`passed_without_recorded_fix`，不冒称修复生效。不同门禁的 PASS 不会解除这次失败。P8
+`gate_upload_ci.py:consent-precheck` 的 FAIL 属于 `expected_review_hold`，应走正常人工确认，
+不是“代码修复失败”。不要在 `--action` 或 `--change-ref` 中写入令牌、账号、密钥或设备序列号。
+
+## 7. 提交维测文件前检查
 
 ```bash
 python3 $S/advance.py --pipeline-dir "$PDIR" status
@@ -126,7 +155,7 @@ python3 -m json.tool "$PDIR/workflow_metrics.json" >/dev/null
 - 人工介入 reason 是具体事实，不写“有问题”“人工处理”等模糊描述；
 - 不提交 consent token、账号密码、设备密钥等敏感内容。
 
-## 7. 文件关键结构示例
+## 8. 文件关键结构示例
 
 ```json
 {
@@ -151,7 +180,16 @@ python3 -m json.tool "$PDIR/workflow_metrics.json" >/dev/null
       ],
       "gate_attempts": 2,
       "pass_attempts": 1,
-      "fail_attempts": 1
+      "fail_attempts": 1,
+      "attempt_history": [
+        {
+          "id": "manifest:3", "gate": "gate_develop.py", "verdict": "FAIL",
+          "reason": "缺少目标依赖", "round": 1, "first_attempt": true,
+          "fixes": [{"root_cause": "目标 BUILD.gn 遗漏依赖", "action": "补全 BUILD.gn 依赖", "change_ref": "BUILD.gn",
+                     "verification_verdict": "PASS", "verification_attempt_id": "manifest:4"}],
+          "resolution_status": "resolved", "verified_by": "manifest:4"
+        }
+      ]
     }
   },
   "human_interventions": [],

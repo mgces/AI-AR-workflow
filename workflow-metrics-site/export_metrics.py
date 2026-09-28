@@ -80,7 +80,8 @@ def evidence_events(path, root, warnings):
             continue
         seen.add(identity)
         if str(event.get('verdict', '')).upper() == 'FAIL':
-            events.append(dict(phase=phase_key(event.get('phase', '')), gate=clean(event.get('gate')),
+            events.append(dict(id=f"manifest:{event['seq']}" if isinstance(event.get('seq'), int) else f"line:{line_number}",
+                               phase=phase_key(event.get('phase', '')), gate=clean(event.get('gate')),
                                reason=clean(event.get('reason')) or '未记录具体失败原因',
                                at=clean(event.get('ts_utc')), source=str(manifest.relative_to(root))))
     return events
@@ -116,7 +117,26 @@ def normalize(data, path, root, warnings):
                      gate=clean(item.get('last_gate') or item.get('last_action')),
                      opened_at=clean(item.get('opened_at_utc')), closed_at=clean(item.get('closed_at_utc')))
         phases.append(phase)
-        matches = [e for e in events if e['phase'] == pid]
+        history_matches = []
+        for attempt in item.get('attempt_history') or []:
+            if not isinstance(attempt, dict) or attempt.get('verdict') != 'FAIL':
+                continue
+            history_matches.append(dict(
+                id=clean(attempt.get('id')), phase=pid,
+                gate=clean(attempt.get('gate')),
+                reason=clean(attempt.get('reason')) or '未记录具体失败原因',
+                at=clean(attempt.get('at_utc')), source=str(path.relative_to(root)),
+                first_attempt=attempt.get('first_attempt') if isinstance(attempt.get('first_attempt'), bool) else None,
+                round=number(attempt.get('round')),
+                failure_kind=clean(attempt.get('failure_kind')),
+                resolution_status=clean(attempt.get('resolution_status')),
+                verified_by=clean(attempt.get('verified_by')),
+                fixes=[dict(root_cause=clean(f.get('root_cause')), action=clean(f.get('action')),
+                            change_ref=clean(f.get('change_ref')),
+                            verification_verdict=f.get('verification_verdict') if f.get('verification_verdict') in ('PASS', 'FAIL') else None)
+                       for f in attempt.get('fixes', []) if isinstance(f, dict)]))
+        recorded_ids = {e['id'] for e in history_matches}
+        matches = history_matches + [e for e in events if e['phase'] == pid and e['id'] not in recorded_ids]
         if failure_count is not None:
             if len(matches) > failure_count:
                 warnings.append(f'{path.relative_to(root)} {pid} 证据失败数超过指标计数，仅关联最近记录')
@@ -152,6 +172,12 @@ def normalize(data, path, root, warnings):
                human_interventions=[dict(category=clean(i.get('category')), reason=clean(i.get('reason')),
                                           phase=phase_key(i.get('phase', ''))) for i in data.get('human_interventions', []) if isinstance(i, dict)],
                open_waits=waiting)
+    for out, key in [('first_gate_attempts', 'first_gate_attempts_total'),
+                     ('first_gate_failures', 'first_gate_failures_total'),
+                     ('first_gate_passes', 'first_gate_passes_total'),
+                     ('first_gate_review_holds', 'first_gate_review_holds_total'),
+                     ('unrecorded_gate_attempts', 'unrecorded_gate_attempts_total')]:
+        run[out] = number(summary.get(key))
     for out, field, phase_field in [('effective_seconds', 'workflow_effective_elapsed_seconds', 'effective_seconds'),
                                     ('wall_seconds', 'workflow_wall_elapsed_seconds', 'wall_seconds'),
                                     ('wait_seconds', 'workflow_human_wait_excluded_seconds', 'wait_seconds')]:
@@ -216,6 +242,10 @@ def public_snapshot(data):
             event['reason'] = reason if reason in {'未记录具体失败原因', '仅记录最近结果，未记录具体失败原因'} else '内部诊断信息已隐藏'
             event['source'] = '公开指标快照'
             event['gate'] = ''
+            for fix in event.get('fixes') or []:
+                fix['root_cause'] = '详细诊断仅在本地版提供'
+                fix['action'] = '详细修改仅在本地版提供'
+                fix['change_ref'] = ''
             if event.get('category') not in {'待人工确认', '环境与依赖', '测试与验证', '编译构建', '设备连接', '原因缺失', '其他门禁问题'}:
                 event['category'] = '其他门禁问题'
     return result

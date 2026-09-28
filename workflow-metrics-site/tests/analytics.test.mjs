@@ -32,3 +32,13 @@ test('phase rollup preserves unknown times and separates R and P stages', () => 
   assert.equal(result[0].wait_seconds, 5);
   assert.equal(result[1].effective_seconds, null);
 });
+test('first-pass rate uses recorded initial attempts and separates review holds', () => {
+  const runs=[{first_gate_attempts:3,first_gate_passes:1,first_gate_failures:2,first_gate_review_holds:1},
+    {first_gate_attempts:null,first_gate_passes:null,first_gate_failures:null},
+    {first_gate_attempts:2,first_gate_passes:2,first_gate_failures:0,first_gate_review_holds:0}];
+  const result=analytics.summarize(runs);
+  assert.equal(result.firstPassRate,60);
+  assert.equal(result.firstFailures,2);
+  assert.equal(result.firstReviewHolds,1);
+  assert.equal(analytics.summarize([{first_gate_attempts:null}]).firstPassRate,null);
+});
