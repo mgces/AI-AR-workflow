@@ -54,13 +54,13 @@ test('phase failure drill-down keeps selected run and its matching details', () 
   assert.deepEqual(rows.map(row=>row.details[0].reason),['compile error','linker error']);
   assert.equal(rows[0].phase.fail_attempts,3);
 });
-test('blocked tooltip names the current phase, gate, recorded cause and snapshot time', () => {
-  assert.equal(typeof analytics.runStatusTooltip,'function');
+test('blocked status explanation names the current phase, gate, recorded cause and snapshot time', () => {
+  assert.equal(typeof analytics.runStatusExplanation,'function');
   const run={status:'blocked',current_phase:'P4',updated_at:'2026-09-29T02:00:00Z',
     phases:[{id:'P4',name:'build-verify',gate:'gate_build.py'}],failure_details:[
       {phase:'P4',gate:'older_gate.py',reason:'unrelated old failure'},
       {phase:'P4',gate:'gate_build.py',reason:'未记录具体失败原因'}]};
-  const tip=analytics.runStatusTooltip(run,{P4:'编译验证'},value=>value);
+  const tip=analytics.runStatusExplanation(run,{P4:'编译验证'},value=>value);
   assert.match(tip,/P4 编译验证/);
   assert.match(tip,/gate_build.py/);
   assert.match(tip,/原因未记录/);
@@ -68,19 +68,19 @@ test('blocked tooltip names the current phase, gate, recorded cause and snapshot
   assert.doesNotMatch(tip,/unrelated old failure/);
   assert.match(tip,/非实时/);
 });
-test('blocked tooltip uses the exact gate reason and completed has no tooltip', () => {
-  assert.equal(typeof analytics.runStatusTooltip,'function');
+test('blocked status explanation uses the exact gate reason and completed has no explanation', () => {
+  assert.equal(typeof analytics.runStatusExplanation,'function');
   const run={status:'blocked',current_phase:'P5',phases:[{id:'P5',gate:'gate_test_ut.py'}],
     failure_details:[{phase:'P5',gate:'gate_test_ut.py',reason:'unit test assertion failed'}]};
-  assert.match(analytics.runStatusTooltip(run,{P5:'单元测试'}),/unit test assertion failed/);
-  assert.equal(analytics.runStatusTooltip({...run,status:'completed'}),'');
+  assert.match(analytics.runStatusExplanation(run,{P5:'单元测试'}),/unit test assertion failed/);
+  assert.equal(analytics.runStatusExplanation({...run,status:'completed'}),'');
 });
-test('waiting tooltip shows the open wait rather than a historical failure', () => {
+test('waiting status explanation shows the open wait rather than a historical failure', () => {
   const run={status:'waiting',current_phase:'P5',updated_at:'2026-09-29T02:00:00Z',
     phases:[{id:'P5',name:'unit-test'}],
     open_wait_details:[{phase:'P5',reason:'设备掉线，等待重连',started_at_utc:'2026-09-28T09:00:00Z'}],
     failure_details:[{phase:'P5',reason:'old test failure'}]};
-  const tip=analytics.runStatusTooltip(run,{P5:'单元测试'},value=>value);
+  const tip=analytics.runStatusExplanation(run,{P5:'单元测试'},value=>value);
   assert.match(tip,/等待人工/);
   assert.match(tip,/P5 单元测试/);
   assert.match(tip,/设备掉线，等待重连/);
@@ -88,15 +88,15 @@ test('waiting tooltip shows the open wait rather than a historical failure', () 
   assert.match(tip,/2026-09-29T02:00:00Z/);
   assert.doesNotMatch(tip,/old test failure/);
 });
-test('running and pending tooltips explain evidence limits', () => {
+test('running and pending explanations explain evidence limits', () => {
   const running={status:'running',current_phase:'P4',updated_at:'2026-09-29T02:00:00Z',
     phases:[{id:'P4',name:'build',gate:'gate_build.py'}]};
-  const active=analytics.runStatusTooltip(running,{P4:'编译验证'},value=>value);
+  const active=analytics.runStatusExplanation(running,{P4:'编译验证'},value=>value);
   assert.match(active,/进行中/);
   assert.match(active,/P4 编译验证/);
   assert.match(active,/gate_build.py/);
   assert.match(active,/无法判断.*仍在运行/);
-  const pending=analytics.runStatusTooltip({status:'pending',current_phase:'—',updated_at:'2026-09-29T02:00:00Z',phases:[]},{},value=>value);
+  const pending=analytics.runStatusExplanation({status:'pending',current_phase:'—',updated_at:'2026-09-29T02:00:00Z',phases:[]},{},value=>value);
   assert.match(pending,/未开始/);
   assert.match(pending,/未记录已开始的阶段/);
   assert.match(pending,/2026-09-29T02:00:00Z/);

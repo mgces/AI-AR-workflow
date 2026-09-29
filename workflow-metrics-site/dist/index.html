@@ -40,7 +40,7 @@
       <section class="panel" id="timing"><div class="panel-title"><div><h2>阶段耗时分布</h2><p>跨运行累计 · 按记录的阶段时长统计</p></div><select id="time-mode" aria-label="耗时口径"><option value="effective">有效耗时</option><option value="wall">含人工等待</option></select></div><div class="legend"><span><i class="blue"></i>有效耗时</span><span><i class="light-blue"></i>人工等待</span></div><div id="phase-chart" class="phase-chart"></div><div class="panel-foot" id="timing-note"></div></section>
       <section class="panel" id="failures"><div class="panel-title"><div><h2>门禁失败分布</h2><p>点击柱子查看对应运行和失败详情</p></div><span class="small-tag">按阶段</span></div><div id="failure-chart"></div><div class="panel-foot" id="failure-note"></div></section>
     </div>
-    <section class="panel records" id="runs"><div class="panel-title"><div><h2>运行记录 <span id="run-count" class="count"></span></h2><p>悬停非“已完成”状态查看记录依据；选择运行查看完整明细</p></div><span class="muted small">按指标更新时间降序</span></div><div class="table-wrap"><table><thead><tr><th>运行 / 模型</th><th>快照状态</th><th>有效耗时</th><th>人工等待</th><th>门禁失败</th><th>阶段进度</th><th><span class="sr-only">操作</span></th></tr></thead><tbody id="run-rows"></tbody></table></div><div id="empty" class="empty" hidden>没有符合筛选条件的运行。<button class="text-button" id="empty-reset">重置筛选</button></div></section>
+    <section class="panel records" id="runs"><div class="panel-title"><div><h2>运行记录 <span id="run-count" class="count"></span></h2><p>点击非“已完成”状态查看记录依据；选择运行查看完整明细</p></div><span class="muted small">按指标更新时间降序</span></div><div class="table-wrap"><table><thead><tr><th>运行 / 模型</th><th>快照状态</th><th>有效耗时</th><th>人工等待</th><th>门禁失败</th><th>阶段进度</th><th><span class="sr-only">操作</span></th></tr></thead><tbody id="run-rows"></tbody></table></div><div id="empty" class="empty" hidden>没有符合筛选条件的运行。<button class="text-button" id="empty-reset">重置筛选</button></div></section>
     <div class="analysis-grid bottom-grid">
       <section class="panel"><div class="panel-title"><div><h2>失败原因记录</h2><p>按证据汇总；公开版仅遮掩敏感片段</p></div></div><div id="reason-list" class="reason-list"></div></section>
       <section class="panel"><div class="panel-title"><div><h2>非计划人工介入</h2><p>解阻与纠偏说明 · 不等同于门禁失败原因</p></div></div><div id="intervention-list" class="intervention-list"></div></section>
@@ -50,4 +50,5 @@
   </main>
 </div>
 <dialog id="detail" aria-labelledby="detail-title"><div class="dialog-head"><div><p class="eyebrow" id="detail-kind">RUN INSPECTOR</p><h2 id="detail-title"></h2></div><button id="close-detail" class="close" aria-label="关闭详情">×</button></div><div id="detail-content"></div></dialog>
+<dialog id="status-dialog" class="status-dialog" aria-labelledby="status-title"><div class="dialog-head"><div><p class="eyebrow">SNAPSHOT STATUS</p><h2 id="status-title"></h2></div><button id="close-status" class="close" aria-label="关闭状态说明">×</button></div><div id="status-explanation" class="status-explanation"></div></dialog>
 </body></html>

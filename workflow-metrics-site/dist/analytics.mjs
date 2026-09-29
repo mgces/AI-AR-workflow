@@ -42,7 +42,7 @@ export function phaseFailureRuns(runs, phaseId) {
     return phase&&(phase.fail_attempts>0||details.length) ? [{run,phase,details}] : [];
   });
 }
-export function runStatusTooltip(run, phaseNames={}, formatTime=value=>value||'未记录') {
+export function runStatusExplanation(run, phaseNames={}, formatTime=value=>value||'未记录') {
   if(run.status==='completed')return '';
   const phase=(run.phases||[]).find(item=>item.id===run.current_phase);
   const stage=phase ? `${phase.id} ${phaseNames[phase.id]||phase.name||'阶段'}` : '未记录';
