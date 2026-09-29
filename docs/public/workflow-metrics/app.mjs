@@ -1,4 +1,4 @@
-import {summarize,filterRuns,phaseTotals,known} from './analytics.mjs';
+import {summarize,filterRuns,phaseTotals,phaseFailureRuns,known} from './analytics.mjs';
 const $=id=>document.getElementById(id);
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const labels={completed:'已完成',running:'进行中',blocked:'受阻',waiting:'等待人工',pending:'未开始',passed:'已通过',failed:'失败'};
@@ -29,7 +29,7 @@ function render(){
  const bottleneck=[...phases].filter(p=>known(p.effective_seconds)).sort((a,b)=>b.effective_seconds-a.effective_seconds)[0];
  $('timing-note').textContent=bottleneck?`有效耗时最多：${bottleneck.id} ${phaseNames[bottleneck.id]||''} · ${duration(bottleneck.effective_seconds)}`:'未记录有效耗时';
  const maxFail=Math.max(1,...phases.map(p=>p.failures||0));
- $('failure-chart').innerHTML=`<div class="failure-stats"><div><strong>${s.failureRate===null?'—':s.failureRate.toFixed(1)+'%'}</strong> <span>门禁失败率</span></div><span>${s.failureRuns} 次运行存在失败记录</span></div><div class="failure-bars">${phases.map(p=>`<div class="failure-col" title="${esc(p.id)}：${fmt(p.failures)} 次失败 / ${fmt(p.attempts)} 次尝试"><span class="n">${fmt(p.failures)}</span><div class="column ${p.failures===maxFail?'strong':''} ${p.failures?'':'zero'}" style="height:${(p.failures||0)/maxFail*135}px"></div><span class="name">${esc(p.id)}</span></div>`).join('')}</div>`;
+ $('failure-chart').innerHTML=`<div class="failure-stats"><div><strong>${s.failureRate===null?'—':s.failureRate.toFixed(1)+'%'}</strong> <span>门禁失败率</span></div><span>${s.failureRuns} 次运行存在失败记录</span></div><div class="failure-bars">${phases.map(p=>`<button class="failure-col" type="button" data-phase="${esc(p.id)}" title="查看 ${esc(p.id)} 对应运行的失败详情" aria-label="查看 ${esc(p.id)} ${esc(phaseNames[p.id]||'阶段')}的 ${fmt(p.failures)} 次失败与对应运行"><span class="n">${fmt(p.failures)}</span><span class="column ${p.failures===maxFail?'strong':''} ${p.failures?'':'zero'}" style="height:${(p.failures||0)/maxFail*135}px"></span><span class="name">${esc(p.id)}</span></button>`).join('')}</div>`;
  const details=selected.flatMap(r=>r.failure_details.map(d=>({...d,run:r})));
  const missing=details.filter(d=>d.category==='原因缺失').reduce((n,d)=>n+(d.count||0),0);
  const firstReasons=[...new Set(details.filter(d=>d.first_attempt===true&&d.failure_kind!=='expected_review_hold'&&d.reason!=='未记录具体失败原因').map(d=>d.reason))];
@@ -41,17 +41,28 @@ function render(){
  $('reason-list').innerHTML=[...reasons.values()].sort((a,b)=>b.count-a.count).map(r=>`<article class="reason-item"><div class="reason-head"><b>${esc(r.category)}</b><span class="small-tag">${r.count?fmt(r.count)+' 次':''}${r.unknown?' 最近失败记录 '+r.unknown+' 条':''}</span></div><p>${esc(r.reason)}</p></article>`).join('')||'<p class="empty">当前范围没有失败记录</p>';
  const interventions=selected.flatMap(r=>r.human_interventions.filter(i=>i.category!=='required_workflow').map(i=>({...i,run:r})));
  $('intervention-list').innerHTML=interventions.map(i=>`<article class="reason-item"><div class="reason-head"><b>${esc(i.phase)} · ${esc(interventionLabels[i.category]||i.category)}</b></div><p>${esc(i.reason)}</p><button class="text-button" data-run="${esc(i.run.source)}">${esc(i.run.id)} ↗</button></article>`).join('')||'<p class="empty">没有记录非计划人工介入</p>';
- $('quality-notes').innerHTML=data.warnings.map(w=>`<p class="quality-warning">${esc(w)}</p>`).join('')+`<p class="quality-warning">${data.duplicate_count||0} 份重复运行快照已去重；状态与耗时均截至指标更新时间。${data.redacted?'公开版隐藏内部诊断原文；':''}在线页面展示已发布快照，本机新增文件需重新导出并发布。</p>`;
+ $('quality-notes').innerHTML=data.warnings.map(w=>`<p class="quality-warning">${esc(w)}</p>`).join('')+`<p class="quality-warning">${data.duplicate_count||0} 份重复运行快照已去重；状态与耗时均截至指标更新时间。${data.redacted?'公开版仅遮掩敏感片段；':''}在线页面展示已发布快照，本机新增文件需重新导出并发布。</p>`;
 }
 function fixDetails(d){
  const fixes=(d.fixes||[]).map(f=>`<p class="fix-line">根因：${esc(f.root_cause)||'未记录'} · 修改：${esc(f.action)||'未填写'}${f.change_ref?' · '+esc(f.change_ref):''} · 复验：${f.verification_verdict==='PASS'?'通过':f.verification_verdict==='FAIL'?'仍失败':'待重跑'}</p>`).join('');
  return `${fixes}<p class="source">${d.first_attempt===true?'首次尝试 · ':d.first_attempt===false?'重试 · ':''}${d.failure_kind==='expected_review_hold'?'预期人工审核停点 · ':''}${esc(resolutionLabels[d.resolution_status]|| (d.resolution_status?'状态未知':'历史记录未提供修复结果'))}${d.verified_by?' · 复验 '+esc(d.verified_by):''}</p>`;
 }
+function openPhase(phaseId){
+ const phase=phaseTotals(selected).find(item=>item.id===phaseId);
+ if(!phase)return;
+ const rows=phaseFailureRuns(selected,phaseId);
+ $('detail-kind').textContent='PHASE INSPECTOR';
+ $('detail-title').textContent=`${phaseId} ${phaseNames[phaseId]||'阶段'} · 失败明细`;
+ $('detail-content').innerHTML=`<div class="detail-meta"><span>${fmt(phase.failures)} 次失败 / ${fmt(phase.attempts)} 次门禁尝试</span><span>${rows.length} 次运行涉及失败</span></div><div class="phase-run-list">${rows.map(({run,phase:runPhase,details})=>`<section class="phase-run"><div class="reason-head"><div><button class="run-link" data-run="${esc(run.source)}">${esc(run.id)} ↗</button><p class="run-meta">${esc(run.model)} · ${badge(run.status)}</p></div><span class="small-tag">${fmt(runPhase.fail_attempts)} 次失败 / ${fmt(runPhase.gate_attempts)} 次尝试</span></div><div class="reason-list">${details.map(d=>`<article class="reason-item"><div class="reason-head"><b>${esc(d.gate)||'门禁未记录'}</b><span class="small-tag">${d.count===null?'仅最近结果':fmt(d.count)+' 次'}</span></div><p>${esc(d.reason)}</p>${fixDetails(d)}<p class="source">${esc(d.source)}${d.at?' · '+date(d.at):''}</p></article>`).join('')||'<p class="muted">此运行只有失败计数，缺少逐次原因</p>'}</div></section>`).join('')||'<p class="empty">当前筛选范围内，这个阶段没有失败记录。</p>'}</div>`;
+ if(!$('detail').open)$('detail').showModal();
+}
 function detail(source){
  const r=data.runs.find(r=>r.source===source);if(!r)return;
+ const alreadyOpen=$('detail').open;
+ $('detail-kind').textContent='RUN INSPECTOR';
  $('detail-title').textContent=r.id;
  $('detail-content').innerHTML=`<div class="detail-meta">${badge(r.status)}<span>${esc(r.kind)} · ${esc(r.agent)} / ${esc(r.model)}</span><span>指标更新 ${date(r.updated_at)}</span></div><div class="detail-kpis"><div>有效耗时<strong>${duration(r.effective_seconds)}</strong></div><div>人工等待<strong>${duration(r.wait_seconds)}</strong></div><div>门禁失败 / 尝试<strong>${fmt(r.failures)} / ${fmt(r.gate_attempts)}</strong></div></div><h3>阶段明细</h3><div class="table-wrap"><table><thead><tr><th>阶段</th><th>最近结果</th><th>有效耗时</th><th>人工等待</th><th>失败 / 尝试</th><th>轮次</th><th>最近门禁</th></tr></thead><tbody>${r.phases.map(p=>`<tr><td title="${esc(p.name)}">${esc(p.id)} ${esc(phaseNames[p.id]||p.name)}</td><td>${badge(p.status)}</td><td>${duration(p.effective_seconds)}</td><td>${duration(p.wait_seconds)}</td><td>${fmt(p.fail_attempts)} / ${fmt(p.gate_attempts)}</td><td>${p.rounds}</td><td>${esc(p.gate)||'—'}</td></tr>`).join('')}</tbody></table></div><section class="detail-section"><h3>失败原因、修改与复验</h3><div class="reason-list">${r.failure_details.map(d=>`<article class="reason-item"><div class="reason-head"><b>${esc(d.phase)} · ${esc(d.gate)||'门禁未记录'}</b><span class="small-tag">${d.count===null?'仅最近结果':d.count+' 次失败'}</span></div><p>${esc(d.reason)}</p>${fixDetails(d)}<p class="source">来源：${esc(d.source)}${d.at?' · '+date(d.at):''}</p></article>`).join('')||'<p class="muted">没有记录失败</p>'}</div></section><section class="detail-section"><h3>人工介入说明（${r.human_interventions.length}）</h3><div class="reason-list">${r.human_interventions.map(i=>`<article class="reason-item"><div class="reason-head"><b>${esc(i.phase)} · ${esc(interventionLabels[i.category]||i.category)}</b></div><p>${esc(i.reason)||'未填写原因'}</p></article>`).join('')||'<p class="muted">没有记录人工介入</p>'}</div></section><p class="detail-source">指标来源：${esc(r.source)}<br>快照状态由最近阶段结果与等待记录推断。历史 FAIL 不意味着该运行最终失败。</p>`;
- $('detail').showModal();
+ if(!alreadyOpen)$('detail').showModal();else $('close-detail').focus();
 }
 async function load(){
  $('refresh').disabled=true;$('load-error').hidden=true;
@@ -67,7 +78,7 @@ async function load(){
 function reset(){for(const id of ['search','kind','model','status'])$(id).value='';render();}
 for(const id of ['kind','model','status','time-mode'])$(id).addEventListener('change',render);
 $('search').addEventListener('input',render);$('reset').addEventListener('click',reset);$('empty-reset').addEventListener('click',reset);$('refresh').addEventListener('click',load);
-document.addEventListener('click',event=>{const button=event.target.closest('[data-run]');if(button)detail(button.dataset.run);});
+document.addEventListener('click',event=>{const phase=event.target.closest('[data-phase]');if(phase){openPhase(phase.dataset.phase);return;}const button=event.target.closest('[data-run]');if(button)detail(button.dataset.run);});
 $('close-detail').addEventListener('click',()=>$('detail').close());
 $('detail').addEventListener('click',event=>{if(event.target===$('detail')){const r=$('detail').getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)$('detail').close();}});
 document.querySelectorAll('nav a').forEach(a=>a.addEventListener('click',()=>{document.querySelector('nav a.active')?.classList.remove('active');a.classList.add('active');}));

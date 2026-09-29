@@ -35,3 +35,10 @@ export function phaseTotals(runs) {
     wall_seconds:sum(phases.map(p=>p.wall_seconds)),failures:sum(phases.map(p=>p.fail_attempts)),
     attempts:sum(phases.map(p=>p.gate_attempts)),samples:phases.filter(p=>known(p.effective_seconds)).length}));
 }
+export function phaseFailureRuns(runs, phaseId) {
+  return runs.flatMap(run=>{
+    const phase=(run.phases||[]).find(item=>item.id===phaseId);
+    const details=(run.failure_details||[]).filter(item=>item.phase===phaseId);
+    return phase&&(phase.fail_attempts>0||details.length) ? [{run,phase,details}] : [];
+  });
+}

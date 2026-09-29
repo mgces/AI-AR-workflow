@@ -17,6 +17,8 @@ PASSED = {'PASS', 'PASSED', 'COMPLETED', 'ACCEPTED', 'SUCCESS', 'READY'}
 
 def clean(value):
     text = str(value or '')
+    text = re.sub(r'(?i)\bauthorization\s*[:=]\s*bearer\s+[^\s,;]+',
+                  'authorization=Bearer [已隐藏]', text)
     text = re.sub(r'(?:/home/|/Users/|/mnt/[a-z]/Users/)[^\s;\'\"]+', '[本机路径]', text)
     text = re.sub(r'[A-Za-z]:[\\/][^\s;\'\"]+', '[本机路径]', text)
     text = re.sub(r'(?i)\b(token|password|secret|api_key|authorization)\s*[:=]\s*\S+', r'\1=[已隐藏]', text)
@@ -217,37 +219,39 @@ def collect(root):
                 warnings=warnings, runs=sorted(records.values(), key=lambda r: r['updated_at'], reverse=True))
 
 
+def public_text(value):
+    """Mask credential and host identifiers while keeping diagnostic prose."""
+    value = re.sub(r'(?i)\b(https?://)[^/@\s]+@', r'\1[凭据]@', value)
+    value = re.sub(r'(?i)\bauthorization\s*[:=]\s*bearer\s+[^\s,;]+',
+                   'authorization=Bearer [已隐藏]', value)
+    value = re.sub(
+        r'(?i)\b(token|password|passwd|secret|api[_-]?key|authorization|'
+        r'access[_-]?key|private[_-]?key|device[_-]?serial|serial)\s*[:=]\s*[^\s,;)}]+',
+        lambda match: match.group(1) + '=[已隐藏]', value)
+    value = re.sub(r'(?<!\d)(?:\d{1,3}\.){3}\d{1,3}(?::\d+)?(?!\d)', '[IP地址]', value)
+    value = re.sub(r'(?i)(?<![\w.])[\w.+-]+@[\w.-]+\.[a-z]{2,}', '[邮箱]', value)
+    value = re.sub(r'[A-Za-z]:[\\/][^\s,;\'"()<>]+', '[本机路径]', value)
+    value = re.sub(r'(?<!\w)/(?:home|Users|mnt/[a-z]/Users|data|system|vendor|dev|tmp)/'
+                   r'[^\s,;\'"()<>]+', '[敏感路径]', value)
+    value = re.sub(r'(?i)\b[A-Za-z0-9_.-]+\.(?:pem|key|p12|pfx)\b', '[证书文件]', value)
+    value = re.sub(r'(?i)\bCERT\.(?:ENC|SF)\b', '[证书文件]', value)
+    return value
+
+
 def public_snapshot(data):
-    """Keep useful counts while suppressing free-form internal diagnostics."""
-    result = deepcopy(data)
+    """Publish all allowlisted facts while redacting sensitive text fragments."""
+    def scrub(value):
+        if isinstance(value, str):
+            return public_text(value)
+        if isinstance(value, list):
+            return [scrub(item) for item in value]
+        if isinstance(value, dict):
+            return {key: scrub(item) for key, item in value.items()}
+        return value
+
+    result = scrub(deepcopy(data))
     result['redacted'] = True
-    result['warnings'] = ['有指标文件未能导入；详细信息仅在本地查看'] * len(result.get('warnings', []))
-    for index, run in enumerate(result.get('runs', []), 1):
-        run['source'] = f'公开快照 / 运行 {index}'
-        for field in ('agent', 'model'):
-            value = run.get(field, '')
-            if not re.fullmatch(r'[A-Za-z0-9_.+-]{1,50}', value):
-                run[field] = 'unknown'
-        for phase in run.get('phases', []):
-            phase['skills'] = []
-            phase['name'] = phase.get('id', '阶段')
-            gate = phase.get('gate', '')
-            phase['gate'] = gate if re.fullmatch(r'gate_[a-z0-9_]+\.py', gate) else ''
-        for event in run.get('human_interventions', []):
-            event['reason'] = '详细说明仅在本地版提供'
-            if event.get('category') not in {'required_workflow', 'blocked_unplanned', 'user_correction'}:
-                event['category'] = 'unknown'
-        for event in run.get('failure_details', []):
-            reason = event.get('reason', '')
-            event['reason'] = reason if reason in {'未记录具体失败原因', '仅记录最近结果，未记录具体失败原因'} else '内部诊断信息已隐藏'
-            event['source'] = '公开指标快照'
-            event['gate'] = ''
-            for fix in event.get('fixes') or []:
-                fix['root_cause'] = '详细诊断仅在本地版提供'
-                fix['action'] = '详细修改仅在本地版提供'
-                fix['change_ref'] = ''
-            if event.get('category') not in {'待人工确认', '环境与依赖', '测试与验证', '编译构建', '设备连接', '原因缺失', '其他门禁问题'}:
-                event['category'] = '其他门禁问题'
+    result['redaction_scope'] = 'sensitive_fragments'
     return result
 
 

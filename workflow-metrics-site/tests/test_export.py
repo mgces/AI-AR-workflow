@@ -133,8 +133,13 @@ class ExportTests(unittest.TestCase):
         text = json.dumps(public)
         self.assertEqual(public['runs'][0]['failures'], 3)
         self.assertEqual(public['runs'][0]['effective_seconds'], 120)
-        for secret in ('172.23.160.1', '/data/service', 'private.pem', 'token=abc', 'core/private.cpp', 'internal-tool', 'products/.run/'):
+        for secret in ('172.23.160.1', '/data/service', 'private.pem', 'token=abc'):
             self.assertNotIn(secret, text)
+        self.assertIn('hdc', text)
+        self.assertIn('internal-tool', text)
+        self.assertIn('products/.run/run-a/workflow_metrics.json', text)
+        self.assertIn('core/private.cpp', text)
+        self.assertIn('build.sh missing' if 'build.sh missing' in text else 'failed at', text)
         self.assertTrue(public['redacted'])
 
     def test_attempt_history_reports_each_fix_and_first_failure_without_duplication(self):
@@ -181,9 +186,34 @@ class ExportTests(unittest.TestCase):
         public = module.public_snapshot(snapshot)
         serialized = json.dumps(public)
         self.assertNotIn('/home/alice', serialized)
-        self.assertNotIn('private config', serialized)
+        self.assertNotIn('172.23.160.1', serialized)
+        self.assertNotIn('private.pem', serialized)
+        self.assertIn('private config', serialized)
+        self.assertIn('edit', serialized)
         self.assertEqual(public['runs'][0]['failure_details'][0]['fixes'][0]
                          ['verification_verdict'], 'PASS')
+
+    def test_public_snapshot_preserves_useful_intervention_text(self):
+        snapshot={'runs':[{'id':'run-a','source':'products/.run/run-a/workflow_metrics.json',
+                           'human_interventions':[{'category':'blocked_unplanned',
+                           'reason':'P5 needs physical device: hdc 172.23.160.1:10086 reports [Empty] targets; built out/rk3568/tests/ut'}],
+                           'phases':[],'failure_details':[]}]}
+        public=module.public_snapshot(snapshot)
+        reason=public['runs'][0]['human_interventions'][0]['reason']
+        self.assertIn('P5 needs physical device',reason)
+        self.assertIn('reports [Empty] targets',reason)
+        self.assertNotIn('172.23.160.1',reason)
+        self.assertNotEqual(reason,'详细说明仅在本地版提供')
+
+    def test_public_snapshot_masks_bearer_credentials_and_email_within_text(self):
+        snapshot={'runs':[{'id':'r','human_interventions':[{'reason':
+            'P4 failed; Authorization: Bearer abc123; ask alice@example.com; serial=DEVICE-42'}],
+            'phases':[],'failure_details':[]}]}
+        public=module.public_snapshot(snapshot)
+        reason=public['runs'][0]['human_interventions'][0]['reason']
+        self.assertIn('P4 failed',reason)
+        for secret in ('abc123','alice@example.com','DEVICE-42'):
+            self.assertNotIn(secret,reason)
 
 
 if __name__ == '__main__':

@@ -42,3 +42,15 @@ test('first-pass rate uses recorded initial attempts and separates review holds'
   assert.equal(result.firstReviewHolds,1);
   assert.equal(analytics.summarize([{first_gate_attempts:null}]).firstPassRate,null);
 });
+test('phase failure drill-down keeps selected run and its matching details', () => {
+  assert.equal(typeof analytics.phaseFailureRuns,'function');
+  const runs=[
+    {id:'a',phases:[{id:'P4',fail_attempts:3,gate_attempts:4}],failure_details:[{phase:'P4',count:3,reason:'compile error'},{phase:'P5',count:1,reason:'UT fail'}]},
+    {id:'b',phases:[{id:'P4',fail_attempts:0,gate_attempts:1}],failure_details:[]},
+    {id:'c',phases:[{id:'P4',fail_attempts:2,gate_attempts:2}],failure_details:[{phase:'P4',count:2,reason:'linker error'}]},
+  ];
+  const rows=analytics.phaseFailureRuns(runs,'P4');
+  assert.deepEqual(rows.map(row=>row.run.id),['a','c']);
+  assert.deepEqual(rows.map(row=>row.details[0].reason),['compile error','linker error']);
+  assert.equal(rows[0].phase.fail_attempts,3);
+});

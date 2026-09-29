@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-28T07:50:10.873056+00:00",
+  "generated_at": "2026-09-29T03:33:42.142303+00:00",
   "source_label": "AI-AR-workflow",
   "source_count": 6,
   "duplicate_count": 0,
@@ -16,11 +16,11 @@
       "model": "grok-4.7",
       "updated_at": "2026-09-24T08:49:41Z",
       "started_at": "2026-09-24T03:33:55Z",
-      "source": "公开快照 / 运行 1",
+      "source": "products/.run/run-06/workflow_metrics.json",
       "phases": [
         {
           "id": "P0",
-          "name": "P0",
+          "name": "bootstrap",
           "status": "passed",
           "wall_seconds": 1,
           "wait_seconds": 0,
@@ -30,14 +30,16 @@
           "fail_attempts": 0,
           "stage_attempts": null,
           "rounds": 1,
-          "skills": [],
+          "skills": [
+            "ohos-ar-dev-workflow"
+          ],
           "gate": "gate_env_init.py",
           "opened_at": "2026-09-24T03:33:55Z",
           "closed_at": "2026-09-24T03:33:56Z"
         },
         {
           "id": "P1",
-          "name": "P1",
+          "name": "design-orchestrate",
           "status": "passed",
           "wall_seconds": 856,
           "wait_seconds": 759,
@@ -47,14 +49,16 @@
           "fail_attempts": 0,
           "stage_attempts": null,
           "rounds": 2,
-          "skills": [],
+          "skills": [
+            "ohos-ar-dev-workflow"
+          ],
           "gate": "gate_design.py",
           "opened_at": "2026-09-24T03:59:29Z",
           "closed_at": "2026-09-24T03:59:29Z"
         },
         {
           "id": "P2",
-          "name": "P2",
+          "name": "feature-develop",
           "status": "passed",
           "wall_seconds": 853,
           "wait_seconds": 0,
@@ -64,14 +68,19 @@
           "fail_attempts": 3,
           "stage_attempts": null,
           "rounds": 5,
-          "skills": [],
+          "skills": [
+            "code-ruleset-style-check",
+            "ohos-dev-cpp-coding-style",
+            "tdd-enforcer",
+            "ohos-dev-build-execution-diagnosis"
+          ],
           "gate": "gate_develop.py",
           "opened_at": "2026-09-24T08:41:19Z",
           "closed_at": "2026-09-24T08:43:09Z"
         },
         {
           "id": "P3",
-          "name": "P3",
+          "name": "test-develop",
           "status": "passed",
           "wall_seconds": 276,
           "wait_seconds": 0,
@@ -81,14 +90,17 @@
           "fail_attempts": 1,
           "stage_attempts": null,
           "rounds": 5,
-          "skills": [],
+          "skills": [
+            "ohos-test-ut-generation",
+            "tdd-enforcer"
+          ],
           "gate": "gate_test_develop.py",
           "opened_at": "2026-09-24T08:43:09Z",
           "closed_at": "2026-09-24T08:43:35Z"
         },
         {
           "id": "P4",
-          "name": "P4",
+          "name": "build-verify",
           "status": "failed",
           "wall_seconds": 3717,
           "wait_seconds": 0,
@@ -98,14 +110,17 @@
           "fail_attempts": 4,
           "stage_attempts": null,
           "rounds": 2,
-          "skills": [],
+          "skills": [
+            "ohos-dev-build-execution-diagnosis",
+            "ohos-build-flash"
+          ],
           "gate": "gate_build.py",
           "opened_at": "2026-09-24T08:43:35Z",
           "closed_at": ""
         },
         {
           "id": "P5",
-          "name": "P5",
+          "name": "test-author",
           "status": "passed",
           "wall_seconds": 3486,
           "wait_seconds": 0,
@@ -115,14 +130,16 @@
           "fail_attempts": 3,
           "stage_attempts": null,
           "rounds": 1,
-          "skills": [],
+          "skills": [
+            "ohos-test-ut-generation"
+          ],
           "gate": "gate_test_ut.py",
           "opened_at": "2026-09-24T04:59:31Z",
           "closed_at": "2026-09-24T05:57:37Z"
         },
         {
           "id": "P6",
-          "name": "P6",
+          "name": "device-functional",
           "status": "passed",
           "wall_seconds": 1085,
           "wait_seconds": 555,
@@ -139,7 +156,7 @@
         },
         {
           "id": "P7",
-          "name": "P7",
+          "name": "quality-verify",
           "status": "passed",
           "wall_seconds": 3754,
           "wait_seconds": 171,
@@ -156,7 +173,7 @@
         },
         {
           "id": "P8",
-          "name": "P8",
+          "name": "upload-review",
           "status": "failed",
           "wall_seconds": 5485,
           "wait_seconds": 1630,
@@ -175,57 +192,57 @@
       "failure_details": [
         {
           "phase": "P2",
-          "gate": "",
+          "gate": "gate_develop.py",
           "reason": "未记录具体失败原因",
           "count": 3,
           "category": "原因缺失",
           "at": "2026-09-24T08:42:58Z",
-          "source": "公开指标快照"
+          "source": "products/.run/run-06/workflow_metrics.json"
         },
         {
           "phase": "P3",
-          "gate": "",
+          "gate": "gate_test_develop.py",
           "reason": "未记录具体失败原因",
           "count": 1,
           "category": "测试与验证",
           "at": "2026-09-24T08:43:24Z",
-          "source": "公开指标快照"
+          "source": "products/.run/run-06/workflow_metrics.json"
         },
         {
           "phase": "P4",
-          "gate": "",
+          "gate": "gate_build.py",
           "reason": "未记录具体失败原因",
           "count": 4,
           "category": "编译构建",
           "at": "2026-09-24T08:49:41Z",
-          "source": "公开指标快照"
+          "source": "products/.run/run-06/workflow_metrics.json"
         },
         {
           "phase": "P5",
-          "gate": "",
+          "gate": "gate_test_ut.py",
           "reason": "未记录具体失败原因",
           "count": 3,
           "category": "测试与验证",
           "at": "2026-09-24T05:57:21Z",
-          "source": "公开指标快照"
+          "source": "products/.run/run-06/workflow_metrics.json"
         },
         {
           "phase": "P7",
-          "gate": "",
+          "gate": "gate_integration.py",
           "reason": "未记录具体失败原因",
           "count": 2,
           "category": "原因缺失",
           "at": "2026-09-24T07:15:25Z",
-          "source": "公开指标快照"
+          "source": "products/.run/run-06/workflow_metrics.json"
         },
         {
           "phase": "P8",
-          "gate": "",
+          "gate": "gate_upload_ci.py",
           "reason": "未记录具体失败原因",
           "count": 3,
           "category": "原因缺失",
           "at": "2026-09-24T07:48:14Z",
-          "source": "公开指标快照"
+          "source": "products/.run/run-06/workflow_metrics.json"
         }
       ],
       "failures": 16,
@@ -233,27 +250,27 @@
       "human_interventions": [
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "P1 signed design review",
           "phase": "P1"
         },
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "P1 signed design review",
           "phase": "P1"
         },
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "device functional test review",
           "phase": "P6"
         },
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "quality reports and code review review",
           "phase": "P7"
         },
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "P8 pre-upload diff and target review",
           "phase": "P8"
         }
       ],
@@ -277,11 +294,11 @@
       "model": "deepseek-flash",
       "updated_at": "2026-09-24T07:26:56Z",
       "started_at": "2026-09-23T12:19:59Z",
-      "source": "公开快照 / 运行 2",
+      "source": "products/.run/run-04/workflow_metrics.json",
       "phases": [
         {
           "id": "P0",
-          "name": "P0",
+          "name": "bootstrap",
           "status": "passed",
           "wall_seconds": 4,
           "wait_seconds": 0,
@@ -291,14 +308,16 @@
           "fail_attempts": 0,
           "stage_attempts": null,
           "rounds": 1,
-          "skills": [],
+          "skills": [
+            "ohos-ar-dev-workflow"
+          ],
           "gate": "gate_env_init.py",
           "opened_at": "2026-09-23T12:19:59Z",
           "closed_at": "2026-09-23T12:20:03Z"
         },
         {
           "id": "P1",
-          "name": "P1",
+          "name": "design-orchestrate",
           "status": "passed",
           "wall_seconds": 47874,
           "wait_seconds": 47420,
@@ -315,7 +334,7 @@
         },
         {
           "id": "P2",
-          "name": "P2",
+          "name": "feature-develop",
           "status": "passed",
           "wall_seconds": 1660,
           "wait_seconds": 0,
@@ -325,14 +344,16 @@
           "fail_attempts": 1,
           "stage_attempts": null,
           "rounds": 4,
-          "skills": [],
+          "skills": [
+            "code-ruleset-style-check"
+          ],
           "gate": "gate_develop.py",
           "opened_at": "2026-09-24T05:45:11Z",
           "closed_at": "2026-09-24T05:45:16Z"
         },
         {
           "id": "P3",
-          "name": "P3",
+          "name": "test-develop",
           "status": "passed",
           "wall_seconds": 1263,
           "wait_seconds": 0,
@@ -342,14 +363,17 @@
           "fail_attempts": 1,
           "stage_attempts": null,
           "rounds": 4,
-          "skills": [],
+          "skills": [
+            "tdd-enforcer",
+            "ohos-test-ut-generation"
+          ],
           "gate": "gate_test_develop.py",
           "opened_at": "2026-09-24T05:45:16Z",
           "closed_at": "2026-09-24T05:45:19Z"
         },
         {
           "id": "P4",
-          "name": "P4",
+          "name": "build-verify",
           "status": "passed",
           "wall_seconds": 1640,
           "wait_seconds": 0,
@@ -359,14 +383,17 @@
           "fail_attempts": 0,
           "stage_attempts": null,
           "rounds": 3,
-          "skills": [],
+          "skills": [
+            "ohos-dev-build-execution-diagnosis",
+            "code-ruleset-style-check"
+          ],
           "gate": "gate_build.py",
           "opened_at": "2026-09-24T05:45:19Z",
           "closed_at": "2026-09-24T05:47:40Z"
         },
         {
           "id": "P5",
-          "name": "P5",
+          "name": "test-author",
           "status": "passed",
           "wall_seconds": 3232,
           "wait_seconds": 3232,
@@ -376,14 +403,16 @@
           "fail_attempts": 1,
           "stage_attempts": null,
           "rounds": 2,
-          "skills": [],
+          "skills": [
+            "ohos-test-ut-generation"
+          ],
           "gate": "gate_test_ut.py",
           "opened_at": "2026-09-24T05:42:48Z",
           "closed_at": "2026-09-24T06:09:16Z"
         },
         {
           "id": "P6",
-          "name": "P6",
+          "name": "device-functional",
           "status": "passed",
           "wall_seconds": 10843,
           "wait_seconds": 160,
@@ -393,14 +422,17 @@
           "fail_attempts": 2,
           "stage_attempts": null,
           "rounds": 1,
-          "skills": [],
+          "skills": [
+            "ohos-build-flash",
+            "ohos-dev-hdc-command-usage"
+          ],
           "gate": "gate_device_func.py",
           "opened_at": "2026-09-24T03:13:07Z",
           "closed_at": "2026-09-24T06:13:50Z"
         },
         {
           "id": "P7",
-          "name": "P7",
+          "name": "quality-verify",
           "status": "passed",
           "wall_seconds": 3150,
           "wait_seconds": 1471,
@@ -417,7 +449,7 @@
         },
         {
           "id": "P8",
-          "name": "P8",
+          "name": "upload-review",
           "status": "failed",
           "wall_seconds": 1236,
           "wait_seconds": 97,
@@ -436,57 +468,57 @@
       "failure_details": [
         {
           "phase": "P2",
-          "gate": "",
+          "gate": "gate_develop.py",
           "reason": "未记录具体失败原因",
           "count": 1,
           "category": "原因缺失",
           "at": "2026-09-24T05:45:14Z",
-          "source": "公开指标快照"
+          "source": "products/.run/run-04/workflow_metrics.json"
         },
         {
           "phase": "P3",
-          "gate": "",
+          "gate": "gate_test_develop.py",
           "reason": "未记录具体失败原因",
           "count": 1,
           "category": "测试与验证",
           "at": "2026-09-24T05:45:18Z",
-          "source": "公开指标快照"
+          "source": "products/.run/run-04/workflow_metrics.json"
         },
         {
           "phase": "P5",
-          "gate": "",
+          "gate": "gate_test_ut.py",
           "reason": "未记录具体失败原因",
           "count": 1,
           "category": "测试与验证",
           "at": "2026-09-24T06:09:06Z",
-          "source": "公开指标快照"
+          "source": "products/.run/run-04/workflow_metrics.json"
         },
         {
           "phase": "P6",
-          "gate": "",
+          "gate": "gate_device_func.py",
           "reason": "未记录具体失败原因",
           "count": 2,
           "category": "设备连接",
           "at": "2026-09-24T06:11:10Z",
-          "source": "公开指标快照"
+          "source": "products/.run/run-04/workflow_metrics.json"
         },
         {
           "phase": "P7",
-          "gate": "",
+          "gate": "gate_integration.py",
           "reason": "未记录具体失败原因",
           "count": 1,
           "category": "原因缺失",
           "at": "2026-09-24T06:41:49Z",
-          "source": "公开指标快照"
+          "source": "products/.run/run-04/workflow_metrics.json"
         },
         {
           "phase": "P8",
-          "gate": "",
+          "gate": "gate_upload_ci.py",
           "reason": "未记录具体失败原因",
           "count": 2,
           "category": "原因缺失",
           "at": "2026-09-24T07:26:56Z",
-          "source": "公开指标快照"
+          "source": "products/.run/run-04/workflow_metrics.json"
         }
       ],
       "failures": 8,
@@ -494,47 +526,47 @@
       "human_interventions": [
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "P1 signed design review",
           "phase": "P1"
         },
         {
           "category": "blocked_unplanned",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "P5 needs the physical device: hdc (SDK 26.0.0 + HDC_HOST_OVERRIDE=[IP地址]) reports [Empty] targets, server reachable and version-matched. UT binary ResmonPluginUnitTest already built (out/rk3568/tests/unittest/hiview/resource_monitor/).",
           "phase": "P5"
         },
         {
           "category": "blocked_unplanned",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "DC-7 (RESMON_CONFIG_RELOADED) has no reachable trigger on rk3568: the only production caller of Plugin::OnConfigUpdate is core/param_update/src/param_manager.cpp:110, which needs a common event usual.event.DUE_SA_CFG_UPDATED with type=HIVIEWPARA plus PUBKEY_PATH [证书文件] and [证书文件]/[证书文件] under [敏感路径] - none exist on this board (boot log: SubscriberEvent failed); cem publish cannot set the type parameter; no SIGHUP or watcher path exists. DC-8 (RESMON_COLLECT_FAILED) is blocked by the same root cause (needs a runtime config reload) and additionally by the gate's post-hoc /proc/<marker pid> probe plus init's respawn budget. Fixing both requires the user-approved option-C self-polling hot reload in resource_monitor_plugin.cpp OnTimerTick, i.e. a functional code change, which advance.py check_code_drift REFUSES after P2 unless repair/reset is run. User decision (2026-09-24): accept P6 stopping at DC-7/DC-8 - no code change, no repair, no reset, no re-walk; P0-P5 stay PASS; P6 gate is run once for machine-produced evidence and the run halts at P6 with a written report. P6 result: 7/9 device cases PASS (DC-1..DC-6, DC-9), artifact sha256 matched, nonce echoed by the running plugin, baseline window clean, uptime monotonic.",
           "phase": "P6"
         },
         {
           "category": "user_correction",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "Final decision (2026-09-24): close the run out at P6 without touching the code. The option-C OnTimerTick self-polling hot reload was approved in principle earlier in the run and would make both DC-7 (RESMON_CONFIG_RELOADED) and DC-8 (RESMON_COLLECT_FAILED) reachable, but the user declined to apply it, so no further edit is made to the deliverable. P0-P5 stay PASS; P6 stays FAIL (7/9 device cases); no consent, no advance, no repair, no reset; substate=awaiting_repair is left as the honest record of an incomplete phase. Deliverable is not ready to ship - AC-7 is unimplemented at runtime and is documented as follow-up work in DEVIATIONS.md section C.",
           "phase": "P6"
         },
         {
           "category": "user_correction",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "User reversed the 2026-09-24 'close at P6, do not touch code' decision and chose to implement the self-polling hot config reload (AC-7 runtime path) so DC-7/DC-8 become reachable; functional edit, so rewalk via repair from P2.",
           "phase": "P6"
         },
         {
           "category": "blocked_unplanned",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "真机离线(hdc list targets 为空), 等用户拉起 hdc server 并报 IP:端口; P5(UT 上机) 与 P6(端到端) 均需设备",
           "phase": "P5"
         },
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "device functional test review",
           "phase": "P6"
         },
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "quality reports and code review review",
           "phase": "P7"
         },
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "P8 pre-upload diff and target review",
           "phase": "P8"
         }
       ],
@@ -558,11 +590,11 @@
       "model": "glm-5.2",
       "updated_at": "2026-09-24T04:06:21Z",
       "started_at": "2026-09-23T02:18:40Z",
-      "source": "公开快照 / 运行 3",
+      "source": "products/.run/run-05/workflow_metrics.json",
       "phases": [
         {
           "id": "P0",
-          "name": "P0",
+          "name": "bootstrap",
           "status": "passed",
           "wall_seconds": 2025,
           "wait_seconds": 0,
@@ -572,14 +604,16 @@
           "fail_attempts": 1,
           "stage_attempts": null,
           "rounds": 1,
-          "skills": [],
+          "skills": [
+            "ohos-ar-dev-workflow"
+          ],
           "gate": "gate_env_init.py",
           "opened_at": "2026-09-23T02:18:40Z",
           "closed_at": "2026-09-23T02:52:25Z"
         },
         {
           "id": "P1",
-          "name": "P1",
+          "name": "design-orchestrate",
           "status": "passed",
           "wall_seconds": 3551,
           "wait_seconds": 1968,
@@ -589,14 +623,16 @@
           "fail_attempts": 0,
           "stage_attempts": null,
           "rounds": 5,
-          "skills": [],
+          "skills": [
+            "ohos-ar-dev-workflow"
+          ],
           "gate": "gate_design.py",
           "opened_at": "2026-09-24T03:01:52Z",
           "closed_at": "2026-09-24T03:31:20Z"
         },
         {
           "id": "P2",
-          "name": "P2",
+          "name": "feature-develop",
           "status": "passed",
           "wall_seconds": 5065,
           "wait_seconds": 0,
@@ -606,14 +642,17 @@
           "fail_attempts": 6,
           "stage_attempts": null,
           "rounds": 4,
-          "skills": [],
+          "skills": [
+            "code-ruleset-style-check",
+            "ohos-dev-cpp-coding-style"
+          ],
           "gate": "gate_develop.py",
           "opened_at": "2026-09-24T02:57:51Z",
           "closed_at": "2026-09-24T03:35:03Z"
         },
         {
           "id": "P3",
-          "name": "P3",
+          "name": "test-develop",
           "status": "passed",
           "wall_seconds": 1863,
           "wait_seconds": 0,
@@ -623,14 +662,17 @@
           "fail_attempts": 4,
           "stage_attempts": null,
           "rounds": 4,
-          "skills": [],
+          "skills": [
+            "ohos-test-ut-generation",
+            "code-ruleset-style-check"
+          ],
           "gate": "gate_test_develop.py",
           "opened_at": "2026-09-24T03:35:03Z",
           "closed_at": "2026-09-24T03:35:04Z"
         },
         {
           "id": "P4",
-          "name": "P4",
+          "name": "build-verify",
           "status": "passed",
           "wall_seconds": 13088,
           "wait_seconds": 0,
@@ -640,14 +682,16 @@
           "fail_attempts": 5,
           "stage_attempts": null,
           "rounds": 2,
-          "skills": [],
+          "skills": [
+            "ohos-dev-build-execution-diagnosis"
+          ],
           "gate": "gate_build.py",
           "opened_at": "2026-09-24T03:35:04Z",
           "closed_at": "2026-09-24T03:56:22Z"
         },
         {
           "id": "P5",
-          "name": "P5",
+          "name": "test-author",
           "status": "failed",
           "wall_seconds": 1790,
           "wait_seconds": 0,
@@ -657,14 +701,16 @@
           "fail_attempts": 4,
           "stage_attempts": null,
           "rounds": 2,
-          "skills": [],
+          "skills": [
+            "ohos-test-ut-generation"
+          ],
           "gate": "gate_test_ut.py",
           "opened_at": "2026-09-24T03:56:22Z",
           "closed_at": ""
         },
         {
           "id": "P6",
-          "name": "P6",
+          "name": "device-functional",
           "status": "passed",
           "wall_seconds": 2136,
           "wait_seconds": 227,
@@ -674,14 +720,16 @@
           "fail_attempts": 3,
           "stage_attempts": null,
           "rounds": 1,
-          "skills": [],
+          "skills": [
+            "ohos-build-flash"
+          ],
           "gate": "gate_device_func.py",
           "opened_at": "2026-09-23T08:03:30Z",
           "closed_at": "2026-09-23T08:39:06Z"
         },
         {
           "id": "P7",
-          "name": "P7",
+          "name": "quality-verify",
           "status": "passed",
           "wall_seconds": 2738,
           "wait_seconds": 90,
@@ -691,14 +739,16 @@
           "fail_attempts": 3,
           "stage_attempts": null,
           "rounds": 1,
-          "skills": [],
+          "skills": [
+            "ohos-test-coverage"
+          ],
           "gate": "gate_integration.py",
           "opened_at": "2026-09-23T08:39:06Z",
           "closed_at": "2026-09-23T09:24:44Z"
         },
         {
           "id": "P8",
-          "name": "P8",
+          "name": "upload-review",
           "status": "failed",
           "wall_seconds": 67297,
           "wait_seconds": 136,
@@ -708,7 +758,9 @@
           "fail_attempts": 4,
           "stage_attempts": null,
           "rounds": 1,
-          "skills": [],
+          "skills": [
+            "ohos-ci-openharmony-ci-analysis"
+          ],
           "gate": "gate_upload_ci.py",
           "opened_at": "2026-09-23T09:24:44Z",
           "closed_at": ""
@@ -717,75 +769,75 @@
       "failure_details": [
         {
           "phase": "P0",
-          "gate": "",
+          "gate": "gate_env_init.py",
           "reason": "未记录具体失败原因",
           "count": 1,
           "category": "原因缺失",
           "at": "2026-09-23T02:50:08Z",
-          "source": "公开指标快照"
+          "source": "products/.run/run-05/workflow_metrics.json"
         },
         {
           "phase": "P2",
-          "gate": "",
+          "gate": "gate_develop.py",
           "reason": "未记录具体失败原因",
           "count": 6,
           "category": "原因缺失",
           "at": "2026-09-24T03:31:21Z",
-          "source": "公开指标快照"
+          "source": "products/.run/run-05/workflow_metrics.json"
         },
         {
           "phase": "P3",
-          "gate": "",
+          "gate": "gate_test_develop.py",
           "reason": "未记录具体失败原因",
           "count": 4,
           "category": "测试与验证",
           "at": "2026-09-24T03:35:04Z",
-          "source": "公开指标快照"
+          "source": "products/.run/run-05/workflow_metrics.json"
         },
         {
           "phase": "P4",
-          "gate": "",
+          "gate": "gate_build.py",
           "reason": "未记录具体失败原因",
           "count": 5,
           "category": "编译构建",
           "at": "2026-09-24T03:55:43Z",
-          "source": "公开指标快照"
+          "source": "products/.run/run-05/workflow_metrics.json"
         },
         {
           "phase": "P5",
-          "gate": "",
+          "gate": "gate_test_ut.py",
           "reason": "未记录具体失败原因",
           "count": 4,
           "category": "测试与验证",
           "at": "2026-09-24T03:57:29Z",
-          "source": "公开指标快照"
+          "source": "products/.run/run-05/workflow_metrics.json"
         },
         {
           "phase": "P6",
-          "gate": "",
+          "gate": "gate_device_func.py",
           "reason": "未记录具体失败原因",
           "count": 3,
           "category": "设备连接",
           "at": "2026-09-23T08:35:19Z",
-          "source": "公开指标快照"
+          "source": "products/.run/run-05/workflow_metrics.json"
         },
         {
           "phase": "P7",
-          "gate": "",
+          "gate": "gate_integration.py",
           "reason": "未记录具体失败原因",
           "count": 3,
           "category": "原因缺失",
           "at": "2026-09-23T09:23:14Z",
-          "source": "公开指标快照"
+          "source": "products/.run/run-05/workflow_metrics.json"
         },
         {
           "phase": "P8",
-          "gate": "",
+          "gate": "gate_upload_ci.py",
           "reason": "未记录具体失败原因",
           "count": 4,
           "category": "原因缺失",
           "at": "2026-09-24T01:06:34Z",
-          "source": "公开指标快照"
+          "source": "products/.run/run-05/workflow_metrics.json"
         }
       ],
       "failures": 30,
@@ -793,52 +845,52 @@
       "human_interventions": [
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "P1 signed design review",
           "phase": "P1"
         },
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "P1 signed design review",
           "phase": "P1"
         },
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "P1 signed design review",
           "phase": "P1"
         },
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "P1 signed design review",
           "phase": "P1"
         },
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "device functional test review",
           "phase": "P6"
         },
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "quality reports and code review review",
           "phase": "P7"
         },
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "P8 pre-upload diff and target review",
           "phase": "P8"
         },
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "P8 pre-upload diff and target review",
           "phase": "P8"
         },
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "P1 signed design review",
           "phase": "P1"
         },
         {
           "category": "user_correction",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "rk3568 USB 掉线,等用户重插/重启设备",
           "phase": "P5"
         }
       ],
@@ -862,11 +914,11 @@
       "model": "GPT-6",
       "updated_at": "2026-09-23T01:25:26Z",
       "started_at": "2026-09-21T06:39:24Z",
-      "source": "公开快照 / 运行 4",
+      "source": "products/.run/run-03/workflow_metrics.json",
       "phases": [
         {
           "id": "P0",
-          "name": "P0",
+          "name": "bootstrap",
           "status": "passed",
           "wall_seconds": 44,
           "wait_seconds": 0,
@@ -876,14 +928,23 @@
           "fail_attempts": 0,
           "stage_attempts": null,
           "rounds": 1,
-          "skills": [],
+          "skills": [
+            "ohos-ar-dev-workflow",
+            "ohos-ar-dev-init",
+            "environment-preflight-gate",
+            "wsl-git-checkout-safe-update",
+            "ohos-ar-dev-phases",
+            "hdc-usage",
+            "ohos-hdc-code-architecture-interaction",
+            "ohos-hdcd-pending-work-items"
+          ],
           "gate": "gate_env_init.py",
           "opened_at": "2026-09-21T06:39:24Z",
           "closed_at": "2026-09-21T06:40:08Z"
         },
         {
           "id": "P1",
-          "name": "P1",
+          "name": "design-orchestrate",
           "status": "passed",
           "wall_seconds": 6716,
           "wait_seconds": 2026,
@@ -893,14 +954,18 @@
           "fail_attempts": 0,
           "stage_attempts": null,
           "rounds": 2,
-          "skills": [],
+          "skills": [
+            "ohos-ar-dev-phases",
+            "code-knowledge-freshness",
+            "ohos-ci-gitcode-cli-usage"
+          ],
           "gate": "gate_design.py",
           "opened_at": "2026-09-21T08:46:57Z",
           "closed_at": "2026-09-21T08:54:37Z"
         },
         {
           "id": "P2",
-          "name": "P2",
+          "name": "feature-develop",
           "status": "passed",
           "wall_seconds": 1092,
           "wait_seconds": 0,
@@ -917,7 +982,7 @@
         },
         {
           "id": "P3",
-          "name": "P3",
+          "name": "test-develop",
           "status": "passed",
           "wall_seconds": 18,
           "wait_seconds": 0,
@@ -934,7 +999,7 @@
         },
         {
           "id": "P4",
-          "name": "P4",
+          "name": "build-verify",
           "status": "passed",
           "wall_seconds": 373,
           "wait_seconds": 0,
@@ -951,7 +1016,7 @@
         },
         {
           "id": "P5",
-          "name": "P5",
+          "name": "test-author",
           "status": "passed",
           "wall_seconds": 2905,
           "wait_seconds": 0,
@@ -968,7 +1033,7 @@
         },
         {
           "id": "P6",
-          "name": "P6",
+          "name": "device-functional",
           "status": "passed",
           "wall_seconds": 352,
           "wait_seconds": 38,
@@ -985,7 +1050,7 @@
         },
         {
           "id": "P7",
-          "name": "P7",
+          "name": "quality-verify",
           "status": "passed",
           "wall_seconds": 142065,
           "wait_seconds": 141445,
@@ -1002,7 +1067,7 @@
         },
         {
           "id": "P8",
-          "name": "P8",
+          "name": "upload-review",
           "status": "running",
           "wall_seconds": 1250,
           "wait_seconds": 0,
@@ -1021,21 +1086,21 @@
       "failure_details": [
         {
           "phase": "P2",
-          "gate": "",
+          "gate": "gate_develop.py",
           "reason": "未记录具体失败原因",
           "count": 4,
           "category": "原因缺失",
           "at": "2026-09-21T09:23:34Z",
-          "source": "公开指标快照"
+          "source": "products/.run/run-03/workflow_metrics.json"
         },
         {
           "phase": "P5",
-          "gate": "",
+          "gate": "gate_host_cli.py",
           "reason": "未记录具体失败原因",
           "count": 2,
           "category": "原因缺失",
           "at": "2026-09-21T09:30:38Z",
-          "source": "公开指标快照"
+          "source": "products/.run/run-03/workflow_metrics.json"
         }
       ],
       "failures": 6,
@@ -1043,37 +1108,37 @@
       "human_interventions": [
         {
           "category": "blocked_unplanned",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "P1 design and host CLI versus device-only validation scope await user confirmation",
           "phase": "P1"
         },
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "P1 signed design review",
           "phase": "P1"
         },
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "P1 signed design review",
           "phase": "P1"
         },
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "P6 results presented: 38 regressions and 24 end-to-end cases passed; waiting for user result acceptance",
           "phase": "P6"
         },
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "device functional test review",
           "phase": "P6"
         },
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "P7 quality results presented for user acceptance and delivery-scope selection",
           "phase": "P7"
         },
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "quality reports and code review review",
           "phase": "P7"
         }
       ],
@@ -1094,14 +1159,14 @@
       "status": "completed",
       "current_phase": "P7",
       "agent": "claude-code",
-      "model": "unknown",
+      "model": "deepseek-flash[1m]",
       "updated_at": "2026-09-22T12:27:09Z",
       "started_at": "2026-09-22T01:41:05Z",
-      "source": "公开快照 / 运行 5",
+      "source": "products/.run/run-01/workflow_metrics.json",
       "phases": [
         {
           "id": "P0",
-          "name": "P0",
+          "name": "bootstrap",
           "status": "passed",
           "wall_seconds": 13,
           "wait_seconds": 0,
@@ -1111,14 +1176,16 @@
           "fail_attempts": 0,
           "stage_attempts": null,
           "rounds": 1,
-          "skills": [],
+          "skills": [
+            "ohos-ar-dev-workflow"
+          ],
           "gate": "gate_env_init.py",
           "opened_at": "2026-09-22T01:41:05Z",
           "closed_at": "2026-09-22T01:41:18Z"
         },
         {
           "id": "P1",
-          "name": "P1",
+          "name": "design-orchestrate",
           "status": "passed",
           "wall_seconds": 1451,
           "wait_seconds": 1009,
@@ -1135,7 +1202,7 @@
         },
         {
           "id": "P2",
-          "name": "P2",
+          "name": "feature-develop",
           "status": "passed",
           "wall_seconds": 5001,
           "wait_seconds": 0,
@@ -1152,7 +1219,7 @@
         },
         {
           "id": "P3",
-          "name": "P3",
+          "name": "test-develop",
           "status": "passed",
           "wall_seconds": 1326,
           "wait_seconds": 0,
@@ -1169,7 +1236,7 @@
         },
         {
           "id": "P4",
-          "name": "P4",
+          "name": "build-verify",
           "status": "passed",
           "wall_seconds": 2705,
           "wait_seconds": 0,
@@ -1186,7 +1253,7 @@
         },
         {
           "id": "P5",
-          "name": "P5",
+          "name": "test-author",
           "status": "passed",
           "wall_seconds": 3687,
           "wait_seconds": 0,
@@ -1203,7 +1270,7 @@
         },
         {
           "id": "P6",
-          "name": "P6",
+          "name": "device-functional",
           "status": "passed",
           "wall_seconds": 4014,
           "wait_seconds": 414,
@@ -1220,7 +1287,7 @@
         },
         {
           "id": "P7",
-          "name": "P7",
+          "name": "quality-verify",
           "status": "passed",
           "wall_seconds": 3841,
           "wait_seconds": 609,
@@ -1237,7 +1304,7 @@
         },
         {
           "id": "P8",
-          "name": "P8",
+          "name": "upload-review",
           "status": "passed",
           "wall_seconds": 18619,
           "wait_seconds": 50,
@@ -1256,66 +1323,66 @@
       "failure_details": [
         {
           "phase": "P1",
-          "gate": "",
+          "gate": "gate_design.py",
           "reason": "未记录具体失败原因",
           "count": 1,
           "category": "原因缺失",
           "at": "2026-09-22T03:19:11Z",
-          "source": "公开指标快照"
+          "source": "products/.run/run-01/workflow_metrics.json"
         },
         {
           "phase": "P2",
-          "gate": "",
+          "gate": "gate_develop.py",
           "reason": "未记录具体失败原因",
           "count": 1,
           "category": "原因缺失",
           "at": "2026-09-22T08:33:13Z",
-          "source": "公开指标快照"
+          "source": "products/.run/run-01/workflow_metrics.json"
         },
         {
           "phase": "P3",
-          "gate": "",
+          "gate": "gate_test_develop.py",
           "reason": "未记录具体失败原因",
           "count": 1,
           "category": "测试与验证",
           "at": "2026-09-22T08:33:13Z",
-          "source": "公开指标快照"
+          "source": "products/.run/run-01/workflow_metrics.json"
         },
         {
           "phase": "P4",
-          "gate": "",
+          "gate": "gate_build.py",
           "reason": "未记录具体失败原因",
           "count": 2,
           "category": "编译构建",
           "at": "2026-09-22T08:38:20Z",
-          "source": "公开指标快照"
+          "source": "products/.run/run-01/workflow_metrics.json"
         },
         {
           "phase": "P6",
-          "gate": "",
+          "gate": "gate_device_func.py",
           "reason": "未记录具体失败原因",
           "count": 3,
           "category": "设备连接",
           "at": "2026-09-22T08:52:25Z",
-          "source": "公开指标快照"
+          "source": "products/.run/run-01/workflow_metrics.json"
         },
         {
           "phase": "P7",
-          "gate": "",
+          "gate": "gate_integration.py",
           "reason": "未记录具体失败原因",
           "count": 1,
           "category": "原因缺失",
           "at": "2026-09-22T08:56:15Z",
-          "source": "公开指标快照"
+          "source": "products/.run/run-01/workflow_metrics.json"
         },
         {
           "phase": "P8",
-          "gate": "",
+          "gate": "gate_upload_ci.py",
           "reason": "未记录具体失败原因",
           "count": 4,
           "category": "原因缺失",
           "at": "2026-09-22T12:26:49Z",
-          "source": "公开指标快照"
+          "source": "products/.run/run-01/workflow_metrics.json"
         }
       ],
       "failures": 13,
@@ -1323,42 +1390,42 @@
       "human_interventions": [
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "P1 signed design review",
           "phase": "P1"
         },
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "P1 signed design review",
           "phase": "P1"
         },
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "device functional test review",
           "phase": "P6"
         },
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "quality reports and code review review",
           "phase": "P7"
         },
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "P8 pre-upload diff and target review",
           "phase": "P8"
         },
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "device functional test review",
           "phase": "P6"
         },
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "quality reports and code review review",
           "phase": "P7"
         },
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "P8 pre-upload diff and target review",
           "phase": "P8"
         }
       ],
@@ -1382,11 +1449,11 @@
       "model": "unknown",
       "updated_at": "2026-09-21T12:17:19Z",
       "started_at": "2026-09-21T07:34:16Z",
-      "source": "公开快照 / 运行 6",
+      "source": "products/.run/run-02/workflow_metrics.json",
       "phases": [
         {
           "id": "P0",
-          "name": "P0",
+          "name": "bootstrap",
           "status": "passed",
           "wall_seconds": 646,
           "wait_seconds": 0,
@@ -1396,14 +1463,16 @@
           "fail_attempts": 0,
           "stage_attempts": null,
           "rounds": 1,
-          "skills": [],
+          "skills": [
+            "ohos-ar-dev-init"
+          ],
           "gate": "gate_env_init.py",
           "opened_at": "2026-09-21T07:34:16Z",
           "closed_at": "2026-09-21T07:45:02Z"
         },
         {
           "id": "P1",
-          "name": "P1",
+          "name": "design-orchestrate",
           "status": "passed",
           "wall_seconds": 3123,
           "wait_seconds": 2112,
@@ -1420,7 +1489,7 @@
         },
         {
           "id": "P2",
-          "name": "P2",
+          "name": "feature-develop",
           "status": "passed",
           "wall_seconds": 1060,
           "wait_seconds": 0,
@@ -1437,7 +1506,7 @@
         },
         {
           "id": "P3",
-          "name": "P3",
+          "name": "test-develop",
           "status": "passed",
           "wall_seconds": 393,
           "wait_seconds": 0,
@@ -1454,7 +1523,7 @@
         },
         {
           "id": "P4",
-          "name": "P4",
+          "name": "build-verify",
           "status": "passed",
           "wall_seconds": 5840,
           "wait_seconds": 0,
@@ -1471,7 +1540,7 @@
         },
         {
           "id": "P5",
-          "name": "P5",
+          "name": "test-author",
           "status": "passed",
           "wall_seconds": 1019,
           "wait_seconds": 0,
@@ -1488,7 +1557,7 @@
         },
         {
           "id": "P6",
-          "name": "P6",
+          "name": "device-functional",
           "status": "running",
           "wall_seconds": 7235,
           "wait_seconds": 0,
@@ -1505,7 +1574,7 @@
         },
         {
           "id": "P7",
-          "name": "P7",
+          "name": "quality-verify",
           "status": "pending",
           "wall_seconds": null,
           "wait_seconds": 0,
@@ -1522,7 +1591,7 @@
         },
         {
           "id": "P8",
-          "name": "P8",
+          "name": "upload-review",
           "status": "pending",
           "wall_seconds": null,
           "wait_seconds": 0,
@@ -1541,48 +1610,48 @@
       "failure_details": [
         {
           "phase": "P1",
-          "gate": "",
+          "gate": "gate_design.py",
           "reason": "未记录具体失败原因",
           "count": 3,
           "category": "原因缺失",
           "at": "2026-09-21T11:39:41Z",
-          "source": "公开指标快照"
+          "source": "products/.run/run-02/workflow_metrics.json"
         },
         {
           "phase": "P2",
-          "gate": "",
+          "gate": "gate_develop.py",
           "reason": "未记录具体失败原因",
           "count": 2,
           "category": "原因缺失",
           "at": "2026-09-21T11:46:29Z",
-          "source": "公开指标快照"
+          "source": "products/.run/run-02/workflow_metrics.json"
         },
         {
           "phase": "P3",
-          "gate": "",
+          "gate": "gate_test_develop.py",
           "reason": "未记录具体失败原因",
           "count": 1,
           "category": "测试与验证",
           "at": "2026-09-21T11:46:30Z",
-          "source": "公开指标快照"
+          "source": "products/.run/run-02/workflow_metrics.json"
         },
         {
           "phase": "P4",
-          "gate": "",
+          "gate": "gate_build.py",
           "reason": "未记录具体失败原因",
           "count": 11,
           "category": "编译构建",
           "at": "2026-09-21T11:50:26Z",
-          "source": "公开指标快照"
+          "source": "products/.run/run-02/workflow_metrics.json"
         },
         {
           "phase": "P5",
-          "gate": "",
+          "gate": "gate_test_ut.py",
           "reason": "未记录具体失败原因",
           "count": 1,
           "category": "测试与验证",
           "at": "2026-09-21T11:51:47Z",
-          "source": "公开指标快照"
+          "source": "products/.run/run-02/workflow_metrics.json"
         }
       ],
       "failures": 18,
@@ -1590,37 +1659,37 @@
       "human_interventions": [
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "P1 signed design review",
           "phase": "P1"
         },
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "P1 signed design review",
           "phase": "P1"
         },
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "P1 signed design review",
           "phase": "P1"
         },
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "P1 signed design review",
           "phase": "P1"
         },
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "P1 signed design review",
           "phase": "P1"
         },
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "P1 signed design review",
           "phase": "P1"
         },
         {
           "category": "required_workflow",
-          "reason": "详细说明仅在本地版提供",
+          "reason": "P1 signed design review",
           "phase": "P1"
         }
       ],
@@ -1635,5 +1704,6 @@
       "wait_seconds": 2112
     }
   ],
-  "redacted": true
+  "redacted": true,
+  "redaction_scope": "sensitive_fragments"
 }

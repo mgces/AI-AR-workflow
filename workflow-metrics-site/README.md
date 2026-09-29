@@ -16,13 +16,13 @@ python3 workflow-metrics-site/export_metrics.py
 
 在线网页无法访问本机目录。新增文件后需要重新运行导出命令并发布新版本。页面“刷新快照”只重新读取已发布的 `data.json`。
 
-公开发布使用单独的去敏数据快照，保留运行和阶段计数、耗时及状态，将自由文本中的诊断原因、人工介入原文和本地证据路径隐藏。生成方式：
+公开发布使用单独的去敏数据快照，保留运行、阶段计数、耗时、门禁原因、人工介入说明与修复记录；只替换其中的 IP 地址、凭据赋值、邮箱、绝对本机或设备路径及证书文件名。相对源码路径和其他诊断文字保留。生成方式：
 
 ```bash
 python3 workflow-metrics-site/export_metrics.py --public-dir docs/public/workflow-metrics
 ```
 
-公开产物位于 `docs/public/workflow-metrics/`；本地详细快照继续存放在 `workflow-metrics-site/dist/data.json`，该文件已加入 `.gitignore`，不要将其提交。公开产物保留运行 ID、模型名和指标数字；如果这些也不适合公开，需要先调整范围。
+公开产物位于 `docs/public/workflow-metrics/`；本地详细快照继续存放在 `workflow-metrics-site/dist/data.json`，该文件已加入 `.gitignore`，不要将其提交。公开产物保留运行 ID、模型名、相对来源路径和指标数字；新增自由文本字段也会经过同一片段遮掩函数。
 
 ## 本地运行
 
@@ -38,6 +38,7 @@ python3 -m http.server 4173 --bind 127.0.0.1 --directory workflow-metrics-site/d
 - 总有效耗时、人工等待与墙钟时间优先使用 `summary` 中的记录器口径；缺失时汇总已知阶段值。缺失时长显示“—”，真实 0 保留为 0。平均耗时仅以有有效耗时的运行计样本。
 - 同一 `workflow` + `run_id` 的重复快照保留 `updated_at_utc` 最新一份。损坏、不支持的数据文件在页面提示，不静默丢弃。
 - 门禁失败次数来自 `fail_attempts`，分母为 `gate_attempts`，包含恢复前失败及确认门禁的 FAIL；不把次数当成最终失败运行数。
+- “门禁失败分布”的每个柱子可点击，按当前筛选范围列出该阶段失败的运行与记录，并可继续打开单次运行详情；零失败柱子显示空状态。
 - 新的 AR `attempt_history` 会显示每次失败的签名原因、首次尝试与轮次、人工查明的根因、修复动作和同一门禁的复验结果；未记录修复的 PASS 不显示为“修改已解决”。首轮通过率只用有逐次记录的首轮样本，P8 人工审核停点单独计数。
 - 优先读取 `attempt_history` 的逐次原因、修复和复验结果；旧版记录在同目录有 `evidence/manifest.jsonl` 时，可关联其去重的 FAIL 原因。原因缺失显式展示，绝不从最新门禁名称反推全部历史失败原因。
 - Requirement 记录器仅保存 `attempts` / `last_result` 时，历史失败次数未知，最近失败单独展示，不纳入门禁失败率。
