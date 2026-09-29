@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-29T08:08:32.608434+00:00",
+  "generated_at": "2026-09-29T08:23:31.810700+00:00",
   "source_label": "AI-AR-workflow",
   "source_count": 6,
   "duplicate_count": 0,
@@ -665,20 +665,65 @@
         {
           "phase": "P5",
           "gate": "gate_test_ut.py",
-          "reason": "未记录具体失败原因",
+          "reason": "阶段原因（无法逐次对应）：hdc 可连接到服务端，但 list targets 返回 [Empty]，真机离线；ResmonPluginUnitTest 虽已构建，无法上机执行。",
           "count": 1,
-          "category": "测试与验证",
+          "category": "阶段原因",
           "at": "2026-09-24T06:09:06Z",
-          "source": "products/.run/run-04/workflow_metrics.json"
+          "source": "products/.run/run-04/workflow_metrics.json",
+          "session_findings": [
+            {
+              "phase": "P5",
+              "reason": "hdc 可连接到服务端，但 list targets 返回 [Empty]，真机离线；ResmonPluginUnitTest 虽已构建，无法上机执行。",
+              "action": "等待设备端 hdc 服务恢复并重新连接真机，然后重跑 P5 单元测试。",
+              "outcome": "本快照内 P5 后来 PASS；9 月 24 日较晚时间又留有一条未关闭的设备等待记录，不能据此判断当前设备状态。",
+              "basis": "快照内 P5 人工介入和等待区间；与该阶段失败时间窗口吻合，非逐次门禁 stdout",
+              "evidence_refs": [
+                "workflow_metrics.json:277",
+                "workflow_metrics.json:371",
+                "workflow_metrics.json:182-191"
+              ]
+            }
+          ],
+          "session_scope": "指标快照截止 2026-09-24T07:26:56Z；res_mon_928.txt 从 9 月 28 日压缩后的会话开始。P5/P6 依据快照内人工介入与阶段结果补充；P8 仅列后续诊断，不把 9 月 28 日的问题算入 9 月 24 日两次 FAIL。P2/P3/P7 缺少原始门禁结果，继续标记原因未记录。8 次 FAIL 的具体尝试不能全部逐次对应。",
+          "session_source": "原始 workflow_metrics.json 人工介入记录及用户提供的 res_mon_928.txt；引用行号从 1 开始"
         },
         {
           "phase": "P6",
           "gate": "gate_device_func.py",
-          "reason": "未记录具体失败原因",
+          "reason": "阶段原因（无法逐次对应）：DC-7 要验证 RESMON_CONFIG_RELOADED，但 rk3568 上没有可用的运行时配置更新触发链：依赖的参数更新事件和签名材料不存在，原插件也没有自轮询或 SIGHUP 入口。；DC-8 要验证 RESMON_COLLECT_FAILED，同样依赖运行时配置重载；当时还受到门禁事后读取 /proc 标记进程及 init 重启预算的影响，失败注入无法可靠观测。",
           "count": 2,
-          "category": "设备连接",
+          "category": "阶段原因",
           "at": "2026-09-24T06:11:10Z",
-          "source": "products/.run/run-04/workflow_metrics.json"
+          "source": "products/.run/run-04/workflow_metrics.json",
+          "session_findings": [
+            {
+              "phase": "P6",
+              "reason": "DC-7 要验证 RESMON_CONFIG_RELOADED，但 rk3568 上没有可用的运行时配置更新触发链：依赖的参数更新事件和签名材料不存在，原插件也没有自轮询或 SIGHUP 入口。",
+              "action": "用户后来同意实现 OnTimerTick 自轮询热重载；作为功能代码变更，先 repair 回 P2，再重走阶段门控。",
+              "outcome": "本快照内 P6 最终 PASS；此前曾因 DC-7/DC-8 仅 7/9 用例通过而停在 P6。",
+              "basis": "快照内人工介入明确记载失败用例、根因、用户决策和后续阶段判定；两次 FAIL 无法逐次分配",
+              "evidence_refs": [
+                "workflow_metrics.json:288",
+                "workflow_metrics.json:296",
+                "workflow_metrics.json:304",
+                "workflow_metrics.json:205-215"
+              ]
+            },
+            {
+              "phase": "P6",
+              "reason": "DC-8 要验证 RESMON_COLLECT_FAILED，同样依赖运行时配置重载；当时还受到门禁事后读取 /proc 标记进程及 init 重启预算的影响，失败注入无法可靠观测。",
+              "action": "与 DC-7 一起改为可触发的运行时热重载路径后重走；不把设计内的失败注入日志当成非预期门禁失败。",
+              "outcome": "本快照内 P6 最终 PASS；原始逐次门禁日志未保留，无法判断两次 FAIL 各自对应 DC-7 还是 DC-8。",
+              "basis": "快照内人工介入明确记载 DC-8 阻塞及同源处理；非逐次门禁 stdout",
+              "evidence_refs": [
+                "workflow_metrics.json:288",
+                "workflow_metrics.json:304",
+                "workflow_metrics.json:205-215"
+              ]
+            }
+          ],
+          "session_scope": "指标快照截止 2026-09-24T07:26:56Z；res_mon_928.txt 从 9 月 28 日压缩后的会话开始。P5/P6 依据快照内人工介入与阶段结果补充；P8 仅列后续诊断，不把 9 月 28 日的问题算入 9 月 24 日两次 FAIL。P2/P3/P7 缺少原始门禁结果，继续标记原因未记录。8 次 FAIL 的具体尝试不能全部逐次对应。",
+          "session_source": "原始 workflow_metrics.json 人工介入记录及用户提供的 res_mon_928.txt；引用行号从 1 开始"
         },
         {
           "phase": "P7",
@@ -692,11 +737,27 @@
         {
           "phase": "P8",
           "gate": "gate_upload_ci.py",
-          "reason": "未记录具体失败原因",
+          "reason": "逐次门禁原因未记录；会话只有阶段相关线索，未证实计入本次失败次数",
           "count": 2,
           "category": "原因缺失",
           "at": "2026-09-24T07:26:56Z",
-          "source": "products/.run/run-04/workflow_metrics.json"
+          "source": "products/.run/run-04/workflow_metrics.json",
+          "session_findings": [
+            {
+              "phase": "P8",
+              "reason": "9 月 28 日后续会话发现远端平台把改动中的 plugin_bundle.json 信任名单误当部件描述文件，触发 No.bundle.002，导致静态检查 noPass；附件不含 9 月 24 日 P8 两次 FAIL 的逐次返回，不能断定当时两次也由此引起。",
+              "action": "将仓库中的信任名单源文件改名为 plugin_trustlist.json，GN 安装目标名与设备上的 plugin_bundle.json 保持不变；重新触发 CI。",
+              "outcome": "9 月 28 日静态检查转为 PASS，编译/测试任务开始派发；附件结束前仍有 ecotest 平台异常，未见 P8 最终 PASS。",
+              "basis": "9 月 28 日后续诊断，未证实计入 9 月 24 日两次 P8 FAIL",
+              "evidence_refs": [
+                "res_mon_928.txt:223-247",
+                "res_mon_928.txt:778-788",
+                "res_mon_928.txt:1353-1430"
+              ]
+            }
+          ],
+          "session_scope": "指标快照截止 2026-09-24T07:26:56Z；res_mon_928.txt 从 9 月 28 日压缩后的会话开始。P5/P6 依据快照内人工介入与阶段结果补充；P8 仅列后续诊断，不把 9 月 28 日的问题算入 9 月 24 日两次 FAIL。P2/P3/P7 缺少原始门禁结果，继续标记原因未记录。8 次 FAIL 的具体尝试不能全部逐次对应。",
+          "session_source": "原始 workflow_metrics.json 人工介入记录及用户提供的 res_mon_928.txt；引用行号从 1 开始"
         }
       ],
       "failures": 8,
@@ -757,6 +818,7 @@
           "started_at_utc": "2026-09-24T05:53:05Z"
         }
       ],
+      "session_later_outcome": "9 月 28 日后续会话定位并消除平台静态检查 No.bundle.002 误判：改动文件中的 plugin_bundle.json 信任名单被误当部件描述文件，改源文件名为 plugin_trustlist.json 后静态检查通过且编译/测试任务首次派发。附件结束前 dayu600_7885 仍报 ecotest 任务解析异常，未见 P8 最终 PASS；这不回写 9 月 24 日的快照判定。",
       "first_gate_attempts": null,
       "first_gate_failures": null,
       "first_gate_passes": null,
@@ -1519,65 +1581,241 @@
         {
           "phase": "P1",
           "gate": "gate_design.py",
-          "reason": "未记录具体失败原因",
+          "reason": "阶段原因（无法逐次对应）：首次设计门控只识别到 6/7 个章节：NFR-5 的“可观测性”标题抢占了 DFX 章节锚点；同时 device_cases 的 side_effect 写法不是门控要求的 shell_assert 类型结构。",
           "count": 1,
-          "category": "原因缺失",
+          "category": "阶段原因",
           "at": "2026-09-22T03:19:11Z",
-          "source": "products/.run/run-01/workflow_metrics.json"
+          "source": "products/.run/run-01/workflow_metrics.json",
+          "session_findings": [
+            {
+              "phase": "P1",
+              "reason": "首次设计门控只识别到 6/7 个章节：NFR-5 的“可观测性”标题抢占了 DFX 章节锚点；同时 device_cases 的 side_effect 写法不是门控要求的 shell_assert 类型结构。",
+              "action": "调整标题，按 type/command/expect 结构重写相关 side_effect，重新签名设计。",
+              "outcome": "P1 随后 7/7 章节与契约校验通过。",
+              "basis": "会话保留了 PHASE 1a FAIL 原文、修订与重跑结果",
+              "evidence_refs": [
+                "session:1384-1470"
+              ]
+            }
+          ],
+          "session_scope": "按 2026-09-22 的会话门禁输出、修订与复验整理。各阶段 fail_attempts 与 gate_attempts 保持原值；同一门禁可能有多个根因，P8 的预检/CI 阻塞也无法严格逐次绑定到四个 FAIL 计数。",
+          "session_source": "用户提供的 Claude Code 会话导出；session:N 表示本地附件从 1 开始的行号"
         },
         {
           "phase": "P2",
           "gate": "gate_develop.py",
-          "reason": "未记录具体失败原因",
+          "reason": "阶段原因（无法逐次对应）：设计契约的 change_scope.allowed_paths 写成源码根相对路径，但门控用组件 Git 仓根相对路径比较，20 个改动文件全部被误判越界。；同一次 P2 门控的 file_hygiene 检查把无扩展名 bdfr_plugin_config 判为缺少许可证头；但该文件首个非空行必须是 plugins:N，直接加头会让 hiview 配置解析失败。未修改的同族文件也触发相同规则。",
           "count": 1,
-          "category": "原因缺失",
+          "category": "阶段原因",
           "at": "2026-09-22T08:33:13Z",
-          "source": "products/.run/run-01/workflow_metrics.json"
+          "source": "products/.run/run-01/workflow_metrics.json",
+          "session_findings": [
+            {
+              "phase": "P2",
+              "reason": "设计契约的 change_scope.allowed_paths 写成源码根相对路径，但门控用组件 Git 仓根相对路径比较，20 个改动文件全部被误判越界。",
+              "action": "把允许路径改成组件仓根相对形式，reset 回 P1 重新签名和人工确认后重跑 P2。",
+              "outcome": "change_scope 从 0/20 inside 变为 20/20 inside，P2 通过。",
+              "basis": "同一次 P2 FAIL 的一个明确原因；门控报告与路径对拍一致",
+              "evidence_refs": [
+                "session:3398-3410",
+                "session:3530-3555",
+                "session:4269-4369"
+              ]
+            },
+            {
+              "phase": "P2",
+              "reason": "同一次 P2 门控的 file_hygiene 检查把无扩展名 bdfr_plugin_config 判为缺少许可证头；但该文件首个非空行必须是 plugins:N，直接加头会让 hiview 配置解析失败。未修改的同族文件也触发相同规则。",
+              "action": "在本机文件卫生扫描器中对 *_plugin_config 的许可证头检查做定向适配，仍保留字节卫生检查；回归测试后重跑。",
+              "outcome": "hygiene_ok 从 False 变为 True，P2 随后通过。",
+              "basis": "与路径问题同属 P2 的一次 FAIL，不是第二次独立失败",
+              "evidence_refs": [
+                "session:3420-3560",
+                "session:4235-4369"
+              ]
+            }
+          ],
+          "session_scope": "按 2026-09-22 的会话门禁输出、修订与复验整理。各阶段 fail_attempts 与 gate_attempts 保持原值；同一门禁可能有多个根因，P8 的预检/CI 阻塞也无法严格逐次绑定到四个 FAIL 计数。",
+          "session_source": "用户提供的 Claude Code 会话导出；session:N 表示本地附件从 1 开始的行号"
         },
         {
           "phase": "P3",
           "gate": "gate_test_develop.py",
-          "reason": "未记录具体失败原因",
+          "reason": "阶段原因（无法逐次对应）：测试开发门控找到 3 个测试文件，但 authored=0：注册识别正则只认裸 TEST_F/TEST，无法识别 OpenHarmony 使用的 HWTEST_F/HWTEST，9 个契约用例都被误判缺失。",
           "count": 1,
-          "category": "测试与验证",
+          "category": "阶段原因",
           "at": "2026-09-22T08:33:13Z",
-          "source": "products/.run/run-01/workflow_metrics.json"
+          "source": "products/.run/run-01/workflow_metrics.json",
+          "session_findings": [
+            {
+              "phase": "P3",
+              "reason": "测试开发门控找到 3 个测试文件，但 authored=0：注册识别正则只认裸 TEST_F/TEST，无法识别 OpenHarmony 使用的 HWTEST_F/HWTEST，9 个契约用例都被误判缺失。",
+              "action": "扩充门控正则以识别 HWTEST_F/HWTEST_P/HWTEST，并用本轮测试及未改动上游用例核对，再重跑。",
+              "outcome": "required=9、authored=9，P3 通过。",
+              "basis": "会话保留了首次 authorship 失败、正则诊断和通过结果",
+              "evidence_refs": [
+                "session:4483-4745"
+              ]
+            }
+          ],
+          "session_scope": "按 2026-09-22 的会话门禁输出、修订与复验整理。各阶段 fail_attempts 与 gate_attempts 保持原值；同一门禁可能有多个根因，P8 的预检/CI 阻塞也无法严格逐次绑定到四个 FAIL 计数。",
+          "session_source": "用户提供的 Claude Code 会话导出；session:N 表示本地附件从 1 开始的行号"
         },
         {
           "phase": "P4",
           "gate": "gate_build.py",
-          "reason": "未记录具体失败原因",
+          "reason": "阶段原因（无法逐次对应）：首次构建在 hisysevent 组件报 HiSysEvent::Write 等符号缺失；检查发现真实 hisysevent.h 被先前测试探针误覆盖成 22 行桩头，导致跨组件编译失败。；第二次 P4 构建已经成功，但 clang-tidy 报 11 条硬阻断：5 条真实的特殊成员/override 问题，加上 6 条把构建机绝对路径编码进头文件守卫名的 llvm-header-guard 假阳性。",
           "count": 2,
-          "category": "编译构建",
+          "category": "阶段原因",
           "at": "2026-09-22T08:38:20Z",
-          "source": "products/.run/run-01/workflow_metrics.json"
+          "source": "products/.run/run-01/workflow_metrics.json",
+          "session_findings": [
+            {
+              "phase": "P4",
+              "reason": "首次构建在 hisysevent 组件报 HiSysEvent::Write 等符号缺失；检查发现真实 hisysevent.h 被先前测试探针误覆盖成 22 行桩头，导致跨组件编译失败。",
+              "action": "经授权把该头文件恢复为仓库原有 805 行版本，再重跑构建。",
+              "outcome": "构建随后成功，但 P4 仍被下一轮 clang-tidy 问题阻断。",
+              "basis": "会话保留编译错误、被覆盖文件的差异和恢复后的重跑结果",
+              "evidence_refs": [
+                "session:4865-5077"
+              ]
+            },
+            {
+              "phase": "P4",
+              "reason": "第二次 P4 构建已经成功，但 clang-tidy 报 11 条硬阻断：5 条真实的特殊成员/override 问题，加上 6 条把构建机绝对路径编码进头文件守卫名的 llvm-header-guard 假阳性。",
+              "action": "修正 5 条真实代码告警；对已用上游文件复现的 llvm-header-guard 假阳性做定向规则调整，repair 回 P2 重走。",
+              "outcome": "P2/P3/P4 重跑通过，最终 P4 构建和 clang-tidy 均无阻断。",
+              "basis": "会话保留 11 条发现、分类、修订与最终通过结果",
+              "evidence_refs": [
+                "session:5077-5145",
+                "session:5350-5455",
+                "session:5610-5734"
+              ]
+            }
+          ],
+          "session_scope": "按 2026-09-22 的会话门禁输出、修订与复验整理。各阶段 fail_attempts 与 gate_attempts 保持原值；同一门禁可能有多个根因，P8 的预检/CI 阻塞也无法严格逐次绑定到四个 FAIL 计数。",
+          "session_source": "用户提供的 Claude Code 会话导出；session:N 表示本地附件从 1 开始的行号"
         },
         {
           "phase": "P6",
           "gate": "gate_device_func.py",
-          "reason": "未记录具体失败原因",
+          "reason": "阶段原因（无法逐次对应）：首次真机门禁缺 nonce 与 fd leak detected 标记：场景脚本把 $GATE_NONCE 误转义成字面量，且监控表已被设备上的高 fd 系统进程占满，测试进程未新入列。；第二次 P6 的 process/provenance 与 artifact_loaded 校验失败：门控优先取日志正文中的被检测进程 pid，而不是 hilog 行头的 hiview PID，导致探针查错进程。；修复远端静态检查后重走 P6 时又出现时序竞态：部署脚本与场景各重启一次 hiview，捕获窗口首条标记来自已退出的旧实例，事后 /proc 探针找不到该 PID。",
           "count": 3,
-          "category": "设备连接",
+          "category": "阶段原因",
           "at": "2026-09-22T08:52:25Z",
-          "source": "products/.run/run-01/workflow_metrics.json"
+          "source": "products/.run/run-01/workflow_metrics.json",
+          "session_findings": [
+            {
+              "phase": "P6",
+              "reason": "首次真机门禁缺 nonce 与 fd leak detected 标记：场景脚本把 $GATE_NONCE 误转义成字面量，且监控表已被设备上的高 fd 系统进程占满，测试进程未新入列。",
+              "action": "修正 nonce 展开，并在场景入口重启 hiview 让检测器从空监控表启动。",
+              "outcome": "重跑后 nonce=True、marker=True、device_cases=4/4；仍有产物来源校验未过。",
+              "basis": "会话保留首次 P6 判定、场景根因和修订后读数",
+              "evidence_refs": [
+                "session:6235-6465"
+              ]
+            },
+            {
+              "phase": "P6",
+              "reason": "第二次 P6 的 process/provenance 与 artifact_loaded 校验失败：门控优先取日志正文中的被检测进程 pid，而不是 hilog 行头的 hiview PID，导致探针查错进程。",
+              "action": "调整 parse_hilog_pid 的匹配顺序，优先使用 hilog 行头的权威 PID，正文 pid 仅作兜底。",
+              "outcome": "重跑 P6 的 4 个真机用例全部通过。",
+              "basis": "会话保留 PID 解析对拍、门控修订与通过结果",
+              "evidence_refs": [
+                "session:6460-6667"
+              ]
+            },
+            {
+              "phase": "P6",
+              "reason": "修复远端静态检查后重走 P6 时又出现时序竞态：部署脚本与场景各重启一次 hiview，捕获窗口首条标记来自已退出的旧实例，事后 /proc 探针找不到该 PID。",
+              "action": "部署阶段只替换文件不重启，由场景执行唯一一次 hiview 重启，保证标记来自仍存活的实例。",
+              "outcome": "再次重跑 P6 通过，device_cases=4/4 且 provenance/artifact_loaded 为真。",
+              "basis": "会话明确描述 repair 后的第三类 P6 失败及最终通过",
+              "evidence_refs": [
+                "session:8470-8565"
+              ]
+            }
+          ],
+          "session_scope": "按 2026-09-22 的会话门禁输出、修订与复验整理。各阶段 fail_attempts 与 gate_attempts 保持原值；同一门禁可能有多个根因，P8 的预检/CI 阻塞也无法严格逐次绑定到四个 FAIL 计数。",
+          "session_source": "用户提供的 Claude Code 会话导出；session:N 表示本地附件从 1 开始的行号"
         },
         {
           "phase": "P7",
           "gate": "gate_integration.py",
-          "reason": "未记录具体失败原因",
+          "reason": "阶段原因（无法逐次对应）：首次质量门禁只传 FdLeakDetectorModuleTest，而契约还声明 FdLeakDetectorUnitTest；--suites 未覆盖全部必需套件，门禁在执行前拒绝。",
           "count": 1,
-          "category": "原因缺失",
+          "category": "阶段原因",
           "at": "2026-09-22T08:56:15Z",
-          "source": "products/.run/run-01/workflow_metrics.json"
+          "source": "products/.run/run-01/workflow_metrics.json",
+          "session_findings": [
+            {
+              "phase": "P7",
+              "reason": "首次质量门禁只传 FdLeakDetectorModuleTest，而契约还声明 FdLeakDetectorUnitTest；--suites 未覆盖全部必需套件，门禁在执行前拒绝。",
+              "action": "改用 UT 类型并传入两个套件名，实际执行包含两个 fixture 的测试二进制。",
+              "outcome": "9 个用例全部通过，P7 质量门禁 PASS。",
+              "basis": "会话保留 PHASE 7 FAIL 原文、参数修正与复验结果",
+              "evidence_refs": [
+                "session:6935-7027"
+              ]
+            }
+          ],
+          "session_scope": "按 2026-09-22 的会话门禁输出、修订与复验整理。各阶段 fail_attempts 与 gate_attempts 保持原值；同一门禁可能有多个根因，P8 的预检/CI 阻塞也无法严格逐次绑定到四个 FAIL 计数。",
+          "session_source": "用户提供的 Claude Code 会话导出；session:N 表示本地附件从 1 开始的行号"
         },
         {
           "phase": "P8",
           "gate": "gate_upload_ci.py",
-          "reason": "未记录具体失败原因",
+          "reason": "阶段原因（无法逐次对应）：上库门禁起初缺少已签名的 P8 dry-run 预检与 consent；尝试 dry-run 时又因额外传 --pr 跳过预检分支，本地分支名也与 --branch 不一致。；PR 已创建但远端 CI 尚未触发或尚未出绿，门禁显示 ci_ok=False；OpenHarmony 需要在 PR 上评论 start build 才会启动验证。；首轮远端 codeCheck noPass：FdLeakConfig::Parse() 分别触发 59 行/61 nbnc 行超大函数规则，测试中的空 while(read...) 触发 G.CTL.03 循环退出规则。；第二轮 CI 的 part_compile 在进入实际编译前报 codearts build exception（E01）；日志显示构建容器的预加载钩子、PyMongo 协议版本及上传环节异常，没有指向本次代码的编译错误。",
           "count": 4,
-          "category": "原因缺失",
+          "category": "阶段原因",
           "at": "2026-09-22T12:26:49Z",
-          "source": "products/.run/run-01/workflow_metrics.json"
+          "source": "products/.run/run-01/workflow_metrics.json",
+          "session_findings": [
+            {
+              "phase": "P8",
+              "reason": "上库门禁起初缺少已签名的 P8 dry-run 预检与 consent；尝试 dry-run 时又因额外传 --pr 跳过预检分支，本地分支名也与 --branch 不一致。",
+              "action": "去掉预检调用中的 --pr，让本地分支与目标分支同名，完成 dry-run 后记录签名 consent。",
+              "outcome": "本地上库预检通过；随后进入 PR 与 CI 验证。",
+              "basis": "P8 早期 BLOCKED/预检问题的阶段级归因，不能精确绑定四次 FAIL 的每一条",
+              "evidence_refs": [
+                "session:7460-7639"
+              ]
+            },
+            {
+              "phase": "P8",
+              "reason": "PR 已创建但远端 CI 尚未触发或尚未出绿，门禁显示 ci_ok=False；OpenHarmony 需要在 PR 上评论 start build 才会启动验证。",
+              "action": "按当时授权在 PR #4580 评论 start build，等待与提交 SHA 匹配的远端结果。",
+              "outcome": "CI 开始运行；随后静态检查报告具体缺陷。",
+              "basis": "P8 的 ci_not_green 阶段阻塞，不能确定对应四次 FAIL 中的序号",
+              "evidence_refs": [
+                "session:7639-7803"
+              ]
+            },
+            {
+              "phase": "P8",
+              "reason": "首轮远端 codeCheck noPass：FdLeakConfig::Parse() 分别触发 59 行/61 nbnc 行超大函数规则，测试中的空 while(read...) 触发 G.CTL.03 循环退出规则。",
+              "action": "把 Parse 拆成小函数，把读取循环改为显式更新 readRet；repair 后重走 P2–P7、提交并重新触发 CI。",
+              "outcome": "第二轮静态检查通过。",
+              "basis": "会话保留三条具体缺陷、修复与后续静态检查结果",
+              "evidence_refs": [
+                "session:7990-8145",
+                "session:8320-8675",
+                "session:8910-8965"
+              ]
+            },
+            {
+              "phase": "P8",
+              "reason": "第二轮 CI 的 part_compile 在进入实际编译前报 codearts build exception（E01）；日志显示构建容器的预加载钩子、PyMongo 协议版本及上传环节异常，没有指向本次代码的编译错误。",
+              "action": "不改功能代码，等待该事件收敛并重新触发远端门禁，复查提交 SHA 与最终结果。",
+              "outcome": "后续同一提交的 CI 成功，P8 门禁 ci_ok=True、sha_ok=True，阶段最终 PASS。",
+              "basis": "会话保留 CI 平台异常与最终 P8 PASS；四次 FAIL 与此类阻塞不能完全逐次绑定",
+              "evidence_refs": [
+                "session:8910-8968",
+                "session:9300-9347"
+              ]
+            }
+          ],
+          "session_scope": "按 2026-09-22 的会话门禁输出、修订与复验整理。各阶段 fail_attempts 与 gate_attempts 保持原值；同一门禁可能有多个根因，P8 的预检/CI 阻塞也无法严格逐次绑定到四个 FAIL 计数。",
+          "session_source": "用户提供的 Claude Code 会话导出；session:N 表示本地附件从 1 开始的行号"
         }
       ],
       "failures": 13,

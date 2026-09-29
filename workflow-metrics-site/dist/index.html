@@ -41,10 +41,6 @@
       <section class="panel" id="failures"><div class="panel-title"><div><h2>门禁失败分布</h2><p>点击柱子查看对应运行和失败详情</p></div><span class="small-tag">按阶段</span></div><div id="failure-chart"></div><div class="panel-foot" id="failure-note"></div></section>
     </div>
     <section class="panel records" id="runs"><div class="panel-title"><div><h2>运行记录 <span id="run-count" class="count"></span></h2><p>点击非“已完成”状态查看记录依据；选择运行查看完整明细</p></div><span class="muted small">按指标更新时间降序</span></div><div class="table-wrap"><table><thead><tr><th>运行 / 模型</th><th>快照状态</th><th>有效耗时</th><th>人工等待</th><th>门禁失败</th><th>阶段进度</th><th><span class="sr-only">操作</span></th></tr></thead><tbody id="run-rows"></tbody></table></div><div id="empty" class="empty" hidden>没有符合筛选条件的运行。<button class="text-button" id="empty-reset">重置筛选</button></div></section>
-    <div class="analysis-grid bottom-grid">
-      <section class="panel"><div class="panel-title"><div><h2>失败原因记录</h2><p>按证据汇总；公开版仅遮掩敏感片段</p></div></div><div id="reason-list" class="reason-list"></div></section>
-      <section class="panel"><div class="panel-title"><div><h2>非计划人工介入</h2><p>解阻与纠偏说明 · 不等同于门禁失败原因</p></div></div><div id="intervention-list" class="intervention-list"></div></section>
-    </div>
     <section class="method" id="method"><h2>读懂这些数字</h2><div class="method-grid"><p><b>有效耗时</b>优先使用记录器汇总值，扣除人工等待。重走阶段的耗时已累计；不随浏览页面的时间增长。</p><p><b>失败次数 ≠ 失败运行数</b>以 fail_attempts 计数。失败率 = 失败门禁尝试 / 全部门禁尝试；已恢复运行仍保留失败历史。FAIL 也可能是人工确认门禁。</p><p><b>有边界的数据</b>“—”表示未记录。Requirement 只有最近结果时，不推算历史失败数。快照状态按记录推断，不能证明进程仍在运行。</p></div><div id="quality-notes"></div></section>
     <footer><span>WORKFLOW / OBSERVABILITY</span><span>来源：workflow_metrics.json · 时间显示为北京时间</span></footer>
   </main>

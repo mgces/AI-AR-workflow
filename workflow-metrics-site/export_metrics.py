@@ -189,7 +189,7 @@ def normalize(data, path, root, warnings):
             causes = '；'.join(item['reason'] for item in attributable)
             detail['reason'] = clean('阶段原因（无法逐次对应）：' + causes) if causes else (
                 '逐次门禁原因未记录；会话只有阶段相关线索，未证实计入本次失败次数')
-            detail['category'] = '阶段原因'
+            detail['category'] = '阶段原因' if causes else '原因缺失'
             detail['session_findings'] = related
             detail['session_scope'] = session_analysis['scope']
             detail['session_source'] = session_analysis['source']

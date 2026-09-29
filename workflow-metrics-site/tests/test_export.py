@@ -254,6 +254,17 @@ class ExportTests(unittest.TestCase):
         self.assertIn('设备离线', public['failure_details'][0]['reason'])
         self.assertNotIn('172.23.160.1', json.dumps(public))
 
+    def test_later_session_diagnosis_does_not_relabel_earlier_failures(self):
+        metrics = self.metrics(session_failure_analysis={
+            'findings': [{'phase': '0', 'reason': '后来才发现平台规则误判',
+                          'basis': '后续诊断，未证实计入本快照的 FAIL'}]})
+        run = self.export({'a/workflow_metrics.json': metrics})['runs'][0]
+        detail = run['failure_details'][0]
+        self.assertEqual(detail['count'], 2)
+        self.assertEqual(detail['category'], '原因缺失')
+        self.assertNotIn('平台规则误判', detail['reason'])
+        self.assertEqual(detail['session_findings'][0]['reason'], '后来才发现平台规则误判')
+
 
 if __name__ == '__main__':
     unittest.main()
