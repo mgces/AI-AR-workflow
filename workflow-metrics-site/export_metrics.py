@@ -178,6 +178,21 @@ def normalize(data, path, root, warnings):
                                 scope=clean(raw_analysis.get('scope')),
                                 later_outcome=clean(raw_analysis.get('later_outcome')),
                                 findings=findings)
+        for detail in details:
+            if '未记录具体失败原因' not in detail['reason']:
+                continue
+            related = [item for item in findings if item['phase'] == detail['phase']]
+            if not related:
+                continue
+            attributable = [item for item in related if '未证实计入' not in item['basis']
+                            and '无法确认是否计入' not in item['reason']]
+            causes = '；'.join(item['reason'] for item in attributable)
+            detail['reason'] = clean('阶段原因（无法逐次对应）：' + causes) if causes else (
+                '逐次门禁原因未记录；会话只有阶段相关线索，未证实计入本次失败次数')
+            detail['category'] = '阶段原因'
+            detail['session_findings'] = related
+            detail['session_scope'] = session_analysis['scope']
+            detail['session_source'] = session_analysis['source']
     open_wait_details = [dict(phase=phase_key(item.get('phase', '')),
                               category=clean(item.get('category')),
                               reason=clean(item.get('reason')),
@@ -196,8 +211,8 @@ def normalize(data, path, root, warnings):
                human_interventions=[dict(category=clean(i.get('category')), reason=clean(i.get('reason')),
                                           phase=phase_key(i.get('phase', ''))) for i in data.get('human_interventions', []) if isinstance(i, dict)],
                open_waits=waiting, open_wait_details=open_wait_details)
-    if session_analysis is not None:
-        run['session_failure_analysis'] = session_analysis
+    if session_analysis is not None and session_analysis['later_outcome']:
+        run['session_later_outcome'] = session_analysis['later_outcome']
     for out, key in [('first_gate_attempts', 'first_gate_attempts_total'),
                      ('first_gate_failures', 'first_gate_failures_total'),
                      ('first_gate_passes', 'first_gate_passes_total'),

@@ -42,9 +42,6 @@ export function phaseFailureRuns(runs, phaseId) {
     return phase&&(phase.fail_attempts>0||details.length) ? [{run,phase,details}] : [];
   });
 }
-export function phaseSessionFindings(run, phaseId) {
-  return (run.session_failure_analysis?.findings||[]).filter(item=>item.phase===phaseId);
-}
 export function runStatusExplanation(run, phaseNames={}, formatTime=value=>value||'未记录') {
   if(run.status==='completed')return '';
   const phase=(run.phases||[]).find(item=>item.id===run.current_phase);
@@ -67,12 +64,8 @@ export function runStatusExplanation(run, phaseNames={}, formatTime=value=>value
     item.phase===run.current_phase&&(!phase?.gate||item.gate===phase.gate));
   const recorded=matching.at(-1)?.reason;
   const hasRecordedReason=Boolean(recorded&&!recorded.includes('未记录具体失败原因'));
-  const finding=phaseSessionFindings(run,run.current_phase).at(-1);
-  const reason=hasRecordedReason ? recorded : finding ?
-    `原始逐次原因未记录；会话补充（阶段级）：${finding.reason}` : '原因未记录';
+  const reason=hasRecordedReason ? recorded : '原因未记录';
   const gate=phase?.gate||'未记录';
   const review=gate.endsWith(':consent-precheck') ? '（预期人工审核停点）' : '';
-  const followUp=finding&&!hasRecordedReason ?
-    `\n处理：${finding.action||'未记录'}\n结果：${finding.outcome||'未记录'}` : '';
-  return `受阻（最近记录）\n阶段：${stage}\n门禁：${gate}${review}\n原因：${reason}${followUp}\n${updated}`;
+  return `受阻（最近记录）\n阶段：${stage}\n门禁：${gate}${review}\n原因：${reason}\n${updated}`;
 }

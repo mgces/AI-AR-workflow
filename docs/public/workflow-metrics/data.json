@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-29T08:00:31.482923+00:00",
+  "generated_at": "2026-09-29T08:08:32.608434+00:00",
   "source_label": "AI-AR-workflow",
   "source_count": 6,
   "duplicate_count": 0,
@@ -193,56 +193,232 @@
         {
           "phase": "P2",
           "gate": "gate_develop.py",
-          "reason": "未记录具体失败原因",
+          "reason": "阶段原因（无法逐次对应）：初次开发校验后发现 change_scope 的路径与 hiperf 组件 Git 根目录不一致；会话同时处理了改动行的格式与代码规则问题。缺少这次门禁的返回原文，不能确定三次 P2 FAIL 各对应哪一项。；后续修订本地代码规则扫描器后，风格/卫生检查再次失败；会话随即同步规则覆盖清单的 guard_sha256，再重跑开发门禁。原始诊断未随会话导出，无法确认此项占用几次 P2 FAIL。",
           "count": 3,
-          "category": "原因缺失",
+          "category": "阶段原因",
           "at": "2026-09-24T08:42:58Z",
-          "source": "products/.run/run-06/workflow_metrics.json"
+          "source": "products/.run/run-06/workflow_metrics.json",
+          "session_findings": [
+            {
+              "phase": "P2",
+              "reason": "初次开发校验后发现 change_scope 的路径与 hiperf 组件 Git 根目录不一致；会话同时处理了改动行的格式与代码规则问题。缺少这次门禁的返回原文，不能确定三次 P2 FAIL 各对应哪一项。",
+              "action": "把允许路径改为组件仓内的 include/src/test，重置受影响的设计签名，并只格式化改动行后重跑。",
+              "outcome": "后续 P2 通过。",
+              "basis": "根据紧邻的修改和重跑推断，非逐次门禁原文",
+              "evidence_refs": [
+                "main:194",
+                "main:206-213"
+              ]
+            },
+            {
+              "phase": "P2",
+              "reason": "后续修订本地代码规则扫描器后，风格/卫生检查再次失败；会话随即同步规则覆盖清单的 guard_sha256，再重跑开发门禁。原始诊断未随会话导出，无法确认此项占用几次 P2 FAIL。",
+              "action": "同步代码规则扫描器的覆盖清单校验值，重跑 gate_develop.py。",
+              "outcome": "后续 P2 通过。",
+              "basis": "根据检查与修订顺序推断，非逐次门禁原文",
+              "evidence_refs": [
+                "main:399-405"
+              ]
+            }
+          ],
+          "session_scope": "这是基于会话的阶段级补录，不是 16 条原始门禁 FAIL 日志；缺少部分终端返回和逐次时间戳，不能把每条线索精确分配给 fail_attempts。阶段计数、判定和 2026-09-24 的快照状态保持原样。",
+          "session_source": "用户提供的 Cursor 会话导出；main:N 表示主会话 JSONL 从 1 开始的行号"
         },
         {
           "phase": "P3",
           "gate": "gate_test_develop.py",
-          "reason": "未记录具体失败原因",
+          "reason": "阶段原因（无法逐次对应）：测试文件触发 WordsTool.100/190 敏感词静态检查；会话检查了版权头和 [anon:v8] 测试样例，P3 首轮未通过。",
           "count": 1,
-          "category": "测试与验证",
+          "category": "阶段原因",
           "at": "2026-09-24T08:43:24Z",
-          "source": "products/.run/run-06/workflow_metrics.json"
+          "source": "products/.run/run-06/workflow_metrics.json",
+          "session_findings": [
+            {
+              "phase": "P3",
+              "reason": "测试文件触发 WordsTool.100/190 敏感词静态检查；会话检查了版权头和 [anon:v8] 测试样例，P3 首轮未通过。",
+              "action": "调整触发词项的测试文本后重跑 gate_test_develop.py。",
+              "outcome": "本快照内 P3 重跑通过。",
+              "basis": "会话中的失败后定位、修改与重跑记录",
+              "evidence_refs": [
+                "main:227",
+                "main:232-239"
+              ]
+            }
+          ],
+          "session_scope": "这是基于会话的阶段级补录，不是 16 条原始门禁 FAIL 日志；缺少部分终端返回和逐次时间戳，不能把每条线索精确分配给 fail_attempts。阶段计数、判定和 2026-09-24 的快照状态保持原样。",
+          "session_source": "用户提供的 Cursor 会话导出；main:N 表示主会话 JSONL 从 1 开始的行号"
         },
         {
           "phase": "P4",
           "gate": "gate_build.py",
-          "reason": "未记录具体失败原因",
+          "reason": "阶段原因（无法逐次对应）：gate_build 的本地代码度量指出 subcommand_record.cpp 超过 3000 行限制。；clang-tidy 超时或把未改动的旧代码告警算入本次检查，导致构建成功后门控仍未放行。；本快照末次 P4 静态检查报 G.CLS.04-CPP：测试辅助类 MiniDebugRestore 定义了析构函数，却未声明拷贝和移动操作。",
           "count": 4,
-          "category": "编译构建",
+          "category": "阶段原因",
           "at": "2026-09-24T08:49:41Z",
-          "source": "products/.run/run-06/workflow_metrics.json"
+          "source": "products/.run/run-06/workflow_metrics.json",
+          "session_findings": [
+            {
+              "phase": "P4",
+              "reason": "阶段内一次手动编译/链接遇到未导出的 unwinder 符号引用；这是进入后续 P4 门禁前定位的构建问题，无法证明计入四次 gate_build FAIL。",
+              "action": "不再调用未导出的符号，改为读取 ELF 头判断位数并在本地 demangle。",
+              "outcome": "后续构建继续推进。",
+              "basis": "阶段上下文，未证实计入门禁失败次数",
+              "evidence_refs": [
+                "main:246-320"
+              ]
+            },
+            {
+              "phase": "P4",
+              "reason": "gate_build 的本地代码度量指出 subcommand_record.cpp 超过 3000 行限制。",
+              "action": "把用户态 ELF 命中解析辅助实现移出这个超大源文件，修订后重走 P2/P3/P4。",
+              "outcome": "该文件长度问题消除；后续远端 MinGW 暴露了新包含链问题，属另一轮失败。",
+              "basis": "会话明确说明的门禁阻塞及 repair 原因",
+              "evidence_refs": [
+                "main:326-347",
+                "main:389"
+              ]
+            },
+            {
+              "phase": "P4",
+              "reason": "代码度量依赖 lizard 当时缺失，门控在构建后的度量步骤不能完成；会话未保留该次原始失败横幅，无法确认是否计入四次 FAIL。",
+              "action": "安装 lizard 并重跑 gate_build.py。",
+              "outcome": "度量步骤得以继续。",
+              "basis": "根据失败报告检查、安装依赖与重跑顺序推断",
+              "evidence_refs": [
+                "main:349-362"
+              ]
+            },
+            {
+              "phase": "P4",
+              "reason": "clang-tidy 超时或把未改动的旧代码告警算入本次检查，导致构建成功后门控仍未放行。",
+              "action": "修正超时时间和改动行过滤，并清理本次新增代码的告警。",
+              "outcome": "本快照内曾通过 P4，后续修复重走又出现新的静态检查失败。",
+              "basis": "会话明确说明的门禁阻塞及工具修订记录",
+              "evidence_refs": [
+                "main:362-392"
+              ]
+            },
+            {
+              "phase": "P4",
+              "reason": "本快照末次 P4 静态检查报 G.CLS.04-CPP：测试辅助类 MiniDebugRestore 定义了析构函数，却未声明拷贝和移动操作。",
+              "action": "在测试辅助类中显式删除四个拷贝/移动操作，再从 P2 重走流水线。",
+              "outcome": "修复发生在本快照之后；不能把快照中的 P4 FAIL 改成 PASS。",
+              "basis": "会话明确描述的末次门禁失败及后续修复",
+              "evidence_refs": [
+                "main:905",
+                "main:923",
+                "main:967"
+              ]
+            }
+          ],
+          "session_scope": "这是基于会话的阶段级补录，不是 16 条原始门禁 FAIL 日志；缺少部分终端返回和逐次时间戳，不能把每条线索精确分配给 fail_attempts。阶段计数、判定和 2026-09-24 的快照状态保持原样。",
+          "session_source": "用户提供的 Cursor 会话导出；main:N 表示主会话 JSONL 从 1 开始的行号"
         },
         {
           "phase": "P5",
           "gate": "gate_test_ut.py",
-          "reason": "未记录具体失败原因",
+          "reason": "阶段原因（无法逐次对应）：xdevice 读到的设备配置缺少 environment/device 节点，框架识别出 0 台设备，单元测试没有启动。；rk3568 产品配置默认编成 32 位，但当时连接的真机用户态是 64 位，推送的测试程序无法执行。；新契约用例 MatchHitsWithoutFullSymbolTable 受同进程先前 mini-debug 全局开关状态影响，导致重跑中的单测未通过。",
           "count": 3,
-          "category": "测试与验证",
+          "category": "阶段原因",
           "at": "2026-09-24T05:57:21Z",
-          "source": "products/.run/run-06/workflow_metrics.json"
+          "source": "products/.run/run-06/workflow_metrics.json",
+          "session_findings": [
+            {
+              "phase": "P5",
+              "reason": "xdevice 读到的设备配置缺少 environment/device 节点，框架识别出 0 台设备，单元测试没有启动。",
+              "action": "修正 gate_test_ut.py 生成的设备配置格式后重跑。",
+              "outcome": "设备被识别，测试得以继续。",
+              "basis": "会话明确说明的失败与修复",
+              "evidence_refs": [
+                "main:428",
+                "main:450",
+                "main:456"
+              ]
+            },
+            {
+              "phase": "P5",
+              "reason": "rk3568 产品配置默认编成 32 位，但当时连接的真机用户态是 64 位，推送的测试程序无法执行。",
+              "action": "该设备对应的测试构建显式指定 arm64，同时保持初始化环境的签名摘要不变。",
+              "outcome": "程序可在该设备执行，测试继续。",
+              "basis": "会话明确说明的失败与修复",
+              "evidence_refs": [
+                "main:473-501"
+              ]
+            },
+            {
+              "phase": "P5",
+              "reason": "新契约用例 MatchHitsWithoutFullSymbolTable 受同进程先前 mini-debug 全局开关状态影响，导致重跑中的单测未通过。",
+              "action": "在用例中保存并恢复 mini-debug 开关，再重建、重跑。",
+              "outcome": "本快照内 P5 最终 1312 条用例、0 失败。",
+              "basis": "根据失败用例定位、修订和最终测试说明交叉确认",
+              "evidence_refs": [
+                "main:518-534",
+                "main:584"
+              ]
+            }
+          ],
+          "session_scope": "这是基于会话的阶段级补录，不是 16 条原始门禁 FAIL 日志；缺少部分终端返回和逐次时间戳，不能把每条线索精确分配给 fail_attempts。阶段计数、判定和 2026-09-24 的快照状态保持原样。",
+          "session_source": "用户提供的 Cursor 会话导出；main:N 表示主会话 JSONL 从 1 开始的行号"
         },
         {
           "phase": "P7",
           "gate": "gate_integration.py",
-          "reason": "未记录具体失败原因",
+          "reason": "阶段原因（无法逐次对应）：首次质量验证运行方式使一条单测记录了错误的程序路径，先前那次门控被主动停止。；设备侧测试已经运行，但 xdevice 的 hdc file recv 把结果文件放进额外目录，门控在预期路径找不到测试结果。",
           "count": 2,
-          "category": "原因缺失",
+          "category": "阶段原因",
           "at": "2026-09-24T07:15:25Z",
-          "source": "products/.run/run-06/workflow_metrics.json"
+          "source": "products/.run/run-06/workflow_metrics.json",
+          "session_findings": [
+            {
+              "phase": "P7",
+              "reason": "首次质量验证运行方式使一条单测记录了错误的程序路径，先前那次门控被主动停止。",
+              "action": "使用保持正确程序名/路径的启动包装器后重跑。",
+              "outcome": "后续套件继续运行。",
+              "basis": "会话明确说明的停止原因",
+              "evidence_refs": [
+                "main:671-696",
+                "main:754"
+              ]
+            },
+            {
+              "phase": "P7",
+              "reason": "设备侧测试已经运行，但 xdevice 的 hdc file recv 把结果文件放进额外目录，门控在预期路径找不到测试结果。",
+              "action": "修正回收文件的路径处理，重新执行质量门控。",
+              "outcome": "本快照内 P7 通过，1310 条用例、0 失败。",
+              "basis": "根据结果文件定位、文件回收修订及最终报告交叉确认",
+              "evidence_refs": [
+                "main:717-741",
+                "main:760"
+              ]
+            }
+          ],
+          "session_scope": "这是基于会话的阶段级补录，不是 16 条原始门禁 FAIL 日志；缺少部分终端返回和逐次时间戳，不能把每条线索精确分配给 fail_attempts。阶段计数、判定和 2026-09-24 的快照状态保持原样。",
+          "session_source": "用户提供的 Cursor 会话导出；main:N 表示主会话 JSONL 从 1 开始的行号"
         },
         {
           "phase": "P8",
           "gate": "gate_upload_ci.py",
-          "reason": "未记录具体失败原因",
+          "reason": "阶段原因（无法逐次对应）：最初执行的是不带 --allow-push 的上库预检；此类 FAIL 是预期停点，不能当成代码错误。之后 PR 创建并触发远端 CI，但快照时尚无覆盖当前提交的绿色结果，P8 不可放行。三次 P8 FAIL 缺少逐次返回日志，不能一一分配。",
           "count": 3,
-          "category": "原因缺失",
+          "category": "阶段原因",
           "at": "2026-09-24T07:48:14Z",
-          "source": "products/.run/run-06/workflow_metrics.json"
+          "source": "products/.run/run-06/workflow_metrics.json",
+          "session_findings": [
+            {
+              "phase": "P8",
+              "reason": "最初执行的是不带 --allow-push 的上库预检；此类 FAIL 是预期停点，不能当成代码错误。之后 PR 创建并触发远端 CI，但快照时尚无覆盖当前提交的绿色结果，P8 不可放行。三次 P8 FAIL 缺少逐次返回日志，不能一一分配。",
+              "action": "取得人工上库确认、创建 PR 并等待与提交匹配的远端 CI；对后续 CI 的实际缺陷另行修复重跑。",
+              "outcome": "本快照仍为 P8 FAIL；9 月 28 日的继续会话才完成整条流水线。",
+              "basis": "会话明确说明的预检与远端门禁前置条件",
+              "evidence_refs": [
+                "main:776-778",
+                "main:785-811",
+                "main:1196"
+              ]
+            }
+          ],
+          "session_scope": "这是基于会话的阶段级补录，不是 16 条原始门禁 FAIL 日志；缺少部分终端返回和逐次时间戳，不能把每条线索精确分配给 fail_attempts。阶段计数、判定和 2026-09-24 的快照状态保持原样。",
+          "session_source": "用户提供的 Cursor 会话导出；main:N 表示主会话 JSONL 从 1 开始的行号"
         }
       ],
       "failures": 16,
@@ -276,165 +452,7 @@
       ],
       "open_waits": 0,
       "open_wait_details": [],
-      "session_failure_analysis": {
-        "source": "用户提供的 Cursor 会话导出；main:N 表示主会话 JSONL 从 1 开始的行号",
-        "scope": "这是基于会话的阶段级补录，不是 16 条原始门禁 FAIL 日志；缺少部分终端返回和逐次时间戳，不能把每条线索精确分配给 fail_attempts。阶段计数、判定和 2026-09-24 的快照状态保持原样。",
-        "later_outcome": "会话在 2026-09-28 继续：先修复远端 MinGW 缺少 unique_fd.h 的包含链与后续静态检查问题，最终 P0–P8 通过；PR !1091 的绿色 CI 覆盖提交 5f6bb6c。本指标快照仍截止 2026-09-24T08:49:41Z。",
-        "findings": [
-          {
-            "phase": "P2",
-            "reason": "初次开发校验后发现 change_scope 的路径与 hiperf 组件 Git 根目录不一致；会话同时处理了改动行的格式与代码规则问题。缺少这次门禁的返回原文，不能确定三次 P2 FAIL 各对应哪一项。",
-            "action": "把允许路径改为组件仓内的 include/src/test，重置受影响的设计签名，并只格式化改动行后重跑。",
-            "outcome": "后续 P2 通过。",
-            "basis": "根据紧邻的修改和重跑推断，非逐次门禁原文",
-            "evidence_refs": [
-              "main:194",
-              "main:206-213"
-            ]
-          },
-          {
-            "phase": "P2",
-            "reason": "后续修订本地代码规则扫描器后，风格/卫生检查再次失败；会话随即同步规则覆盖清单的 guard_sha256，再重跑开发门禁。原始诊断未随会话导出，无法确认此项占用几次 P2 FAIL。",
-            "action": "同步代码规则扫描器的覆盖清单校验值，重跑 gate_develop.py。",
-            "outcome": "后续 P2 通过。",
-            "basis": "根据检查与修订顺序推断，非逐次门禁原文",
-            "evidence_refs": [
-              "main:399-405"
-            ]
-          },
-          {
-            "phase": "P3",
-            "reason": "测试文件触发 WordsTool.100/190 敏感词静态检查；会话检查了版权头和 [anon:v8] 测试样例，P3 首轮未通过。",
-            "action": "调整触发词项的测试文本后重跑 gate_test_develop.py。",
-            "outcome": "本快照内 P3 重跑通过。",
-            "basis": "会话中的失败后定位、修改与重跑记录",
-            "evidence_refs": [
-              "main:227",
-              "main:232-239"
-            ]
-          },
-          {
-            "phase": "P4",
-            "reason": "阶段内一次手动编译/链接遇到未导出的 unwinder 符号引用；这是进入后续 P4 门禁前定位的构建问题，无法证明计入四次 gate_build FAIL。",
-            "action": "不再调用未导出的符号，改为读取 ELF 头判断位数并在本地 demangle。",
-            "outcome": "后续构建继续推进。",
-            "basis": "阶段上下文，未证实计入门禁失败次数",
-            "evidence_refs": [
-              "main:246-320"
-            ]
-          },
-          {
-            "phase": "P4",
-            "reason": "gate_build 的本地代码度量指出 subcommand_record.cpp 超过 3000 行限制。",
-            "action": "把用户态 ELF 命中解析辅助实现移出这个超大源文件，修订后重走 P2/P3/P4。",
-            "outcome": "该文件长度问题消除；后续远端 MinGW 暴露了新包含链问题，属另一轮失败。",
-            "basis": "会话明确说明的门禁阻塞及 repair 原因",
-            "evidence_refs": [
-              "main:326-347",
-              "main:389"
-            ]
-          },
-          {
-            "phase": "P4",
-            "reason": "代码度量依赖 lizard 当时缺失，门控在构建后的度量步骤不能完成；会话未保留该次原始失败横幅，无法确认是否计入四次 FAIL。",
-            "action": "安装 lizard 并重跑 gate_build.py。",
-            "outcome": "度量步骤得以继续。",
-            "basis": "根据失败报告检查、安装依赖与重跑顺序推断",
-            "evidence_refs": [
-              "main:349-362"
-            ]
-          },
-          {
-            "phase": "P4",
-            "reason": "clang-tidy 超时或把未改动的旧代码告警算入本次检查，导致构建成功后门控仍未放行。",
-            "action": "修正超时时间和改动行过滤，并清理本次新增代码的告警。",
-            "outcome": "本快照内曾通过 P4，后续修复重走又出现新的静态检查失败。",
-            "basis": "会话明确说明的门禁阻塞及工具修订记录",
-            "evidence_refs": [
-              "main:362-392"
-            ]
-          },
-          {
-            "phase": "P4",
-            "reason": "本快照末次 P4 静态检查报 G.CLS.04-CPP：测试辅助类 MiniDebugRestore 定义了析构函数，却未声明拷贝和移动操作。",
-            "action": "在测试辅助类中显式删除四个拷贝/移动操作，再从 P2 重走流水线。",
-            "outcome": "修复发生在本快照之后；不能把快照中的 P4 FAIL 改成 PASS。",
-            "basis": "会话明确描述的末次门禁失败及后续修复",
-            "evidence_refs": [
-              "main:905",
-              "main:923",
-              "main:967"
-            ]
-          },
-          {
-            "phase": "P5",
-            "reason": "xdevice 读到的设备配置缺少 environment/device 节点，框架识别出 0 台设备，单元测试没有启动。",
-            "action": "修正 gate_test_ut.py 生成的设备配置格式后重跑。",
-            "outcome": "设备被识别，测试得以继续。",
-            "basis": "会话明确说明的失败与修复",
-            "evidence_refs": [
-              "main:428",
-              "main:450",
-              "main:456"
-            ]
-          },
-          {
-            "phase": "P5",
-            "reason": "rk3568 产品配置默认编成 32 位，但当时连接的真机用户态是 64 位，推送的测试程序无法执行。",
-            "action": "该设备对应的测试构建显式指定 arm64，同时保持初始化环境的签名摘要不变。",
-            "outcome": "程序可在该设备执行，测试继续。",
-            "basis": "会话明确说明的失败与修复",
-            "evidence_refs": [
-              "main:473-501"
-            ]
-          },
-          {
-            "phase": "P5",
-            "reason": "新契约用例 MatchHitsWithoutFullSymbolTable 受同进程先前 mini-debug 全局开关状态影响，导致重跑中的单测未通过。",
-            "action": "在用例中保存并恢复 mini-debug 开关，再重建、重跑。",
-            "outcome": "本快照内 P5 最终 1312 条用例、0 失败。",
-            "basis": "根据失败用例定位、修订和最终测试说明交叉确认",
-            "evidence_refs": [
-              "main:518-534",
-              "main:584"
-            ]
-          },
-          {
-            "phase": "P7",
-            "reason": "首次质量验证运行方式使一条单测记录了错误的程序路径，先前那次门控被主动停止。",
-            "action": "使用保持正确程序名/路径的启动包装器后重跑。",
-            "outcome": "后续套件继续运行。",
-            "basis": "会话明确说明的停止原因",
-            "evidence_refs": [
-              "main:671-696",
-              "main:754"
-            ]
-          },
-          {
-            "phase": "P7",
-            "reason": "设备侧测试已经运行，但 xdevice 的 hdc file recv 把结果文件放进额外目录，门控在预期路径找不到测试结果。",
-            "action": "修正回收文件的路径处理，重新执行质量门控。",
-            "outcome": "本快照内 P7 通过，1310 条用例、0 失败。",
-            "basis": "根据结果文件定位、文件回收修订及最终报告交叉确认",
-            "evidence_refs": [
-              "main:717-741",
-              "main:760"
-            ]
-          },
-          {
-            "phase": "P8",
-            "reason": "最初执行的是不带 --allow-push 的上库预检；此类 FAIL 是预期停点，不能当成代码错误。之后 PR 创建并触发远端 CI，但快照时尚无覆盖当前提交的绿色结果，P8 不可放行。三次 P8 FAIL 缺少逐次返回日志，不能一一分配。",
-            "action": "取得人工上库确认、创建 PR 并等待与提交匹配的远端 CI；对后续 CI 的实际缺陷另行修复重跑。",
-            "outcome": "本快照仍为 P8 FAIL；9 月 28 日的继续会话才完成整条流水线。",
-            "basis": "会话明确说明的预检与远端门禁前置条件",
-            "evidence_refs": [
-              "main:776-778",
-              "main:785-811",
-              "main:1196"
-            ]
-          }
-        ]
-      },
+      "session_later_outcome": "会话在 2026-09-28 继续：先修复远端 MinGW 缺少 unique_fd.h 的包含链与后续静态检查问题，最终 P0–P8 通过；PR !1091 的绿色 CI 覆盖提交 5f6bb6c。本指标快照仍截止 2026-09-24T08:49:41Z。",
       "first_gate_attempts": null,
       "first_gate_failures": null,
       "first_gate_passes": null,
