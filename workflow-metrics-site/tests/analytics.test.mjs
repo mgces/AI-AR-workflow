@@ -102,3 +102,20 @@ test('running and pending explanations explain evidence limits', () => {
   assert.match(pending,/2026-09-29T02:00:00Z/);
   assert.match(pending,/非实时/);
 });
+test('phase session findings stay attached to their recorded phase', () => {
+  assert.equal(typeof analytics.phaseSessionFindings,'function');
+  const run={session_failure_analysis:{findings:[
+    {phase:'P4',reason:'build issue'}, {phase:'P5',reason:'test issue'}]}};
+  assert.deepEqual(analytics.phaseSessionFindings(run,'P4').map(item=>item.reason),['build issue']);
+});
+test('blocked explanation labels session findings as phase-level evidence', () => {
+  const run={status:'blocked',current_phase:'P4',phases:[{id:'P4',gate:'gate_build.py'}],
+    failure_details:[{phase:'P4',gate:'gate_build.py',reason:'未记录具体失败原因'}],
+    session_failure_analysis:{findings:[{phase:'P4',reason:'changed-line static check rejected helper',
+      action:'fix helper',outcome:'passed after snapshot'}]}};
+  const explanation=analytics.runStatusExplanation(run);
+  assert.match(explanation,/changed-line static check rejected helper/);
+  assert.match(explanation,/阶段级/);
+  assert.match(explanation,/fix helper/);
+  assert.match(explanation,/passed after snapshot/);
+});

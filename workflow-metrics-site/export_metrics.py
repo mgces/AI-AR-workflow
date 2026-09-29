@@ -162,6 +162,22 @@ def normalize(data, path, root, warnings):
     latest = max(enumerate(active_phases), key=lambda entry: (entry[1]['opened_at'], entry[0]))[1] if active_phases else None
     result = str(data.get('result') or '').upper()
     waiting = number(summary.get('human_wait_open_count')) or 0
+    raw_analysis = data.get('session_failure_analysis')
+    session_analysis = None
+    if isinstance(raw_analysis, dict):
+        findings = []
+        for item in raw_analysis.get('findings') or []:
+            if not isinstance(item, dict) or not item.get('phase'):
+                continue
+            references = item.get('evidence_refs')
+            findings.append(dict(phase=phase_key(item['phase']), reason=clean(item.get('reason')),
+                                 action=clean(item.get('action')), outcome=clean(item.get('outcome')),
+                                 basis=clean(item.get('basis')),
+                                 evidence_refs=[clean(ref) for ref in references] if isinstance(references, list) else []))
+        session_analysis = dict(source=clean(raw_analysis.get('source')),
+                                scope=clean(raw_analysis.get('scope')),
+                                later_outcome=clean(raw_analysis.get('later_outcome')),
+                                findings=findings)
     open_wait_details = [dict(phase=phase_key(item.get('phase', '')),
                               category=clean(item.get('category')),
                               reason=clean(item.get('reason')),
@@ -180,6 +196,8 @@ def normalize(data, path, root, warnings):
                human_interventions=[dict(category=clean(i.get('category')), reason=clean(i.get('reason')),
                                           phase=phase_key(i.get('phase', ''))) for i in data.get('human_interventions', []) if isinstance(i, dict)],
                open_waits=waiting, open_wait_details=open_wait_details)
+    if session_analysis is not None:
+        run['session_failure_analysis'] = session_analysis
     for out, key in [('first_gate_attempts', 'first_gate_attempts_total'),
                      ('first_gate_failures', 'first_gate_failures_total'),
                      ('first_gate_passes', 'first_gate_passes_total'),

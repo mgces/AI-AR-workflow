@@ -232,6 +232,25 @@ class ExportTests(unittest.TestCase):
         self.assertIn('等待重连', public['open_wait_details'][0]['reason'])
         self.assertNotIn('172.23.160.1', public['open_wait_details'][0]['reason'])
 
+    def test_session_analysis_preserves_phase_context_without_inventing_attempts(self):
+        metrics = self.metrics(session_failure_analysis={
+            'source': 'session.zip',
+            'scope': '阶段级整理，无法逐次归因',
+            'later_outcome': '后来通过',
+            'findings': [{'phase': '4', 'reason': 'hdc 172.23.160.1:10086 设备离线',
+                          'action': '重连设备', 'outcome': '重跑通过',
+                          'basis': '会话明确说明', 'evidence_refs': ['main#449']}],
+        })
+        run = self.export({'a/workflow_metrics.json': metrics})['runs'][0]
+        self.assertEqual(run['failures'], 2)
+        self.assertEqual(sum(item['count'] for item in run['failure_details']), 2)
+        analysis = run['session_failure_analysis']
+        self.assertEqual(analysis['findings'][0]['phase'], 'P4')
+        self.assertEqual(analysis['findings'][0]['evidence_refs'], ['main#449'])
+        public = module.public_snapshot({'runs': [run]})['runs'][0]
+        self.assertIn('设备离线', public['session_failure_analysis']['findings'][0]['reason'])
+        self.assertNotIn('172.23.160.1', json.dumps(public))
+
 
 if __name__ == '__main__':
     unittest.main()
