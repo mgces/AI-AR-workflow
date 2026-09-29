@@ -162,6 +162,12 @@ def normalize(data, path, root, warnings):
     latest = max(enumerate(active_phases), key=lambda entry: (entry[1]['opened_at'], entry[0]))[1] if active_phases else None
     result = str(data.get('result') or '').upper()
     waiting = number(summary.get('human_wait_open_count')) or 0
+    open_wait_details = [dict(phase=phase_key(item.get('phase', '')),
+                              category=clean(item.get('category')),
+                              reason=clean(item.get('reason')),
+                              started_at_utc=clean(item.get('started_at_utc')))
+                         for item in data.get('human_wait_intervals', [])
+                         if isinstance(item, dict) and not item.get('ended_at_utc')]
     status = 'completed' if result in PASSED else 'blocked' if result in FAILED else 'waiting' if waiting else 'blocked' if latest and latest['status'] == 'failed' else 'running' if latest else 'pending'
     if result not in FAILED and phases and all(p['closed_at'] and p['status'] == 'passed' for p in phases):
         status = 'completed'
@@ -173,7 +179,7 @@ def normalize(data, path, root, warnings):
                failures=total(p['fail_attempts'] for p in phases), gate_attempts=total(p['gate_attempts'] for p in phases),
                human_interventions=[dict(category=clean(i.get('category')), reason=clean(i.get('reason')),
                                           phase=phase_key(i.get('phase', ''))) for i in data.get('human_interventions', []) if isinstance(i, dict)],
-               open_waits=waiting)
+               open_waits=waiting, open_wait_details=open_wait_details)
     for out, key in [('first_gate_attempts', 'first_gate_attempts_total'),
                      ('first_gate_failures', 'first_gate_failures_total'),
                      ('first_gate_passes', 'first_gate_passes_total'),

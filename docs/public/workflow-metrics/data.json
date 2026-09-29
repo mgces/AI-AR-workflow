@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-29T03:33:42.142303+00:00",
+  "generated_at": "2026-09-29T07:35:13.540889+00:00",
   "source_label": "AI-AR-workflow",
   "source_count": 6,
   "duplicate_count": 0,
@@ -275,6 +275,7 @@
         }
       ],
       "open_waits": 0,
+      "open_wait_details": [],
       "first_gate_attempts": null,
       "first_gate_failures": null,
       "first_gate_passes": null,
@@ -571,6 +572,14 @@
         }
       ],
       "open_waits": 1,
+      "open_wait_details": [
+        {
+          "phase": "P5",
+          "category": "blocked_unplanned",
+          "reason": "真机离线(hdc list targets 为空), 等用户拉起 hdc server 并报 IP:端口; P5(UT 上机) 与 P6(端到端) 均需设备",
+          "started_at_utc": "2026-09-24T05:53:05Z"
+        }
+      ],
       "first_gate_attempts": null,
       "first_gate_failures": null,
       "first_gate_passes": null,
@@ -895,6 +904,14 @@
         }
       ],
       "open_waits": 1,
+      "open_wait_details": [
+        {
+          "phase": "P5",
+          "category": "user_correction",
+          "reason": "rk3568 USB 掉线,等用户重插/重启设备",
+          "started_at_utc": "2026-09-24T04:06:21Z"
+        }
+      ],
       "first_gate_attempts": null,
       "first_gate_failures": null,
       "first_gate_passes": null,
@@ -1143,6 +1160,7 @@
         }
       ],
       "open_waits": 0,
+      "open_wait_details": [],
       "first_gate_attempts": null,
       "first_gate_failures": null,
       "first_gate_passes": null,
@@ -1430,6 +1448,7 @@
         }
       ],
       "open_waits": 0,
+      "open_wait_details": [],
       "first_gate_attempts": null,
       "first_gate_failures": null,
       "first_gate_passes": null,
@@ -1694,6 +1713,7 @@
         }
       ],
       "open_waits": 0,
+      "open_wait_details": [],
       "first_gate_attempts": null,
       "first_gate_failures": null,
       "first_gate_passes": null,

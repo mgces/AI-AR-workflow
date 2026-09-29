@@ -215,6 +215,23 @@ class ExportTests(unittest.TestCase):
         for secret in ('abc123','alice@example.com','DEVICE-42'):
             self.assertNotIn(secret,reason)
 
+    def test_exports_only_open_wait_reasons_with_public_redaction(self):
+        metrics = self.metrics(summary={'human_wait_open_count': 1},
+            human_wait_intervals=[
+                {'phase': '5', 'category': 'blocked_unplanned',
+                 'reason': 'hdc 172.23.160.1:10086 掉线，等待重连',
+                 'started_at_utc': '2026-09-28T09:00:00Z'},
+                {'phase': '4', 'reason': '旧等待', 'started_at_utc': '2026-09-27T09:00:00Z',
+                 'ended_at_utc': '2026-09-27T10:00:00Z'}])
+        metrics['phases']['0']['closed_at_utc'] = None
+        run = self.export({'a/workflow_metrics.json': metrics})['runs'][0]
+        self.assertEqual(run['status'], 'waiting')
+        self.assertEqual(len(run['open_wait_details']), 1)
+        self.assertEqual(run['open_wait_details'][0]['phase'], 'P5')
+        public = module.public_snapshot({'runs': [run]})['runs'][0]
+        self.assertIn('等待重连', public['open_wait_details'][0]['reason'])
+        self.assertNotIn('172.23.160.1', public['open_wait_details'][0]['reason'])
+
 
 if __name__ == '__main__':
     unittest.main()

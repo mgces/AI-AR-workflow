@@ -42,3 +42,29 @@ export function phaseFailureRuns(runs, phaseId) {
     return phase&&(phase.fail_attempts>0||details.length) ? [{run,phase,details}] : [];
   });
 }
+export function runStatusTooltip(run, phaseNames={}, formatTime=value=>value||'未记录') {
+  if(run.status==='completed')return '';
+  const phase=(run.phases||[]).find(item=>item.id===run.current_phase);
+  const stage=phase ? `${phase.id} ${phaseNames[phase.id]||phase.name||'阶段'}` : '未记录';
+  const updated=`指标更新：${formatTime(run.updated_at)}\n仅反映该时间的记录，非实时状态`;
+  if(run.status==='waiting') {
+    const waits=run.open_wait_details||[];
+    const lines=waits.length ? waits.map(wait=>{
+      const waitStage=wait.phase ? `${wait.phase} ${phaseNames[wait.phase]||'阶段'}` : stage;
+      return `等待阶段：${waitStage}\n等待原因：${wait.reason||'等待原因未记录'}\n等待开始：${formatTime(wait.started_at_utc)}`;
+    }).join('\n') : `阶段：${stage}\n等待原因未记录`;
+    return `等待人工（最近记录）\n${lines}\n${updated}`;
+  }
+  if(run.status==='running')
+    return `进行中（最近记录）\n阶段：${stage}\n最近门禁：${phase?.gate||'未记录'}\n阶段尚未记录完成，无法判断当前进程是否仍在运行\n${updated}`;
+  if(run.status==='pending')
+    return `未开始（最近记录）\n未记录已开始的阶段\n${updated}`;
+  if(run.status!=='blocked')return '';
+  const matching=(run.failure_details||[]).filter(item=>
+    item.phase===run.current_phase&&(!phase?.gate||item.gate===phase.gate));
+  const recorded=matching.at(-1)?.reason;
+  const reason=recorded&&!recorded.includes('未记录具体失败原因') ? recorded : '原因未记录';
+  const gate=phase?.gate||'未记录';
+  const review=gate.endsWith(':consent-precheck') ? '（预期人工审核停点）' : '';
+  return `受阻（最近记录）\n阶段：${stage}\n门禁：${gate}${review}\n原因：${reason}\n${updated}`;
+}
