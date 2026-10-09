@@ -8,6 +8,10 @@ description: >
 
 # 生命周期阶段(做事 + 门控)
 
+新 workflow 运行按 [优化预检说明](optimization-preflight.md) 使用 `advance.py init --optimized-checks`。
+P1 在 `ar-contract` 中填写并签名 `verification_plan`；P1–P8 自动执行阶段预检并保留预检失败。
+预检不能代替签名 PASS。旧运行保持旧策略；未实测的优化效果不能宣称已验证。
+
 承重核心在 `scripts/`:`gate_*.py`(唯一 PASS 来源)、`advance.py`(唯一状态写入器)、
 `lib/gatelib.py`(签名账本)、`lib/device.sh`(hdc-over-WSL helper)。
 

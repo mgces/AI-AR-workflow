@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="根据三次 AR-workflow 运行失败案例整理的 workflow 自身改进清单、验收标准和定期复盘方法。">
+  <title>门禁失败的下一步优化总结 · Workflow 运行观测</title>
+  <link rel="stylesheet" href="./optimization.css">
+</head>
+<body>
+  <a class="skip-link" href="#plan">跳到优化清单</a>
+  <header class="site-header">
+    <a class="brand" href="./index.html#overview">Workflow 运行观测</a>
+    <nav aria-label="网站导航">
+      <a href="./index.html#overview">运行统计</a>
+      <a href="./optimization.html" aria-current="page">门禁失败的下一步优化总结</a>
+    </nav>
+  </header>
+  <main>
+    <section class="intro">
+      <p class="eyebrow">WORKFLOW 持续改进</p>
+      <h1>门禁失败的下一步优化总结</h1>
+      <p class="lead">将失败经验转成 workflow 自身的改进措施：完善门禁、预检、取证和规则，让后续运行减少重复失败与返工。</p>
+      <p class="meta">依据三次历史运行 · 计划更新 <time id="plan-updated">2026-10-09</time></p>
+    </section>
+    <section class="kpis" aria-label="优化计划概览">
+      <div><span>改进项</span><strong id="plan-total">15</strong></div>
+      <div><span>高优先级</span><strong id="plan-high">—</strong></div>
+      <div><span>已实现 · 待实测</span><strong id="plan-implemented">15</strong></div>
+      <div><span>效果已验证</span><strong id="plan-verified">0</strong></div>
+    </section>
+    <aside class="scope-note">
+      <strong>进度以实现和验收证据为准</strong>
+      <p>历史会话中某次修复通过，只能证明当次问题已处理。本页的改进项需落实到 workflow，并完成回归及后续运行验证，才标记为“效果已验证”。三次快照共 90 次尝试、37 次 FAIL；一条 FAIL 可有多个原因，改进项数量不代表失败次数。</p>
+    </aside>
+    <section class="review" aria-labelledby="assessment-heading">
+      <h2 id="assessment-heading">本轮离线评估：覆盖样例改善，真实降幅待测</h2>
+      <p>15 项机制已在仓库落实。下面对比修复前后代码的模拟历史样例；没有执行新的 OHOS 完整构建、真机测试或远端 CI。</p>
+      <div class="table-wrap"><table class="plan-table"><thead><tr><th>评估口径</th><th>修复前</th><th>修复后</th><th>结论</th></tr></thead><tbody id="assessment-rows"></tbody></table></div>
+      <p class="measurement" id="assessment-limits">8 类样例不是 8 次历史 FAIL。问题提前发现不算缺陷消失；预检和正式门禁失败都保留，实际失败率下降需要后续真实运行验证。</p>
+    </section>
+    <section id="plan" aria-labelledby="plan-heading">
+      <div class="section-heading"><div><h2 id="plan-heading">Workflow 改进清单</h2><p>先按高优先级实施；失败案例保留快照、后续会话和未知原因的边界。</p></div><span id="plan-count" role="status" aria-live="polite">正在加载</span></div>
+      <form id="plan-filters" class="filters" role="search" autocomplete="off">
+        <label class="search-label">搜索<input id="plan-search" type="search" placeholder="问题、措施、运行 ID"></label>
+        <label>阶段<select id="plan-phase"><option value="">全部阶段</option><option>P0</option><option>P1</option><option>P2</option><option>P3</option><option>P4</option><option>P5</option><option>P6</option><option>P7</option><option>P8</option></select></label>
+        <label>归因<select id="plan-attribution"><option value="">全部归因</option></select></label>
+        <label>优先级<select id="plan-priority"><option value="">全部优先级</option><option value="high">高</option><option value="medium">中</option><option value="low">低</option></select></label>
+        <label>进度<select id="plan-status"><option value="">全部进度</option></select></label>
+        <button id="plan-reset" type="button">重置</button>
+      </form>
+      <div class="table-wrap" tabindex="0" aria-label="可横向滚动的改进清单">
+        <table class="plan-table">
+          <thead><tr><th scope="col">改进项与阶段</th><th scope="col">失败原因与归因</th><th scope="col">Workflow 下一步优化</th><th scope="col">验收标准</th><th scope="col">进度与案例证据</th></tr></thead>
+          <tbody id="plan-rows"><tr><td colspan="5">正在加载优化清单…</td></tr></tbody>
+        </table>
+      </div>
+      <noscript><p class="error">请启用 JavaScript 以查看及筛选完整优化清单。</p></noscript>
+    </section>
+    <section class="review" aria-labelledby="review-heading">
+      <h2 id="review-heading">后续怎样定期优化</h2>
+      <ol class="review-steps">
+        <li><strong>复盘新运行</strong><p>每批运行结束后归并重复原因，补充证据；缺少逐次输出继续标为未知。</p></li>
+        <li><strong>选择并实现改进项</strong><p>建议每周选择高优先级条目，登记修改提交和回归结果，再更新为“已实现 · 待验收”。</p></li>
+        <li><strong>用后续运行验证效果</strong><p>比较已知原因复发次数、首次真实门禁通过率和返工耗时，记录运行 ID 和统计口径。</p></li>
+        <li><strong>更新结论与进度</strong><p>有完整证据再标记“效果已验证”；仍复发则继续优化。新预检发现的问题也保留记录。</p></li>
+      </ol>
+      <p class="measurement">效果统计需分别记录真实缺陷、预期人工停点、环境阻塞及外部 CI 故障。减少正式门禁 FAIL 的同时，也要确认总返工与耗时减少。</p>
+    </section>
+  </main>
+  <footer>依据 fd-leak-detection、resmon、hiperf-symbol-mem 的会话分析整理 · <a href="./index.html#overview">返回运行统计</a></footer>
+  <dialog id="evidence-dialog" aria-labelledby="evidence-title">
+    <div class="dialog-head"><h2 id="evidence-title">运行证据</h2><button id="evidence-close" type="button" aria-label="关闭运行证据">关闭</button></div>
+    <div id="evidence-content"></div>
+  </dialog>
+  <script type="module" src="./optimization.mjs"></script>
+</body>
+</html>

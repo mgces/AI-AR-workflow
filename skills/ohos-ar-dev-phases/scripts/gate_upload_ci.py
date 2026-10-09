@@ -135,6 +135,8 @@ P8_FAILURE_TO_SUBSTATE = {
     "commit_message_invalid": "push_pr",
     "pr_review_blocked": "pr_review",
     "ci_not_green": "ci_green",
+    "ci_wait": "ci_green",
+    "external_platform": "ci_green",
     "pr_head_sha_mismatch": "ci_green",
     "ci_stale_pre_push": "ci_green",
     "sha_mismatch": "ci_green",
@@ -149,7 +151,7 @@ P8_FAILURE_TO_SUBSTATE = {
 # SHA (review/CI bound to a different commit than we shipped) is such a conflict.
 EXTERNAL_CONFLICT_CLASSES = {
     "review_ci_sha_conflict", "sha_mismatch", "pr_head_sha_mismatch"}
-EXTERNAL_INSTABILITY_CLASSES = {"external_api_unstable"}
+EXTERNAL_INSTABILITY_CLASSES = {"external_api_unstable", "external_platform"}
 
 
 
@@ -1475,6 +1477,8 @@ def main():
     pdir = gl.pipeline_dir(args.pipeline_dir)
     state = gl.load_state(pdir)
     gl.require_current_phase(state, 8, "gate_upload_ci.py")
+    from workflow_checks import enforce
+    enforce(pdir, 8)
     repo = state["repo"]
     gdir = state.get("git_dir", repo)
     if not os.path.isabs(gdir):
@@ -1693,6 +1697,7 @@ def main():
     with open(os.path.join(pdir, ci_rel), "w") as f:
         f.write(ci.stdout or ci.stderr)
     overall = ""
+    ci_json = {}
     ci_defect_locations = []
     ci_end_raw = ""
     try:
@@ -1763,6 +1768,11 @@ def main():
             # code defect — escalate rather than loop the model on local repairs.
             failure_class = (
                 "external_api_unstable" if ci_transport_failure else "ci_not_green")
+            from workflow_checks import ci_failure_category
+            category = "external_transport" if ci_transport_failure else ci_failure_category(ci_json)
+            if category in ("ci_wait", "external_platform"):
+                failure_class = category
+            reason += " failure_category=%s" % category
         elif not pr_head or not sha_ok:
             failure_class = "pr_head_sha_mismatch"
         elif not fresh_ok:

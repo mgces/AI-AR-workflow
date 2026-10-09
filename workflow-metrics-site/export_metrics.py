@@ -320,3 +320,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+    from sync_optimization_assets import sync_requested_public_assets
+    sync_requested_public_assets()

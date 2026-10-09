@@ -11,3 +11,7 @@
 .session-evidence-item{border-top:1px solid #e3eaf5;padding-top:8px;margin-top:8px}
 .session-evidence-item b{display:block;font-size:12px;color:#344967;font-weight:600;overflow-wrap:anywhere}
 .session-evidence-item p{font-size:12px;margin-top:4px;overflow-wrap:anywhere}
+
+.heading-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-shrink:0}
+.heading-actions .button{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+@media(max-width:600px){.page-heading{flex-wrap:wrap}.heading-actions{width:100%;justify-content:flex-start}}

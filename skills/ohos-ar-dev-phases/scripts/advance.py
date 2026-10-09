@@ -1314,6 +1314,7 @@ def cmd_init(args):
         # stamped 7 (or unstamped) use the legacy 3-in-1 phase-1 subflow and are
         # refused by load_state until migrated (advance.py migrate).
         "phase_scheme": gl.PHASE_SCHEME,
+        "optimization_policy_version": 1 if getattr(args, "optimized_checks", False) else 0,
         "current_phase": 0,
         "phase_opened_seq": {"0": 0},
         "consent_tokens": {},
@@ -2183,6 +2184,8 @@ def main():
                         "(芯片组件); REQUIRED when --environment harmonyos (their "
                         "build commands differ). Ignored for openharmony.")
     p.add_argument("--base-commit", default="")
+    p.add_argument("--optimized-checks", action="store_true",
+                   help="require signed verification_plan and execute early checks before P1-P7 gates")
     p.add_argument("--agent", default=os.environ.get("WORKFLOW_AGENT", ""),
                    help="agent/client name recorded at the top of workflow_metrics.json")
     p.add_argument("--model", default=os.environ.get("WORKFLOW_MODEL", ""),

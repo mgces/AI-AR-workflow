@@ -1877,6 +1877,8 @@ def write_workflow_metrics(pdir, data):
             "human_interventions": data.get("human_interventions") or [],
             "human_wait_intervals": data.get("human_wait_intervals") or [],
             "summary": data.get("summary") or {},
+            "preflight_history": data.get("preflight_history") or [],
+            "preflight_summary": data.get("preflight_summary") or {},
         }
         _refresh_metrics_totals(ordered)
         tmp = _metrics_path(pdir) + ".tmp"
@@ -2031,6 +2033,8 @@ def observe_gate_attempt(pdir, phase, verdict, gate, *, entry=None, reason=None)
                 "failure_kind": ("expected_review_hold" if verdict == "FAIL" and
                                  gate.endswith(":consent-precheck") else
                                  "gate_failure" if verdict == "FAIL" else None),
+                "failure_category": (__import__("workflow_checks").classify_failure(
+                    entry.get("reason") if entry else reason, gate) if verdict == "FAIL" else None),
                 "resolution_status": "unresolved" if verdict == "FAIL" else None,
                 "fixes": [],
             })
@@ -2519,7 +2523,11 @@ def check_design_sections(text):
         for head, body in sections:
             if any(re.search(k, head, re.IGNORECASE) for k in kw_res):
                 hit_body = body
-                break
+                # Broad heading aliases must not shadow a later complete
+                # section (e.g. 可观测指标 before DFX设计).
+                if any(l.strip() for l in body.splitlines()) and all(
+                        re.search(a, body, re.IGNORECASE) for a in anchor_res):
+                    break
         if hit_body is None:
             per_section.append((name, False, "heading not found"))
             missing.append(name)
@@ -2953,6 +2961,12 @@ def parse_ar_contract(text):
         "dependencies": dependencies,
         "change_scope": change_scope,
     }
+    if "verification_plan" in data:
+        from workflow_checks import validate_plan
+        plan_problems = validate_plan(data["verification_plan"], contract)
+        if plan_problems:
+            return False, None, "; ".join(plan_problems)
+        contract["verification_plan"] = data["verification_plan"]
     return True, contract, detail
 
 

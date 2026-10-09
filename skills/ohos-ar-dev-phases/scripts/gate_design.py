@@ -212,6 +212,8 @@ def main():
     pdir = gl.pipeline_dir(args.pipeline_dir)
     gl.require_current_phase(gl.load_state(pdir), 1, "gate_design.py")
     gl.evidence_dir(pdir, 1)
+    from workflow_checks import enforce
+    enforce(pdir, 1, design=args.design)
 
     def _fail(reason, problems=None, hint=None):
         gl.write_failure_report(pdir, 1, "gate_design.py", reason,

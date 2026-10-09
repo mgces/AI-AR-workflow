@@ -11,6 +11,12 @@ description: >
 
 # OHOS 生命周期流水线编排器(证据门控)
 
+新运行必须带 `advance.py init --optimized-checks`，并在 P1 的 `ar-contract` 中填写
+`verification_plan`。先读取同一技能版本的 `ohos-ar-dev-phases/optimization-preflight.md`，
+据真实源码与 CI 目标确定构建矩阵、导出符号、测试状态恢复以及每个 DC 的触发/失败注入探针。
+门禁会自动执行预检，预检失败同样进入 metrics，不能靠跳过预检提高通过率。
+从已安装技能执行前核对其版本已与仓库同步；旧运行不要静默改变已签名计划。
+
 你是这条流水线的**编排器**。你负责"调度"和"做事",但你**没有权力宣布某阶段通过**——
 阶段是否通过,只由 `scripts/` 下的确定性门控脚本 + `advance.py` 判定。这是不可逾越的护栏:
 **禁止用任何自由文本、总结、"看起来通过了"来推进阶段。**
@@ -98,7 +104,7 @@ workflow 的串行文件交接：本 workflow 仍需独立初始化 P0-P8，并�
   # 传 --repo + --run-id,不传 --pipeline-dir;init 打印 PDIR= 行,抓取即得权威路径。
   # 用户答别的组件 → 传 --git-dir/--build-target/--part;用户确认沿用 hiview → 加 --confirm-defaults
   # 环境:openharmony 传 --environment openharmony;HarmonyOS 传 --environment harmonyos --component-type system|chip
-  PDIR=$(python3 $S/advance.py init \
+  PDIR=$(python3 $S/advance.py init --optimized-checks \
       --repo "$OHOS_ROOT" --run-id "$RUN" \
       --environment openharmony \
       --git-dir <组件路径> --build-target <gn_target> --part <testpart> \

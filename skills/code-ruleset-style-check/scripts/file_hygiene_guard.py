@@ -136,6 +136,32 @@ def _license_finding(path):
         return [_finding(path, 1, "OAT.3",
                         "cannot read file for license check: %s" % exc)
                 ]
+    # Hiview's counted plugin list has no comment syntax. Restrict exemption
+    # to this known format; byte integrity and sensitive-word checks still run.
+    if path.name.endswith("_plugin_config"):
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        if lines and re.fullmatch(r"plugins:\d+", lines[0]):
+            # Real hiview files contain counted plugin, pipeline and group
+            # blocks, including thread attributes, spaces and colons in entries.
+            count = None
+            entries = 0
+            seen = set()
+            valid = True
+            for line in lines:
+                head = re.fullmatch(r"(plugins|pipelines|pipelinegroups):(\d+)", line)
+                if head:
+                    if head[1] in seen or (count is not None and entries != count):
+                        valid = False
+                        break
+                    seen.add(head[1]); count = int(head[2]); entries = 0
+                else:
+                    if line.startswith("#") or count is None:
+                        valid = False
+                        break
+                    entries += 1
+            if valid and entries == count:
+                return []
+        return [_finding(path, 1, "H1.PLUGIN_CONFIG", "expected plugins:N and matching counts for plugin/pipeline/group blocks; this format cannot take a license comment")]
     window = "\n".join(text.splitlines()[:_HEADER_WINDOW])
     findings = []
     if not _APACHE_RE.search(window):
@@ -192,12 +218,13 @@ def _json_finding(path):
     is reported by H2 (not double-reported here); H3 fires only on a genuine
     JSON syntax error. Deterministic and false-positive-free.
 
-    B4: for a component descriptor named exactly `bundle.json`, additionally
+    B4: for `bundle.json`, or a component descriptor recognized by its keys,
+    additionally
     require the keys the OpenHarmony build reads (`name`, `version`,
     `component`, and `component.name`/`component.subsystem`). A missing key is
     the same "field required" error the build/HPM step raises later — surfacing
-    it at author time is deterministic and false-positive-free because it is
-    scoped to that one well-known filename, never to arbitrary .json data."""
+    it at author time. Ordinary plugin JSON is not component metadata merely
+    because its filename ends with `_bundle.json`."""
     try:
         text = path.read_text(encoding="utf-8-sig")
     except (OSError, UnicodeError) as exc:
@@ -208,7 +235,10 @@ def _json_finding(path):
     except json.JSONDecodeError as exc:
         return _finding(path, getattr(exc, "lineno", 1) or 1, "H3.JSON",
                         "invalid JSON: %s" % exc.msg)
-    if path.name == "bundle.json":
+    semantic_component = (isinstance(obj, dict) and isinstance(obj.get("component"), dict)
+                          and "name" in obj and "name" in obj["component"]
+                          and "subsystem" in obj["component"])
+    if path.name == "bundle.json" or semantic_component:
         return _bundle_required_keys_finding(path, obj)
     return None
 
@@ -222,7 +252,7 @@ _BUNDLE_REQUIRED_COMPONENT = ("name", "subsystem")
 
 def _bundle_required_keys_finding(path, obj):
     """B4 helper: return a finding if a parsed bundle.json is missing a required
-    key, else None. Only reached for files literally named bundle.json."""
+    key, else None. Called for known or semantically identified descriptors."""
     if not isinstance(obj, dict):
         return _finding(path, 1, "H3.BUNDLE",
                         "bundle.json must be a JSON object with keys %s"

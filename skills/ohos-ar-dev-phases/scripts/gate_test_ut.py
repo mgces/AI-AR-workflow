@@ -355,19 +355,22 @@ def _xdevice_user_config(state):
             return ""  # cannot resolve WSL gateway -> keep local default
     if not host or not port:
         return ""
-    ip_line = "    <ip>%s</ip>\n    <port>%s</port>\n" % (host, port)
-    sn_line = "    <sn>%s</sn>\n" % serial if serial else ""
+    from xml.sax.saxutils import escape
+    ip_line = "    <ip>%s</ip>\n    <port>%s</port>\n" % (escape(str(host)), escape(str(port)))
+    sn_line = "    <sn>%s</sn>\n" % escape(str(serial)) if serial else ""
     return (
         "<user_config>\n"
+        "  <environment>\n"
         "  <device>\n"
         "    <hdc>true</hdc>\n"
         "%s%s"
         "  </device>\n"
+        "  </environment>\n"
         "</user_config>\n" % (ip_line, sn_line))
 
 
 @contextmanager
-def _temporary_xdevice_user_config(state, dt, pdir, arts):
+def _temporary_xdevice_user_config(state, dt, pdir, arts, phase=5):
     """Install the run-specific remote-HDC config and always restore it."""
     xdcfg = _xdevice_user_config(state)
     if not xdcfg:
@@ -375,7 +378,7 @@ def _temporary_xdevice_user_config(state, dt, pdir, arts):
         return
     cfg_dir = os.path.join(dt, "config")
     cfg_path = os.path.join(cfg_dir, "user_config.xml")
-    backup_path = os.path.join(pdir, "evidence/phase5/user_config.xml.bak")
+    backup_path = os.path.join(pdir, "evidence/phase%d/user_config.xml.bak" % phase)
     os.makedirs(cfg_dir, exist_ok=True)
     existed = os.path.exists(cfg_path)
     if existed:
@@ -383,7 +386,7 @@ def _temporary_xdevice_user_config(state, dt, pdir, arts):
     try:
         with open(cfg_path, "w", encoding="utf-8") as f:
             f.write(xdcfg)
-        cfg_rel = "evidence/phase5/user_config.xml"
+        cfg_rel = "evidence/phase%d/user_config.xml" % phase
         with open(os.path.join(pdir, cfg_rel), "w", encoding="utf-8") as f:
             f.write(xdcfg)
         arts.append(cfg_rel)
@@ -586,6 +589,8 @@ def main():
     pdir = gl.pipeline_dir(args.pipeline_dir)
     state = gl.load_state(pdir)
     gl.require_current_phase(state, 5, "gate_test_ut.py")
+    from workflow_checks import enforce
+    enforce(pdir, 5)
     repo = state["repo"]
     part = args.part or state.get("test", {}).get("part")
     if not part:
@@ -664,7 +669,11 @@ def main():
     # reports/latest would read a previous run's (possibly green) summary while the
     # per-suite result xmls below come from fresh_dir, mixing two runs and defeating
     # the new-dir freshness proof. Missing summary in the fresh dir → fail-closed.
-    summary = os.path.join(fresh_dir, "summary_report.xml")
+    from workflow_checks import fresh_summary
+    try:
+        summary = fresh_summary(fresh_dir)
+    except ValueError:
+        summary = os.path.join(fresh_dir, "invalid-ambiguous-summary.xml")
     if not os.path.exists(summary):
         reason = "summary_report.xml not found in fresh report dir"
         _record_result(
@@ -681,7 +690,7 @@ def main():
     arts.append(sum_rel)
     # also snapshot per-suite result xmls
     result_rels = []
-    result_root = os.path.join(fresh_dir, "result")
+    result_root = os.path.join(os.path.dirname(summary), "result")
     for rx in glob.glob(os.path.join(result_root, "**", "*.xml"), recursive=True):
         # Disambiguate by the path under result/ so two suites sharing a basename
         # in different subdirs don't clobber each other (which would drop cases and

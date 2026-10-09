@@ -1,5 +1,9 @@
 # P4 编译
 
+新运行通过 `init --optimized-checks` 启用 [优化预检](./workflow-optimization.md)。构建前检查工具及受影响矩阵；
+导出符号在当前构建成功后对实际库核验，保存并签名 `evidence/phase4/symbol_checks.json`。
+优化模式缺少有效 AST 执行结果不能放行；旧模式的 advisory 必须显示为 UNAVAILABLE，不能表示检查通过。
+
 > 本页拆解 P4(物理 phase 4)的编译目标、成功横幅和 artifact 检查、失败如何诊断、`ohos-dev-build-execution-diagnosis` 何时使用。
 
 ## 编译目标
@@ -39,6 +43,15 @@ P4 是真实编译验证阶段——真跑 `build.sh`,捕获真实输出,校验�
 - 全量整编
 - 局部失败后如何 narrow rebuild
 - 镜像刷机什么时候需要(配合 [`ohos-build-flash`](/skill-playbooks/build-and-flash))
+
+## 静态检查后端失败
+
+P4 先完成编译及产物校验，再执行度量与 clang-tidy。编译成功但静态检查失败，仍然是 P4 FAIL，
+应分别查看 `phase_summary.json` 中的编译、产物和静态检查结果。
+
+每轮扫描清除旧报告。扫描器异常退出、超时、报告缺失或无效时，以 `clang-tidy-backend`
+记录阻断原因；旧的零告警报告不能证明本轮通过。真实告警不会被附带的工具说明掩盖。
+明确工具缺失保留原有 advisory 策略，证据标为 `degraded=True`，不代表 AST 已检查通过。
 
 ## 顺序边界
 

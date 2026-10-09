@@ -1,5 +1,9 @@
 # OpenHarmony 作业线维测使用说明
 
+2026-10-09 的 workflow 优化及离线评估见 [优化实现与评估](./workflow-optimization.md)。
+优化模式新增 `preflight_history`、`preflight_summary`；它们与原始门禁 FAIL 分开保存，
+包含检查状态、原因、修复与复验，不能因问题提前发现就删去失败记录或宣称真实失败率下降。
+
 本说明用于收集可横向比较的作业线运行数据。需求开发入口每个 run 只提交一份
 `$PDIR/workflow_metrics.json`；需求分析与设计工作流（Requirement workflow）每个需求目录只提交一份
 `{docs_dir}/workflow_metrics.json`。不要手改统计文件：需求开发通过 `advance.py`，需求分析与设计工作流
