@@ -13,6 +13,21 @@ if module:
 
 
 class ExportTests(unittest.TestCase):
+    def test_incomplete_recording_is_exposed_without_changing_original_times(self):
+        d = self.metrics(timing={'history_complete': False, 'initialization_count': 2})
+        d['phases']['0']['current_epoch_active'] = False
+        run = self.export({'a/workflow_metrics.json': d})['runs'][0]
+        self.assertEqual(run.get('recording_quality', {}).get('status'), 'incomplete')
+        self.assertEqual(run['phases'][0]['status'], 'pending')
+        self.assertEqual(run['effective_seconds'], 90)
+
+    def test_session_confirmed_reinit_marks_known_snapshot_incomplete(self):
+        d = self.metrics(started_at_utc='2026-10-09T12:50:46Z')
+        d['run_id'] = '20261009-fd-leak-detect'
+        run = self.export({'a/workflow_metrics.json': d})['runs'][0]
+        self.assertEqual(run.get('recording_quality', {}).get('status'), 'incomplete')
+        self.assertIn('重新初始化', run['recording_quality']['note'])
+
     def export(self, files):
         self.assertIsNotNone(module, '需要实现指标导出器')
         with tempfile.TemporaryDirectory() as directory:

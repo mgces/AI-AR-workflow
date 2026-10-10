@@ -35,6 +35,24 @@ def total(values):
     return sum(known) if known else None
 
 
+def recording_quality(data):
+    timing = data.get('timing') or {}
+    complete = timing.get('history_complete')
+    note = ''
+    # Match the exact historical snapshot's start, not future runs with a reused ID.
+    notes_path = Path(__file__).with_name('recording-notes.json')
+    notes = json.loads(notes_path.read_text()) if notes_path.exists() else []
+    for item in notes:
+        if item['run_id'] == data.get('run_id') and item['started_at_utc'] == data.get('started_at_utc'):
+            complete = False
+            note = clean(item['note'])
+    return dict(status='complete' if complete is True else 'incomplete' if complete is False else 'unknown',
+                initialization_count=number(timing.get('initialization_count')), note=note or (
+                    '计时历史连续保留；工作起点仍需在实际开始前登记。' if complete is True else
+                    '历史不完整，不能将当前耗时和失败计数当作整个任务。' if complete is False else
+                    '旧记录未验证历史完整性，不能据阶段秒数判断完整工作耗时。'))
+
+
 def phase_key(value):
     text = str(value)
     return ('R' if text.upper().startswith('R') else 'P') + re.sub(r'^[PRpr]', '', text)
@@ -110,6 +128,8 @@ def normalize(data, path, root, warnings):
         verdict = str(item.get('last_verdict') or item.get('last_result') or '').upper().replace(' ', '_')
         active = bool(item.get('opened_at_utc') or item.get('runs') or wall is not None or verdict)
         status = 'failed' if verdict in FAILED else 'passed' if verdict in PASSED else 'running' if active else 'pending'
+        if item.get('current_epoch_active') is False:
+            status = 'pending'
         failure_count = number(item.get('fail_attempts'))
         attempts = number(item.get('gate_attempts'))
         phase = dict(id=pid, name=clean(item.get('name')) or pid, status=status,
@@ -119,6 +139,9 @@ def normalize(data, path, root, warnings):
                      rounds=len(item.get('runs') or []), skills=[clean(s) for s in item.get('skills_used', [])],
                      gate=clean(item.get('last_gate') or item.get('last_action')),
                      opened_at=clean(item.get('opened_at_utc')), closed_at=clean(item.get('closed_at_utc')))
+        phase['rounds_detail'] = [dict(opened_at=clean(r.get('opened_at_utc')), closed_at=clean(r.get('closed_at_utc')),
+                                      kind=clean(r.get('kind') or 'phase'), interrupted=bool(r.get('interrupted')))
+                                  for r in item.get('runs') or [] if isinstance(r, dict)]
         phases.append(phase)
         history_matches = []
         for attempt in item.get('attempt_history') or []:
@@ -243,6 +266,7 @@ def normalize(data, path, root, warnings):
                                     ('wait_seconds', 'workflow_human_wait_excluded_seconds', 'wait_seconds')]:
         recorded = number(summary.get(field))
         run[out] = recorded if recorded is not None else total(p[phase_field] for p in phases)
+    run['recording_quality'] = recording_quality(data)
     return run
 
 
@@ -329,7 +353,7 @@ def main():
     print(f"已导出 {len(data['runs'])} 条运行；{len(data['warnings'])} 条数据提示 → {args.output}")
     if args.public_dir:
         args.public_dir.mkdir(parents=True, exist_ok=True)
-        for asset in ('index.html', 'style.css', 'app.mjs', 'analytics.mjs', 'preflight-view.mjs'):
+        for asset in ('index.html', 'style.css', 'app.mjs', 'analytics.mjs', 'preflight-view.mjs', 'timing-view.mjs'):
             copy2(Path(__file__).parent / 'dist' / asset, args.public_dir / asset)
         (args.public_dir / 'data.json').write_text(
             json.dumps(public_snapshot(data), ensure_ascii=False, indent=2) + '\n', encoding='utf-8')

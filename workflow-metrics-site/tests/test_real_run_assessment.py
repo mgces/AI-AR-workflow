@@ -32,6 +32,18 @@ class RealRunAssessmentTests(unittest.TestCase):
         self.assertNotIn('test-secret',export.clean('push failed https://oauth2:test-secret@gitcode.com/example/repo'))
 
 class ComparisonTests(unittest.TestCase):
+    def test_incomplete_history_disables_failure_and_time_reduction_claims(self):
+        new = {'phases': {'1': {'gate_attempts': 1, 'fail_attempts': 0, 'effective_elapsed_seconds': 56}},
+               'timing': {'history_complete': False}, 'summary': {'workflow_effective_elapsed_seconds': 56}}
+        old = {'phases': {'1': {'gate_attempts': 2, 'fail_attempts': 1, 'effective_elapsed_seconds': 1800}},
+               'summary': {'workflow_effective_elapsed_seconds': 1800}}
+        r = self.analyzer().assess(new, old, [old], 'fixture')
+        self.assertIsNone(r['same_task']['pre_upload_failure_count_reduction_percent'])
+        self.assertIsNone(r['same_task']['pre_upload_effective_time_reduction_percent'])
+        self.assertIsNone(r['same_task']['effective_time_reduction_percent'])
+        self.assertIsNone(r['same_task']['gate_failure_count_reduction_percent'])
+        self.assertEqual(r['new_run']['gate_failures'], 0)
+
     def analyzer(self):
         path=ROOT/'analyze_optimization.py';self.assertTrue(path.exists())
         spec=importlib.util.spec_from_file_location('assess',path);module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module);return module

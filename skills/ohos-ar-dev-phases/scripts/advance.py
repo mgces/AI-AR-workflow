@@ -1287,6 +1287,16 @@ def cmd_init(args):
     product = envs.derive_product(args.environment, component_type)
 
     run_id = args.run_id or run_id
+    # Re-initializing verification must not erase advisory work/failure history.
+    # Validate/archive metrics BEFORE overwriting pipeline state or its secret.
+    try:
+        metrics_path = gl.init_workflow_metrics(
+            pdir, run_id, agent=getattr(args, "agent", ""),
+            model=getattr(args, "model", ""), skills=getattr(args, "skill", []))
+    except ValueError as error:
+        sys.exit("REFUSED: %s" % error)
+    if not metrics_path:
+        sys.exit("REFUSED: could not preserve workflow metrics; pipeline state was not replaced")
     gl.create_secret(run_id)
     state = {
         "run_id": run_id,
@@ -1327,13 +1337,16 @@ def cmd_init(args):
             for i, n in gl.PHASES
         ],
     }
+    if args.force:
+        state["evidence_epoch"] = len(gl.read_manifest(pdir))
+        state["evidence_epoch_min_phase"] = 0
+        state["phase_opened_seq"]["0"] = state["evidence_epoch"]
+        _clear_repair_packet(pdir)
+        _clear_stale_controls(pdir, min_phase=0)
     # Persist first: _refresh_state_metadata derives next-action via
     # validate_closing_entry, which reads pipeline.json back off disk. Then
     # re-save so the derived navigation metadata lands in pipeline.json too.
     gl.save_state(pdir, state)
-    gl.init_workflow_metrics(
-        pdir, run_id, agent=getattr(args, "agent", ""),
-        model=getattr(args, "model", ""), skills=getattr(args, "skill", []))
     _refresh_state_metadata(pdir, state)
     gl.save_state(pdir, state)
     # Active-run pointer: write the PDIR into <repo>/specs/pipeline/ACTIVE so a
@@ -1637,6 +1650,20 @@ def cmd_consent(args):
     print("recorded signed consent for phase %d (%s): token=%s bound to evidence %s.."
           % (args.phase, CONSENT_PHASES[args.phase], args.token,
              rec["evidence_ref"][:8]))
+
+
+def cmd_work_start(args):
+    """Record actual P1/P2/P3 work before edits; grants no workflow progress."""
+    pdir = gl.pipeline_dir(args.pipeline_dir)
+    state = gl.load_state(pdir)
+    if args.phase not in (1, 2, 3) or args.phase > state.get("current_phase", 0):
+        sys.exit("REFUSED: work-start supports entered P1/P2/P3 only; advance the prerequisite first")
+    if not gl.read_workflow_metrics(pdir):
+        sys.exit("REFUSED: metrics unavailable; use context to initialize observability first")
+    if not gl.observe_phase_opened(pdir, args.phase, kind="work", reason=args.reason):
+        sys.exit("REFUSED: work start could not be recorded")
+    print("WORK STARTED: P%d. Timing only; signed evidence and consent remain unchanged." % args.phase)
+    print("Before amendments use the required reset/repair path; work-start never authorizes stale evidence.")
 
 
 def cmd_reset(args):
@@ -2210,6 +2237,11 @@ def main():
                                      "a fix touches code; invalidates downstream phases")
     p.add_argument("--reason", default="", help="what was fixed (audit trail)")
     p.set_defaults(func=cmd_reset)
+
+    p = sub.add_parser("work-start", help="record P1/P2/P3 actual work BEFORE editing; no gate/consent bypass")
+    p.add_argument("--phase", type=int, choices=(1, 2, 3), required=True)
+    p.add_argument("--reason", required=True)
+    p.set_defaults(func=cmd_work_start)
 
     p = sub.add_parser("intervene", help="record an unplanned or user-initiated human intervention")
     p.add_argument("--phase", type=int, help="default: current phase")

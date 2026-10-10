@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-10T06:28:47.726995+00:00",
+  "generated_at": "2026-10-10T07:37:24.444512+00:00",
   "source_label": "AI-AR-workflow",
   "source_count": 7,
   "duplicate_count": 0,
@@ -35,7 +35,15 @@
           ],
           "gate": "gate_env_init.py",
           "opened_at": "2026-10-09T12:50:46Z",
-          "closed_at": "2026-10-09T12:52:28Z"
+          "closed_at": "2026-10-09T12:52:28Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-09T12:50:46Z",
+              "closed_at": "2026-10-09T12:52:28Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P1",
@@ -52,7 +60,33 @@
           "skills": [],
           "gate": "gate_design.py",
           "opened_at": "2026-10-10T02:04:21Z",
-          "closed_at": "2026-10-10T02:04:25Z"
+          "closed_at": "2026-10-10T02:04:25Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-09T12:52:28Z",
+              "closed_at": "2026-10-09T12:52:32Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-09T12:58:10Z",
+              "closed_at": "2026-10-09T12:58:14Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-10T01:08:29Z",
+              "closed_at": "2026-10-10T01:09:13Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-10T02:04:21Z",
+              "closed_at": "2026-10-10T02:04:25Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P2",
@@ -69,7 +103,39 @@
           "skills": [],
           "gate": "gate_develop.py",
           "opened_at": "2026-10-10T02:04:25Z",
-          "closed_at": "2026-10-10T02:04:28Z"
+          "closed_at": "2026-10-10T02:04:28Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-09T12:52:32Z",
+              "closed_at": "2026-10-09T12:52:35Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-09T12:58:14Z",
+              "closed_at": "2026-10-09T12:58:17Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-09T13:40:45Z",
+              "closed_at": "2026-10-09T13:40:48Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-10T01:09:13Z",
+              "closed_at": "2026-10-10T01:09:47Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-10T02:04:25Z",
+              "closed_at": "2026-10-10T02:04:28Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P3",
@@ -86,7 +152,39 @@
           "skills": [],
           "gate": "gate_test_develop.py",
           "opened_at": "2026-10-10T02:04:28Z",
-          "closed_at": "2026-10-10T02:04:31Z"
+          "closed_at": "2026-10-10T02:04:31Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-09T12:52:35Z",
+              "closed_at": "2026-10-09T12:52:37Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-09T12:58:17Z",
+              "closed_at": "2026-10-09T12:58:19Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-09T13:40:48Z",
+              "closed_at": "2026-10-09T13:40:51Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-10T01:09:47Z",
+              "closed_at": "2026-10-10T01:09:50Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-10T02:04:28Z",
+              "closed_at": "2026-10-10T02:04:31Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P4",
@@ -103,7 +201,39 @@
           "skills": [],
           "gate": "gate_build.py",
           "opened_at": "2026-10-10T02:04:31Z",
-          "closed_at": "2026-10-10T02:09:17Z"
+          "closed_at": "2026-10-10T02:09:17Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-09T12:52:37Z",
+              "closed_at": "2026-10-09T12:57:19Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-09T12:58:19Z",
+              "closed_at": "2026-10-09T13:03:02Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-09T13:40:51Z",
+              "closed_at": "2026-10-09T13:46:28Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-10T01:09:50Z",
+              "closed_at": "2026-10-10T01:26:56Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-10T02:04:31Z",
+              "closed_at": "2026-10-10T02:09:17Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P5",
@@ -120,7 +250,33 @@
           "skills": [],
           "gate": "gate_test_ut.py",
           "opened_at": "2026-10-10T02:09:17Z",
-          "closed_at": "2026-10-10T02:10:57Z"
+          "closed_at": "2026-10-10T02:10:57Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-09T12:57:19Z",
+              "closed_at": "2026-10-09T13:17:08Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-09T13:46:28Z",
+              "closed_at": "2026-10-09T13:49:38Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-10T01:26:56Z",
+              "closed_at": "2026-10-10T01:28:58Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-10T02:09:17Z",
+              "closed_at": "2026-10-10T02:10:57Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P6",
@@ -137,7 +293,27 @@
           "skills": [],
           "gate": "gate_device_func.py",
           "opened_at": "2026-10-10T02:10:57Z",
-          "closed_at": "2026-10-10T02:20:21Z"
+          "closed_at": "2026-10-10T02:20:21Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-09T13:17:08Z",
+              "closed_at": "2026-10-09T14:19:36Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-10T01:28:58Z",
+              "closed_at": "2026-10-10T01:39:34Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-10T02:10:57Z",
+              "closed_at": "2026-10-10T02:20:21Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P7",
@@ -154,7 +330,27 @@
           "skills": [],
           "gate": "gate_integration.py",
           "opened_at": "2026-10-10T02:20:21Z",
-          "closed_at": "2026-10-10T02:20:42Z"
+          "closed_at": "2026-10-10T02:20:42Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-09T14:19:36Z",
+              "closed_at": "2026-10-10T00:30:10Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-10T01:39:34Z",
+              "closed_at": "2026-10-10T01:44:52Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-10T02:20:21Z",
+              "closed_at": "2026-10-10T02:20:42Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P8",
@@ -171,7 +367,15 @@
           "skills": [],
           "gate": "gate_upload_ci.py",
           "opened_at": "2026-10-10T00:30:10Z",
-          "closed_at": "2026-10-10T03:08:10Z"
+          "closed_at": "2026-10-10T03:08:10Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-10T00:30:10Z",
+              "closed_at": "2026-10-10T03:08:10Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         }
       ],
       "failure_details": [
@@ -589,7 +793,12 @@
       "unrecorded_gate_attempts": 0,
       "effective_seconds": 23696,
       "wall_seconds": 55433,
-      "wait_seconds": 31737
+      "wait_seconds": 31737,
+      "recording_quality": {
+        "status": "incomplete",
+        "initialization_count": null,
+        "note": "2026-10-10 提供的 session 第 7027–7052 行确认：环境摘要变化后，同一 run-id 强制重新初始化；此前设计和开发历史未保留在当前指标中。P1 的 56 秒、P2 的 46 秒、P3 的 13 秒为重新初始化后累计记录，不能代表完整任务耗时。暂停据此计算耗时及失败减少度。"
+      }
     },
     {
       "id": "20260924-hiperf-symbol-mem",
@@ -620,7 +829,15 @@
           ],
           "gate": "gate_env_init.py",
           "opened_at": "2026-09-24T03:33:55Z",
-          "closed_at": "2026-09-24T03:33:56Z"
+          "closed_at": "2026-09-24T03:33:56Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-24T03:33:55Z",
+              "closed_at": "2026-09-24T03:33:56Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P1",
@@ -639,7 +856,21 @@
           ],
           "gate": "gate_design.py",
           "opened_at": "2026-09-24T03:59:29Z",
-          "closed_at": "2026-09-24T03:59:29Z"
+          "closed_at": "2026-09-24T03:59:29Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-24T03:33:56Z",
+              "closed_at": "2026-09-24T03:48:12Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-24T03:59:29Z",
+              "closed_at": "2026-09-24T03:59:29Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P2",
@@ -661,7 +892,39 @@
           ],
           "gate": "gate_develop.py",
           "opened_at": "2026-09-24T08:41:19Z",
-          "closed_at": "2026-09-24T08:43:09Z"
+          "closed_at": "2026-09-24T08:43:09Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-24T03:48:12Z",
+              "closed_at": "2026-09-24T03:59:39Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-24T04:21:39Z",
+              "closed_at": "2026-09-24T04:21:57Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-24T04:25:43Z",
+              "closed_at": "2026-09-24T04:25:49Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-24T04:44:12Z",
+              "closed_at": "2026-09-24T04:44:44Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-24T08:41:19Z",
+              "closed_at": "2026-09-24T08:43:09Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P3",
@@ -681,7 +944,39 @@
           ],
           "gate": "gate_test_develop.py",
           "opened_at": "2026-09-24T08:43:09Z",
-          "closed_at": "2026-09-24T08:43:35Z"
+          "closed_at": "2026-09-24T08:43:35Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-24T03:59:39Z",
+              "closed_at": "2026-09-24T04:03:40Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-24T04:21:57Z",
+              "closed_at": "2026-09-24T04:22:06Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-24T04:25:49Z",
+              "closed_at": "2026-09-24T04:25:49Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-24T04:44:44Z",
+              "closed_at": "2026-09-24T04:44:44Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-24T08:43:09Z",
+              "closed_at": "2026-09-24T08:43:35Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P4",
@@ -701,7 +996,21 @@
           ],
           "gate": "gate_build.py",
           "opened_at": "2026-09-24T08:43:35Z",
-          "closed_at": ""
+          "closed_at": "",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-24T04:03:40Z",
+              "closed_at": "2026-09-24T04:59:31Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-24T08:43:35Z",
+              "closed_at": "",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P5",
@@ -720,7 +1029,15 @@
           ],
           "gate": "gate_test_ut.py",
           "opened_at": "2026-09-24T04:59:31Z",
-          "closed_at": "2026-09-24T05:57:37Z"
+          "closed_at": "2026-09-24T05:57:37Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-24T04:59:31Z",
+              "closed_at": "2026-09-24T05:57:37Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P6",
@@ -737,7 +1054,15 @@
           "skills": [],
           "gate": "gate_device_func.py",
           "opened_at": "2026-09-24T05:57:37Z",
-          "closed_at": "2026-09-24T06:15:42Z"
+          "closed_at": "2026-09-24T06:15:42Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-24T05:57:37Z",
+              "closed_at": "2026-09-24T06:15:42Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P7",
@@ -754,7 +1079,15 @@
           "skills": [],
           "gate": "gate_integration.py",
           "opened_at": "2026-09-24T06:15:42Z",
-          "closed_at": "2026-09-24T07:18:16Z"
+          "closed_at": "2026-09-24T07:18:16Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-24T06:15:42Z",
+              "closed_at": "2026-09-24T07:18:16Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P8",
@@ -771,7 +1104,15 @@
           "skills": [],
           "gate": "gate_upload_ci.py",
           "opened_at": "2026-09-24T07:18:16Z",
-          "closed_at": ""
+          "closed_at": "",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-24T07:18:16Z",
+              "closed_at": "",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         }
       ],
       "failure_details": [
@@ -1047,7 +1388,12 @@
       "unrecorded_gate_attempts": null,
       "effective_seconds": 16398,
       "wall_seconds": 19513,
-      "wait_seconds": 3115
+      "wait_seconds": 3115,
+      "recording_quality": {
+        "status": "unknown",
+        "initialization_count": null,
+        "note": "旧记录未验证历史完整性，不能据阶段秒数判断完整工作耗时。"
+      }
     },
     {
       "id": "20260923-resmon",
@@ -1078,7 +1424,15 @@
           ],
           "gate": "gate_env_init.py",
           "opened_at": "2026-09-23T12:19:59Z",
-          "closed_at": "2026-09-23T12:20:03Z"
+          "closed_at": "2026-09-23T12:20:03Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-23T12:19:59Z",
+              "closed_at": "2026-09-23T12:20:03Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P1",
@@ -1095,7 +1449,15 @@
           "skills": [],
           "gate": "gate_design.py",
           "opened_at": "2026-09-23T12:20:03Z",
-          "closed_at": "2026-09-24T01:37:57Z"
+          "closed_at": "2026-09-24T01:37:57Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-23T12:20:03Z",
+              "closed_at": "2026-09-24T01:37:57Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P2",
@@ -1114,7 +1476,33 @@
           ],
           "gate": "gate_develop.py",
           "opened_at": "2026-09-24T05:45:11Z",
-          "closed_at": "2026-09-24T05:45:16Z"
+          "closed_at": "2026-09-24T05:45:16Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-24T01:37:57Z",
+              "closed_at": "2026-09-24T02:03:29Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-24T02:41:34Z",
+              "closed_at": "2026-09-24T02:41:54Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-24T05:37:26Z",
+              "closed_at": "2026-09-24T05:39:09Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-24T05:45:11Z",
+              "closed_at": "2026-09-24T05:45:16Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P3",
@@ -1134,7 +1522,33 @@
           ],
           "gate": "gate_test_develop.py",
           "opened_at": "2026-09-24T05:45:16Z",
-          "closed_at": "2026-09-24T05:45:19Z"
+          "closed_at": "2026-09-24T05:45:19Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-24T02:03:29Z",
+              "closed_at": "2026-09-24T02:23:58Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-24T02:41:54Z",
+              "closed_at": "2026-09-24T02:42:00Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-24T05:39:09Z",
+              "closed_at": "2026-09-24T05:39:34Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-24T05:45:16Z",
+              "closed_at": "2026-09-24T05:45:19Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P4",
@@ -1154,7 +1568,27 @@
           ],
           "gate": "gate_build.py",
           "opened_at": "2026-09-24T05:45:19Z",
-          "closed_at": "2026-09-24T05:47:40Z"
+          "closed_at": "2026-09-24T05:47:40Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-24T02:23:58Z",
+              "closed_at": "2026-09-24T02:45:43Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-24T05:39:34Z",
+              "closed_at": "2026-09-24T05:42:48Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-24T05:45:19Z",
+              "closed_at": "2026-09-24T05:47:40Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P5",
@@ -1173,7 +1607,21 @@
           ],
           "gate": "gate_test_ut.py",
           "opened_at": "2026-09-24T05:42:48Z",
-          "closed_at": "2026-09-24T06:09:16Z"
+          "closed_at": "2026-09-24T06:09:16Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-24T02:45:43Z",
+              "closed_at": "2026-09-24T03:13:07Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-24T05:42:48Z",
+              "closed_at": "2026-09-24T06:09:16Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P6",
@@ -1193,7 +1641,15 @@
           ],
           "gate": "gate_device_func.py",
           "opened_at": "2026-09-24T03:13:07Z",
-          "closed_at": "2026-09-24T06:13:50Z"
+          "closed_at": "2026-09-24T06:13:50Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-24T03:13:07Z",
+              "closed_at": "2026-09-24T06:13:50Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P7",
@@ -1210,7 +1666,15 @@
           "skills": [],
           "gate": "gate_integration.py",
           "opened_at": "2026-09-24T06:13:50Z",
-          "closed_at": "2026-09-24T07:06:20Z"
+          "closed_at": "2026-09-24T07:06:20Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-24T06:13:50Z",
+              "closed_at": "2026-09-24T07:06:20Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P8",
@@ -1227,7 +1691,15 @@
           "skills": [],
           "gate": "gate_upload_ci.py",
           "opened_at": "2026-09-24T07:06:20Z",
-          "closed_at": ""
+          "closed_at": "",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-24T07:06:20Z",
+              "closed_at": "",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         }
       ],
       "failure_details": [
@@ -1415,7 +1887,12 @@
       "unrecorded_gate_attempts": null,
       "effective_seconds": 18522,
       "wall_seconds": 70902,
-      "wait_seconds": 52380
+      "wait_seconds": 52380,
+      "recording_quality": {
+        "status": "unknown",
+        "initialization_count": null,
+        "note": "旧记录未验证历史完整性，不能据阶段秒数判断完整工作耗时。"
+      }
     },
     {
       "id": "20260923-unwinder-memcpy",
@@ -1446,7 +1923,15 @@
           ],
           "gate": "gate_env_init.py",
           "opened_at": "2026-09-23T02:18:40Z",
-          "closed_at": "2026-09-23T02:52:25Z"
+          "closed_at": "2026-09-23T02:52:25Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-23T02:18:40Z",
+              "closed_at": "2026-09-23T02:52:25Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P1",
@@ -1465,7 +1950,39 @@
           ],
           "gate": "gate_design.py",
           "opened_at": "2026-09-24T03:01:52Z",
-          "closed_at": "2026-09-24T03:31:20Z"
+          "closed_at": "2026-09-24T03:31:20Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-23T02:52:25Z",
+              "closed_at": "2026-09-23T03:19:08Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-23T03:53:54Z",
+              "closed_at": "2026-09-23T03:55:17Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-23T06:47:12Z",
+              "closed_at": "2026-09-23T06:47:38Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-23T06:48:48Z",
+              "closed_at": "2026-09-23T06:49:59Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-24T03:01:52Z",
+              "closed_at": "2026-09-24T03:31:20Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P2",
@@ -1485,7 +2002,33 @@
           ],
           "gate": "gate_develop.py",
           "opened_at": "2026-09-24T02:57:51Z",
-          "closed_at": "2026-09-24T03:35:03Z"
+          "closed_at": "2026-09-24T03:35:03Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-23T03:19:08Z",
+              "closed_at": "2026-09-23T03:56:13Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-23T06:47:38Z",
+              "closed_at": "2026-09-23T06:51:16Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-23T07:11:17Z",
+              "closed_at": "2026-09-23T07:17:47Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-24T02:57:51Z",
+              "closed_at": "2026-09-24T03:35:03Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P3",
@@ -1505,7 +2048,33 @@
           ],
           "gate": "gate_test_develop.py",
           "opened_at": "2026-09-24T03:35:03Z",
-          "closed_at": "2026-09-24T03:35:04Z"
+          "closed_at": "2026-09-24T03:35:04Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-23T03:56:13Z",
+              "closed_at": "2026-09-23T04:26:49Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-23T06:51:16Z",
+              "closed_at": "2026-09-23T06:51:42Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-23T07:17:47Z",
+              "closed_at": "2026-09-23T07:17:47Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-24T03:35:03Z",
+              "closed_at": "2026-09-24T03:35:04Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P4",
@@ -1524,7 +2093,21 @@
           ],
           "gate": "gate_build.py",
           "opened_at": "2026-09-24T03:35:04Z",
-          "closed_at": "2026-09-24T03:56:22Z"
+          "closed_at": "2026-09-24T03:56:22Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-23T04:26:49Z",
+              "closed_at": "2026-09-23T07:43:39Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-24T03:35:04Z",
+              "closed_at": "2026-09-24T03:56:22Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P5",
@@ -1543,7 +2126,21 @@
           ],
           "gate": "gate_test_ut.py",
           "opened_at": "2026-09-24T03:56:22Z",
-          "closed_at": ""
+          "closed_at": "",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-23T07:43:39Z",
+              "closed_at": "2026-09-23T08:03:30Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-24T03:56:22Z",
+              "closed_at": "",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P6",
@@ -1562,7 +2159,15 @@
           ],
           "gate": "gate_device_func.py",
           "opened_at": "2026-09-23T08:03:30Z",
-          "closed_at": "2026-09-23T08:39:06Z"
+          "closed_at": "2026-09-23T08:39:06Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-23T08:03:30Z",
+              "closed_at": "2026-09-23T08:39:06Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P7",
@@ -1581,7 +2186,15 @@
           ],
           "gate": "gate_integration.py",
           "opened_at": "2026-09-23T08:39:06Z",
-          "closed_at": "2026-09-23T09:24:44Z"
+          "closed_at": "2026-09-23T09:24:44Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-23T08:39:06Z",
+              "closed_at": "2026-09-23T09:24:44Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P8",
@@ -1600,7 +2213,15 @@
           ],
           "gate": "gate_upload_ci.py",
           "opened_at": "2026-09-23T09:24:44Z",
-          "closed_at": ""
+          "closed_at": "",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-23T09:24:44Z",
+              "closed_at": "",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         }
       ],
       "failure_details": [
@@ -1749,7 +2370,12 @@
       "unrecorded_gate_attempts": null,
       "effective_seconds": 97132,
       "wall_seconds": 99553,
-      "wait_seconds": 2421
+      "wait_seconds": 2421,
+      "recording_quality": {
+        "status": "unknown",
+        "initialization_count": null,
+        "note": "旧记录未验证历史完整性，不能据阶段秒数判断完整工作耗时。"
+      }
     },
     {
       "id": "20260921-hdc-client-diagnostics-compatible",
@@ -1787,7 +2413,15 @@
           ],
           "gate": "gate_env_init.py",
           "opened_at": "2026-09-21T06:39:24Z",
-          "closed_at": "2026-09-21T06:40:08Z"
+          "closed_at": "2026-09-21T06:40:08Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-21T06:39:24Z",
+              "closed_at": "2026-09-21T06:40:08Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P1",
@@ -1808,7 +2442,21 @@
           ],
           "gate": "gate_design.py",
           "opened_at": "2026-09-21T08:46:57Z",
-          "closed_at": "2026-09-21T08:54:37Z"
+          "closed_at": "2026-09-21T08:54:37Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-21T06:40:08Z",
+              "closed_at": "2026-09-21T08:24:24Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T08:46:57Z",
+              "closed_at": "2026-09-21T08:54:37Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P2",
@@ -1825,7 +2473,27 @@
           "skills": [],
           "gate": "gate_develop.py",
           "opened_at": "2026-09-21T09:23:32Z",
-          "closed_at": "2026-09-21T09:23:34Z"
+          "closed_at": "2026-09-21T09:23:34Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-21T08:24:24Z",
+              "closed_at": "2026-09-21T08:40:54Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T08:54:37Z",
+              "closed_at": "2026-09-21T08:56:17Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T09:23:32Z",
+              "closed_at": "2026-09-21T09:23:34Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P3",
@@ -1842,7 +2510,27 @@
           "skills": [],
           "gate": "gate_test_develop.py",
           "opened_at": "2026-09-21T09:23:34Z",
-          "closed_at": "2026-09-21T09:23:35Z"
+          "closed_at": "2026-09-21T09:23:35Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-21T08:40:54Z",
+              "closed_at": "2026-09-21T08:41:11Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T08:56:17Z",
+              "closed_at": "2026-09-21T08:56:17Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T09:23:34Z",
+              "closed_at": "2026-09-21T09:23:35Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P4",
@@ -1859,7 +2547,27 @@
           "skills": [],
           "gate": "gate_host_cli.py",
           "opened_at": "2026-09-21T09:23:35Z",
-          "closed_at": "2026-09-21T09:26:23Z"
+          "closed_at": "2026-09-21T09:26:23Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-21T08:41:11Z",
+              "closed_at": "2026-09-21T08:42:34Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T08:56:17Z",
+              "closed_at": "2026-09-21T08:58:19Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T09:23:35Z",
+              "closed_at": "2026-09-21T09:26:23Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P5",
@@ -1876,7 +2584,15 @@
           "skills": [],
           "gate": "gate_host_cli.py",
           "opened_at": "2026-09-21T08:42:34Z",
-          "closed_at": "2026-09-21T09:30:59Z"
+          "closed_at": "2026-09-21T09:30:59Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-21T08:42:34Z",
+              "closed_at": "2026-09-21T09:30:59Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P6",
@@ -1893,7 +2609,15 @@
           "skills": [],
           "gate": "gate_host_cli.py",
           "opened_at": "2026-09-21T09:30:59Z",
-          "closed_at": "2026-09-21T09:36:51Z"
+          "closed_at": "2026-09-21T09:36:51Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-21T09:30:59Z",
+              "closed_at": "2026-09-21T09:36:51Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P7",
@@ -1910,7 +2634,15 @@
           "skills": [],
           "gate": "gate_host_cli.py",
           "opened_at": "2026-09-21T09:36:51Z",
-          "closed_at": "2026-09-23T01:04:36Z"
+          "closed_at": "2026-09-23T01:04:36Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-21T09:36:51Z",
+              "closed_at": "2026-09-23T01:04:36Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P8",
@@ -1927,7 +2659,15 @@
           "skills": [],
           "gate": "",
           "opened_at": "2026-09-23T01:04:36Z",
-          "closed_at": ""
+          "closed_at": "",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-23T01:04:36Z",
+              "closed_at": "",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         }
       ],
       "failure_details": [
@@ -2000,7 +2740,12 @@
       "unrecorded_gate_attempts": null,
       "effective_seconds": 11306,
       "wall_seconds": 154815,
-      "wait_seconds": 143509
+      "wait_seconds": 143509,
+      "recording_quality": {
+        "status": "unknown",
+        "initialization_count": null,
+        "note": "旧记录未验证历史完整性，不能据阶段秒数判断完整工作耗时。"
+      }
     },
     {
       "id": "20260922-fd-leak-detection",
@@ -2031,7 +2776,15 @@
           ],
           "gate": "gate_env_init.py",
           "opened_at": "2026-09-22T01:41:05Z",
-          "closed_at": "2026-09-22T01:41:18Z"
+          "closed_at": "2026-09-22T01:41:18Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-22T01:41:05Z",
+              "closed_at": "2026-09-22T01:41:18Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P1",
@@ -2048,7 +2801,21 @@
           "skills": [],
           "gate": "gate_design.py",
           "opened_at": "2026-09-22T03:19:11Z",
-          "closed_at": "2026-09-22T03:22:31Z"
+          "closed_at": "2026-09-22T03:22:31Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-22T01:41:18Z",
+              "closed_at": "2026-09-22T02:02:09Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-22T03:19:11Z",
+              "closed_at": "2026-09-22T03:22:31Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P2",
@@ -2065,7 +2832,27 @@
           "skills": [],
           "gate": "gate_develop.py",
           "opened_at": "2026-09-22T08:33:11Z",
-          "closed_at": "2026-09-22T08:33:13Z"
+          "closed_at": "2026-09-22T08:33:13Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-22T02:02:09Z",
+              "closed_at": "2026-09-22T03:24:44Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-22T04:17:44Z",
+              "closed_at": "2026-09-22T04:18:28Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-22T08:33:11Z",
+              "closed_at": "2026-09-22T08:33:13Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P3",
@@ -2082,7 +2869,27 @@
           "skills": [],
           "gate": "gate_test_develop.py",
           "opened_at": "2026-09-22T08:33:13Z",
-          "closed_at": "2026-09-22T08:33:13Z"
+          "closed_at": "2026-09-22T08:33:13Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-22T03:24:44Z",
+              "closed_at": "2026-09-22T03:46:49Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-22T04:18:28Z",
+              "closed_at": "2026-09-22T04:18:29Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-22T08:33:13Z",
+              "closed_at": "2026-09-22T08:33:13Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P4",
@@ -2099,7 +2906,21 @@
           "skills": [],
           "gate": "gate_build.py",
           "opened_at": "2026-09-22T08:33:13Z",
-          "closed_at": "2026-09-22T08:41:48Z"
+          "closed_at": "2026-09-22T08:41:48Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-22T03:46:49Z",
+              "closed_at": "2026-09-22T04:23:19Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-22T08:33:13Z",
+              "closed_at": "2026-09-22T08:41:48Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P5",
@@ -2116,7 +2937,21 @@
           "skills": [],
           "gate": "gate_test_ut.py",
           "opened_at": "2026-09-22T08:41:48Z",
-          "closed_at": "2026-09-22T08:46:45Z"
+          "closed_at": "2026-09-22T08:46:45Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-22T04:23:19Z",
+              "closed_at": "2026-09-22T05:19:49Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-22T08:41:48Z",
+              "closed_at": "2026-09-22T08:46:45Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P6",
@@ -2133,7 +2968,21 @@
           "skills": [],
           "gate": "gate_device_func.py",
           "opened_at": "2026-09-22T08:46:45Z",
-          "closed_at": "2026-09-22T08:55:54Z"
+          "closed_at": "2026-09-22T08:55:54Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-22T05:19:49Z",
+              "closed_at": "2026-09-22T06:17:34Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-22T08:46:45Z",
+              "closed_at": "2026-09-22T08:55:54Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P7",
@@ -2150,7 +2999,21 @@
           "skills": [],
           "gate": "gate_integration.py",
           "opened_at": "2026-09-22T08:55:54Z",
-          "closed_at": "2026-09-22T09:00:39Z"
+          "closed_at": "2026-09-22T09:00:39Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-22T06:17:34Z",
+              "closed_at": "2026-09-22T07:16:50Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-22T08:55:54Z",
+              "closed_at": "2026-09-22T09:00:39Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P8",
@@ -2167,7 +3030,15 @@
           "skills": [],
           "gate": "gate_upload_ci.py",
           "opened_at": "2026-09-22T07:16:50Z",
-          "closed_at": "2026-09-22T12:27:09Z"
+          "closed_at": "2026-09-22T12:27:09Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-22T07:16:50Z",
+              "closed_at": "2026-09-22T12:27:09Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         }
       ],
       "failure_details": [
@@ -2466,7 +3337,12 @@
       "unrecorded_gate_attempts": null,
       "effective_seconds": 38575,
       "wall_seconds": 40657,
-      "wait_seconds": 2082
+      "wait_seconds": 2082,
+      "recording_quality": {
+        "status": "unknown",
+        "initialization_count": null,
+        "note": "旧记录未验证历史完整性，不能据阶段秒数判断完整工作耗时。"
+      }
     },
     {
       "id": "20260921-data-clean-mode",
@@ -2497,7 +3373,15 @@
           ],
           "gate": "gate_env_init.py",
           "opened_at": "2026-09-21T07:34:16Z",
-          "closed_at": "2026-09-21T07:45:02Z"
+          "closed_at": "2026-09-21T07:45:02Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-21T07:34:16Z",
+              "closed_at": "2026-09-21T07:45:02Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P1",
@@ -2514,7 +3398,51 @@
           "skills": [],
           "gate": "gate_design.py",
           "opened_at": "2026-09-21T11:39:41Z",
-          "closed_at": "2026-09-21T11:42:10Z"
+          "closed_at": "2026-09-21T11:42:10Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-21T07:45:02Z",
+              "closed_at": "2026-09-21T08:21:42Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T08:31:29Z",
+              "closed_at": "2026-09-21T08:37:30Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T08:57:40Z",
+              "closed_at": "2026-09-21T08:57:59Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T09:06:09Z",
+              "closed_at": "2026-09-21T09:06:24Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T10:17:34Z",
+              "closed_at": "2026-09-21T10:20:48Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T11:31:44Z",
+              "closed_at": "2026-09-21T11:34:49Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T11:39:41Z",
+              "closed_at": "2026-09-21T11:42:10Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P2",
@@ -2531,7 +3459,81 @@
           "skills": [],
           "gate": "gate_develop.py",
           "opened_at": "2026-09-21T11:46:28Z",
-          "closed_at": "2026-09-21T11:46:29Z"
+          "closed_at": "2026-09-21T11:46:29Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-21T08:21:42Z",
+              "closed_at": "2026-09-21T08:37:44Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T08:57:59Z",
+              "closed_at": "2026-09-21T08:58:00Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T09:01:53Z",
+              "closed_at": "2026-09-21T09:02:11Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T09:06:24Z",
+              "closed_at": "2026-09-21T09:06:25Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T09:24:07Z",
+              "closed_at": "2026-09-21T09:24:08Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T09:28:55Z",
+              "closed_at": "2026-09-21T09:28:57Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T09:50:16Z",
+              "closed_at": "2026-09-21T09:51:25Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T09:57:03Z",
+              "closed_at": "2026-09-21T09:57:05Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T10:20:48Z",
+              "closed_at": "2026-09-21T10:20:49Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T11:34:49Z",
+              "closed_at": "2026-09-21T11:34:50Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T11:42:10Z",
+              "closed_at": "2026-09-21T11:42:11Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T11:46:28Z",
+              "closed_at": "2026-09-21T11:46:29Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P3",
@@ -2548,7 +3550,81 @@
           "skills": [],
           "gate": "gate_test_develop.py",
           "opened_at": "2026-09-21T11:46:29Z",
-          "closed_at": "2026-09-21T11:46:30Z"
+          "closed_at": "2026-09-21T11:46:30Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-21T08:37:44Z",
+              "closed_at": "2026-09-21T08:44:10Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T08:58:00Z",
+              "closed_at": "2026-09-21T08:58:01Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T09:02:11Z",
+              "closed_at": "2026-09-21T09:02:11Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T09:06:25Z",
+              "closed_at": "2026-09-21T09:06:25Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T09:24:08Z",
+              "closed_at": "2026-09-21T09:24:09Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T09:28:57Z",
+              "closed_at": "2026-09-21T09:28:58Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T09:51:25Z",
+              "closed_at": "2026-09-21T09:51:25Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T09:57:05Z",
+              "closed_at": "2026-09-21T09:57:05Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T10:20:49Z",
+              "closed_at": "2026-09-21T10:20:50Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T11:34:50Z",
+              "closed_at": "2026-09-21T11:34:51Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T11:42:11Z",
+              "closed_at": "2026-09-21T11:42:12Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T11:46:29Z",
+              "closed_at": "2026-09-21T11:46:30Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P4",
@@ -2565,7 +3641,27 @@
           "skills": [],
           "gate": "gate_build.py",
           "opened_at": "2026-09-21T11:34:51Z",
-          "closed_at": "2026-09-21T11:50:26Z"
+          "closed_at": "2026-09-21T11:50:26Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-21T08:44:10Z",
+              "closed_at": "2026-09-21T10:02:24Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T10:20:50Z",
+              "closed_at": "2026-09-21T10:24:21Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T11:34:51Z",
+              "closed_at": "2026-09-21T11:50:26Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P5",
@@ -2582,7 +3678,27 @@
           "skills": [],
           "gate": "gate_test_ut.py",
           "opened_at": "2026-09-21T11:50:26Z",
-          "closed_at": "2026-09-21T11:51:47Z"
+          "closed_at": "2026-09-21T11:51:47Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-21T10:02:24Z",
+              "closed_at": "2026-09-21T10:16:44Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T10:24:21Z",
+              "closed_at": "2026-09-21T10:25:39Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-09-21T11:50:26Z",
+              "closed_at": "2026-09-21T11:51:47Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P6",
@@ -2599,7 +3715,15 @@
           "skills": [],
           "gate": "",
           "opened_at": "2026-09-21T10:16:44Z",
-          "closed_at": ""
+          "closed_at": "",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-09-21T10:16:44Z",
+              "closed_at": "",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ]
         },
         {
           "id": "P7",
@@ -2616,7 +3740,8 @@
           "skills": [],
           "gate": "",
           "opened_at": "",
-          "closed_at": ""
+          "closed_at": "",
+          "rounds_detail": []
         },
         {
           "id": "P8",
@@ -2633,7 +3758,8 @@
           "skills": [],
           "gate": "",
           "opened_at": "",
-          "closed_at": ""
+          "closed_at": "",
+          "rounds_detail": []
         }
       ],
       "failure_details": [
@@ -2733,7 +3859,12 @@
       "unrecorded_gate_attempts": null,
       "effective_seconds": 17204,
       "wall_seconds": 19316,
-      "wait_seconds": 2112
+      "wait_seconds": 2112,
+      "recording_quality": {
+        "status": "unknown",
+        "initialization_count": null,
+        "note": "旧记录未验证历史完整性，不能据阶段秒数判断完整工作耗时。"
+      }
     }
   ],
   "redacted": true,

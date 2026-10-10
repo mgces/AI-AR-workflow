@@ -67,3 +67,10 @@ node --check workflow-metrics-site/dist/app.mjs
 仓库现有 `.github/workflows/deploy-docs.yml` 在 GitHub `main` 分支的 `docs/**` 变化时构建 VitePress，`docs/public/workflow-metrics/` 会作为静态子页面进入同一次 Pages 发布，地址为 `https://mgces.github.io/AI-AR-workflow/workflow-metrics/`。更新公开数据后检查 `docs/public/workflow-metrics/data.json`，将该目录提交到 GitHub `main` 即可触发部署。
 
 原始 `products/.run/` 数据目录不提交到 GitHub，也不会由 GitHub Actions 自动读取。每次更新指标都需要在本地重新导出、检查去敏结果并提交公开快照。源码目录内的 `.openai/hosting.json` 是未使用的 Sites 项目身份，已忽略，GitHub 发布无需它。
+
+## 计时覆盖检查
+
+运行详情显示历史完整性及 P1/P2/P3 每轮 UTC 起止时间。旧记录默认为未知；`recording-notes.json`
+按 run-id 与精确开始时间登记已经由 session 确认的缺失，只增加说明，不修改原始指标或猜测时长。
+已知不完整记录暂停完整任务耗时和失败减少度评估。新 workflow 在工作开始前登记 `work-start`，
+同一 run 强制初始化会保留并归档历史。原始 `metrics-history/` 只留本地。

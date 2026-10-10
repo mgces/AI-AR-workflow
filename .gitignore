@@ -47,3 +47,4 @@ products/dsh-cloud-implementation/doctor-*.json
 
 # Imported private metrics may contain credentials; publish only redacted snapshots.
 /products/.run/
+**/metrics-history/

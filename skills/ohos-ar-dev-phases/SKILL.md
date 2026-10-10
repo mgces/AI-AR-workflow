@@ -17,6 +17,15 @@ P1 在 `ar-contract` 中填写并签名 `verification_plan`；P1–P8 自动执�
 
 ## 公共约定
 
+- **P1/P2/P3 工作计时**：实际开始调研/设计、功能写码、测试写码前，执行
+  `python3 "$S/advance.py" --pipeline-dir "$PDIR" work-start --phase N --reason "<本轮工作>"`，
+  N 分别为 1、2、3。首次工作应先推进至对应阶段；返工可登记已经进入过的阶段。
+  此命令只记录工作起点，不改变阶段指针、签名证据或 consent。设计/验收修改仍需 `reset`，
+  纯实现修复仍需 `repair`，测试修改仍按原有测试与证据失效规则重验。先登记/回退，再编辑。
+  同一阶段连续登记不重置起点；切换工作阶段或回退会结束旧区间，各轮累计保留。
+  `init --force` 只重建验证状态，指标历史保留并在 `metrics-history/` 归档；旧历史完整性未知时不升级为完整。
+  归档与原始证据一样只留本地，不提交。没有登记的前期工作不会被自动补算。
+
 - 统一变量:`PDIR=specs/pipeline/<run>`,`AGENT_SKILLS_DIR=<Agent 技能根目录>`,`S=$AGENT_SKILLS_DIR/ohos-ar-dev-phases/scripts`。
 - 每阶段三步,**不可省第 2、3 步**:
   1. 用本阶段命名的 ohos-* 技能做事(写代码 / 生成测试 / 部署 / 建 PR)。

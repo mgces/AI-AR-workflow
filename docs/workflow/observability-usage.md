@@ -19,11 +19,35 @@
 - `human_wait_excluded_seconds`：等待人工回复的时间；
 - `effective_elapsed_seconds`：`elapsed_seconds - human_wait_excluded_seconds`，用于评价 workflow 效率；
 - 多次 `repair/reset` 产生多个 `runs`，分别保存后累计；
-- 同阶段多个等待区间重叠时按时间并集扣除一次，不重复扣减；
+- 同阶段多个等待区间重叠时按并集计算，再与该阶段实际工作区间取交集，不扣除轮次之间的空档；
 - 人工一直没有回复时，等待区间保持 `waiting`，墙钟时间和排除时间同时增长，因此有效耗时不增长。
 
 后续汇总性能时使用 `workflow_effective_elapsed_seconds`，不要用墙钟时间评价模型或 workflow。
 墙钟时间只用于观察真实交付周期。
+
+### P1 / P2 / P3 实际工作起点与重新初始化
+
+开始设计调研、功能开发、测试开发之前分别登记工作起点，不能等写完后才登记：
+
+```bash
+python3 "$S/advance.py" --pipeline-dir "$PDIR" work-start --phase 1 --reason "开始设计调研与契约编写"
+# 正常推进到 P2 后，开始功能代码工作前：
+python3 "$S/advance.py" --pipeline-dir "$PDIR" work-start --phase 2 --reason "开始功能开发"
+# 正常推进到 P3 后，开始测试工作前：
+python3 "$S/advance.py" --pipeline-dir "$PDIR" work-start --phase 3 --reason "开始测试开发"
+```
+
+首次工作不得越过尚未进入的阶段。返工可登记已经进入过的 P1/P2/P3，再按既有 `reset` / `repair`
+规则重新验证；此命令不修改阶段指针、不产生 PASS、不保留失效证据的效力。切换工作阶段时结束
+旧阶段区间，但不表示旧阶段通过。同阶段重复登记不会重置起点。
+
+同一 run 的 `init --force` 保留开始时间、阶段各轮区间、门禁/预检失败和人工等待；在
+`$PDIR/metrics-history/` 保存初始化前的原始快照，并追加 `timing.initializations`。新验证状态仍从
+P0 开始，旧 PASS/consent 不能据指标复用。归档只留本地，不上传；换任务应使用新 run-id 和新目录。
+损坏的指标或另一 run 的指标会阻止初始化覆盖，避免静默丢失历史。
+
+`timing.history_complete` 表示观测历史是否连续保留，并不保证使用者登记了每项工作。旧记录没有
+此字段时保持未知；已经确认历史缺失的快照，不用于计算完整任务耗时或失败减少度。
 
 ## 需求分析与设计工作流（Requirement workflow）初始化
 

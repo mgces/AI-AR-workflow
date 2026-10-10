@@ -916,6 +916,11 @@ export const realRunAssessment = {
   "optimization_policy_observed": true,
   "checker_matches_repository": true,
   "causal_effect_proven": false,
+  "recording_quality": {
+    "status": "incomplete",
+    "initialization_count": null,
+    "note": "2026-10-10 提供的 session 第 7027–7052 行确认：环境摘要变化后，同一 run-id 强制重新初始化；此前设计和开发历史未保留在当前指标中。P1 的 56 秒、P2 的 46 秒、P3 的 13 秒为重新初始化后累计记录，不能代表完整任务耗时。暂停据此计算耗时及失败减少度。"
+  },
   "new_run": {
     "gate_attempts": 45,
     "gate_failures": 13,
@@ -934,16 +939,16 @@ export const realRunAssessment = {
     "old_attempts": 32,
     "old_failures": 13,
     "old_failure_rate": 0.40625,
-    "gate_failure_count_reduction_percent": 0.0,
+    "gate_failure_count_reduction_percent": null,
     "combined_failure_count_reduction_percent": null,
     "old_pre_upload_failures": 9,
     "new_pre_upload_failures": 2,
     "old_pre_upload_attempts": 27,
     "new_pre_upload_attempts": 33,
-    "pre_upload_failure_count_reduction_percent": 77.77777777777779,
+    "pre_upload_failure_count_reduction_percent": null,
     "pre_upload_effective_seconds_old": 20006,
     "pre_upload_effective_seconds_new": 14531,
-    "pre_upload_effective_time_reduction_percent": 27.366789963011094,
+    "pre_upload_effective_time_reduction_percent": null,
     "phase_rows": [
       {
         "phase": "P1–P4",
@@ -963,7 +968,7 @@ export const realRunAssessment = {
     ],
     "effective_seconds_old": 38575,
     "effective_seconds_new": 23696,
-    "effective_time_reduction_percent": 38.57161373946857,
+    "effective_time_reduction_percent": null,
     "wall_seconds_old": 40657,
     "wall_seconds_new": 55433
   },
@@ -975,6 +980,7 @@ export const realRunAssessment = {
     "failures_per_run": 12.333333333333334
   },
   "limitations": [
+    "2026-10-10 提供的 session 第 7027–7052 行确认：环境摘要变化后，同一 run-id 强制重新初始化；此前设计和开发历史未保留在当前指标中。P1 的 56 秒、P2 的 46 秒、P3 的 13 秒为重新初始化后累计记录，不能代表完整任务耗时。暂停据此计算耗时及失败减少度。",
     "历史运行没有同等预检统计，不能计算总失败减少率。",
     "同类任务、相同模型不代表需求范围、源码版本、设备和 CI 条件相同；单次样本不能证明因果。",
     "没有登记修复动作；后续 PASS 只证明重跑通过，不能确定改了什么。",

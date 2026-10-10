@@ -1759,7 +1759,7 @@ def _seconds_between(start, end):
         return None
 
 
-def _excluded_wait_seconds(waits, phase_id, now):
+def _excluded_wait_seconds(waits, phase_id, now, work_ranges=None):
     """Union overlapping waits so two human reasons never double-deduct time."""
     ranges = []
     for wait in waits:
@@ -1773,7 +1773,12 @@ def _excluded_wait_seconds(waits, phase_id, now):
                 wait.get("ended_at_utc") or now, "%Y-%m-%dT%H:%M:%SZ"))
         except (TypeError, ValueError, OverflowError):
             continue
-        ranges.append((start, max(start, end)))
+        if work_ranges is None:
+            ranges.append((start, max(start, end)))
+        else:
+            for a, b in work_ranges:
+                if min(end, b) > max(start, a):
+                    ranges.append((max(start, a), min(end, b)))
     total = 0
     merged = []
     for start, end in sorted(ranges):
@@ -1803,7 +1808,16 @@ def _refresh_metrics_totals(data):
             end = phase.get("closed_at_utc") or now
             phase["elapsed_seconds"] = _seconds_between(start, end)
         phase_id = next((key for key, value in phases.items() if value is phase), None)
-        excluded = _excluded_wait_seconds(waits, phase_id, now)
+        work_ranges = []
+        for run in runs or [{"opened_at_utc": phase.get("opened_at_utc"),
+                             "closed_at_utc": phase.get("closed_at_utc")}]:
+            try:
+                a = calendar.timegm(time.strptime(run.get("opened_at_utc"), "%Y-%m-%dT%H:%M:%SZ"))
+                b = calendar.timegm(time.strptime(run.get("closed_at_utc") or now, "%Y-%m-%dT%H:%M:%SZ"))
+                work_ranges.append((a, max(a, b)))
+            except (TypeError, ValueError, OverflowError):
+                continue
+        excluded = _excluded_wait_seconds(waits, phase_id, now, work_ranges)
         wall = phase.get("elapsed_seconds")
         if wall is not None:
             excluded = min(excluded, wall)
@@ -1879,6 +1893,7 @@ def write_workflow_metrics(pdir, data):
             "summary": data.get("summary") or {},
             "preflight_history": data.get("preflight_history") or [],
             "preflight_summary": data.get("preflight_summary") or {},
+            "timing": data.get("timing") or {},
         }
         _refresh_metrics_totals(ordered)
         tmp = _metrics_path(pdir) + ".tmp"
@@ -1892,6 +1907,44 @@ def write_workflow_metrics(pdir, data):
 
 def init_workflow_metrics(pdir, run_id, *, agent="", model="", skills=None):
     now = _utc_now()
+    existing = read_workflow_metrics(pdir)
+    if os.path.exists(_metrics_path(pdir)):
+        if not existing or not isinstance(existing.get("phases"), dict):
+            raise ValueError("Existing workflow metrics are unreadable; preserve and repair them before init")
+        if existing.get("run_id") != run_id:
+            raise ValueError("Existing metrics belong to another run; use a new pipeline directory")
+        archive_dir = os.path.join(pdir, "metrics-history")
+        os.makedirs(archive_dir, exist_ok=True)
+        # Exclusive creation retains every pre-init snapshot, even within one second.
+        import tempfile
+        fd, archive = tempfile.mkstemp(prefix="before-init-", suffix=".json", dir=archive_dir)
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            json.dump(existing, stream, ensure_ascii=False, indent=2)
+        _close_metric_work(existing, now)
+        timing = existing.setdefault("timing", {})
+        timing.setdefault("history_complete", None)
+        timing["version"] = 1
+        timing["initialization_count"] = timing.get("initialization_count", 1) + 1
+        timing.setdefault("initializations", []).append({"at_utc": now, "reason": "reinit"})
+        context = existing.setdefault("execution_context", {})
+        if agent:
+            context["agent"] = agent
+        if model:
+            context["model"] = model
+        context["skills"] = list(dict.fromkeys(list(context.get("skills") or []) + list(skills or [])))
+        for item in existing["phases"].values():
+            item["current_epoch_active"] = False
+            item["opened_at_utc"] = None
+            item["closed_at_utc"] = None
+            item["last_verdict"] = None
+        zero = existing["phases"].get("0")
+        if zero is None:
+            raise ValueError("Existing metrics have no P0 phase")
+        zero.setdefault("runs", []).append({"opened_at_utc": now, "closed_at_utc": None,
+                                             "kind": "reinit"})
+        zero["opened_at_utc"] = now
+        zero["current_epoch_active"] = True
+        return write_workflow_metrics(pdir, existing)
     phases = {
         str(i): {
             "name": name, "opened_at_utc": now if i == 0 else None,
@@ -1912,6 +1965,8 @@ def init_workflow_metrics(pdir, run_id, *, agent="", model="", skills=None):
         },
         "run_id": run_id, "started_at_utc": now,
         "phases": phases, "human_interventions": [], "human_wait_intervals": [],
+        "timing": {"version": 1, "history_complete": not bool(read_manifest(pdir)),
+                   "initialization_count": 1, "initializations": [{"at_utc": now, "reason": "init"}]},
     })
 
 
@@ -1945,16 +2000,39 @@ def record_phase_skills(pdir, phase, skills):
     return write_workflow_metrics(pdir, data)
 
 
-def observe_phase_opened(pdir, phase):
+def _close_metric_work(data, now, except_phase=None):
+    """Close interrupted work without granting a signed phase closure/PASS."""
+    for key, item in (data.get("phases") or {}).items():
+        if str(key) == str(except_phase):
+            continue
+        if not item.get("runs") and item.get("opened_at_utc"):
+            item["runs"] = [{"opened_at_utc": item["opened_at_utc"],
+                             "closed_at_utc": item.get("closed_at_utc"), "kind": "legacy"}]
+        for run in item.get("runs") or []:
+            if run.get("opened_at_utc") and not run.get("closed_at_utc"):
+                run["closed_at_utc"] = now
+                run["interrupted"] = True
+    for wait in data.get("human_wait_intervals") or []:
+        if str(wait.get("phase")) != str(except_phase) and not wait.get("ended_at_utc"):
+            wait["ended_at_utc"] = now
+            wait["status"] = "interrupted"
+
+
+def observe_phase_opened(pdir, phase, *, kind="phase", reason=""):
     data = read_workflow_metrics(pdir)
     item = (data.get("phases") or {}).get(str(phase))
     if item is not None:
         now = _utc_now()
+        _close_metric_work(data, now, except_phase=phase)
         runs = item.setdefault("runs", [])
         if not runs or runs[-1].get("closed_at_utc"):
-            runs.append({"opened_at_utc": now, "closed_at_utc": None})
+            runs.append({"opened_at_utc": now, "closed_at_utc": None, "kind": kind})
         item["opened_at_utc"] = runs[-1]["opened_at_utc"]
         item["closed_at_utc"] = None
+        item["current_epoch_active"] = True
+        if kind == "work":
+            data.setdefault("timing", {}).setdefault("work_starts", []).append(
+                {"phase": phase, "at_utc": now, "reason": reason})
     return write_workflow_metrics(pdir, data) if data else None
 
 
