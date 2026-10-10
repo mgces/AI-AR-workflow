@@ -203,3 +203,11 @@ python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-workflow/scripts/archive_product.py" \
 
 参考:`references/gate-contract.md`(门控契约)、`references/evidence-protocol.md`(防伪协议)、
 `references/pipeline-schema.md`(状态结构)。
+
+## P8 等待与恢复执行约定
+
+GitCode P8 输出 `PHASE 8 WAIT` 时，暂停当前门禁重试循环，读取 `advance.py next --json` / `resume`。
+缺报告先完成对应评审；CI pending 等待条件变化并遵守 `retry_after_epoch`，不得不断重跑或从创建 PR 开始。
+WAIT 不得执行 `advance --phase 8`，不得当成代码缺陷要求 P1/P2 修改。签名检查点会自动复用同目标、
+同 SHA 且工作区干净的已有 PR；代码/目标变化仍执行原有重新验证与 consent 流程。
+只有机器门禁输出 PASS 并满足 SHA/CI/评审约束，才可推进 P8。详细边界见阶段技能的 P8 恢复约定。

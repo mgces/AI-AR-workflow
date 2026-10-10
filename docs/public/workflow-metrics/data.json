@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-10T07:37:24.444512+00:00",
+  "generated_at": "2026-10-10T08:38:28.800999+00:00",
   "source_label": "AI-AR-workflow",
   "source_count": 7,
   "duplicate_count": 0,
@@ -43,7 +43,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P1",
@@ -86,7 +87,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P2",
@@ -135,7 +137,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P3",
@@ -184,7 +187,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P4",
@@ -233,7 +237,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P5",
@@ -276,7 +281,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P6",
@@ -313,7 +319,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P7",
@@ -350,7 +357,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P8",
@@ -375,7 +383,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         }
       ],
       "failure_details": [
@@ -837,7 +846,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P1",
@@ -870,7 +880,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P2",
@@ -924,7 +935,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P3",
@@ -976,7 +988,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P4",
@@ -1010,7 +1023,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P5",
@@ -1037,7 +1051,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P6",
@@ -1062,7 +1077,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P7",
@@ -1087,7 +1103,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P8",
@@ -1112,7 +1129,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         }
       ],
       "failure_details": [
@@ -1432,7 +1450,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P1",
@@ -1457,7 +1476,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P2",
@@ -1502,7 +1522,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P3",
@@ -1548,7 +1569,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P4",
@@ -1588,7 +1610,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P5",
@@ -1621,7 +1644,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P6",
@@ -1649,7 +1673,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P7",
@@ -1674,7 +1699,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P8",
@@ -1699,7 +1725,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         }
       ],
       "failure_details": [
@@ -1931,7 +1958,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P1",
@@ -1982,7 +2010,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P2",
@@ -2028,7 +2057,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P3",
@@ -2074,7 +2104,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P4",
@@ -2107,7 +2138,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P5",
@@ -2140,7 +2172,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P6",
@@ -2167,7 +2200,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P7",
@@ -2194,7 +2228,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P8",
@@ -2221,7 +2256,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         }
       ],
       "failure_details": [
@@ -2421,7 +2457,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P1",
@@ -2456,7 +2493,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P2",
@@ -2493,7 +2531,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P3",
@@ -2530,7 +2569,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P4",
@@ -2567,7 +2607,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P5",
@@ -2592,7 +2633,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P6",
@@ -2617,7 +2659,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P7",
@@ -2642,7 +2685,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P8",
@@ -2667,7 +2711,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         }
       ],
       "failure_details": [
@@ -2784,7 +2829,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P1",
@@ -2815,7 +2861,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P2",
@@ -2852,7 +2899,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P3",
@@ -2889,7 +2937,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P4",
@@ -2920,7 +2969,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P5",
@@ -2951,7 +3001,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P6",
@@ -2982,7 +3033,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P7",
@@ -3013,7 +3065,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P8",
@@ -3038,7 +3091,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         }
       ],
       "failure_details": [
@@ -3381,7 +3435,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P1",
@@ -3442,7 +3497,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P2",
@@ -3533,7 +3589,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P3",
@@ -3624,7 +3681,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P4",
@@ -3661,7 +3719,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P5",
@@ -3698,7 +3757,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P6",
@@ -3723,7 +3783,8 @@
               "kind": "phase",
               "interrupted": false
             }
-          ]
+          ],
+          "upload_wait_history": null
         },
         {
           "id": "P7",
@@ -3741,7 +3802,8 @@
           "gate": "",
           "opened_at": "",
           "closed_at": "",
-          "rounds_detail": []
+          "rounds_detail": [],
+          "upload_wait_history": null
         },
         {
           "id": "P8",
@@ -3759,7 +3821,8 @@
           "gate": "",
           "opened_at": "",
           "closed_at": "",
-          "rounds_detail": []
+          "rounds_detail": [],
+          "upload_wait_history": null
         }
       ],
       "failure_details": [

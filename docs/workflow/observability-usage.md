@@ -232,3 +232,17 @@ python3 -m json.tool "$PDIR/workflow_metrics.json" >/dev/null
 ```
 
 后续根据各团队返回的原始 JSON 和本说明统一生成汇总文档。原始文件应保留，不要只提交人工整理后的表格。
+
+## P8：失败、确认停点与等待分开记录
+
+GitCode 上库使用签名检查点复用已创建 PR。相同计划重复 dry-run 不重复追加确认停点，
+变更计划仍必须重新确认；首次签名确认预检仍保留。
+
+CI pending 和缺评审报告记录为 WAIT，并在 manifest 写 INFO，不能闭合 P8；等待历史在
+`phases["8"].wait_history`，与 `fail_attempts` 独立。`advance.py next --json` 给出
+`awaiting_external` / `awaiting_review_report`、缺少条件及恢复命令。CI 默认 120 秒查询间隔，
+CLI 直接返回等待，不阻塞睡眠。旧指标没有等待历史时按未知展示，不能将历史 FAIL 批量改成 WAIT。
+
+真正的 CI 失败、评审非零、SHA/目标不一致仍记 FAIL。分支非快进在提交/推送前阻断，
+只修改控制说明，不自动强推、合并或改功能代码；代码变更后按既有 reset/repair 规则重验。
+网站运行详情将 P8 等待记录折叠展示；本次回归是机制验证，真实失败减少度待后续任务评估。

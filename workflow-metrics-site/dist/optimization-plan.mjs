@@ -615,7 +615,7 @@ export const plans = [
   },
   {
     "id": "WF-14",
-    "title": "区分上库停点、CI 等待与平台故障",
+    "title": "上库流程复用 PR、恢复检查点与区分等待",
     "priority": "low",
     "phases": [
       "P8"
@@ -629,12 +629,20 @@ export const plans = [
     "actions": [
       "分别记录预期确认停点、CI 未开始/排队、真实代码失败和平台异常。",
       "预检命令校验分支及参数组合，明确下一步所需条件。",
-      "远端结果绑定提交 SHA；仅对已确认临时平台或传输故障限次重试。"
+      "远端结果绑定提交 SHA；仅对已确认临时平台或传输故障限次重试。",
+      "相同上传计划重复 dry-run 复用原签名确认记录；代码或上传目标变化仍需重新确认。",
+      "创建前查询同一源仓/分支及目标仓/分支的已有 PR，409 时重新查询核验后恢复，身份不明则阻断。",
+      "推送前 fetch 并检查分支关系；非快进提前阻断，不自动强推或改代码。",
+      "保存带签名和 SHA 绑定的上传检查点；缺评审报告时等待，重跑从已有 PR 继续。",
+      "CI pending 单独记录 WAIT/INFO，默认 120 秒查询间隔；next/resume 给出恢复命令，真实红灯仍 FAIL。"
     ],
     "acceptance": [
       "正常确认停点不计入可避免缺陷率。",
       "旧提交的绿色 CI 不能放行新提交。",
-      "E01/ecotest 平台故障不会被自动归因到功能代码。"
+      "E01/ecotest 平台故障不会被自动归因到功能代码。",
+      "连续重跑不会重复创建 PR 或推送，也不会重复累计同一确认停点。",
+      "查询失败、错误 PR/仓/分支、篡改检查点及旧 SHA 均不得被当作已成功上传。",
+      "CI 等待变绿后才能 PASS；等待记录与真实失败分开保留。"
     ],
     "benefit": "作为次要上库流程改进，减少无效重试与错误修复；保留真实 CI 约束。",
     "sourceCases": [
@@ -665,10 +673,10 @@ export const plans = [
     ],
     "status": "implemented",
     "owner": "workflow 维护",
-    "changeRef": "仓库实现：gate_upload_ci.py / lib/workflow_checks.py: ci_failure_category",
-    "regressionEvidence": "2026-10-09：代码缺陷优先、等待、E01 与未知 ecotest 分类回归通过；原有 SHA/时效门禁保留",
+    "changeRef": "仓库实现：gate_upload_ci.py / advance.py / lib/workflow_checks.py",
+    "regressionEvidence": "2026-10-10：16 项 P8 回归，含真实本地 Git 远端、已有 PR/409 恢复、签名检查点篡改、等待变绿与红灯、SHA/PR 身份拒绝；完整 workflow 回归通过",
     "effectEvidence": "",
-    "updatedAt": "2026-10-09"
+    "updatedAt": "2026-10-10"
   },
   {
     "id": "WF-15",

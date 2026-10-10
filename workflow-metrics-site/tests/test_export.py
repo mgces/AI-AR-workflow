@@ -13,6 +13,16 @@ if module:
 
 
 class ExportTests(unittest.TestCase):
+    def test_upload_waits_are_exported_separately_and_commands_are_omitted(self):
+        d = self.metrics()
+        d['phases'] = {'8': dict(gate_attempts=1, fail_attempts=1, pass_attempts=0,
+            last_verdict='INFO', wait_history=[{'kind':'ci_wait','reason':'CI pending','at_utc':'2026-10-10T00:00:00Z',
+                                               'pr':4593,'argv':['private-command'],'token':'private-token'}])}
+        run = self.export({'a/workflow_metrics.json':d})['runs'][0]
+        self.assertEqual(len(run['phases'][0].get('upload_wait_history',[])),1)
+        self.assertEqual(run['failures'],1)
+        self.assertNotIn('private-',json.dumps(run))
+
     def test_incomplete_recording_is_exposed_without_changing_original_times(self):
         d = self.metrics(timing={'history_complete': False, 'initialization_count': 2})
         d['phases']['0']['current_epoch_active'] = False

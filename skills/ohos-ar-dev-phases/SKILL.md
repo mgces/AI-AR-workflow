@@ -70,3 +70,20 @@ P1 在 `ar-contract` 中填写并签名 `verification_plan`；P1–P8 自动执�
   由 `gate_upload_ci` 注入 PR。渲染是编排器动作,不影响门控 verdict。
   (`test_report.md`:P6 通过后渲染,聚合 P5 单元测试执行结果 + P6 端到端关键证据点。)
 - **todo 刷新**:每轮循环开头 `refresh_todo.py` 依 AR_design 重写 `todo.md`,再与 `TodoWrite` 对齐。
+
+## P8 GitCode 上库恢复与等待
+
+- 相同 diff、上传坐标与分支 SHA 的重复 dry-run 复用原签名确认预检，不重新生成失败/失效旧 consent。
+  改动或目标变化仍重新预检并要求人工确认，首次确认停点的历史记录保留。
+- 创建前查询 open PR，严格匹配源仓、源分支、目标仓及目标分支；409 时重新查询而不是盲目取错误信息中的编号。
+  查询失败、列表身份不完整、达到上限仍无法确认或候选不唯一时停止，不能当作“没有 PR”。PR view 的编号及 SHA 也必须匹配。
+- 提交/推送前检查 origin 分支及祖先关系，非快进提前阻断；不自动强推。同步分支改变代码后仍须重验。
+- 上传后在 `evidence/phase8/upload_checkpoint.json` 保存签名检查点。重跑自动复用同目标、同 SHA、干净工作区
+  的 PR 与原推送时刻，继续 PR review / CI；重签或代码变化后的旧检查点不可复用。
+- 缺本地/PR 评审报告分别返回 WAIT，不提交/推送或不查询 CI；提供机器可读零问题报告后继续。
+  已存在但有问题/格式无效的报告仍失败，不得以 WAIT 隐藏真实缺陷。
+- CI pending/running/queued 在 PR 身份和 SHA 验证后记录 WAIT/INFO，既不 PASS 也不增加 FAIL；
+  默认 `--ci-poll-interval 120` 秒，重复调用在间隔内不查询 CI、不推送、不创建 PR。
+  `advance.py next --json` / `resume` 会提供待补条件、下次查询时间和含 `--pr` 的恢复命令。
+- 真正 CI 红灯、身份/SHA 不一致、旧绿色事件仍阻断；历史失败不删除。新等待保存在 P8 `wait_history`。
+  本次恢复改进针对 GitCode 分支；Gerrit 的受保护配置、审查标签与原有门禁保持原规则。

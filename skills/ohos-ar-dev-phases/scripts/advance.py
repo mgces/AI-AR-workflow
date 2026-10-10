@@ -155,6 +155,8 @@ P8_FAILURE_TO_SUBSTATE = {
     "local_review_blocked": "local_review",
     "dry_run_no_pass": "consent_await",
     "push_failed": "push_pr",
+    "branch_not_fast_forward": "push_pr",
+    "pr_discovery_failed": "push_pr",
     "pr_create_failed": "push_pr",
     "pr_metadata_incomplete": "push_pr",
     "publication_target_mismatch": "precheck",
@@ -657,6 +659,8 @@ def _logical_phase(cur, substate):
 def _action_kind(substate, next_gate):
     if substate == "complete":
         return "complete"
+    if substate in ("awaiting_external", "awaiting_review_report"):
+        return "wait"
     if substate in ("ready_to_advance", "ready_to_build_verify"):
         return "advance"
     if substate in ("awaiting_consent", "awaiting_design_consent"):
@@ -1053,6 +1057,21 @@ def _derive_next_action(pdir, state):
                     next_gate = PHASE_GATE_CMD.get(cur)
                     resume_hint = _phase_resume_hint(cur, substate, reason)
             required_inputs = _phase_required_inputs(cur, substate)
+
+    if cur == 8 and substate == "awaiting_gate":
+        upload_wait = _read_upload_substate(pdir) or {}
+        waiting_for = upload_wait.get("waiting_for")
+        if waiting_for in ("ci_wait", "pr_review_missing", "local_review_missing"):
+            import shlex
+            substate = "awaiting_external" if waiting_for == "ci_wait" else "awaiting_review_report"
+            required_inputs = ["ci_green"] if waiting_for == "ci_wait" else [
+                "pr_review_report" if waiting_for == "pr_review_missing" else "local_review_report"]
+            resume = upload_wait.get("resume_argv")
+            next_gate = shlex.join(resume) if isinstance(resume, list) and resume else PHASE_GATE_CMD[8]
+            resume_hint = ("等待 CI 状态变化后继续，勿重复推送/创建 PR；查询间隔至 epoch %s" %
+                           upload_wait.get("retry_after_epoch", 0)) if waiting_for == "ci_wait" else (
+                           "先生成零问题评审报告，再执行恢复命令；不要从 PR 创建步骤重跑。")
+            payload["retry_after_epoch"] = upload_wait.get("retry_after_epoch")
 
     # A6: `inspect` must never be a dead-end. Any path that ends with the
     # catch-all action (no known next_gate prefix) and a null next_gate gets a

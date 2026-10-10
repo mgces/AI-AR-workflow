@@ -142,6 +142,9 @@ def normalize(data, path, root, warnings):
         phase['rounds_detail'] = [dict(opened_at=clean(r.get('opened_at_utc')), closed_at=clean(r.get('closed_at_utc')),
                                       kind=clean(r.get('kind') or 'phase'), interrupted=bool(r.get('interrupted')))
                                   for r in item.get('runs') or [] if isinstance(r, dict)]
+        phase['upload_wait_history'] = [dict(kind=clean(w.get('kind')), reason=clean(w.get('reason')),
+                                            at=clean(w.get('at_utc')), pr=number(w.get('pr')))
+                                        for w in item.get('wait_history') or [] if isinstance(w, dict)] if 'wait_history' in item else None
         phases.append(phase)
         history_matches = []
         for attempt in item.get('attempt_history') or []:
@@ -353,7 +356,7 @@ def main():
     print(f"已导出 {len(data['runs'])} 条运行；{len(data['warnings'])} 条数据提示 → {args.output}")
     if args.public_dir:
         args.public_dir.mkdir(parents=True, exist_ok=True)
-        for asset in ('index.html', 'style.css', 'app.mjs', 'analytics.mjs', 'preflight-view.mjs', 'timing-view.mjs'):
+        for asset in ('index.html', 'style.css', 'app.mjs', 'analytics.mjs', 'preflight-view.mjs', 'timing-view.mjs', 'upload-view.mjs'):
             copy2(Path(__file__).parent / 'dist' / asset, args.public_dir / asset)
         (args.public_dir / 'data.json').write_text(
             json.dumps(public_snapshot(data), ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
