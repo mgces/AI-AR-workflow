@@ -34,6 +34,8 @@ python3 -m http.server 4173 --bind 127.0.0.1 --directory workflow-metrics-site/d
 
 ## 统计口径
 
+优化后新运行的 `preflight_summary` 和失败预检在运行详情单独展示。原始命令、环境、完整输出不导出；保留检查原因、规则编号、修复及复验。历史没有预检记录显示未知，不当作零失败。首次实测对照位于优化页，主要评价 P0–P7，P8 作为折叠的次要说明；参见 `docs/workflow/optimization-real-run-20261010.md`。
+
 - 支持仓库 schema version 2，AR 的 P0–P8 与 Requirement 的 R1–R9 分开聚合。
 - 总有效耗时、人工等待与墙钟时间优先使用 `summary` 中的记录器口径；缺失时汇总已知阶段值。缺失时长显示“—”，真实 0 保留为 0。平均耗时仅以有有效耗时的运行计样本。
 - 同一 `workflow` + `run_id` 的重复快照保留 `updated_at_utc` 最新一份。损坏、不支持的数据文件在页面提示，不静默丢弃。

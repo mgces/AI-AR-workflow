@@ -1,4 +1,4 @@
-import {plans,planUpdatedAt,priorityLabels,statusLabels,attributionLabels,scopeLabels,filterPlans,validatePlans,offlineAssessment} from './optimization-plan.mjs';
+import {plans,planUpdatedAt,priorityLabels,statusLabels,attributionLabels,scopeLabels,filterPlans,validatePlans,offlineAssessment,realRunAssessment} from './optimization-plan.mjs';
 const $ = id => document.getElementById(id);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const list = values => '<ul>'+values.map(v=>'<li>'+esc(v)+'</li>').join('')+'</ul>';
@@ -68,8 +68,25 @@ try {
     ['历史误判/配置/取证样例（'+a.misleading_rejection_scenarios+' 类）',a.before_misleading_rejections+' 类未达到预期',a.after_misleading_rejections+' 类未达到预期','覆盖样例问题减少 '+a.scenario_reduction_percent+'%'],
     ['检查器错误/超时（2 类）','0 类提供预期结构化阻断','2 类明确阻断','修复检查状态；不是减少真实缺陷'],
     ['真实问题/旧证据对照（6 个）','6 个正确拒绝','6 个正确拒绝','保留真实阻断'],
-    ['真实运行门禁失败',a.historical_gate_failures+' FAIL / '+a.historical_gate_attempts+' 次尝试','尚无新运行','实际降幅待测']
+    ['历史基线',a.historical_gate_failures+' FAIL / '+a.historical_gate_attempts+' 次尝试','已有首个新运行','见下方实测对照，不能套用样例降幅']
   ].map(row=>'<tr>'+row.map(v=>'<td>'+esc(v)+'</td>').join('')+'</tr>').join('');
+  const real=realRunAssessment, current=real.new_run, comparison=real.same_task;
+  const realRows=[
+    ['P0–P7 正式门禁失败（主要口径）',comparison.old_pre_upload_failures+' / '+comparison.old_pre_upload_attempts,comparison.new_pre_upload_failures+' / '+comparison.new_pre_upload_attempts,'失败次数减少 '+comparison.pre_upload_failure_count_reduction_percent.toFixed(1)+'%'],
+    ...comparison.phase_rows.filter(r=>r.phase!=='P8').map(r=>[r.phase,r.old_failures+' 次',r.new_failures+' 次',r.new_failures===0?'本次未记录正式 FAIL':'保留具体失败原因']),
+    ['P0–P7 预检失败','历史未记录',current.preflight_failures+' 次 / '+current.preflight_issues+' 项','不能当作零失败；均有后续同检查通过记录'],
+    ['P0–P7 已记录失败合计','9 次正式 FAIL；预检未知','2 次正式 + 4 次预检 = 6 次','少于历史已知 9 次；完整总失败降幅不可比'],
+    ['P0–P7 有效耗时','5 时 33 分','4 时 02 分','观察值下降 27.4%；受等待口径和环境影响']
+  ];
+  $('real-run-report').innerHTML='<p><strong>'+esc(real.run_id)+'</strong>：P0–P8 最新结果全部 PASS。50 次预检均记录策略版本 1，检查器摘要与仓库一致；Agent 和模型与旧 fd-leak 任务相同。</p>'+
+    '<p><strong>主要结论：开发与验证阶段明显改善。</strong>P0–P7 正式失败从 9 次降至 2 次，P1–P4 从 5 次降至 0 次。仍有 4 次预检失败；这不是因果实验，也不能据一个样本宣称所有优化都已验证。</p>'+
+    '<div class="table-wrap"><table class="plan-table"><thead><tr><th>口径</th><th>旧 fd-leak</th><th>新任务</th><th>解释</th></tr></thead><tbody>'+realRows.map(row=>'<tr>'+row.map(v=>'<td>'+esc(v)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>'+
+    '<h3>仍需关注的开发与验证问题</h3><ul><li>P5：正式测试报告 tests=0、契约用例 0/10；不能根据这份 JSON 判断是执行、回收还是启动问题。</li><li>P6：runtime=False，其余列出的证据检查通过；缺实际运行时标记匹配的逐步证据。</li><li>预检：重复/乱序/独立测试缺新报告（同一次失败的 3 项）；漏传 UT 套件；DC-4 注入观察值缺失；许可证头 OAT.3/OAT.4。后续检查通过，但修复动作均未登记。</li></ul>'+
+    '<p>下一步优先：测试启动前验证目标和输出；规范本轮报告索引；对运行时标记缺失输出具体诊断；把修复登记接入每次重试。原历史路径、HWTEST、插件许可证和 PID 问题本次未见相同失败，但不能证明所有边界场景都已覆盖。</p>'+
+    '<p>本次只记录设备构建矩阵，未见 host/MinGW 与导出符号检查记录；这些能力不能据本次运行标为已验证。全流程修复登记数为 0，不能补写未提供的修改原因。</p>'+
+    '<p><button class="evidence-link" data-evidence-run="'+esc(real.run_id)+'" data-evidence-phase="P5">查看 P5 失败</button> · <button class="evidence-link" data-evidence-run="'+esc(real.run_id)+'" data-evidence-phase="P6">查看 P6 失败</button> · <a href="./index.html#overview">查看完整运行与预检记录</a></p>'+
+    '<details><summary>P8 上库说明（次要，不纳入主要优化评价）</summary><p>P8 记录 11 次 FAIL：5 次确认停点、1 次 CI 等待、3 次重复创建已有 PR、1 次非快进推送、1 次缺评审报告；最终 PASS。记录不删除，但不作为开发质量恶化的结论。</p><p>完整流程仍为 13 次正式 FAIL，加 4 次预检共 17 次已记录失败；历史缺预检数据，不能计算完整总失败减少度。前三任务 37/90 的失败率为 41.1%，新任务 13/45 为 28.9%，这是包含 P8 的观察值，不能等同于失败次数减少。</p></details>';
+  $('real-run-report').addEventListener('click',e=>{const b=e.target.closest('[data-evidence-run]');if(b)showEvidence(b.dataset.evidenceRun,b.dataset.evidencePhase);});
   fillSelect('plan-attribution',attributionLabels);fillSelect('plan-status',statusLabels);
   $('plan-filters').addEventListener('submit',e=>e.preventDefault());
   $('plan-filters').addEventListener('input',render);

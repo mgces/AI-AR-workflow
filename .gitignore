@@ -44,3 +44,6 @@ docs/.vitepress/cache/
 platform/deploy/env/*.env
 platform/deploy/cordis*.yml
 products/dsh-cloud-implementation/doctor-*.json
+
+# Imported private metrics may contain credentials; publish only redacted snapshots.
+/products/.run/

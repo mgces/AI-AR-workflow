@@ -1,11 +1,596 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-29T08:23:31.810700+00:00",
+  "generated_at": "2026-10-10T06:28:47.726995+00:00",
   "source_label": "AI-AR-workflow",
-  "source_count": 6,
+  "source_count": 7,
   "duplicate_count": 0,
   "warnings": [],
   "runs": [
+    {
+      "id": "20261009-fd-leak-detect",
+      "workflow": "ar-development",
+      "kind": "AR",
+      "status": "completed",
+      "current_phase": "P7",
+      "agent": "claude-code",
+      "model": "deepseek-flash[1m]",
+      "updated_at": "2026-10-10T03:13:07Z",
+      "started_at": "2026-10-09T12:50:46Z",
+      "source": "products/.run/20261009-fd-leak-detect/workflow_metrics.json",
+      "phases": [
+        {
+          "id": "P0",
+          "name": "bootstrap",
+          "status": "passed",
+          "wall_seconds": 102,
+          "wait_seconds": 0,
+          "effective_seconds": 102,
+          "gate_attempts": 1,
+          "pass_attempts": 1,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 1,
+          "skills": [
+            "ohos-ar-dev-workflow"
+          ],
+          "gate": "gate_env_init.py",
+          "opened_at": "2026-10-09T12:50:46Z",
+          "closed_at": "2026-10-09T12:52:28Z"
+        },
+        {
+          "id": "P1",
+          "name": "design-orchestrate",
+          "status": "passed",
+          "wall_seconds": 56,
+          "wait_seconds": 0,
+          "effective_seconds": 56,
+          "gate_attempts": 4,
+          "pass_attempts": 4,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 4,
+          "skills": [],
+          "gate": "gate_design.py",
+          "opened_at": "2026-10-10T02:04:21Z",
+          "closed_at": "2026-10-10T02:04:25Z"
+        },
+        {
+          "id": "P2",
+          "name": "feature-develop",
+          "status": "passed",
+          "wall_seconds": 46,
+          "wait_seconds": 0,
+          "effective_seconds": 46,
+          "gate_attempts": 5,
+          "pass_attempts": 5,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 5,
+          "skills": [],
+          "gate": "gate_develop.py",
+          "opened_at": "2026-10-10T02:04:25Z",
+          "closed_at": "2026-10-10T02:04:28Z"
+        },
+        {
+          "id": "P3",
+          "name": "test-develop",
+          "status": "passed",
+          "wall_seconds": 13,
+          "wait_seconds": 0,
+          "effective_seconds": 13,
+          "gate_attempts": 5,
+          "pass_attempts": 5,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 5,
+          "skills": [],
+          "gate": "gate_test_develop.py",
+          "opened_at": "2026-10-10T02:04:28Z",
+          "closed_at": "2026-10-10T02:04:31Z"
+        },
+        {
+          "id": "P4",
+          "name": "build-verify",
+          "status": "passed",
+          "wall_seconds": 2214,
+          "wait_seconds": 0,
+          "effective_seconds": 2214,
+          "gate_attempts": 5,
+          "pass_attempts": 5,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 5,
+          "skills": [],
+          "gate": "gate_build.py",
+          "opened_at": "2026-10-10T02:04:31Z",
+          "closed_at": "2026-10-10T02:09:17Z"
+        },
+        {
+          "id": "P5",
+          "name": "test-author",
+          "status": "passed",
+          "wall_seconds": 1601,
+          "wait_seconds": 0,
+          "effective_seconds": 1601,
+          "gate_attempts": 6,
+          "pass_attempts": 5,
+          "fail_attempts": 1,
+          "stage_attempts": null,
+          "rounds": 4,
+          "skills": [],
+          "gate": "gate_test_ut.py",
+          "opened_at": "2026-10-10T02:09:17Z",
+          "closed_at": "2026-10-10T02:10:57Z"
+        },
+        {
+          "id": "P6",
+          "name": "device-functional",
+          "status": "passed",
+          "wall_seconds": 4948,
+          "wait_seconds": 573,
+          "effective_seconds": 4375,
+          "gate_attempts": 4,
+          "pass_attempts": 3,
+          "fail_attempts": 1,
+          "stage_attempts": null,
+          "rounds": 3,
+          "skills": [],
+          "gate": "gate_device_func.py",
+          "opened_at": "2026-10-10T02:10:57Z",
+          "closed_at": "2026-10-10T02:20:21Z"
+        },
+        {
+          "id": "P7",
+          "name": "quality-verify",
+          "status": "passed",
+          "wall_seconds": 36973,
+          "wait_seconds": 30849,
+          "effective_seconds": 6124,
+          "gate_attempts": 3,
+          "pass_attempts": 3,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 3,
+          "skills": [],
+          "gate": "gate_integration.py",
+          "opened_at": "2026-10-10T02:20:21Z",
+          "closed_at": "2026-10-10T02:20:42Z"
+        },
+        {
+          "id": "P8",
+          "name": "upload-review",
+          "status": "passed",
+          "wall_seconds": 9480,
+          "wait_seconds": 315,
+          "effective_seconds": 9165,
+          "gate_attempts": 12,
+          "pass_attempts": 1,
+          "fail_attempts": 11,
+          "stage_attempts": null,
+          "rounds": 1,
+          "skills": [],
+          "gate": "gate_upload_ci.py",
+          "opened_at": "2026-10-10T00:30:10Z",
+          "closed_at": "2026-10-10T03:08:10Z"
+        }
+      ],
+      "failure_details": [
+        {
+          "id": "manifest:72",
+          "phase": "P5",
+          "gate": "gate_test_ut.py",
+          "reason": "tests=0 failures=0 errors=0 fresh=2026-10-09-21-04-43 gtest_cov=0/10 MISSING: FdLeakDetectorUnitTest.CountProcessFd_001, FdLeakDetectorUnitTest.JudgeLeakThreshold_001, FdLeakDetectorUnitTest.JudgeLeakGrade_001, FdLeakDetectorUnitTest.DecideKillingState_001, FdLeakDetectorUnitTest.WhitelistSkip_001, FdLeakDetectorUnitTest.DedupAndMonitorLimit_001, FdLeakDetectorUnitTest.JudgeDumpLevel_001, FdLeakDetectorUnitTest.BuildFdLeakLogName_001, FdLeakDetectorUnitTest.AnonymizeFdDetail_001, FdLeakDetectorUnitTest.ParseConfig_001",
+          "at": "2026-10-09T13:04:46Z",
+          "source": "products/.run/20261009-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "passed_without_recorded_fix",
+          "verified_by": "manifest:73",
+          "fixes": [],
+          "count": 1,
+          "category": "测试与验证"
+        },
+        {
+          "id": "manifest:80",
+          "phase": "P6",
+          "gate": "gate_device_func.py",
+          "reason": "nonce=True trigger_window=True marker=True runtime=False e2e=True device_cases=4/4 artifact_hash=True provenance=True artifact_loaded=True side_effect=True negative_control=True uptime 19403.77->19716.27 mono=True",
+          "at": "2026-10-09T14:05:47Z",
+          "source": "products/.run/20261009-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "passed_without_recorded_fix",
+          "verified_by": "manifest:81",
+          "fixes": [],
+          "count": 1,
+          "category": "设备连接"
+        },
+        {
+          "id": "manifest:83",
+          "phase": "P8",
+          "gate": "gate_upload_ci.py:consent-precheck",
+          "reason": "dry run prepared upload plan (no --allow-push)",
+          "at": "2026-10-10T00:32:59Z",
+          "source": "products/.run/20261009-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 1,
+          "failure_kind": "expected_review_hold",
+          "failure_category": "expected_review_hold",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:84",
+          "fixes": [],
+          "count": 1,
+          "category": "待人工确认"
+        },
+        {
+          "id": "manifest:84",
+          "phase": "P8",
+          "gate": "gate_upload_ci.py:consent-precheck",
+          "reason": "dry run prepared upload plan (no --allow-push)",
+          "at": "2026-10-10T00:42:33Z",
+          "source": "products/.run/20261009-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 1,
+          "failure_kind": "expected_review_hold",
+          "failure_category": "expected_review_hold",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:85",
+          "fixes": [],
+          "count": 1,
+          "category": "待人工确认"
+        },
+        {
+          "id": "manifest:85",
+          "phase": "P8",
+          "gate": "gate_upload_ci.py",
+          "reason": "git push failed: warning: redirecting to http[本机路径]\nTo http[本机路径]\n ! [rejected]          fd-leak-detector -> fd-leak-detector (non-fast-forward)\nerror: failed to push some refs to 'http[本机路径]'\nhint: Updates were rejected because the tip of your current branch is behind\nhint: its remote counterpart. Integrate the remote changes (e.g.\nhint: 'git pull ...') before pushing again.",
+          "at": "2026-10-10T00:43:34Z",
+          "source": "products/.run/20261009-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "unresolved",
+          "verified_by": "",
+          "fixes": [],
+          "count": 1,
+          "category": "其他门禁问题"
+        },
+        {
+          "id": "manifest:86",
+          "phase": "P8",
+          "gate": "gate_upload_ci.py:consent-precheck",
+          "reason": "dry run prepared upload plan (no --allow-push)",
+          "at": "2026-10-10T00:47:55Z",
+          "source": "products/.run/20261009-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 1,
+          "failure_kind": "expected_review_hold",
+          "failure_category": "expected_review_hold",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:87",
+          "fixes": [],
+          "count": 1,
+          "category": "待人工确认"
+        },
+        {
+          "id": "manifest:87",
+          "phase": "P8",
+          "gate": "gate_upload_ci.py",
+          "reason": "pr-review-report missing: pass --pr-review-report <path> (machine-readable zero-issue report). Run the review, drive issues to zero, then re-run.",
+          "at": "2026-10-10T00:48:38Z",
+          "source": "products/.run/20261009-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:88",
+          "fixes": [],
+          "count": 1,
+          "category": "其他门禁问题"
+        },
+        {
+          "id": "manifest:88",
+          "phase": "P8",
+          "gate": "gate_upload_ci.py",
+          "reason": "oh-gc pr create failed: ›   Error: API error 409: \n ›   {\"error_code\":409,\"error_code_name\":\"UN_KNOW\",\"error_message\":\"Another \n ›   open merge request already exists for this source branch: \n ›   !4593\",\"trace_id\":\"d3e4ee9792c473859b92ff6c871cfe1b\"}",
+          "at": "2026-10-10T00:55:22Z",
+          "source": "products/.run/20261009-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:89",
+          "fixes": [],
+          "count": 1,
+          "category": "其他门禁问题"
+        },
+        {
+          "id": "manifest:89",
+          "phase": "P8",
+          "gate": "gate_upload_ci.py",
+          "reason": "pr=4593 overall=pending ci_ok=False pushed=c9f5dab4c5c0 pr_head=c9f5dab4c5c0 sha_ok=True fresh=True local_review=skipped (--pr re-verify) pr_review=issue_count=0 finding_count=0 problem_count=0 blocker_count=0 issues=0 findings=0 problems=0 blockers=0 failure_category=ci_wait",
+          "at": "2026-10-10T00:56:09Z",
+          "source": "products/.run/20261009-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "ci_wait",
+          "resolution_status": "unresolved",
+          "verified_by": "",
+          "fixes": [],
+          "count": 1,
+          "category": "其他门禁问题"
+        },
+        {
+          "id": "manifest:98",
+          "phase": "P8",
+          "gate": "gate_upload_ci.py:consent-precheck",
+          "reason": "dry run prepared upload plan (no --allow-push)",
+          "at": "2026-10-10T01:45:10Z",
+          "source": "products/.run/20261009-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 1,
+          "failure_kind": "expected_review_hold",
+          "failure_category": "expected_review_hold",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:99",
+          "fixes": [],
+          "count": 1,
+          "category": "待人工确认"
+        },
+        {
+          "id": "manifest:99",
+          "phase": "P8",
+          "gate": "gate_upload_ci.py",
+          "reason": "oh-gc pr create failed: ›   Error: API error 409: \n ›   {\"error_code\":409,\"error_code_name\":\"UN_KNOW\",\"error_message\":\"Another \n ›   open merge request already exists for this source branch: \n ›   !4593\",\"trace_id\":\"9a96432a8b874b84c6b9dcf5d974e62c\"}",
+          "at": "2026-10-10T01:46:17Z",
+          "source": "products/.run/20261009-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "unresolved",
+          "verified_by": "",
+          "fixes": [],
+          "count": 1,
+          "category": "其他门禁问题"
+        },
+        {
+          "id": "manifest:108",
+          "phase": "P8",
+          "gate": "gate_upload_ci.py:consent-precheck",
+          "reason": "dry run prepared upload plan (no --allow-push)",
+          "at": "2026-10-10T02:25:39Z",
+          "source": "products/.run/20261009-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 1,
+          "failure_kind": "expected_review_hold",
+          "failure_category": "expected_review_hold",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:109",
+          "fixes": [],
+          "count": 1,
+          "category": "待人工确认"
+        },
+        {
+          "id": "manifest:109",
+          "phase": "P8",
+          "gate": "gate_upload_ci.py",
+          "reason": "oh-gc pr create failed: ›   Error: API error 409: \n ›   {\"error_code\":409,\"error_code_name\":\"UN_KNOW\",\"error_message\":\"Another \n ›   open merge request already exists for this source branch: \n ›   !4593\",\"trace_id\":\"6fd214f83d9b5ff889edebf5a91e8730\"}",
+          "at": "2026-10-10T02:25:45Z",
+          "source": "products/.run/20261009-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "passed_without_recorded_fix",
+          "verified_by": "manifest:110",
+          "fixes": [],
+          "count": 1,
+          "category": "其他门禁问题"
+        }
+      ],
+      "failures": 13,
+      "gate_attempts": 45,
+      "human_interventions": [
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "device functional test review",
+          "phase": "P6"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "quality reports and code review review",
+          "phase": "P7"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P8 pre-upload diff and target review",
+          "phase": "P8"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P8 pre-upload diff and target review",
+          "phase": "P8"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P8 pre-upload diff and target review",
+          "phase": "P8"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "device functional test review",
+          "phase": "P6"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "quality reports and code review review",
+          "phase": "P7"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P8 pre-upload diff and target review",
+          "phase": "P8"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "device functional test review",
+          "phase": "P6"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "quality reports and code review review",
+          "phase": "P7"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P8 pre-upload diff and target review",
+          "phase": "P8"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P8 pre-upload diff and target review",
+          "phase": "P8"
+        }
+      ],
+      "open_waits": 0,
+      "open_wait_details": [],
+      "preflight_summary": {
+        "attempts": 50,
+        "failed_attempts": 4,
+        "issues": 6
+      },
+      "preflight_failures": [
+        {
+          "id": "preflight-5",
+          "phase": "P5",
+          "at": "2026-10-09T12:57:34Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-10",
+          "resolution_status": "resolved",
+          "checks": [
+            {
+              "id": "repeat",
+              "status": "FAIL",
+              "reason": "fresh test report required; old/missing report rejected",
+              "rule_ids": []
+            },
+            {
+              "id": "shuffle",
+              "status": "FAIL",
+              "reason": "fresh test report required; old/missing report rejected",
+              "rule_ids": []
+            },
+            {
+              "id": "independent",
+              "status": "FAIL",
+              "reason": "fresh test report required; old/missing report rejected",
+              "rule_ids": []
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-19",
+          "phase": "P7",
+          "at": "2026-10-09T15:49:13Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-20",
+          "resolution_status": "resolved",
+          "checks": [
+            {
+              "id": "required-suites",
+              "status": "FAIL",
+              "reason": "missing suites: FdLeakDetectorUnitTest",
+              "rule_ids": []
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-30",
+          "phase": "P1",
+          "at": "2026-10-10T01:08:42Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-31",
+          "resolution_status": "resolved",
+          "checks": [
+            {
+              "id": "DC-4:failure-injection",
+              "status": "FAIL",
+              "reason": "probe expected observation missing: 0",
+              "rule_ids": []
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-32",
+          "phase": "P2",
+          "at": "2026-10-10T01:09:16Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-33",
+          "resolution_status": "resolved",
+          "checks": [
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "OAT.3",
+                "OAT.4"
+              ]
+            }
+          ],
+          "fixes": []
+        }
+      ],
+      "first_gate_attempts": 32,
+      "first_gate_failures": 4,
+      "first_gate_passes": 28,
+      "first_gate_review_holds": 1,
+      "unrecorded_gate_attempts": 0,
+      "effective_seconds": 23696,
+      "wall_seconds": 55433,
+      "wait_seconds": 31737
+    },
     {
       "id": "20260924-hiperf-symbol-mem",
       "workflow": "ar-development",
@@ -452,6 +1037,8 @@
       ],
       "open_waits": 0,
       "open_wait_details": [],
+      "preflight_summary": null,
+      "preflight_failures": [],
       "session_later_outcome": "会话在 2026-09-28 继续：先修复远端 MinGW 缺少 unique_fd.h 的包含链与后续静态检查问题，最终 P0–P8 通过；PR !1091 的绿色 CI 覆盖提交 5f6bb6c。本指标快照仍截止 2026-09-24T08:49:41Z。",
       "first_gate_attempts": null,
       "first_gate_failures": null,
@@ -818,6 +1405,8 @@
           "started_at_utc": "2026-09-24T05:53:05Z"
         }
       ],
+      "preflight_summary": null,
+      "preflight_failures": [],
       "session_later_outcome": "9 月 28 日后续会话定位并消除平台静态检查 No.bundle.002 误判：改动文件中的 plugin_bundle.json 信任名单被误当部件描述文件，改源文件名为 plugin_trustlist.json 后静态检查通过且编译/测试任务首次派发。附件结束前 dayu600_7885 仍报 ecotest 任务解析异常，未见 P8 最终 PASS；这不回写 9 月 24 日的快照判定。",
       "first_gate_attempts": null,
       "first_gate_failures": null,
@@ -1151,6 +1740,8 @@
           "started_at_utc": "2026-09-24T04:06:21Z"
         }
       ],
+      "preflight_summary": null,
+      "preflight_failures": [],
       "first_gate_attempts": null,
       "first_gate_failures": null,
       "first_gate_passes": null,
@@ -1400,6 +1991,8 @@
       ],
       "open_waits": 0,
       "open_wait_details": [],
+      "preflight_summary": null,
+      "preflight_failures": [],
       "first_gate_attempts": null,
       "first_gate_failures": null,
       "first_gate_passes": null,
@@ -1864,6 +2457,8 @@
       ],
       "open_waits": 0,
       "open_wait_details": [],
+      "preflight_summary": null,
+      "preflight_failures": [],
       "first_gate_attempts": null,
       "first_gate_failures": null,
       "first_gate_passes": null,
@@ -2129,6 +2724,8 @@
       ],
       "open_waits": 0,
       "open_wait_details": [],
+      "preflight_summary": null,
+      "preflight_failures": [],
       "first_gate_attempts": null,
       "first_gate_failures": null,
       "first_gate_passes": null,

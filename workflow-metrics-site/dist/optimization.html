@@ -26,7 +26,7 @@
     <section class="kpis" aria-label="优化计划概览">
       <div><span>改进项</span><strong id="plan-total">15</strong></div>
       <div><span>高优先级</span><strong id="plan-high">—</strong></div>
-      <div><span>已实现 · 待实测</span><strong id="plan-implemented">15</strong></div>
+      <div><span>已实现 · 持续验收</span><strong id="plan-implemented">15</strong></div>
       <div><span>效果已验证</span><strong id="plan-verified">0</strong></div>
     </section>
     <aside class="scope-note">
@@ -35,9 +35,13 @@
     </aside>
     <section class="review" aria-labelledby="assessment-heading">
       <h2 id="assessment-heading">本轮离线评估：覆盖样例改善，真实降幅待测</h2>
-      <p>15 项机制已在仓库落实。下面对比修复前后代码的模拟历史样例；没有执行新的 OHOS 完整构建、真机测试或远端 CI。</p>
+      <p>15 项机制已在仓库落实。下表是先前的模拟历史样例评估；真实运行的对照在下方单独展示，不把模拟样例的 100% 改善套用到真实任务。</p>
       <div class="table-wrap"><table class="plan-table"><thead><tr><th>评估口径</th><th>修复前</th><th>修复后</th><th>结论</th></tr></thead><tbody id="assessment-rows"></tbody></table></div>
       <p class="measurement" id="assessment-limits">8 类样例不是 8 次历史 FAIL。问题提前发现不算缺陷消失；预检和正式门禁失败都保留，实际失败率下降需要后续真实运行验证。</p>
+    </section>
+    <section class="review" aria-labelledby="real-run-heading">
+      <h2 id="real-run-heading">优化后的首次真实运行 · 2026-10-10 复盘</h2>
+      <div id="real-run-report"></div>
     </section>
     <section id="plan" aria-labelledby="plan-heading">
       <div class="section-heading"><div><h2 id="plan-heading">Workflow 改进清单</h2><p>先按高优先级实施；失败案例保留快照、后续会话和未知原因的边界。</p></div><span id="plan-count" role="status" aria-live="polite">正在加载</span></div>

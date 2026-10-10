@@ -17,6 +17,7 @@ PASSED = {'PASS', 'PASSED', 'COMPLETED', 'ACCEPTED', 'SUCCESS', 'READY'}
 
 def clean(value):
     text = str(value or '')
+    text = re.sub(r'(?i)\b(https?://)[^/@\s]+@', r'\1[凭据]@', text)
     text = re.sub(r'(?i)\bauthorization\s*[:=]\s*bearer\s+[^\s,;]+',
                   'authorization=Bearer [已隐藏]', text)
     text = re.sub(r'(?:/home/|/Users/|/mnt/[a-z]/Users/)[^\s;\'\"]+', '[本机路径]', text)
@@ -131,6 +132,7 @@ def normalize(data, path, root, warnings):
                 first_attempt=attempt.get('first_attempt') if isinstance(attempt.get('first_attempt'), bool) else None,
                 round=number(attempt.get('round')),
                 failure_kind=clean(attempt.get('failure_kind')),
+                failure_category=clean(attempt.get('failure_category')),
                 resolution_status=clean(attempt.get('resolution_status')),
                 verified_by=clean(attempt.get('verified_by')),
                 fixes=[dict(root_cause=clean(f.get('root_cause')), action=clean(f.get('action')),
@@ -211,6 +213,23 @@ def normalize(data, path, root, warnings):
                human_interventions=[dict(category=clean(i.get('category')), reason=clean(i.get('reason')),
                                           phase=phase_key(i.get('phase', ''))) for i in data.get('human_interventions', []) if isinstance(i, dict)],
                open_waits=waiting, open_wait_details=open_wait_details)
+    raw_preflight=data.get('preflight_summary')
+    history=data.get('preflight_history')
+    run['preflight_summary'] = ({key:number(raw_preflight.get(key)) for key in ('attempts','failed_attempts','issues')}
+                                if isinstance(raw_preflight,dict) else None)
+    run['preflight_failures'] = []
+    if isinstance(history,list):
+        for attempt in history:
+            if not isinstance(attempt,dict) or attempt.get('status')=='PASS': continue
+            run['preflight_failures'].append(dict(
+                id=clean(attempt.get('id')),phase=phase_key(attempt.get('phase')),at=clean(attempt.get('at_utc')),
+                status=clean(attempt.get('status')),policy_version=number(attempt.get('policy_version')),
+                verified_by=clean(attempt.get('verified_by')),resolution_status=clean(attempt.get('resolution_status')),
+                checks=[dict(id=clean(c.get('id')),status=clean(c.get('status')),reason=clean(c.get('reason')),
+                             rule_ids=sorted(set(re.findall(r'\b(?:OAT\.\d+|H[1-5]\.[A-Z0-9_]+|G\.[A-Z]+\.\d+(?:-CPP)?|WordsTool\.\d+)\b',clean(c.get('output'))))))
+                        for c in attempt.get('checks',[]) if isinstance(c,dict) and c.get('status')!='PASS'],
+                fixes=[dict(cause=clean(f.get('cause')),action=clean(f.get('action')),verification_status=clean(f.get('verification_status')))
+                       for f in attempt.get('fixes',[]) if isinstance(f,dict)]))
     if session_analysis is not None and session_analysis['later_outcome']:
         run['session_later_outcome'] = session_analysis['later_outcome']
     for out, key in [('first_gate_attempts', 'first_gate_attempts_total'),
@@ -310,7 +329,7 @@ def main():
     print(f"已导出 {len(data['runs'])} 条运行；{len(data['warnings'])} 条数据提示 → {args.output}")
     if args.public_dir:
         args.public_dir.mkdir(parents=True, exist_ok=True)
-        for asset in ('index.html', 'style.css', 'app.mjs', 'analytics.mjs'):
+        for asset in ('index.html', 'style.css', 'app.mjs', 'analytics.mjs', 'preflight-view.mjs'):
             copy2(Path(__file__).parent / 'dist' / asset, args.public_dir / asset)
         (args.public_dir / 'data.json').write_text(
             json.dumps(public_snapshot(data), ensure_ascii=False, indent=2) + '\n', encoding='utf-8')

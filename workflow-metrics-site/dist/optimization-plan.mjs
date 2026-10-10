@@ -1,5 +1,5 @@
 // 进度只随仓库中的实现和验收证据更新，不在浏览器中临时改写。
-export const planUpdatedAt = '2026-10-09';
+export const planUpdatedAt = '2026-10-10';
 export const plans = [
   {
     "id": "WF-01",
@@ -616,7 +616,7 @@ export const plans = [
   {
     "id": "WF-14",
     "title": "区分上库停点、CI 等待与平台故障",
-    "priority": "high",
+    "priority": "low",
     "phases": [
       "P8"
     ],
@@ -636,7 +636,7 @@ export const plans = [
       "旧提交的绿色 CI 不能放行新提交。",
       "E01/ecotest 平台故障不会被自动归因到功能代码。"
     ],
-    "benefit": "减少无效重试和错误修复，保留真实 CI 约束。",
+    "benefit": "作为次要上库流程改进，减少无效重试与错误修复；保留真实 CI 约束。",
     "sourceCases": [
       {
         "runId": "20260922-fd-leak-detection",
@@ -906,5 +906,78 @@ export const offlineAssessment = {
     "提前发现真实缺陷不算消除缺陷；预检 FAIL 与原始门禁 FAIL 均保留。",
     "设备、完整构建、MinGW、远端 CI、真实状态隔离需要后续真实运行。",
     "不承诺 100% 真实门禁通过率；外部平台和未知原因不能由这次本地改动消除。"
+  ]
+};
+
+export const realRunAssessment = {
+  "evaluated_at": "2026-10-10",
+  "run_id": "20261009-fd-leak-detect",
+  "baseline_run_id": "20260922-fd-leak-detection",
+  "optimization_policy_observed": true,
+  "checker_matches_repository": true,
+  "causal_effect_proven": false,
+  "new_run": {
+    "gate_attempts": 45,
+    "gate_failures": 13,
+    "gate_failure_rate": 0.28888888888888886,
+    "preflight_attempts": 50,
+    "preflight_failures": 4,
+    "preflight_issues": 6,
+    "all_recorded_failed_attempts": 17,
+    "review_holds": 5,
+    "ci_wait_failures": 1,
+    "other_gate_failures": 7,
+    "failure_fixes_recorded": 0,
+    "preflight_fixes_recorded": 0
+  },
+  "same_task": {
+    "old_attempts": 32,
+    "old_failures": 13,
+    "old_failure_rate": 0.40625,
+    "gate_failure_count_reduction_percent": 0.0,
+    "combined_failure_count_reduction_percent": null,
+    "old_pre_upload_failures": 9,
+    "new_pre_upload_failures": 2,
+    "old_pre_upload_attempts": 27,
+    "new_pre_upload_attempts": 33,
+    "pre_upload_failure_count_reduction_percent": 77.77777777777779,
+    "pre_upload_effective_seconds_old": 20006,
+    "pre_upload_effective_seconds_new": 14531,
+    "pre_upload_effective_time_reduction_percent": 27.366789963011094,
+    "phase_rows": [
+      {
+        "phase": "P1–P4",
+        "old_failures": 5,
+        "new_failures": 0
+      },
+      {
+        "phase": "P5–P7",
+        "old_failures": 4,
+        "new_failures": 2
+      },
+      {
+        "phase": "P8",
+        "old_failures": 4,
+        "new_failures": 11
+      }
+    ],
+    "effective_seconds_old": 38575,
+    "effective_seconds_new": 23696,
+    "effective_time_reduction_percent": 38.57161373946857,
+    "wall_seconds_old": 40657,
+    "wall_seconds_new": 55433
+  },
+  "historical": {
+    "run_count": 3,
+    "gate_attempts": 90,
+    "gate_failures": 37,
+    "failure_rate": 0.4111111111111111,
+    "failures_per_run": 12.333333333333334
+  },
+  "limitations": [
+    "历史运行没有同等预检统计，不能计算总失败减少率。",
+    "同类任务、相同模型不代表需求范围、源码版本、设备和 CI 条件相同；单次样本不能证明因果。",
+    "没有登记修复动作；后续 PASS 只证明重跑通过，不能确定改了什么。",
+    "不删除确认停点、等待或重复失败；调整口径仅作为额外分析。"
   ]
 };
