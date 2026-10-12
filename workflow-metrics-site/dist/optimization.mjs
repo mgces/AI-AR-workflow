@@ -1,4 +1,5 @@
 import {plans,planUpdatedAt,priorityLabels,statusLabels,attributionLabels,scopeLabels,filterPlans,validatePlans,offlineAssessment,realRunAssessment} from './optimization-plan.mjs';
+import {mergeSnapshot,loadLocalRuns} from './import-data.mjs';
 const $ = id => document.getElementById(id);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const list = values => '<ul>'+values.map(v=>'<li>'+esc(v)+'</li>').join('')+'</ul>';
@@ -34,7 +35,9 @@ function fillSelect(id, labels) {
 let snapshotPromise;
 async function snapshot() {
   if (!snapshotPromise) snapshotPromise = fetch('./data.json').then(r=>{if(!r.ok) throw new Error('快照暂不可用');return r.json();}).catch(e=>{snapshotPromise=null;throw e;});
-  return snapshotPromise;
+  const base=await snapshotPromise;
+  let imports=[];try{imports=loadLocalRuns(window.localStorage).runs;}catch{}
+  return mergeSnapshot(base,imports);
 }
 const dialog = $('evidence-dialog');
 async function showEvidence(runId,phase) {

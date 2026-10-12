@@ -2,13 +2,16 @@ import {uploadWaitDetails} from './upload-view.mjs';
 import {timingDetails} from './timing-view.mjs';
 import {summarize,filterRuns,phaseTotals,phaseFailureRuns,runStatusExplanation,known} from './analytics.mjs';
 import {preflightDetails} from './preflight-view.mjs';
+import {validateSnapshot} from './import-data.mjs';
+import {createImportController} from './import-ui.mjs';
 const $=id=>document.getElementById(id);
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const labels={completed:'已完成',running:'进行中',blocked:'受阻',waiting:'等待人工',pending:'未开始',passed:'已通过',failed:'失败'};
 const phaseNames={P0:'环境准备',P1:'设计',P2:'代码开发',P3:'测试开发',P4:'编译验证',P5:'单元测试',P6:'功能测试',P7:'质量验证',P8:'上库评审',R1:'需求导入',R2:'可行性',R3:'架构决策',R4:'特性基线',R5:'评审门禁',R6:'评审决策',R7:'IR / SR',R8:'交接',R9:'生成 AR'};
 const interventionLabels={required_workflow:'流程内审核',blocked_unplanned:'非计划解阻',user_correction:'用户纠偏'};
 const resolutionLabels={unresolved:'尚未复验',pending_verification:'修改已记录，待重跑',resolved:'修改后门禁通过',not_resolved:'相同原因仍失败',gate_still_failed_different_reason:'门禁仍失败，但报错已变化；原根因是否解决待确认',passed_without_recorded_fix:'重跑通过，未记录修改',failed_again_without_recorded_fix:'再次失败，未记录修改',review_hold_released:'人工确认后放行'};
-let data={runs:[],warnings:[]};
+let published={schema_version:1,runs:[],warnings:[]};
+let data=published;
 let selected=[];
 const fmt=n=>known(n)?n.toLocaleString('zh-CN',{maximumFractionDigits:1}):'—';
 function duration(n){if(!known(n))return '—';if(n<60)return `${fmt(n)} 秒`;if(n<3600)return `${Math.floor(n/60)} 分 ${Math.floor(n%60)} 秒`;return `${Math.floor(n/3600)} 时 ${Math.floor(n%3600/60)} 分`;}
@@ -44,7 +47,7 @@ function render(){
  $('run-count').textContent=s.count;
  $('run-rows').innerHTML=selected.map(r=>`<tr><td><button class="run-link" data-run="${esc(r.source)}">${esc(r.id)}</button><div class="run-meta">${esc(r.agent)} / ${esc(r.model)} · ${date(r.updated_at)}</div></td><td>${badge(r.status,r.source)}</td><td>${duration(r.effective_seconds)}${r.recording_quality?.status==='incomplete'?'<div class="run-meta">历史不完整</div>':''}</td><td class="muted">${duration(r.wait_seconds)}</td><td><span class="${r.failures?'failure-count':''}">${fmt(r.failures)}</span> <span class="muted">/ ${fmt(r.gate_attempts)}</span></td><td><div class="phase-dots" aria-label="各阶段状态">${r.phases.map(p=>`<span class="${esc(p.status)}" title="${esc(p.id)} ${esc(labels[p.status])}"></span>`).join('')}</div><span class="progress-note">${r.phases.filter(p=>p.closed_at).length} / ${r.phases.length} 阶段已关闭</span></td><td><button class="text-button" data-run="${esc(r.source)}" aria-label="查看 ${esc(r.id)} 详情">详情 ↗</button></td></tr>`).join('');
  $('empty').hidden=selected.length>0;
- $('quality-notes').innerHTML=data.warnings.map(w=>`<p class="quality-warning">${esc(w)}</p>`).join('')+`<p class="quality-warning">${data.duplicate_count||0} 份重复运行快照已去重；状态与耗时均截至指标更新时间。${data.redacted?'公开版仅遮掩敏感片段；':''}在线页面展示已发布快照，本机新增文件需重新导出并发布。</p>`;
+ $('quality-notes').innerHTML=data.warnings.map(w=>`<p class="quality-warning">${esc(w)}</p>`).join('')+`<p class="quality-warning">${data.duplicate_count||0} 份重复运行快照已去重；状态与耗时均截至指标更新时间。${data.redacted?'仅遮掩敏感片段；':''}新增指标可用“导入 JSON”保存到浏览器，或由管理员发布为所有人可见的共享快照。</p>`;
 }
 function fixDetails(d){
  const fixes=(d.fixes||[]).map(f=>`<p class="fix-line">根因：${esc(f.root_cause)||'未记录'} · 修改：${esc(f.action)||'未填写'}${f.change_ref?' · '+esc(f.change_ref):''} · 复验：${f.verification_verdict==='PASS'?'通过':f.verification_verdict==='FAIL'?'仍失败':'待重跑'}</p>`).join('');
@@ -78,14 +81,17 @@ function detail(source){
  $('detail-content').innerHTML=`<div class="detail-meta">${badge(r.status,r.source)}<span>${esc(r.kind)} · ${esc(r.agent)} / ${esc(r.model)}</span><span>指标更新 ${date(r.updated_at)}</span></div><div class="detail-kpis"><div>有效耗时<strong>${duration(r.effective_seconds)}</strong></div><div>人工等待<strong>${duration(r.wait_seconds)}</strong></div><div>门禁失败 / 尝试<strong>${fmt(r.failures)} / ${fmt(r.gate_attempts)}</strong></div></div>${timingDetails(r)}${uploadWaitDetails(r)}${preflightDetails(r)}<h3>阶段明细</h3><div class="table-wrap"><table><thead><tr><th>阶段</th><th>最近结果</th><th>有效耗时</th><th>人工等待</th><th>失败 / 尝试</th><th>轮次</th><th>最近门禁</th></tr></thead><tbody>${r.phases.map(p=>`<tr><td title="${esc(p.name)}">${esc(p.id)} ${esc(phaseNames[p.id]||p.name)}</td><td>${badge(p.status)}</td><td>${duration(p.effective_seconds)}</td><td>${duration(p.wait_seconds)}</td><td>${fmt(p.fail_attempts)} / ${fmt(p.gate_attempts)}</td><td>${p.rounds}</td><td>${esc(p.gate)||'—'}</td></tr>`).join('')}</tbody></table></div><section class="detail-section"><h3>失败原因、修改与复验</h3><div class="reason-list">${r.failure_details.map(d=>`<article class="reason-item"><div class="reason-head"><b>${esc(d.phase)} · ${esc(d.gate)||'门禁未记录'}</b><span class="small-tag">${d.count===null?'仅最近结果':d.count+' 次失败'}</span></div><p>${esc(d.reason)}</p>${fixDetails(d)}<p class="source">来源：${esc(d.source)}${d.at?' · '+date(d.at):''}</p></article>`).join('')||'<p class="muted">没有记录失败</p>'}</div></section><section class="detail-section"><h3>人工介入说明（${r.human_interventions.length}）</h3><div class="reason-list">${r.human_interventions.map(i=>`<article class="reason-item"><div class="reason-head"><b>${esc(i.phase)} · ${esc(interventionLabels[i.category]||i.category)}</b></div><p>${esc(i.reason)||'未填写原因'}</p></article>`).join('')||'<p class="muted">没有记录人工介入</p>'}</div></section><p class="detail-source">指标来源：${esc(r.source)}<br>快照状态由最近阶段结果与等待记录推断。历史 FAIL 不意味着该运行最终失败。${r.session_later_outcome?`<br>后续进展：${esc(r.session_later_outcome)}`:''}</p>`;
  if(!alreadyOpen)$('detail').showModal();else $('close-detail').focus();
 }
+function applySnapshot(next,localCount){
+ data=next;
+ for(const [id,key,label] of [['kind','kind','全部工作流'],['model','model','全部模型']]){const current=$(id).value;$(id).innerHTML=`<option value="">${label}</option>`+[...new Set(data.runs.map(r=>r[key]))].sort().map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');if([...$(id).options].some(o=>o.value===current))$(id).value=current;}
+ $('snapshot-time').textContent=`共享快照生成 ${date(published.generated_at)}`;
+ const dates=data.runs.map(r=>r.updated_at).filter(Boolean).sort((a,b)=>Date.parse(a)-Date.parse(b));
+ $('source-info').textContent=`已发布 ${published.runs.length} 条 · 本浏览器导入 ${localCount} 条（未发布的仅自己可见）${dates.length?' · 指标最近更新 '+date(dates.at(-1)):''}`;
+ render();
+}
 async function load(){
  $('refresh').disabled=true;$('load-error').hidden=true;
- try{const response=await fetch('./data.json',{cache:'no-store'});if(!response.ok)throw Error('数据文件暂时无法读取');const next=await response.json();if(!Array.isArray(next.runs)||next.schema_version!==1)throw Error('数据快照格式不兼容');data=next;
-  for(const [id,key,label] of [['kind','kind','全部工作流'],['model','model','全部模型']]){const current=$(id).value;$(id).innerHTML=`<option value="">${label}</option>`+[...new Set(data.runs.map(r=>r[key]))].sort().map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');if([...$(id).options].some(o=>o.value===current))$(id).value=current;}
-  $('snapshot-time').textContent=`快照生成 ${date(data.generated_at)}`;
-  const dates=data.runs.map(r=>r.updated_at).filter(Boolean).sort();
-  $('source-info').textContent=`${data.source_count} 份指标文件${dates.length?' · 指标最近更新 '+date(dates.at(-1)):''}`;
-  render();
+ try{const response=await fetch('./data.json',{cache:'no-store'});if(!response.ok)throw Error('数据文件暂时无法读取');published=validateSnapshot(await response.json());importer.setBase();
  }catch(error){$('load-error').textContent=`${error.message}。请点击“刷新快照”重试。${data.runs.length?'当前保留上次成功读取的数据。':''}`;$('load-error').hidden=false;if(!data.runs.length)render();}
  finally{$('refresh').disabled=false;}
 }
@@ -109,4 +115,5 @@ if(document.modelContext?.registerTool){
  },{signal:lifecycle.signal})).catch(()=>{});}catch{}
  window.addEventListener('pagehide',()=>lifecycle.abort(),{once:true});
 }
+const importer=createImportController({getSnapshot:()=>published,onChange:applySnapshot});
 load();

@@ -25,7 +25,7 @@
 <div class="workspace">
   <header class="topbar"><span>工作空间 <b>/</b> AI-AR-workflow</span><span class="snapshot-tag">仓库数据快照</span></header>
   <main id="overview">
-    <div class="page-heading"><div><p class="eyebrow">WORKFLOW ANALYTICS</p><h1>运行总览</h1><p class="muted">看清时间花在哪里，以及流程为什么停下来。</p></div><div class="heading-actions" role="group" aria-label="页面操作"><a class="button" href="./optimization.html">优化总结 ↗</a><button id="refresh" class="button">↻ <span>刷新快照</span></button></div></div>
+    <div class="page-heading"><div><p class="eyebrow">WORKFLOW ANALYTICS</p><h1>运行总览</h1><p class="muted">看清时间花在哪里，以及流程为什么停下来。</p></div><div class="heading-actions" role="group" aria-label="页面操作"><button id="open-import" class="button primary">导入 JSON / 管理员发布</button><a class="button" href="./optimization.html">优化总结 ↗</a><button id="refresh" class="button">↻ <span>刷新快照</span></button></div></div>
     <div class="snapshot-line"><span id="snapshot-time">正在读取指标…</span><span id="source-info"></span></div>
     <div id="recording-warning" class="notice" role="status" hidden></div>
     <div id="load-error" class="notice error" role="alert" hidden></div>
@@ -49,5 +49,25 @@
 </div>
 <dialog id="detail" aria-labelledby="detail-title"><div class="dialog-head"><div><p class="eyebrow" id="detail-kind">RUN INSPECTOR</p><h2 id="detail-title"></h2></div><button id="close-detail" class="close" aria-label="关闭详情">×</button></div><div id="detail-content"></div></dialog>
 <dialog id="status-dialog" class="status-dialog" aria-labelledby="status-title"><div class="dialog-head"><div><p class="eyebrow">SNAPSHOT STATUS</p><h2 id="status-title"></h2></div><button id="close-status" class="close" aria-label="关闭状态说明">×</button></div><div id="status-explanation" class="status-explanation"></div></dialog>
+<dialog id="import-dialog" aria-labelledby="import-title">
+  <div class="dialog-head"><div><p class="eyebrow">IMPORT &amp; SHARE</p><h2 id="import-title">导入运行 JSON</h2></div><button id="close-import" class="close" aria-label="关闭导入">×</button></div>
+  <p class="muted small">选择 workflow_metrics.json（v2）或本网站导出的备份（v1），支持多选。导入只使用文件中已有的指标和原因，不推测缺失时间或失败根因。</p>
+  <label class="file-picker">选择 JSON 文件<input id="import-files" type="file" accept=".json,application/json" multiple></label>
+  <p class="small muted">每份文件不超过 10 MB，一次最多 20 份。原始文件、命令、HMAC 和环境变量不保存；诊断文字只遮掩凭据、IP、邮箱、绝对路径和证书等敏感片段。</p>
+  <div id="import-message" class="notice" role="status" aria-live="polite" hidden></div>
+  <div id="import-errors" class="notice error" role="alert" hidden></div>
+  <section class="import-preview"><h3>去敏后的导入预览 <span id="import-count" class="count">0</span></h3><p class="small muted">展开“查看将保存的明细”检查原因、修改、复验和人工介入。较旧或相同版本不会覆盖已有记录。</p><div class="table-wrap"><table><thead><tr><th>运行 / 版本</th><th>工作流</th><th>失败 / 尝试</th><th>与当前页面对比</th></tr></thead><tbody id="import-preview-rows"></tbody></table></div></section>
+  <div class="import-actions"><button id="save-import" class="button" disabled>保存到当前浏览器</button><button id="export-import" class="button" disabled>导出去敏备份</button><button id="clear-import" class="text-button" disabled>清除本浏览器导入</button></div>
+  <p class="small muted">保存到浏览器仅自己可见，刷新后保留。清除只影响本浏览器，已发布数据仍保留。</p>
+  <details id="admin-panel" class="admin-panel"><summary>管理员发布 · 让所有访问者看到</summary>
+    <p class="small">发布到公开仓库 <b>mgces/AI-AR-workflow · main</b>，网站随后自动部署。发布范围是上面预览的运行，其他云端运行会保留。不会上传原始 JSON。</p>
+    <p class="small muted">使用该仓库的 GitHub fine-grained token，授权 Contents 读写。请在下方输入，授权只用于本次请求，关闭窗口或提交后清空，不保存在浏览器。</p>
+    <a class="text-button" href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener noreferrer">在 GitHub 创建仓库发布授权 ↗</a>
+    <label class="admin-token-label" for="admin-token">GitHub 发布授权<input id="admin-token" type="password" autocomplete="off" spellcheck="false" placeholder="仅此处输入，请勿放进 JSON" /></label>
+    <div class="import-actions"><button id="prepare-publish" class="button" disabled>检查权限与共享差异</button><button id="confirm-publish" class="button primary" disabled>确认公开并发布</button></div>
+    <div id="publish-review" class="notice" hidden></div><div id="publish-result" class="notice" role="status" aria-live="polite" hidden></div>
+    <p class="small muted">公开前请核对预览。自由文本去敏不能识别所有私人信息；若仍有不适合公开的文字，请修改文件后重新选择。</p>
+  </details>
+</dialog>
 <script type="module" src="./optimization-nav.mjs"></script>
 </body></html>

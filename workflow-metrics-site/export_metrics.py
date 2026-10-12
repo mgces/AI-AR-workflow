@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import re
 from shutil import copy2
+import subprocess
 
 SKIP = {'.git', 'node_modules', '.venv', '__pycache__', '.sites-runtime', 'dist', 'build'}
 FAILED = {'FAIL', 'FAILED', 'ERROR', 'BLOCKED', 'REJECTED', 'NOT_READY'}
@@ -340,6 +341,32 @@ def public_snapshot(data):
     return result
 
 
+def retain_browser_imports(data, existing):
+    """Use the browser's validator/merge policy; refuse to silently erase imports."""
+    if not isinstance(existing, dict) or not isinstance(existing.get('runs'), list):
+        raise ValueError('现有公开快照损坏，请恢复后重新导出；未覆盖公开文件')
+    imported = [run for run in existing['runs'] if isinstance(run, dict)
+                and run.get('import_origin') == 'browser']
+    if not imported:
+        return data
+    script = """
+import {pathToFileURL} from 'node:url';
+import {readFileSync} from 'node:fs';
+const {validateSnapshot,mergeSnapshot}=await import(pathToFileURL(process.argv[1]));
+const {base,imports}=JSON.parse(readFileSync(0,'utf8'));
+const result=mergeSnapshot(base,validateSnapshot({schema_version:1,runs:imports}).runs);
+process.stdout.write(JSON.stringify(result));
+"""
+    try:
+        result = subprocess.run(['node', '--input-type=module', '-e', script,
+                                 str(Path(__file__).parent / 'dist' / 'import-data.mjs')],
+                                input=json.dumps(dict(base=data, imports=imported)),
+                                capture_output=True, text=True, timeout=30, check=True)
+        return json.loads(result.stdout)
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        raise ValueError('保留网页导入记录失败；需要 Node.js 和有效快照，未覆盖公开文件') from error
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--root', type=Path, default=Path(__file__).resolve().parents[1])
@@ -356,10 +383,15 @@ def main():
     print(f"已导出 {len(data['runs'])} 条运行；{len(data['warnings'])} 条数据提示 → {args.output}")
     if args.public_dir:
         args.public_dir.mkdir(parents=True, exist_ok=True)
-        for asset in ('index.html', 'style.css', 'app.mjs', 'analytics.mjs', 'preflight-view.mjs', 'timing-view.mjs', 'upload-view.mjs'):
+        public_data = public_snapshot(data)
+        public_path = args.public_dir / 'data.json'
+        if public_path.exists():
+            public_data = retain_browser_imports(public_data, json.loads(public_path.read_text(encoding='utf-8')))
+        for asset in ('index.html', 'style.css', 'app.mjs', 'analytics.mjs', 'preflight-view.mjs', 'timing-view.mjs', 'upload-view.mjs', 'import-data.mjs', 'import-ui.mjs', 'publish-data.mjs'):
             copy2(Path(__file__).parent / 'dist' / asset, args.public_dir / asset)
-        (args.public_dir / 'data.json').write_text(
-            json.dumps(public_snapshot(data), ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+        public_temp = public_path.with_suffix('.tmp')
+        public_temp.write_text(json.dumps(public_data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+        public_temp.replace(public_path)
         (args.public_dir / '.nojekyll').touch()
         print(f'已生成去敏公开网站 → {args.public_dir}')
 

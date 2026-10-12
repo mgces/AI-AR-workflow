@@ -4,6 +4,21 @@
 
 ## 更新数据
 
+### 直接在网站导入及管理员共享发布
+
+1. 从首页点击 **导入 JSON / 管理员发布**；优化总结页也有 **导入运行 JSON** 入口。
+2. 选择一份或多份 `workflow_metrics.json`（schema version 2），或本网站导出的去敏备份（version 1）。每份最多 10 MB，每次最多 20 份。页面校验版本、阶段和非负计数，并预览去敏后的原因、修改和复验；损坏文件逐个显示错误，其他有效文件仍可导入。
+3. **保存到当前浏览器** 无需登录，统计立即更新，刷新后保留，仅本浏览器可见。按 workflow + run-id 去重，较旧或相同时间的记录不覆盖新版。**导出去敏备份** 可在另一浏览器恢复；**清除本浏览器导入** 不删除共享数据。
+4. 要让所有访问者看到，展开 **管理员发布**。在 GitHub 创建仅授权 `mgces/AI-AR-workflow` 的 fine-grained token，赋予 **Contents: Read and write**，在页面密码框输入。账号也必须有该仓库写入权限。授权不会写入浏览器存储、URL、备份或快照；关闭窗口、提交完成或权限检查失败后清空。
+5. 点击 **检查权限与共享差异**。页面读取 main 的最新快照，显示管理员身份、将新增/更新的运行和共享总数。核对去敏明细后点击 **确认公开并发布**。文件选择和权限检查均不会上传运行数据；最终确认才提交公开快照。
+6. GitHub Pages 自动部署后，所有访客无需登录即可看到新统计；可通过页面返回的提交链接查看此次变更。页面提示“已提交”时部署可能还未完成，请稍后刷新。并发修改导致 409 时，需要重新检查差异，不会盲目覆盖。
+
+共享发布只更新 GitHub 的 `docs/public/workflow-metrics/data.json`，不会创建新仓库、上传原始文件或自动修改 GitCode 镜像。网站源码维护仍按双仓同步。此入口不会自动生成新的会话推断或更新优化总结的固定评估样本；JSON 已记录的失败原因、修复和复验会自动进入统计详情，缺失信息仍明确显示未知。
+
+授权仅发往固定的 `api.github.com`，拒绝重定向。实现使用 GitHub 官方 [Contents API](https://docs.github.com/en/rest/repos/contents#create-or-update-file-contents) 和 [浏览器跨域支持](https://docs.github.com/en/rest/using-the-rest-api/using-cors-and-jsonp-to-make-cross-origin-requests)。自由文本只能遮掩已识别的敏感片段；公开前请核对预览，必要时修改文件后重新选择。
+
+### 命令行导出
+
 在仓库根目录执行：
 
 ```bash
@@ -14,7 +29,7 @@ python3 workflow-metrics-site/export_metrics.py
 
 导出器只读原始文件，不修改 metrics、pipeline 或门禁证据。发布文件位于 `dist/`，其中 `data.json` 是脱敏、字段白名单化后的快照。不会导出 pipeline、manifest 原文、HMAC、命令参数或 consent token。原因文本保留诊断说明并替换用户目录与显式凭据赋值；这不是任意自由文本的通用敏感信息检测器。
 
-在线网页无法访问本机目录。新增文件后需要重新运行导出命令并发布新版本。页面“刷新快照”只重新读取已发布的 `data.json`。
+在线网页无法自动读取本机目录。可在页面主动选择 JSON 导入，也可重新运行导出命令并发布。页面“刷新快照”读取已发布的 `data.json`，并合并本浏览器保存的导入，不会丢弃本地记录。
 
 公开发布使用单独的去敏数据快照，保留运行、阶段计数、耗时、门禁原因、人工介入说明与修复记录；只替换其中的 IP 地址、凭据赋值、邮箱、绝对本机或设备路径及证书文件名。相对源码路径和其他诊断文字保留。生成方式：
 
@@ -23,6 +38,8 @@ python3 workflow-metrics-site/export_metrics.py --public-dir docs/public/workflo
 ```
 
 公开产物位于 `docs/public/workflow-metrics/`；本地详细快照继续存放在 `workflow-metrics-site/dist/data.json`，该文件已加入 `.gitignore`，不要将其提交。公开产物保留运行 ID、模型名、相对来源路径和指标数字；新增自由文本字段也会经过同一片段遮掩函数。
+
+后续命令行导出前，应先同步 main 上最新的公开 `data.json`。导出器保留其中 `import_origin: browser` 的网页共享记录，并以更新时间与本机记录合并；保留流程复用浏览器白名单与去敏校验，需要 Node.js。校验失败时停止覆盖公开快照。
 
 ## 本地运行
 
@@ -56,9 +73,17 @@ python3 -m http.server 4173 --bind 127.0.0.1 --directory workflow-metrics-site/d
 
 ```bash
 python3 -m unittest discover -s workflow-metrics-site/tests -v
-node workflow-metrics-site/tests/analytics.test.mjs
+node --test workflow-metrics-site/tests/*.test.mjs
 node --check workflow-metrics-site/dist/app.mjs
 ```
+
+真实浏览器回归（需安装 Playwright 和 Chrome，并启动上面的本地服务器）：
+
+```bash
+node workflow-metrics-site/tests/import-browser.mjs
+```
+
+测试会拦截所有 GitHub API 调用，不会实际发布。覆盖多文件导入、错误与去敏、刷新保留、备份、管理员预览/确认、权限失败、清除及手机导航。可通过参数指定 Playwright 模块目录和预览地址。
 
 页面渐进注册只读 WebMCP 工具 `read_workflow_summary`，复用可见筛选状态；不支持该 API 的浏览器不受影响。当前环境没有可用的受支持 WebMCP 浏览器上下文，其实际注册与调用尚未验证。
 
@@ -66,7 +91,7 @@ node --check workflow-metrics-site/dist/app.mjs
 
 仓库现有 `.github/workflows/deploy-docs.yml` 在 GitHub `main` 分支的 `docs/**` 变化时构建 VitePress，`docs/public/workflow-metrics/` 会作为静态子页面进入同一次 Pages 发布，地址为 `https://mgces.github.io/AI-AR-workflow/workflow-metrics/`。更新公开数据后检查 `docs/public/workflow-metrics/data.json`，将该目录提交到 GitHub `main` 即可触发部署。
 
-原始 `products/.run/` 数据目录不提交到 GitHub，也不会由 GitHub Actions 自动读取。每次更新指标都需要在本地重新导出、检查去敏结果并提交公开快照。源码目录内的 `.openai/hosting.json` 是未使用的 Sites 项目身份，已忽略，GitHub 发布无需它。
+原始 `products/.run/` 数据目录不提交到 GitHub，也不会由 GitHub Actions 自动读取。更新指标可以使用管理员导入发布，或本地导出、检查去敏结果后提交公开快照。源码目录内的 `.openai/hosting.json` 是未使用的 Sites 项目身份，已忽略，GitHub 发布无需它。
 
 ## 计时覆盖检查
 

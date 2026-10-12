@@ -13,6 +13,30 @@ if module:
 
 
 class ExportTests(unittest.TestCase):
+    def test_browser_records_survive_command_line_export_with_whitelist(self):
+        base = module.public_snapshot(self.export({'a/workflow_metrics.json': self.metrics()}))
+        imported = json.loads(json.dumps(base['runs'][0]))
+        imported.update(id='browser-new', import_origin='browser',
+                        source='browser-import/ar-development/browser-new/workflow_metrics.json')
+        imported['env'] = {'token': 'should-never-publish'}
+        imported['failure_details'].append(dict(phase='P0', reason='token=fictional-private', count=1))
+        old = dict(schema_version=1, runs=[imported])
+        result = module.retain_browser_imports(base, old)
+        self.assertEqual(len(result['runs']), 2)
+        self.assertNotIn('should-never-publish', json.dumps(result))
+        self.assertNotIn('fictional-private', json.dumps(result))
+
+    def test_newer_browser_record_wins_until_source_has_newer_version(self):
+        base = module.public_snapshot(self.export({'a/workflow_metrics.json': self.metrics()}))
+        original = base['runs'][0]
+        imported = dict(original, import_origin='browser', updated_at='2026-10-12T10:00:00+08:00')
+        original['updated_at'] = '2026-10-12T01:00:00Z'
+        old = dict(schema_version=1, runs=[imported])
+        result = module.retain_browser_imports(base, old)
+        self.assertEqual(result['runs'][0]['updated_at'], imported['updated_at'])
+        original['updated_at'] = '2026-10-12T03:00:00Z'
+        self.assertEqual(module.retain_browser_imports(base, old)['runs'][0]['updated_at'], original['updated_at'])
+
     def test_upload_waits_are_exported_separately_and_commands_are_omitted(self):
         d = self.metrics()
         d['phases'] = {'8': dict(gate_attempts=1, fail_attempts=1, pass_attempts=0,
