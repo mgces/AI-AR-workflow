@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'">
+    <title>DSH Cloud Console</title>
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/devices.css">
+    <link rel="stylesheet" href="/details.css">
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="brand"><span class="brand-mark">D</span><span>DSH <small>CLOUD CONSOLE</small></span></div>
+        <div class="nav-caption">平台</div>
+        <a class="nav-link active" href="#overview"><span class="nav-glyph">◫</span>运行总览</a>
+        <a class="nav-link" href="#runs"><span class="nav-glyph">◷</span>工作流运行</a>
+        <a class="nav-link" href="#clients"><span class="nav-glyph">⌘</span>本地客户端</a>
+        <a class="nav-link disabled" href="#workflows"><span class="nav-glyph">◇</span>Workflow 目录</a>
+        <div class="sidebar-footer"><span class="live-dot"></span><span>云端观测服务</span></div>
+      </aside>
+      <main>
+        <header class="header">
+          <div><div class="eyebrow">TEAM WORKSPACE</div><h1>研发运行总览</h1><p>查看本地客户端同步上来的 AR workflow 运行和维测数据。</p></div>
+          <div class="header-actions"><span id="updatedAt" class="muted">尚未同步</span><button id="refresh" class="refresh-button">↻ 刷新数据</button></div>
+        </header>
+        <section class="metric-grid" id="overview">
+          <article class="metric-card"><span class="metric-label">全部运行</span><strong id="totalRuns">—</strong><span class="metric-foot">已同步到云端</span><span class="metric-icon green">↗</span></article>
+          <article class="metric-card"><span class="metric-label">正在运行</span><strong id="activeRuns">—</strong><span class="metric-foot">客户端本地执行</span><span class="metric-icon blue">◉</span></article>
+          <article class="metric-card"><span class="metric-label">等待处理</span><strong id="blockedRuns">—</strong><span class="metric-foot">阻塞或待审核</span><span class="metric-icon amber">!</span></article>
+          <article class="metric-card"><span class="metric-label">已完成</span><strong id="completedRuns">—</strong><span class="metric-foot">真实 gate 判定</span><span class="metric-icon violet">✓</span></article>
+        </section>
+        <section class="content-grid">
+          <article class="panel runs-panel" id="runs">
+            <div class="panel-head"><div><div class="eyebrow">ACTIVITY</div><h2>最近工作流运行</h2></div><select id="statusFilter"><option value="all">全部状态</option><option value="running">运行中</option><option value="blocked">阻塞</option><option value="awaiting_review">待审核</option><option value="completed">已完成</option><option value="failed">失败</option></select></div>
+            <div class="table-scroll"><table><thead><tr><th>运行</th><th>Workflow</th><th>状态</th><th>阶段</th><th>客户端</th><th>更新时间</th></tr></thead><tbody id="runRows"><tr><td colspan="6" class="empty">等待客户端同步运行数据…</td></tr></tbody></table></div>
+          </article>
+          <article class="panel client-panel" id="clients">
+            <div class="panel-head"><div><div class="eyebrow">DEVICES</div><h2>客户端连接</h2></div><button id="createPairing" class="small-badge action-badge">配对新客户端</button></div>
+            <div id="pairingCard" class="pairing-card hidden"><span>在 Desktop 的“连接云端”输入此配对码</span><strong id="pairingCode">--------</strong><small id="pairingExpires"></small></div>
+            <div id="deviceList" class="device-list"><div class="client-empty"><span class="device-art">⌘</span><strong>还没有已配对的客户端</strong><p>生成一次性配对码，在本机客户端中输入，即可将运行统计同步到云端。</p></div></div>
+          </article>
+        </section>
+        <section class="panel" id="connectorProbes">
+          <div class="panel-head"><div><div class="eyebrow">CONNECTOR HEALTH</div><h2>本机环境与设备探测</h2><p class="detail-subtitle">展示客户端主动同步的 HDC、工具链和环境检查结果。</p></div><span id="probeCount" class="small-badge">0 项</span></div>
+          <div id="probeList" class="detail-list"><div class="detail-empty">等待本机 Connector 同步探测数据…</div></div>
+        </section>
+        <section class="panel review-queue" id="reviews">
+          <div class="panel-head"><div><div class="eyebrow">HUMAN REVIEW</div><h2>待审核工作</h2><p class="detail-subtitle">审核前查看客户端明确上传的产物；决策会绑定当前运行版本。</p></div><span id="pendingReviewCount" class="small-badge">0 项待处理</span></div>
+          <div id="pendingReviewList" class="review-queue-list"><div class="detail-empty">当前没有待审核的工作。</div></div>
+        </section>
+        <section class="panel review-workspace hidden" id="reviewWorkspace" aria-live="polite">
+          <div class="panel-head detail-heading"><div><div class="eyebrow">SEALED REVIEW BUNDLE</div><h2 id="reviewTitle">审核工作项</h2><p id="reviewSubtitle" class="detail-subtitle"></p></div><button id="closeReview" class="refresh-button">关闭</button></div>
+          <div id="reviewBundleArtifacts" class="detail-list"></div>
+          <label class="review-note-label" for="reviewNote">审核意见（可选）</label>
+          <textarea id="reviewNote" maxlength="4000" placeholder="填写同意、拒绝或退回原因"></textarea>
+          <div class="review-actions"><button data-review-decision="approved" class="review-approve">同意</button><button data-review-decision="returned" class="review-return">退回补充</button><button data-review-decision="rejected" class="review-reject">拒绝</button></div>
+        </section>
+        <section class="panel run-detail hidden" id="runDetail" aria-live="polite">
+          <div class="panel-head detail-heading"><div><div class="eyebrow">RUN OBSERVABILITY</div><h2 id="detailTitle">运行详情</h2><p id="detailSubtitle" class="detail-subtitle"></p></div><button id="closeDetail" class="refresh-button">关闭</button></div>
+          <div class="detail-metrics" id="detailMetrics"></div>
+          <div class="detail-grid">
+            <div><h3>阶段执行</h3><div class="table-scroll"><table><thead><tr><th>阶段</th><th>状态</th><th>尝试</th><th>耗时</th><th>失败分类</th></tr></thead><tbody id="stageRows"></tbody></table></div></div>
+            <div><h3>人工审核与产物</h3><div id="reviewArtifacts" class="detail-list"></div></div>
+          </div>
+          <div class="detail-timeline"><h3>事件时间线</h3><ol id="eventTimeline"></ol></div>
+        </section>
+        <section class="notice"><span class="notice-icon">i</span><div><strong>数据来源说明</strong><p>这里只展示客户端明确同步的事件投影。没有收到的 Token、人工等待或阶段数据会保留为空，不会推算成 0。云端页面不控制本地 shell、CodeAgent 或设备。</p></div></section>
+        <footer>DSH Agent Orchestration <span>Cloud API · Protocol v1</span></footer>
+      </main>
+    </div>
+    <div id="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>

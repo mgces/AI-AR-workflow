@@ -193,6 +193,146 @@ describe('DSH AR delivery workflow', () => {
     assert.equal(status.tasks[0].revision, 2);
   });
 
+  test('returns a consent-stage review to the same phase with idempotent feedback and a new revision', async () => {
+    const pending = await reachAwaitingConsentP1(controller);
+    const pythonCalls = {
+      advances: [...adapter.advances],
+      validations: [...adapter.validations],
+      consents: [...adapter.consents],
+    };
+    const args = {
+      run_id: pending.started.run_id,
+      task_id: pending.task.task_id,
+      phase: 'P1',
+      decision: 'returned',
+      actor: 'reviewer@example.test',
+      note: 'Clarify the failure recovery behavior in the design artifact.',
+      idempotency_key: 'review-return-p1',
+    };
+
+    const returned = await controller.reviewDelivery(args);
+    assert.deepEqual(returned, {
+      status: 'queued',
+      run_id: pending.started.run_id,
+      revision: 2,
+    });
+    assert.deepEqual(await controller.reviewDelivery(args), returned);
+
+    adapter.state = pythonState({
+      runId: pending.started.run_id, phase: 1, gate: true, consent: false,
+    });
+    const synced = await controller.syncDelivery({
+      run_id: pending.started.run_id,
+      idempotency_key: 'review-return-preserve-queue',
+    });
+    assert.equal(synced.status, 'awaiting_host');
+    assert.equal(synced.next.status, 'dispatch_needed');
+    assert.equal(synced.next.phase, 'P1');
+    const status = controller.runStatus({ run_id: pending.started.run_id });
+    assert.equal(status.status, 'awaiting_host');
+    assert.equal(status.revision, 2);
+    assert.deepEqual(status.tasks.map(({ task_id, phase, revision, status: taskStatus }) => ({
+      task_id, phase, revision, status: taskStatus,
+    })), [
+      { task_id: `${pending.started.run_id}:P0:1`, phase: 'P0', revision: 1, status: 'accepted' },
+      { task_id: pending.task.task_id, phase: 'P1', revision: 2, status: 'queued' },
+    ]);
+    assert.equal(store.db.prepare('SELECT status FROM attempts WHERE id = ?')
+      .get(pending.task.attempt_id).status, 'rejected');
+    assert.deepEqual(adapter.advances, pythonCalls.advances);
+    assert.deepEqual(adapter.validations, pythonCalls.validations);
+    assert.deepEqual(adapter.consents, pythonCalls.consents);
+
+    const retry = controller.claimTask({
+      run_id: pending.started.run_id,
+      role: 'design-architect',
+      host_binding_id: 'delivery-host',
+      expected_revision: 2,
+      idempotency_key: 'review-return-retry-claim',
+    });
+    const context = controller.taskContext({
+      attempt_id: retry.attempt_id,
+      lease_epoch: retry.lease_epoch,
+      task_credential: retry.task_credential,
+    });
+    assert.deepEqual(context.review_feedback, [{
+      decision: 'returned',
+      phase: 'P1',
+      actor: 'reviewer@example.test',
+      note: 'Clarify the failure recovery behavior in the design artifact.',
+      source_revision: 1,
+      target_revision: 2,
+    }]);
+    assert(context.constraints.some((line) => line.includes('Python')));
+
+    const reviewEvents = status.events.filter((event) => event.type === 'human.review_returned');
+    assert.equal(reviewEvents.length, 1);
+    assert.equal(reviewEvents[0].payload.note, args.note);
+    assert.equal(reviewEvents[0].payload.actor, args.actor);
+  });
+
+  test('rejects a consent-stage review terminally and idempotently without advancing Python', async () => {
+    const pending = await reachAwaitingConsentP1(controller);
+    const pythonCalls = {
+      advances: [...adapter.advances],
+      validations: [...adapter.validations],
+      consents: [...adapter.consents],
+    };
+    const args = {
+      run_id: pending.started.run_id,
+      task_id: pending.task.task_id,
+      phase: 1,
+      decision: 'rejected',
+      actor: 'reviewer@example.test',
+      note: 'The proposed change is outside the approved scope.',
+      idempotency_key: 'review-reject-p1',
+    };
+
+    const rejected = await controller.reviewDelivery(args);
+    assert.deepEqual(rejected, {
+      status: 'cancelled',
+      run_id: pending.started.run_id,
+      revision: 1,
+    });
+    assert.deepEqual(await controller.reviewDelivery(args), rejected);
+
+    const status = controller.runStatus({ run_id: pending.started.run_id });
+    assert.equal(status.status, 'cancelled');
+    assert.equal(status.tasks[1].status, 'cancelled');
+    assert.deepEqual(adapter.advances, pythonCalls.advances);
+    assert.deepEqual(adapter.validations, pythonCalls.validations);
+    assert.deepEqual(adapter.consents, pythonCalls.consents);
+    const reviewEvents = status.events.filter((event) => event.type === 'human.review_rejected');
+    assert.equal(reviewEvents.length, 1);
+    assert.equal(reviewEvents[0].payload.note, args.note);
+    assert.equal(reviewEvents[0].payload.actor, args.actor);
+    const synced = await controller.syncDelivery({
+      run_id: pending.started.run_id,
+      idempotency_key: 'review-rejected-terminal-sync',
+    });
+    assert.equal(synced.status, 'cancelled');
+    assert.equal(synced.next, null);
+    assert.equal(controller.runStatus({ run_id: pending.started.run_id }).tasks[1].status, 'cancelled');
+  });
+
+  test('review decisions require the exact phase of a task awaiting consent', async () => {
+    const started = await controller.startDelivery({
+      input_ref: 'D:/requirements/AR.md',
+      repo_root: 'D:/openharmony',
+      environment: 'openharmony',
+      idempotency_key: 'review-wrong-phase-start',
+    });
+    assert.throws(() => controller.reviewDelivery({
+      run_id: started.run_id,
+      task_id: started.next.task_id,
+      phase: 'P1',
+      decision: 'returned',
+      actor: 'reviewer@example.test',
+      note: 'This task has not reached review.',
+      idempotency_key: 'review-wrong-phase',
+    }), (error) => error.code === 'task_not_awaiting_consent');
+  });
+
   test('attaches at the authoritative Python phase and restores a consent hold', async () => {
     adapter.state = pythonState({
       runId: 'existing-delivery', phase: 6, gate: true, consent: false,
@@ -355,6 +495,63 @@ describe('DSH AR delivery workflow', () => {
     assert.equal(independentClaim.status, 'leased');
   });
 });
+
+async function reachAwaitingConsentP1(controller) {
+  const started = await controller.startDelivery({
+    input_ref: 'D:/requirements/AR.md',
+    repo_root: 'D:/openharmony',
+    environment: 'openharmony',
+    idempotency_key: 'review-p1-start',
+  });
+  const p0 = controller.claimTask({
+    run_id: started.run_id,
+    role: 'environment-analyst',
+    host_binding_id: 'delivery-host',
+    expected_revision: 1,
+    idempotency_key: 'review-p1-p0-claim',
+  });
+  controller.submitTask({
+    attempt_id: p0.attempt_id,
+    revision: p0.revision,
+    lease_epoch: p0.lease_epoch,
+    task_credential: p0.task_credential,
+    artifact_refs: ['evidence/phase0/env.json'],
+    summary: 'P0 evidence produced.',
+    idempotency_key: 'review-p1-p0-submit',
+  });
+  const p0Validated = await controller.validateDeliveryTask({
+    run_id: started.run_id,
+    task_id: p0.task_id,
+    expected_revision: 1,
+    idempotency_key: 'review-p1-p0-validate',
+  });
+  assert.equal(p0Validated.next.phase, 'P1');
+
+  const p1 = controller.claimTask({
+    run_id: started.run_id,
+    role: 'design-architect',
+    host_binding_id: 'delivery-host',
+    expected_revision: p0Validated.next.expected_revision,
+    idempotency_key: 'review-p1-p1-claim',
+  });
+  controller.submitTask({
+    attempt_id: p1.attempt_id,
+    revision: p1.revision,
+    lease_epoch: p1.lease_epoch,
+    task_credential: p1.task_credential,
+    artifact_refs: ['specs/pipeline/AR_design.md'],
+    summary: 'P1 design evidence produced.',
+    idempotency_key: 'review-p1-p1-submit',
+  });
+  const p1Validated = await controller.validateDeliveryTask({
+    run_id: started.run_id,
+    task_id: p1.task_id,
+    expected_revision: p1.revision,
+    idempotency_key: 'review-p1-p1-validate',
+  });
+  assert.equal(p1Validated.status, 'needs_input');
+  return { started, task: p1, validated: p1Validated };
+}
 
 class FakeDeliveryAdapter {
   constructor() {

@@ -1,5 +1,7 @@
 # 迁移到计算云部署手册
 
+> **本手册部署的是旧 DSH Web + Connector 服务，已不适用于新客户端架构。** 旧网页实现移至 `pending-delete/legacy-dsh-web/`。当前状态见[客户端与云端实施说明](../client-cloud-separated-implementation.md)。新架构已有包含 OIDC、HTTPS 和本地审核产物存储的[单实例部署手册](../dsh-client-cloud-deployment.md)，真实目标环境部署及高可用能力仍需验收或建设。
+
 版本：1.3 · 日期：2026-09-16
 适用范围：`AI-AR-workflow` 当前仓库、官方 DSH Web、AR Delivery 面板、CodeAgent 探测与选择。
 

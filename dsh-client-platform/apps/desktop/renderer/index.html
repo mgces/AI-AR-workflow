@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+    <title>DSH Agent Desktop</title>
+    <link rel="stylesheet" href="./styles.css">
+    <link rel="stylesheet" href="./cloud.css">
+    <link rel="stylesheet" href="./run-detail.css">
+    <link rel="stylesheet" href="./chat.css">
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="rail">
+        <div class="brand"><span class="brand-mark">D</span><span>DSH<br><small>AGENT DESKTOP</small></span></div>
+        <nav><button class="nav-item active">工作台</button><button class="nav-item" id="openEnvironment">运行环境</button><button class="nav-item" id="openHistory">运行记录</button></nav>
+        <div class="rail-footer"><span class="online-dot"></span><span id="cloudState">本机模式</span></div>
+      </aside>
+      <main>
+        <header class="topbar">
+          <div><div class="eyebrow">本地执行 · 云端可选同步</div><h1>工作台</h1></div>
+          <div class="workspace-pill"><span class="folder-icon">▰</span><span id="workspaceLabel">正在读取源码目录…</span><button id="changeWorkspace" class="quiet-button">更换</button></div>
+        </header>
+        <section id="startupFailure" class="startup-alert hidden" role="alert" aria-live="assertive">
+          <div><strong>本机服务没有启动</strong><p id="startupFailureMessage"></p><pre id="startupFailureDetails"></pre><p id="startupFailureRecovery"></p></div>
+          <div class="startup-alert-actions"><button id="retryStartup" class="secondary-button">重试本机服务</button><button id="configureAfterStartupFailure" class="primary-button">检查工作区设置</button></div>
+        </section>
+        <section class="hero">
+          <div><div class="eyebrow light">AR DELIVERY · P0–P8</div><h2>从一个问题开始，<br>完成完整研发验证。</h2><p>代码修改、构建、设备调试和门控都在这台电脑或你选择的代码环境执行。</p></div>
+          <div class="hero-orbit"><span class="orbit-core">AR</span><span class="orbit-chip chip-one">Agent</span><span class="orbit-chip chip-two">Build</span><span class="orbit-chip chip-three">Device</span></div>
+        </section>
+        <div class="columns">
+          <section class="card task-card">
+            <div class="section-heading"><div><div class="eyebrow">新建运行</div><h2>告诉我这次要做什么</h2></div><span class="step-tag">01 / 02</span></div>
+            <label for="arText">AR 描述</label>
+            <textarea id="arText" placeholder="例如：修复 hdc 设备断连后日志采集没有恢复的问题，并补充回归测试。"></textarea>
+            <div class="field-grid">
+              <div><label for="environment">工程类型</label><select id="environment"><option value="">自动识别并由我确认</option><option value="openharmony">OpenHarmony</option><option value="harmonyos-system">HarmonyOS · System</option><option value="harmonyos-chip">HarmonyOS · Chip</option></select></div>
+              <div><label for="agent">本机 CodeAgent</label><div class="inline-control"><select id="agent"><option value="">检测中…</option></select><button id="refreshAgents" class="icon-button" title="重新检测 Agent">↻</button></div></div>
+            </div>
+            <div id="preflight" class="preflight hidden"></div>
+            <div class="card-actions"><button id="checkEnvironment" class="secondary-button">检查环境</button><button id="startRun" class="primary-button">开始 AR workflow <span>→</span></button></div>
+            <div id="message" class="message" role="status"></div>
+          </section>
+          <section class="card environment-card" id="environmentCard">
+            <div class="section-heading"><div><div class="eyebrow">本机就绪度</div><h2>运行环境</h2></div><div class="inline-control"><button id="probeWorkspace" class="secondary-button">检测连接</button><button id="refreshStatus" class="icon-button" title="刷新环境">↻</button></div></div>
+            <div class="health-list" id="healthList"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
+            <div class="help-note"><span class="help-icon">i</span><span>Agent、源码、WSL / SSH 与设备状态由客户端检测。云端只接收你允许同步的运行数据。</span></div>
+            <div class="cloud-setup">
+              <div class="cloud-heading"><div><div class="eyebrow">CLOUD SYNC</div><strong>连接云端工作区</strong></div><button id="syncNow" class="quiet-button">立即同步</button></div>
+              <label for="cloudUrl">Cloud API 地址</label><input id="cloudUrl" value="http://127.0.0.1:8791" autocomplete="url" spellcheck="false">
+              <label for="pairingCode">网页生成的一次性配对码</label><div class="inline-control"><input id="pairingCode" inputmode="text" maxlength="12" placeholder="12 位配对码" autocomplete="one-time-code"><button id="pairCloud" class="secondary-button">配对</button></div>
+              <label class="cloud-privacy-choice" for="syncHumanInputContent"><input id="syncHumanInputContent" type="checkbox"><span><strong>同步人工输入正文到云端</strong><small>默认关闭。开启后，新同步的人工输入会上传正文，单条最多 16 KiB；已有记录不会补传。</small></span></label>
+              <div id="cloudMessage" class="cloud-message">配对后只同步签名事件和结构化运行信息。</div>
+            </div>
+          </section>
+        </div>
+        <section class="card runs-card" id="historyCard">
+          <div class="section-heading"><div><div class="eyebrow">本地运行历史</div><h2>最近任务</h2></div><button id="refreshRuns" class="quiet-button">刷新</button></div>
+          <div id="runList" class="run-list"><div class="empty-state">还没有运行记录。填写 AR 描述后，从 P0 环境检查开始。</div></div>
+        </section>
+        <section class="card run-detail-card" id="runDetailCard">
+          <div class="section-heading"><div><div class="eyebrow">运行与审核</div><h2>运行详情</h2></div><span id="detailStatus" class="status-chip">选择一个运行</span></div>
+          <div id="runDetail" class="empty-state">选择一条运行记录后，这里展示 P0–P8 阶段、门控事件、人工输入和审核产物。</div>
+        </section>
+        <section class="card chat-card" id="aiChatCard">
+          <div class="section-heading"><div><div class="eyebrow">LOCAL CODEAGENT · DSH SESSION</div><h2>AI 问题分析</h2></div><span id="chatRunLabel" class="muted">先选择一条运行记录</span></div>
+          <p class="help-note">问题和当前运行状态会交给所选的本机 CodeAgent 分析；对话在本机 DSH Session 中保存，不走 DSH 主模型。</p>
+          <div id="chatMessages" class="chat-messages"><div class="empty-state">选择一条运行记录后，可以把失败原因和阶段问题提交给本机 CodeAgent。</div></div>
+          <div class="chat-composer"><textarea id="chatInput" placeholder="描述你遇到的问题，或追问当前阶段的错误…" disabled></textarea><div class="chat-actions"><button id="clearChat" class="quiet-button" disabled>新对话</button><button id="sendChat" class="primary-button" disabled>发送给本机 CodeAgent →</button></div></div>
+          <div id="chatStatus" class="message" role="status"></div>
+        </section>
+        <footer>DSH Agent Desktop <span id="versionText">本地运行时</span><span class="footer-right">工作流状态由确定性门控确认</span></footer>
+      </main>
+    </div>
+    <dialog id="workspaceDialog" class="workspace-dialog">
+      <form method="dialog" id="workspaceForm">
+        <div class="section-heading"><div><div class="eyebrow">本地执行环境</div><h2>连接代码工作区</h2></div><button class="icon-button" value="cancel" aria-label="关闭">×</button></div>
+        <p class="muted">选择源码实际所在的位置。CodeAgent、构建、hdc 和阶段门控会在这个工作区执行。</p>
+        <label for="workspaceTransport">源码位置</label>
+        <select id="workspaceTransport"><option value="local">Windows 本机目录</option><option value="wsl">WSL 发行版</option><option value="ssh">SSH 主机</option></select>
+        <div id="wslTargetRow" class="workspace-field hidden"><label for="wslTarget">WSL 发行版</label><select id="wslTarget"></select></div>
+        <div id="sshTargetRow" class="workspace-field hidden"><label for="sshTarget">SSH Host 别名或 user@host</label><div class="inline-control"><select id="sshAlias"><option value="">输入或选择别名</option></select><input id="sshTarget" placeholder="例如 builder@10.0.0.8" autocomplete="off"></div></div>
+        <div class="workspace-field"><label for="workspaceCodeRoot">源码目录</label><div class="inline-control"><input id="workspaceCodeRoot" autocomplete="off" spellcheck="false" placeholder="本机：选择文件夹；WSL/SSH：/home/user/OpenHarmony"><button id="pickWorkspaceRoot" type="button" class="secondary-button">浏览</button></div></div>
+        <div id="workspaceSetupMessage" class="message" role="status"></div>
+        <div class="card-actions"><button id="refreshWorkspaceOptions" type="button" class="secondary-button">重新检测</button><button id="saveWorkspace" type="button" class="primary-button">测试并连接</button></div>
+      </form>
+    </dialog>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

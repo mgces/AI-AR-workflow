@@ -1,0 +1,63 @@
+{
+  "name": "@ai-ar-workflow/client-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local-first desktop client and cloud console for DSH AR workflows",
+  "author": "AI-AR-workflow maintainers",
+  "main": "apps/desktop/src/main.js",
+  "type": "module",
+  "engines": { "node": ">=22.19" },
+  "scripts": {
+    "test": "node --test packages/contracts/test/*.test.js apps/cloud-api/test/*.test.js apps/local-core/test/*.test.js apps/desktop/test/*.test.js apps/dsh-runtime/test/*.test.js test/*.test.js",
+    "test:all": "npm test && npm --prefix ../dsh-workflow test && npm --prefix ../platform test",
+    "cloud": "node apps/cloud-api/src/server.js",
+    "local-core": "node apps/local-core/src/server.js",
+    "desktop": "electron apps/desktop/src/main.js",
+    "stage:runtime": "node scripts/runtime-bundle.js",
+    "build:win": "npm run stage:runtime && electron-builder --win nsis && npm run verify:win",
+    "verify:win": "node scripts/verify-windows-package.js",
+    "pack:win:dir": "npm run stage:runtime && electron-builder --dir --win"
+  },
+  "build": {
+    "appId": "com.aiarworkflow.dshclient",
+    "productName": "DSH Agent Client",
+    "directories": { "output": "release" },
+    "files": [
+      "apps/**/*",
+      "packages/**/*",
+      "scripts/runtime-bundle.js",
+      "package.json",
+      "!**/test/**",
+      "!**/*.test.js"
+    ],
+    "asarUnpack": ["node_modules/**", "apps/dsh-runtime/**"],
+    "npmRebuild": false,
+    "extraResources": [
+      { "from": "runtime-bundle", "to": "runtime" },
+      { "from": "dsh-runtime-bundle", "to": "dsh-runtime" },
+      { "from": "node-runtime-bundle", "to": "node-runtime" }
+    ],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "artifactName": "DSH-Agent-Client-${version}-Setup.${ext}"
+    },
+  "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "DSH Agent Client"
+    }
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh": "0.1.5-rc.2",
+    "@deepseek-ai/dsh-sdk-client": "0.1.5-rc.2"
+  },
+  "devDependencies": {
+    "electron": "44.4.3",
+    "electron-builder": "26.15.3",
+    "node": "24.15.0"
+  }
+}

@@ -670,4 +670,43 @@ describe('WorkspaceConnector', () => {
     assert.match(command, /'dsh-ar-delivery' 'init' '--repo-root' '\/code'$/u);
     assert.doesNotMatch(command, /git-dir|device-serial/u);
   });
+
+  test('does not override the OpenSSH config port for a configured Host alias', async () => {
+    const calls = [];
+    const connector = new WorkspaceConnector({
+      host: 'wsl-dev',
+      port: null,
+      remoteRoot: '/code',
+      authorityContext: context,
+      commandRunner: fakeRunner(calls),
+    });
+    await connector.execute(envelope({ operation_kind: 'workspace.read', path: 'src/file.cpp' }, {
+      operation_id: 'operation-ssh-config-port', nonce: 'nonce-ssh-config-port',
+    }));
+    const args = calls.at(-1).args;
+    assert.equal(args.includes('-p'), false);
+    assert.equal(args.at(-2), 'wsl-dev');
+  });
+
+  test('binds fixed profile run_id variables to the authority envelope', async () => {
+    const calls = [];
+    const connector = new WorkspaceConnector({
+      host: 'code.example.test', remoteRoot: '/code',
+      authorityContext: { tenant_id: context.tenant_id, workspace_id: context.workspace_id },
+      commandRunner: fakeRunner(calls),
+      profiles: {
+        current_gate: {
+          command: 'python3', args: ['/code/gate.py', '--run-id', '{{run_id}}'],
+          authority_variables: ['run_id'],
+        },
+      },
+    });
+    await connector.execute(envelope({
+      operation_kind: 'workspace.exec_profile', profile_id: 'current_gate',
+      variables: { run_id: 'spoofed-run' },
+    }, { cloud_run_id: 'authoritative-run', operation_id: 'operation-bound-profile', nonce: 'nonce-bound-profile' }));
+    const command = calls.at(-1).args.at(-1);
+    assert.match(command, /'--run-id' 'authoritative-run'$/u);
+    assert.doesNotMatch(command, /spoofed-run/u);
+  });
 });

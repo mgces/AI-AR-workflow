@@ -62,11 +62,15 @@ export class DeliveryWorkflow {
   taskContext(row) {
     const config = parseJson(row.config_json ?? '{}', 'runs.config_json');
     const publication = config.publication ?? null;
+    const reviewFeedback = config.review_feedback_by_phase?.[row.phase] ?? [];
     return { constraints: [
       ...(row.pipeline_dir ? deliveryTaskInstructions(row.phase, row.pipeline_dir, publication) : []),
+      ...(reviewFeedback.length > 0
+        ? ['Address the reviewer feedback below, but do not treat it as gate evidence or a PASS decision. The Python delivery gate remains authoritative.']
+        : []),
       'Before submit or release, stop and reap every subprocess you started. An expired lease does not prove that a build stopped.',
       'If your lease expires, stop work and release with the original credential; include all partial artifacts. Never start a second writer to recover an unknown process.',
-    ] };
+    ], ...(reviewFeedback.length > 0 ? { data: { review_feedback: reviewFeedback } } : {}) };
   }
 
   insertTask(args) {
@@ -218,6 +222,14 @@ export class DeliveryWorkflow {
     const run = this.store.db.prepare('SELECT * FROM runs WHERE id = ?').get(runId);
     invariant(run && run.workflow === 'delivery', 'run_not_found',
       `Delivery run ${runId} does not exist.`);
+    if (['completed', 'cancelled', 'closed'].includes(run.status)) {
+      const result = { status: run.status, run_id: runId, next: null, reason: 'run is terminal' };
+      return this.store.transaction(() => {
+        this.store.saveOperation(principal, 'sync_delivery', idempotencyKey,
+          payloadDigest, result, this.#now());
+        return result;
+      });
+    }
     invariant(run.pipeline_dir, 'delivery_pipeline_missing',
       `Delivery run ${runId} is not bound to a Python pipeline.`);
     const uncertain = this.store.db.prepare(`SELECT t.id FROM tasks t JOIN attempts a ON a.task_id=t.id
@@ -230,6 +242,14 @@ export class DeliveryWorkflow {
 
     return this.store.transaction(() => {
       const currentRun = this.store.db.prepare('SELECT * FROM runs WHERE id = ?').get(runId);
+      if (['completed', 'cancelled', 'closed'].includes(currentRun.status)) {
+        const result = {
+          status: currentRun.status, run_id: runId, next: null, reason: 'run is terminal',
+        };
+        this.store.saveOperation(principal, 'sync_delivery', idempotencyKey,
+          payloadDigest, result, this.#now());
+        return result;
+      }
       const tasks = this.store.db.prepare(`
         SELECT * FROM tasks WHERE run_id = ? ORDER BY created_at, id
       `).all(runId);
@@ -258,7 +278,7 @@ export class DeliveryWorkflow {
       }
 
       const desired = aligned.position.stage;
-      const desiredStatus = aligned.position.status;
+      let desiredStatus = aligned.position.status;
       let revision = currentRun.revision;
       let desiredTask = tasks.find((task) => task.phase === desired.key
         && !['accepted', 'cancelled'].includes(task.status));
@@ -295,6 +315,19 @@ export class DeliveryWorkflow {
         }
         desiredTask = tasks.find((task) => task.phase === desired.key
           && !['accepted', 'cancelled'].includes(task.status));
+      }
+
+      // A returned review deliberately requeues this same Python phase while
+      // its consent record remains absent. Preserve that queue on reconciliation
+      // until a new worker has claimed the revised task; Python still validates
+      // every resubmission before consent can be requested again.
+      const reviewFeedback = parseJson(currentRun.config_json ?? '{}', 'runs.config_json')
+        .review_feedback_by_phase?.[desired.key] ?? [];
+      const pendingReturnedReview = desiredTask?.status === 'queued'
+        && reviewFeedback.some((entry) => entry.decision === 'returned'
+          && entry.target_revision === desiredTask.revision);
+      if (desiredStatus === 'awaiting_consent' && pendingReturnedReview) {
+        desiredStatus = 'queued';
       }
 
       if (!desiredTask) {
@@ -531,6 +564,108 @@ export class DeliveryWorkflow {
     });
   }
 
+  /** Resolve human review without treating the decision as Python gate evidence. */
+  reviewDecision(raw, principal = 'parent') {
+    const args = expectObject(raw);
+    const runId = expectId(args.run_id, 'run_id');
+    const taskId = expectId(args.task_id, 'task_id');
+    const phase = normalizeReviewPhase(args.phase);
+    const decision = expectString(args.decision, 'decision', { max: 16 });
+    invariant(['returned', 'rejected'].includes(decision), 'invalid_review_decision',
+      'decision must be returned or rejected.');
+    const actor = args.actor === undefined
+      ? principal : expectString(args.actor, 'actor', { max: 256 });
+    const note = expectString(args.note, 'note', { max: 4096 });
+    invariant(note.trim().length > 0, 'invalid_input', 'note must not be blank.');
+    const idempotencyKey = expectId(args.idempotency_key, 'idempotency_key');
+    const payload = { runId, taskId, phase, decision, actor, note };
+    const payloadDigest = digest(payload);
+    const previous = this.store.getOperation(principal, 'delivery_review_decision',
+      idempotencyKey, payloadDigest);
+    if (previous) return previous;
+
+    return this.store.transaction(() => {
+      const replay = this.store.getOperation(principal, 'delivery_review_decision',
+        idempotencyKey, payloadDigest);
+      if (replay) return replay;
+      const run = this.store.db.prepare('SELECT * FROM runs WHERE id = ? AND workflow = ?')
+        .get(runId, 'delivery');
+      invariant(run, 'run_not_found', `Delivery run ${runId} does not exist.`);
+      const task = this.store.db.prepare('SELECT * FROM tasks WHERE id = ? AND run_id = ?')
+        .get(taskId, runId);
+      invariant(task, 'task_not_found', `Task ${taskId} does not exist in ${runId}.`);
+      invariant(task.status === 'awaiting_consent' && run.status === 'awaiting_consent',
+        'task_not_awaiting_consent',
+        `Task ${taskId} and run ${runId} must be awaiting consent before review resolution.`);
+      const stage = deliveryStage(task.phase);
+      invariant(stage.consent && phase === stage.key, 'invalid_review_phase',
+        `Task ${taskId} is not a consent review for ${phase}.`);
+
+      const now = this.#now();
+      let result;
+      if (decision === 'returned') {
+        const revision = Math.max(run.revision, task.revision) + 1;
+        const config = parseJson(run.config_json ?? '{}', 'runs.config_json');
+        const priorFeedback = config.review_feedback_by_phase?.[stage.key] ?? [];
+        const feedback = {
+          decision,
+          phase: stage.key,
+          actor,
+          note,
+          source_revision: task.revision,
+          target_revision: revision,
+        };
+        config.review_feedback_by_phase = {
+          ...(config.review_feedback_by_phase ?? {}),
+          [stage.key]: [...priorFeedback, feedback],
+        };
+        this.store.db.prepare(`UPDATE runs SET status = 'awaiting_host', revision = ?,
+          config_json = ?, updated_at = ? WHERE id = ?`)
+          .run(revision, JSON.stringify(config), now, runId);
+        this.store.db.prepare(`UPDATE tasks SET status = 'queued', revision = ?,
+          lease_until = NULL, cancel_requested = 0, updated_at = ? WHERE id = ?`)
+          .run(revision, now, taskId);
+        this.store.db.prepare(`UPDATE attempts SET status = 'rejected', updated_at = ?
+          WHERE task_id = ? AND status IN ('produced', 'validated')`)
+          .run(now, taskId);
+        this.store.event(runId, 'human.review_returned', {
+          action_id: reviewActionId(runId, taskId, stage.key, idempotencyKey),
+          decision,
+          task_id: taskId,
+          phase: stage.key,
+          source_revision: task.revision,
+          revision,
+          actor,
+          note,
+        }, now);
+        result = { status: 'queued', run_id: runId, revision };
+      } else {
+        this.store.db.prepare(`UPDATE tasks SET status = 'cancelled', cancel_requested = 1,
+          lease_until = NULL, updated_at = ? WHERE run_id = ? AND status NOT IN ('accepted', 'cancelled')`)
+          .run(now, runId);
+        this.store.db.prepare(`UPDATE attempts SET status = 'cancelled', updated_at = ?
+          WHERE task_id IN (SELECT id FROM tasks WHERE run_id = ?)
+            AND status NOT IN ('accepted', 'rejected', 'released', 'superseded')`)
+          .run(now, runId);
+        this.store.db.prepare(`UPDATE runs SET status = 'cancelled', updated_at = ? WHERE id = ?`)
+          .run(now, runId);
+        this.store.event(runId, 'human.review_rejected', {
+          action_id: reviewActionId(runId, taskId, stage.key, idempotencyKey),
+          decision,
+          task_id: taskId,
+          phase: stage.key,
+          revision: task.revision,
+          actor,
+          note,
+        }, now);
+        result = { status: 'cancelled', run_id: runId, revision: run.revision };
+      }
+      this.store.saveOperation(principal, 'delivery_review_decision', idempotencyKey,
+        payloadDigest, result, now);
+      return result;
+    });
+  }
+
   /**
    * Request a safe cancellation. Active attempts are first marked
    * cancel_requested so their owner can stop and release the lease; a run is
@@ -736,4 +871,20 @@ function deliveryStageByIndex(index) {
   }
   if (index < 8) return deliveryStage(`P${index}`);
   return deliveryStage(index === 8 ? 'P8-precheck' : 'P8-publish');
+}
+
+function normalizeReviewPhase(value) {
+  if (Number.isSafeInteger(value) && value >= 0 && value <= 8) {
+    return value === 8 ? 'P8-precheck' : `P${value}`;
+  }
+  const phase = expectString(value, 'phase', { max: 64 });
+  if (/^\d$/.test(phase)) {
+    const numeric = Number(phase);
+    return numeric === 8 ? 'P8-precheck' : `P${numeric}`;
+  }
+  return phase === 'P8' ? 'P8-precheck' : phase;
+}
+
+function reviewActionId(runId, taskId, phase, idempotencyKey) {
+  return `review-${digest({ runId, taskId, phase, idempotencyKey }).slice(7, 39)}`;
 }

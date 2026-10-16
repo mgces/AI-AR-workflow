@@ -1,0 +1,3 @@
+- insert:
+    - id: dsh-local-codeagent-provider
+      name: '@ai-ar/dsh-local-codeagent-provider'

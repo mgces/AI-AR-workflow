@@ -37,6 +37,7 @@ const fakeArRuntime = {
   async validate() { return { status: 'needs_input', consent_phase: 1 }; },
   async consent() { return { status: 'dispatch_needed', next: { phase: 'P2' } }; },
   async sync() { return { status: 'awaiting_host' }; },
+  listTelemetryProbes() { return [{ seq: 1, id: 'probe-1', kind: 'environment', checked_at: '2026-09-22T00:00:00.000Z', capability_id: 'hdc', status: 'blocked', reason_code: 'executable_not_found' }]; },
   close() {},
 };
 
@@ -67,6 +68,12 @@ after(async () => {
 });
 
 describe('local console HTTP surface', () => {
+  test('exposes bounded local probe telemetry for cloud sync', async () => {
+    const result = await request('/api/observability/probes?workspace_id=wsl-local&limit=5');
+    assert.equal(result.response.status, 200);
+    assert.equal(result.json().probes[0].reason_code, 'executable_not_found');
+  });
+
   test('serves health and current topology status', async () => {
     const health = await request('/healthz');
     assert.equal(health.response.status, 200);
@@ -131,7 +138,7 @@ describe('local console HTTP surface', () => {
     const page = await request('/');
     assert.equal(page.response.status, 410);
     assert.equal(page.json().error.code, 'legacy_local_console_ui_removed');
-    assert.match(page.json().error.message, /official DSH Web/u);
+    assert.match(page.json().error.message, /dsh-client-platform/u);
     assert.doesNotMatch(page.body, /<html/iu);
     const missing = await request('/missing');
     assert.equal(missing.response.status, 404);
@@ -378,6 +385,7 @@ describe('local console HTTP surface', () => {
       },
       job(runId) { return { run_id: runId, status: 'running' }; },
       async consent(input) { schedulerCalls.push(['consent', input]); return { status: 'queued' }; },
+      async reviewDecision(input) { schedulerCalls.push(['review', input]); return { status: 'queued' }; },
       async cancel(runId, reason) { schedulerCalls.push(['cancel', runId, reason]); return { run_id: runId, status: 'cancelled' }; },
       listJobs() { return [{ run_id: 'scheduled-local', status: 'running' }]; },
     };
@@ -414,12 +422,23 @@ describe('local console HTTP surface', () => {
         content: '继续', actor: 'reviewer',
       }]);
 
+      const review = await fetch(`${schedulerUrl}/api/ar/runs/scheduled-local/review`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ task_id: 'task-1', phase: 'P1', decision: 'returned',
+          actor: 'reviewer', note: '补充接口说明', idempotency_key: 'review-intent-1' }),
+      });
+      assert.equal(review.status, 200);
+      assert.deepEqual(schedulerCalls[2], ['review', {
+        runId: 'scheduled-local', taskId: 'task-1', phase: 'P1', decision: 'returned',
+        actor: 'reviewer', note: '补充接口说明', idempotencyKey: 'review-intent-1',
+      }]);
+
       const cancel = await fetch(`${schedulerUrl}/api/ar/runs/scheduled-local/actions`, {
         method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ action: 'cancel', reason: 'operator stop' }),
       });
       assert.equal(cancel.status, 200);
-      assert.deepEqual(schedulerCalls[2], ['cancel', 'scheduled-local', 'operator stop']);
+      assert.deepEqual(schedulerCalls[3], ['cancel', 'scheduled-local', 'operator stop']);
     } finally {
       await new Promise((resolve, reject) => schedulerServer.close((error) => (error ? reject(error) : resolve())));
     }

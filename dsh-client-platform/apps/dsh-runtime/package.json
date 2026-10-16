@@ -1,0 +1,21 @@
+{
+  "name": "@ai-ar/dsh-local-codeagent-provider",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "DSH Cordis provider bridge to the desktop's selected local CodeAgent",
+  "main": "./src/codeagent-provider.js",
+  "exports": {
+    ".": "./src/codeagent-provider.js"
+  },
+  "files": [
+    "cordis.patch.yml",
+    "src/codeagent-provider.js",
+    "README.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

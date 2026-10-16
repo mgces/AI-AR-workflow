@@ -28,7 +28,7 @@ export class CodeAgentExecutionError extends Error {
   }
 }
 
-function promptFor(context) {
+export function buildCodeAgentPrompt(context) {
   if (context?.analysis_mode === true && typeof context.prompt_override === 'string'
       && context.prompt_override.trim() !== '') return context.prompt_override.trim();
   const constraints = Array.isArray(context.constraints) ? context.constraints : [];
@@ -497,7 +497,7 @@ export class LocalCodeAgentExecutor {
     const pipelineDirForRun = normalizedPipelineDir;
     const phase = safeSegment(context?.phase, 'phase');
     const attemptId = safeSegment(context?.attempt_id, 'attempt_id', String(Date.now()));
-    const prompt = promptFor(context ?? {});
+    const prompt = buildCodeAgentPrompt(context ?? {});
     const promptDir = join(pipelineDirForRun, '.dsh', 'scheduler-prompts');
     const promptFile = join(promptDir, `${attemptId}.md`);
     await mkdir(promptDir, { recursive: true });
@@ -511,7 +511,7 @@ export class LocalCodeAgentExecutor {
       attemptId,
       model: String(definition?.model ?? context.model ?? ''),
       promptFile,
-      prompt,
+    prompt,
       remoteWorkspaceRoot: context.remote_workspace_root ?? workspaceRootForRun,
       remotePipelineDir: context.remote_pipeline_dir ?? pipelineDirForRun,
       mcpConfigFile: context.remote_tools?.mcp_config_file ?? context.mcp_config_file ?? null,

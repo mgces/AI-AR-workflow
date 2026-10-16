@@ -1,0 +1,45 @@
+{$DSH_CLOUD_DOMAIN} {
+	encode zstd gzip
+
+	@oauth path /oauth2/*
+	handle @oauth {
+		reverse_proxy oauth2-proxy:4180 {
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-Uri {uri}
+		}
+	}
+
+	# These routes authenticate their own requests with one-time or device-scoped
+	# credentials. They must be reachable by the desktop client without a browser cookie.
+	@device_api {
+		method GET POST PUT
+		path_regexp device_api ^/(healthz|v1/devices/pair|v1/devices/[^/]+/(heartbeat|events:batch|sync-state|intents)|v1/artifacts/manifests|v1/artifacts/[^/]+/uploads(/[^/]+)?|v1/runs/[^/]+/review-bundles|v1/intents/(signing-key|[^/]+/result))$
+	}
+	handle @device_api {
+		reverse_proxy cloud-api:8791 {
+			header_up X-DSH-Proxy-Auth {$DSH_CLOUD_PROXY_AUTH_SECRET}
+			header_up X-DSH-Client-IP {remote_host}
+			header_up -X-DSH-User-ID
+		}
+	}
+
+	# All Console pages and user-scoped APIs require the OIDC browser session.
+	handle {
+		route {
+			request_header -X-DSH-User-ID
+			forward_auth oauth2-proxy:4180 {
+				uri /oauth2/auth
+				header_up X-Real-IP {remote_host}
+				copy_headers X-Auth-Request-Email>X-DSH-User-ID
+				@unauthenticated status 401
+				handle_response @unauthenticated {
+					redir * /oauth2/sign_in?rd={scheme}://{host}{uri}
+				}
+			}
+			reverse_proxy cloud-api:8791 {
+				header_up X-DSH-Proxy-Auth {$DSH_CLOUD_PROXY_AUTH_SECRET}
+				header_up X-DSH-Client-IP {remote_host}
+			}
+		}
+	}
+}

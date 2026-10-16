@@ -1,0 +1,12 @@
+.git
+node_modules
+**/node_modules
+release
+runtime-bundle
+dsh-runtime-bundle
+node-runtime-bundle
+data
+.env
+**/.env
+**/test
+**/tests

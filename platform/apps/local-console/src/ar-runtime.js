@@ -76,6 +76,23 @@ function ensureDeviceProbeTable(db) {
   if (!columns.has('local_targets_json')) db.exec("ALTER TABLE dsh_device_probe_events ADD COLUMN local_targets_json TEXT NOT NULL DEFAULT '[]'");
 }
 
+function ensureTelemetryProbeTable(db) {
+  db.exec(`CREATE TABLE IF NOT EXISTS dsh_telemetry_probe_events (
+    seq INTEGER PRIMARY KEY AUTOINCREMENT,
+    id TEXT NOT NULL UNIQUE,
+    workspace_id TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK(kind IN ('environment', 'device')),
+    checked_at TEXT NOT NULL,
+    capability_id TEXT NOT NULL,
+    status TEXT NOT NULL,
+    reason_code TEXT,
+    duration_ms INTEGER,
+    device_alias TEXT,
+    product_family TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_dsh_telemetry_probes_workspace ON dsh_telemetry_probe_events(workspace_id, seq);`);
+}
+
 function deviceProbeRow(row) {
   return {
     id: row.id,
@@ -388,6 +405,51 @@ export class ArRuntimeService {
     return result;
   }
 
+  recordTelemetryProbe({ workspaceId, kind, checkedAt = now(), capabilityId, status, reasonCode = null,
+    durationMs = null, deviceAlias = null, productFamily = null } = {}) {
+    const db = this.runtime.store?.db;
+    if (!db) throw Object.assign(new Error('runtime store is unavailable'), { code: 'runtime_tool_unavailable' });
+    if (typeof workspaceId !== 'string' || !workspaceId.trim() || !['environment', 'device'].includes(kind)
+        || typeof capabilityId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$/u.test(capabilityId)
+        || typeof status !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$/u.test(status)
+        || !Number.isFinite(Date.parse(checkedAt))) {
+      throw Object.assign(new Error('telemetry probe fields are invalid'), { code: 'invalid_input' });
+    }
+    ensureTelemetryProbeTable(db);
+    const idValue = `${kind}-probe-${randomUUID()}`;
+    const code = typeof reasonCode === 'string' && /^[a-z][a-z0-9_]{0,63}$/u.test(reasonCode) ? reasonCode : null;
+    const duration = Number.isSafeInteger(durationMs) && durationMs >= 0 ? Math.min(durationMs, 30_000) : null;
+    const alias = typeof deviceAlias === 'string' && deviceAlias.length <= 256 && !/[\0\r\n]/u.test(deviceAlias) ? deviceAlias : null;
+    const family = ['openharmony', 'harmonyos', 'unknown', 'other'].includes(productFamily) ? productFamily : null;
+    db.prepare(`INSERT INTO dsh_telemetry_probe_events
+      (id, workspace_id, kind, checked_at, capability_id, status, reason_code, duration_ms, device_alias, product_family)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(idValue, workspaceId, kind, new Date(checkedAt).toISOString(), capabilityId, status, code, duration, alias, family);
+    db.prepare(`DELETE FROM dsh_telemetry_probe_events WHERE workspace_id = ? AND seq NOT IN
+      (SELECT seq FROM dsh_telemetry_probe_events WHERE workspace_id = ? ORDER BY seq DESC LIMIT 1000)`)
+      .run(workspaceId, workspaceId);
+    return db.prepare('SELECT * FROM dsh_telemetry_probe_events WHERE id = ?').get(idValue);
+  }
+
+  listTelemetryProbes({ workspaceId, afterEnvironmentSeq = 0, afterDeviceSeq = 0, limit = 1000 } = {}) {
+    const db = this.runtime.store?.db;
+    if (!db) throw Object.assign(new Error('runtime store is unavailable'), { code: 'runtime_tool_unavailable' });
+    if (typeof workspaceId !== 'string' || !workspaceId.trim() || !Number.isSafeInteger(limit) || limit < 1 || limit > 1000) {
+      throw Object.assign(new Error('telemetry probe query is invalid'), { code: 'invalid_input' });
+    }
+    ensureTelemetryProbeTable(db);
+    const rows = db.prepare(`SELECT * FROM dsh_telemetry_probe_events WHERE workspace_id = ? AND
+      ((kind = 'environment' AND seq > ?) OR (kind = 'device' AND seq > ?)) ORDER BY seq LIMIT ?`)
+      .all(workspaceId, afterEnvironmentSeq, afterDeviceSeq, limit);
+    return rows.map((row) => ({ seq: row.seq, id: row.id, workspace_id: row.workspace_id, kind: row.kind,
+      checked_at: row.checked_at, capability_id: row.capability_id, status: row.status,
+      ...(row.reason_code ? { reason_code: row.reason_code } : {}),
+      ...(row.duration_ms === null ? {} : { duration_ms: row.duration_ms }),
+      ...(row.device_alias ? { device_alias: row.device_alias } : {}),
+      ...(row.product_family ? { product_family: row.product_family } : {}),
+    }));
+  }
+
   recordDeviceProbe({ workspaceId, deviceId = null, probe = null } = {}) {
     const db = this.runtime.store?.db;
     if (!db) throw Object.assign(new Error('runtime store is unavailable'), { code: 'runtime_tool_unavailable' });
@@ -614,6 +676,27 @@ export class ArRuntimeService {
       token,
       actor,
       idempotency_key: consentIdempotencyKey,
+    });
+  }
+
+  async reviewDecision({ runId, taskId, phase, decision, actor = 'web-user', note = '', idempotencyKey } = {}) {
+    if (typeof runId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u.test(runId)
+        || typeof taskId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u.test(taskId)
+        || typeof phase !== 'string' || !/^P[0-8]$/u.test(phase)
+        || !['returned', 'rejected'].includes(decision)
+        || typeof actor !== 'string' || actor.trim() === '' || actor.length > 256
+        || typeof note !== 'string' || Buffer.byteLength(note, 'utf8') > MAX_HUMAN_INPUT_BYTES
+        || typeof idempotencyKey !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u.test(idempotencyKey)) {
+      throw Object.assign(new Error('cloud review decision is invalid'), { code: 'review_decision_invalid' });
+    }
+    return this.#call('ohos_delivery_review_decision', {
+      run_id: runId,
+      task_id: taskId,
+      phase,
+      decision,
+      actor,
+      note,
+      idempotency_key: idempotencyKey,
     });
   }
 

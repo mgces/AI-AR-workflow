@@ -101,12 +101,17 @@ export function normalizeProfiles(profiles) {
     if (resourceLock && /[/:\\\s]/u.test(resourceLock)) {
       fail('profile_invalid', `profile ${id} resource_lock must be a logical lock name`, { id });
     }
+    const authorityVariables = raw.authority_variables ?? [];
+    if (!Array.isArray(authorityVariables) || authorityVariables.some((name) => name !== 'run_id')) {
+      fail('profile_invalid', `profile ${id} authority_variables are invalid`, { id });
+    }
     result.set(id, {
       command,
       args: [...args],
       env: { ...env },
       capabilities: Array.isArray(raw.capabilities) ? [...raw.capabilities] : [],
       resource_lock: resourceLock,
+      authority_variables: [...new Set(authorityVariables)],
     });
   }
   return result;
@@ -266,14 +271,14 @@ export class WorkspaceConnector {
         || wslDistribution.startsWith('-') || /[\0\r\n]/u.test(wslDistribution))) {
       fail('wsl_distribution_invalid', 'a valid WSL distribution is required');
     }
-    if (transport === 'ssh' && (!Number.isInteger(port) || port < 1 || port > 65535)) {
+    if (transport === 'ssh' && port !== null && (!Number.isInteger(port) || port < 1 || port > 65535)) {
       fail('port_invalid', 'SSH port must be between 1 and 65535');
     }
     if (typeof remoteRoot !== 'string' || !isAbsolute(remoteRoot)) fail('remote_root_invalid', 'remoteRoot must be an absolute POSIX path');
     this.transport = transport;
     this.host = transport === 'ssh' ? host.trim() : null;
     this.username = username === null ? null : boundedText(username, 'username', 256);
-    this.port = transport === 'ssh' ? port : 22;
+    this.port = transport === 'ssh' ? port : null;
     this.remoteRoot = posix.normalize(remoteRoot);
     this.sshCommand = boundedText(sshCommand, 'sshCommand', 512);
     this.wslDistribution = transport === 'wsl' ? wslDistribution.trim() : null;
@@ -440,7 +445,7 @@ export class WorkspaceConnector {
     if (kind === 'workspace.probe') return this.#probe(payload, signal, operationId);
     if (kind === 'workspace.search') return this.#search(payload, signal, operationId);
     if (kind === 'workspace.git_context') return this.#gitContext(payload, signal, operationId);
-    return this.#profile(payload, signal, operationId);
+    return this.#profile(payload, signal, operationId, envelope);
   }
 
   #target() {
@@ -486,7 +491,8 @@ export class WorkspaceConnector {
     const args = ['-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes'];
     if (this.identityFile) args.push('-i', boundedText(this.identityFile, 'identityFile', 4096));
     if (this.knownHostsFile) args.push('-o', `UserKnownHostsFile=${boundedText(this.knownHostsFile, 'knownHostsFile', 4096)}`);
-    args.push('-p', String(this.port), '--', this.#target(), remoteCommand);
+    if (this.port !== null) args.push('-p', String(this.port));
+    args.push('--', this.#target(), remoteCommand);
     return args;
   }
 
@@ -763,12 +769,18 @@ export class WorkspaceConnector {
     return { operation: 'diff', relative_path: path?.relativePath ?? '', diff: result.stdout, sha256: digest(result.stdout) };
   }
 
-  async #profile(payload, signal, operationId) {
+  async #profile(payload, signal, operationId, authorityEnvelope = {}) {
     const id = boundedText(payload.profile_id, 'profile_id', 64);
     const profile = this.profiles.get(id);
     if (!profile) fail('profile_not_allowed', `profile ${id} is not registered`, { profile_id: id });
     const variables = payload.variables ?? {};
     if (!variables || typeof variables !== 'object' || Array.isArray(variables)) fail('variables_invalid', 'profile variables must be an object');
+    const boundVariables = structuredClone(variables);
+    if (profile.authority_variables.includes('run_id')) {
+      const runId = boundedText(authorityEnvelope.cloud_run_id, 'cloud_run_id', 128);
+      if (!/^[A-Za-z0-9._-]+$/u.test(runId)) fail('profile_variable_invalid', 'authority run_id is invalid');
+      boundVariables.run_id = runId;
+    }
     const args = [];
     for (let index = 0; index < profile.args.length; index += 1) {
       const raw = profile.args[index];
@@ -776,34 +788,34 @@ export class WorkspaceConnector {
       // express it as the conventional `--model {{model}}` pair; remove both
       // argv items when the run intentionally uses the CLI default instead of
       // passing an empty model id that many CLIs reject.
-      const modelBlank = Object.hasOwn(variables, 'model')
-        && (variables.model === null || variables.model === undefined || String(variables.model) === '');
+      const modelBlank = Object.hasOwn(boundVariables, 'model')
+        && (boundVariables.model === null || boundVariables.model === undefined || String(boundVariables.model) === '');
       if (modelBlank && raw === '--model' && profile.args[index + 1]?.includes('{{model}}')) {
         index += 1;
         continue;
       }
       const optionalPair = /^--[A-Za-z0-9][A-Za-z0-9_.-]*$/u.test(raw)
         && /^\{\{([a-zA-Z0-9_.-]+)\}\}$/u.exec(profile.args[index + 1] ?? '');
-      if (optionalPair && (variables[optionalPair[1]] === null
-          || variables[optionalPair[1]] === undefined
-          || String(variables[optionalPair[1]]) === '')) {
+      if (optionalPair && (boundVariables[optionalPair[1]] === null
+          || boundVariables[optionalPair[1]] === undefined
+          || String(boundVariables[optionalPair[1]]) === '')) {
         index += 1;
         continue;
       }
       if (modelBlank && raw.includes('{{model}}') && raw.startsWith('--model=')) continue;
       const expanded = raw.replaceAll(/\{\{([a-zA-Z0-9_.-]+)\}\}/gu, (match, key) => {
-        if (!(key in variables)) fail('profile_variable_missing', `profile ${id} requires variable ${key}`, { profile_id: id, variable: key });
-        return String(variables[key]);
+        if (!(key in boundVariables)) fail('profile_variable_missing', `profile ${id} requires variable ${key}`, { profile_id: id, variable: key });
+        return String(boundVariables[key]);
       });
       if (modelBlank && raw === '{{model}}') continue;
       args.push(expanded);
     }
     const environment = Object.entries(profile.env).map(([key, raw]) => {
       const value = raw.replaceAll(/\{\{([a-zA-Z0-9_.-]+)\}\}/gu, (match, variable) => {
-        if (!Object.hasOwn(variables, variable)) {
+        if (!Object.hasOwn(boundVariables, variable)) {
           fail('profile_variable_missing', `profile ${id} requires variable ${variable}`, { profile_id: id, variable });
         }
-        const resolved = variables[variable] === null || variables[variable] === undefined ? '' : String(variables[variable]);
+        const resolved = boundVariables[variable] === null || boundVariables[variable] === undefined ? '' : String(boundVariables[variable]);
         if (resolved.length > 4096 || /[\0\r\n]/u.test(resolved)) {
           fail('profile_variable_invalid', `profile ${id} variable ${variable} is invalid`, { profile_id: id, variable });
         }

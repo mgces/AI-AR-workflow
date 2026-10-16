@@ -1,7 +1,8 @@
 import { createServer } from 'node:http';
+import { timingSafeEqual } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { readFile, realpath } from 'node:fs/promises';
-import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { dirname, isAbsolute, join, posix, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { detectEnvironment } from '../../../packages/contracts/src/environment-profile.js';
 import { validateArDeliveryManifest } from '../../../packages/workflow-registry/src/manifest.js';
@@ -16,6 +17,7 @@ import { ArDeliveryScheduler } from './scheduler.js';
 import { probeHostCapabilities } from './capabilities.js';
 import { probeLocalPrerequisites } from './preflight.js';
 import { cgroupOptionsFromEnv, ProcessSupervisor } from '../../../../workspace-gateway/src/supervisor/process-supervisor.js';
+import { createWorkspaceExecutionRuntime } from './workspace-execution.js';
 
 const MAX_BODY_BYTES = 512 * 1024;
 const MANIFEST_PATH = 'docs/reference/dsh-cloud-platform-v1/examples/ar-delivery.workflow.json';
@@ -26,12 +28,12 @@ function send(res, status, body, contentType = 'application/json; charset=utf-8'
   res.end(typeof body === 'string' ? body : JSON.stringify(body));
 }
 
-async function readJson(req) {
+async function readJson(req, maxBytes = MAX_BODY_BYTES) {
   let size = 0;
   const chunks = [];
   for await (const chunk of req) {
     size += chunk.length;
-    if (size > MAX_BODY_BYTES) throw Object.assign(new Error('request body too large'), { code: 'body_too_large' });
+    if (size > maxBytes) throw Object.assign(new Error('request body too large'), { code: 'body_too_large' });
     chunks.push(chunk);
   }
   if (chunks.length === 0) return {};
@@ -70,6 +72,53 @@ function errorBody(error) {
 function inside(root, candidate) {
   const remainder = relative(root, candidate);
   return remainder === '' || (remainder !== '..' && !remainder.startsWith(`..${sep}`) && !remainder.startsWith(sep));
+}
+
+function remoteWorkspacePath(root, value, label) {
+  if (typeof value !== 'string' || value.trim() === '' || value.includes('\\') || /[\0\r\n]/u.test(value)) {
+    throw Object.assign(new Error(`${label} must be a POSIX path`), { code: 'remote_workspace_invalid' });
+  }
+  const base = posix.normalize(root);
+  const candidate = posix.normalize(posix.isAbsolute(value) ? value : posix.join(base, value));
+  const remainder = posix.relative(base, candidate);
+  if (remainder === '..' || remainder.startsWith('../') || remainder.startsWith('/')) {
+    throw Object.assign(new Error(`${label} must stay inside the configured workspace`), {
+      code: 'remote_workspace_outside_root', details: { root: base, path: candidate },
+    });
+  }
+  return candidate;
+}
+
+function dshPrompt(system, messages) {
+  if (typeof system !== 'string' || system.length > 128 * 1024 || !Array.isArray(messages) || messages.length > 256) {
+    throw Object.assign(new Error('DSH CodeAgent prompt is invalid'), { code: 'dsh_codeagent_request_invalid' });
+  }
+  const lines = [];
+  if (system.trim()) lines.push(`System instructions:\n${system.trim()}`);
+  for (const message of messages) {
+    if (!message || !['system', 'user', 'assistant'].includes(message.role)
+        || typeof message.content !== 'string' || message.content.length > 512 * 1024) {
+      throw Object.assign(new Error('DSH CodeAgent message is invalid'), { code: 'dsh_codeagent_request_invalid' });
+    }
+    lines.push(`${message.role.toUpperCase()}:\n${message.content}`);
+  }
+  const result = lines.join('\n\n');
+  if (!result.trim() || Buffer.byteLength(result, 'utf8') > 512 * 1024) {
+    throw Object.assign(new Error('DSH CodeAgent prompt is empty or too large'), { code: 'dsh_codeagent_request_invalid' });
+  }
+  return result;
+}
+
+function dshAgentKey(providerId) {
+  return providerId === 'claude-code' ? 'claude_code' : providerId;
+}
+
+function callbackTokenMatches(req, token) {
+  const authorization = req.headers.authorization;
+  if (typeof token !== 'string' || token.length < 24 || typeof authorization !== 'string' || !authorization.startsWith('Bearer ')) return false;
+  const supplied = Buffer.from(authorization.slice(7));
+  const expected = Buffer.from(token);
+  return supplied.length === expected.length && timingSafeEqual(supplied, expected);
 }
 
 async function realPathWithMissingLeaf(candidate) {
@@ -115,7 +164,9 @@ async function workspacePath(root, value, label) {
 
 export function createLocalConsoleServer({
   repoRoot = DEFAULT_REPO_ROOT,
-  smokeReportPath = join(repoRoot, 'products/dsh-cloud-implementation/smoke-test-20260912.json'),
+  runtimeRoot = repoRoot,
+  workspaceRoot = runtimeRoot,
+  smokeReportPath = join(runtimeRoot, 'products/dsh-cloud-implementation/smoke-test-20260912.json'),
   stateFile = join(process.env.TMPDIR ?? '/tmp', 'dsh-local-console/state.json'),
   ragIndexFile = null,
   ragModelAdapter = null,
@@ -138,12 +189,21 @@ export function createLocalConsoleServer({
   networkPublish = false,
   hdcCommand = 'hdc',
   gitCommand = 'git',
+  workspaceExecutionFactory = createWorkspaceExecutionRuntime,
+  workspaceExecutionOptions = {},
+  codeAgentExecutor: injectedCodeAgentExecutor = null,
+  schedulerExecutor = null,
+  dshSessionRegistry = new Map(),
+  dshCallbackToken = null,
+  internalAuthToken = null,
 } = {}) {
-  const root = resolve(repoRoot);
-  const store = new LocalRunStore({ repoRoot: root, stateFile });
+  const root = resolve(runtimeRoot);
+  const sourceWorkspaceRoot = resolve(workspaceRoot);
+  const store = new LocalRunStore({ repoRoot: root, workspaceRoot: sourceWorkspaceRoot, stateFile });
   const settings = new LocalCodeAgentSettings({
     settingsFile: resolve(agentSettingsFile ?? join(dirname(resolve(stateFile)), 'codeagent-settings.json')),
   });
+  if (!(dshSessionRegistry instanceof Map)) throw new TypeError('dshSessionRegistry must be a Map');
   let agentsPromise = probeLocalAgents({ env: codeAgentEnv });
   const getAgents = (refresh = false) => {
     if (refresh) agentsPromise = probeLocalAgents({ env: codeAgentEnv });
@@ -163,14 +223,14 @@ export function createLocalConsoleServer({
     embeddingPath: ragModelEmbeddingPath,
     rerankPath: ragModelRerankPath,
   }) : null);
-  const rag = new LocalRagIndex({ root, ...(ragIndexFile ? { indexFile: resolve(ragIndexFile) } : {}), modelAdapter: ragAdapter });
-  const codeAgentExecutor = new LocalCodeAgentExecutor({
+  const rag = new LocalRagIndex({ root: sourceWorkspaceRoot, ...(ragIndexFile ? { indexFile: resolve(ragIndexFile) } : {}), modelAdapter: ragAdapter });
+  const codeAgentExecutor = injectedCodeAgentExecutor ?? new LocalCodeAgentExecutor({
     timeoutMs: codeAgentTimeoutMs,
     maxOutputBytes: codeAgentMaxOutputBytes,
     env: codeAgentEnv,
   });
   const capabilityProbe = probeHostCapabilities({
-    repoRoot: root,
+    repoRoot: sourceWorkspaceRoot,
     executor: codeAgentExecutor,
     env: codeAgentEnv,
     buildExecution,
@@ -241,12 +301,84 @@ export function createLocalConsoleServer({
         ...(typeof model === 'string' && model.trim() !== '' ? { model: model.trim() } : {}),
       };
     },
-    executor: codeAgentExecutor,
+    executor: schedulerExecutor ?? codeAgentExecutor,
   }) : null);
   const ownsScheduler = scheduler === undefined && runtimeService === null;
+  const localDeliveryAdapter = arRuntime.deliveryAdapter ?? arRuntime.runtime?.controller?.deliveryAdapter ?? null;
+  const configuredSchedulerExecutor = schedulerExecutor ?? null;
+  const localSchedulerExecutor = arScheduler?.executor ?? null;
+  const localSchedulerResolveAgent = arScheduler?.resolveAgent ?? null;
+  const workspaceExecutions = new Map();
+  const workspaceProbeResults = new Map();
+  function workspaceExecutionKey(workspace) {
+    return JSON.stringify({
+      transport: workspace.transport,
+      code_root: workspace.code_root,
+      connection: workspace.connection ?? null,
+    });
+  }
+  async function getWorkspaceExecution(workspace) {
+    if (!['wsl', 'ssh'].includes(workspace?.transport)) return null;
+    const key = workspaceExecutionKey(workspace);
+    const cached = workspaceExecutions.get(workspace.workspace_id);
+    if (cached?.key === key) return cached.execution;
+    const execution = await workspaceExecutionFactory({
+      workspace,
+      runtimeRoot: root,
+      stateDirectory: dirname(resolve(stateFile)),
+      localAgentExecutor: codeAgentExecutor,
+      agentCatalog: getAgentSettingsSnapshot,
+      settings,
+      codeAgentEnv,
+      processSupervisor,
+      runtimeDatabase: processJournalDb,
+      ...workspaceExecutionOptions,
+    });
+    if (!execution || typeof execution.probe !== 'function' || typeof execution.preflight !== 'function'
+        || !execution.deliveryAdapter || !execution.codeAgentExecutor) {
+      throw Object.assign(new Error('workspace execution adapter is incomplete'), { code: 'workspace_execution_adapter_invalid' });
+    }
+    workspaceExecutions.set(workspace.workspace_id, { key, execution });
+    arRuntime.deliveryAdapter = execution.deliveryAdapter;
+    if (arRuntime.runtime?.controller) arRuntime.runtime.controller.deliveryAdapter = execution.deliveryAdapter;
+    if (arScheduler && !configuredSchedulerExecutor) {
+      arScheduler.executor = execution.codeAgentExecutor;
+      arScheduler.resolveAgent = async (id, model) => {
+        const canonical = canonicalAgentId(id) ?? id;
+        await execution.probeAgent({ provider_id: canonical, model });
+        return {
+          id: canonical, name: canonical, kind: 'local-cli', adapter: 'local-connector',
+          available: true, dispatchable: true, status: 'available',
+          ...(typeof model === 'string' && model.trim() ? { model: model.trim() } : {}),
+        };
+      };
+    }
+    return execution;
+  }
+  function workspaceWithLiveStatus(workspace) {
+    const probe = workspaceProbeResults.get(workspace.workspace_id);
+    if (!probe) return workspace;
+    return {
+      ...workspace,
+      status: probe.status === 'available' ? 'available' : probe.status,
+      capabilities: probe.capabilities ?? workspace.capabilities,
+      last_probe: probe,
+    };
+  }
+  function resetWorkspaceExecution(workspaceId, transport) {
+    workspaceExecutions.delete(workspaceId);
+    workspaceProbeResults.delete(workspaceId);
+    if (transport !== 'local') return;
+    arRuntime.deliveryAdapter = localDeliveryAdapter;
+    if (arRuntime.runtime?.controller) arRuntime.runtime.controller.deliveryAdapter = localDeliveryAdapter;
+    if (arScheduler && !configuredSchedulerExecutor) {
+      arScheduler.executor = localSchedulerExecutor;
+      arScheduler.resolveAgent = localSchedulerResolveAgent;
+    }
+  }
   let debugSnapshot;
   async function getDebugSnapshot(refresh = false) {
-    if (!debugSnapshot || refresh) debugSnapshot = await probeDebugSurface(root);
+    if (!debugSnapshot || refresh) debugSnapshot = await probeDebugSurface(sourceWorkspaceRoot);
     return debugSnapshot;
   }
   async function resolvePreflightAgent(agentId, model) {
@@ -271,11 +403,54 @@ export function createLocalConsoleServer({
       ...(typeof model === 'string' && model.trim() !== '' ? { model: model.trim() } : {}),
     };
   }
+  function recordProbeSnapshot(workspaceId, result, input = {}, deviceProbe = null) {
+    if (typeof arRuntime.recordTelemetryProbe !== 'function') return;
+    const checkedAt = new Date().toISOString();
+    for (const check of Array.isArray(result?.checks) ? result.checks : []) {
+      const capability = typeof check?.id === 'string' ? check.id : null;
+      if (!capability || !/^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$/u.test(capability)) continue;
+      const status = check.status === 'pass' ? 'available'
+        : check.status === 'warn' ? 'warning'
+          : check.status === 'blocked' ? 'blocked' : 'unknown';
+      const reason = typeof check.reason === 'string'
+        ? check.reason.toLowerCase().replace(/[^a-z0-9_]+/gu, '_').replace(/^_+|_+$/gu, '').slice(0, 64) : null;
+      arRuntime.recordTelemetryProbe({ workspaceId, kind: 'environment', checkedAt,
+        capabilityId: capability, status, reasonCode: reason && /^[a-z]/u.test(reason) ? reason : null });
+    }
+    if (deviceProbe && typeof deviceProbe === 'object') {
+      const status = deviceProbe.status === 'available' ? 'available' : 'blocked';
+      const reason = typeof deviceProbe.reason === 'string'
+        ? deviceProbe.reason.toLowerCase().replace(/[^a-z0-9_]+/gu, '_').replace(/^_+|_+$/gu, '').slice(0, 64) : null;
+      arRuntime.recordTelemetryProbe({ workspaceId, kind: 'device', checkedAt: deviceProbe.checked_at ?? checkedAt,
+        capabilityId: 'hdc_device', status, reasonCode: reason && /^[a-z]/u.test(reason) ? reason : null,
+        durationMs: deviceProbe.duration_ms, deviceAlias: input.device_serial ?? deviceProbe.targets?.[0]?.id ?? null,
+        productFamily: input.product_family ?? 'unknown' });
+    }
+  }
+
   async function runLocalPreflight(input = {}) {
-    if (typeof preflight === 'function') return preflight(input);
     const workspaceId = input.workspace_id ?? 'wsl-local';
     const workspace = store.workspaces().find((item) => item.workspace_id === workspaceId);
     if (!workspace) throw Object.assign(new Error('workspace not found'), { code: 'workspace_not_found' });
+    if (workspace.transport !== 'local') {
+      const execution = await getWorkspaceExecution(workspace);
+      const result = await execution.preflight(input);
+      recordProbeSnapshot(workspace.workspace_id, result, input, result?.device_probe ?? null);
+      const probe = workspaceProbeResults.get(workspace.workspace_id);
+      workspaceProbeResults.set(workspace.workspace_id, {
+        ...(probe ?? {}), status: result?.can_start_p0 === true ? 'available' : result?.status ?? 'incomplete',
+        transport: workspace.transport, workspace_id: workspace.workspace_id,
+        workspace_root: workspace.code_root,
+        capabilities: result?.connector?.capabilities ?? probe?.capabilities,
+        last_preflight_at: new Date().toISOString(),
+      });
+      return result;
+    }
+    if (typeof preflight === 'function') {
+      const result = await preflight(input);
+      recordProbeSnapshot(workspaceId, result, input);
+      return result;
+    }
     const workspaceRoot = resolve(workspace.code_root);
     const sourceRoot = input.repo_root || input.source_root
       ? await workspacePath(workspaceRoot, input.repo_root || input.source_root, 'repo_root')
@@ -288,7 +463,7 @@ export function createLocalConsoleServer({
     const effectiveArPath = hasArPath
       ? input.ar_path
       : (!hasArText ? join(sourceRoot, MANIFEST_PATH) : null);
-    return probeLocalPrerequisites({
+    const result = await probeLocalPrerequisites({
       repoRoot: sourceRoot,
       deliveryScriptsRoot,
       deliveryBridgePath,
@@ -317,10 +492,111 @@ export function createLocalConsoleServer({
       arText: hasArText ? input.ar_text : null,
       env: codeAgentEnv,
     });
+    recordProbeSnapshot(workspaceId, result, input, debug?.device_probe ?? null);
+    return result;
   }
   const server = createServer(async (req, res) => {
     const url = new URL(req.url, 'http://127.0.0.1');
     try {
+      if (typeof internalAuthToken === 'string' && internalAuthToken.length >= 24) {
+        const authorization = req.headers['x-dsh-local-core-internal'];
+        const supplied = Buffer.from(typeof authorization === 'string' ? authorization : '');
+        const expected = Buffer.from(internalAuthToken);
+        if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) {
+          send(res, 401, { error: { code: 'local_core_backend_authentication_required', message: 'internal Local Core credential is required' } });
+          return;
+        }
+      }
+      const dshCallbackPath = url.pathname.match(/^\/internal\/dsh\/codeagent\/(probe|execute)$/u);
+      if (dshCallbackPath && req.method === 'POST') {
+        if (typeof dshCallbackToken !== 'string' || dshCallbackToken.length < 24) {
+          send(res, 404, { error: { code: 'dsh_callback_disabled', message: 'DSH callback route is disabled' } });
+          return;
+        }
+        if (!callbackTokenMatches(req, dshCallbackToken)) {
+          send(res, 401, { error: { code: 'dsh_callback_authentication_required', message: 'DSH callback credential is required' } });
+          return;
+        }
+        const body = await readJson(req, 2 * 1024 * 1024);
+        const providerId = body.provider_id;
+        if (!['claude-code', 'opencode', 'codex', 'custom'].includes(providerId)) {
+          throw Object.assign(new Error('DSH CodeAgent provider is invalid'), { code: 'dsh_codeagent_provider_invalid' });
+        }
+        if (dshCallbackPath[1] === 'probe') {
+          const agents = await getAgentSettingsSnapshot(true);
+          const agent = agents[dshAgentKey(providerId)];
+          if (!agent?.available || !agent?.dispatchable) {
+            throw Object.assign(new Error(`selected local CodeAgent ${providerId} is not available`), {
+              code: 'codeagent_unavailable', details: { status: agent?.status ?? 'missing', reason: agent?.reason ?? null },
+            });
+          }
+          send(res, 200, { available: true, status: agent.status ?? 'available', version: agent.version ?? null, provider_id: providerId, model: body.model ?? null });
+          return;
+        }
+
+        const sessionId = body.session_id;
+        const session = typeof sessionId === 'string' ? dshSessionRegistry.get(sessionId) : null;
+        if (!session) throw Object.assign(new Error('DSH session is not bound to an active AR run'), { code: 'codeagent_session_unbound' });
+        if (session.provider_id !== providerId) {
+          throw Object.assign(new Error('DSH provider does not match the selected local CodeAgent'), { code: 'codeagent_provider_mismatch' });
+        }
+        const requestedModel = body.model === null || body.model === undefined || body.model === '' ? null : body.model;
+        if (requestedModel !== (session.model ?? null)) {
+          throw Object.assign(new Error('DSH model does not match the selected local CodeAgent session'), { code: 'codeagent_model_mismatch' });
+        }
+        const prompt = dshPrompt(body.system ?? '', body.messages ?? []);
+        const controller = new AbortController();
+        req.once('aborted', () => controller.abort());
+        res.once('close', () => { if (!res.writableEnded) controller.abort(); });
+        // Never use workspace_root from the DSH wire request. The session entry
+        // was created by the trusted Local Core scheduler/Main and owns the
+        // workspace and run binding.
+        const context = session.context;
+        const remoteWorkspace = store.workspaces().find((workspace) => ['wsl', 'ssh'].includes(workspace.transport)
+          && workspace.code_root === context?.workspace_root);
+        let result;
+        try {
+          if (remoteWorkspace) {
+            const execution = await getWorkspaceExecution(remoteWorkspace);
+            result = await execution.runCodeAgent({
+              provider_id: providerId, model: session.model, session_id: sessionId,
+              workspace_root: context.workspace_root, system: body.system ?? '', messages: body.messages ?? [],
+            }, { signal: controller.signal, context });
+            session.execution = {
+              summary: result.output, stdout: result.output, stderr: result.stderr ?? '',
+              exitCode: 0, durationMs: result.duration_ms ?? 0,
+              usage: result.usage ?? null, artifactRefs: result.artifact_refs ?? [],
+              invocation: result.invocation ?? null,
+            };
+          } else {
+            const workspace = store.workspaces().find((item) => item.transport === 'local'
+              && typeof context?.workspace_root === 'string'
+              && inside(resolve(item.code_root), resolve(context.workspace_root)));
+            if (!workspace) throw Object.assign(new Error('active DSH session workspace is not registered locally'), { code: 'codeagent_workspace_mismatch' });
+            const allowedRoot = await workspacePath(workspace.code_root, context.workspace_root, 'workspace_root');
+            const execution = await codeAgentExecutor.run({
+              definition: { id: providerId, ...(typeof session.model === 'string' ? { model: session.model } : {}) },
+              context: { ...context, workspace_root: allowedRoot, analysis_mode: true, prompt_override: prompt },
+              signal: controller.signal,
+            });
+            session.execution = execution;
+            result = {
+              output: execution.summary ?? execution.stdout ?? '',
+              stderr: execution.stderr ?? '', usage: execution.usage ?? null,
+              duration_ms: execution.durationMs ?? 0, artifact_refs: execution.artifactRefs ?? [],
+              invocation: execution.invocation ?? null,
+            };
+          }
+        } catch (error) {
+          session.execution_error = { code: error?.code ?? 'codeagent_failed', message: error?.message ?? String(error) };
+          throw error;
+        }
+        if (typeof result.output !== 'string' || Buffer.byteLength(result.output, 'utf8') > 1_500_000) {
+          throw Object.assign(new Error('local CodeAgent response is invalid or too large for the DSH session'), { code: 'dsh_codeagent_response_invalid' });
+        }
+        send(res, 200, result);
+        return;
+      }
       if (req.method === 'GET' && url.pathname === '/healthz') {
         send(res, 200, { status: 'ok', service: 'dsh-local-console' });
         return;
@@ -329,9 +605,9 @@ export function createLocalConsoleServer({
         send(res, 410, {
           error: {
             code: 'legacy_local_console_ui_removed',
-            message: 'The legacy local-console UI was removed. Use the official DSH Web profile for the browser entrypoint.',
+            message: 'The legacy local-console page was removed. Use dsh-client-platform for the desktop and cloud console.',
             details: {
-              replacement: 'dsh-workflow/cordis.patch.yml',
+              replacement: 'dsh-client-platform/README.md',
             },
           },
         });
@@ -343,10 +619,10 @@ export function createLocalConsoleServer({
           service: 'dsh-local-console',
           topology: 'windows-local-to-wsl-ssh',
           node: process.version,
-          environment: detectRepositoryEnvironment(root),
+          environment: detectRepositoryEnvironment(sourceWorkspaceRoot),
           ssh_smoke: await loadSmokeReport(smokeReportPath),
           projects: store.projects(),
-          workspaces: store.workspaces(),
+          workspaces: store.workspaces().map(workspaceWithLiveStatus),
           recent_runs: store.runs().slice(0, 10),
           agents: await getAgentSettingsSnapshot(),
           agent_settings: settings.snapshot(),
@@ -397,7 +673,58 @@ export function createLocalConsoleServer({
         return;
       }
       if (req.method === 'GET' && url.pathname === '/api/workspaces') {
-        send(res, 200, { workspaces: store.workspaces() });
+        send(res, 200, { workspaces: store.workspaces().map(workspaceWithLiveStatus) });
+        return;
+      }
+      const workspacePathMatch = url.pathname.match(/^\/api\/workspaces\/([^/]+)$/);
+      if (workspacePathMatch && req.method === 'PUT') {
+        const workspaceId = workspacePathMatch[1];
+        const workspace = store.updateWorkspace(workspaceId, await readJson(req));
+        resetWorkspaceExecution(workspaceId, workspace.transport);
+        send(res, 200, { workspace: workspaceWithLiveStatus(workspace) });
+        return;
+      }
+      const workspaceProbePath = url.pathname.match(/^\/api\/workspaces\/([^/]+)\/probe$/);
+      if (workspaceProbePath && req.method === 'POST') {
+        const workspace = store.workspaces().find((item) => item.workspace_id === workspaceProbePath[1]);
+        if (!workspace) throw Object.assign(new Error('workspace not found'), { code: 'workspace_not_found' });
+        let result;
+        if (workspace.transport === 'local') {
+          const preflightResult = await runLocalPreflight({ workspace_id: workspace.workspace_id });
+          result = {
+            status: preflightResult.can_start_p0 === true ? 'available' : 'incomplete',
+            transport: 'local', workspace_id: workspace.workspace_id,
+            workspace_root: workspace.code_root,
+            workspace_reachable: true, workspace_writable: true,
+            capabilities: preflightResult.execution_plan?.capabilities ?? {},
+            preflight: preflightResult,
+            errors: [],
+          };
+        } else {
+          const execution = await getWorkspaceExecution(workspace);
+          try {
+            result = await execution.probe();
+          } catch (error) {
+            result = {
+              status: 'unreachable', transport: workspace.transport,
+              workspace_id: workspace.workspace_id, workspace_root: workspace.code_root,
+              workspace_reachable: false, workspace_writable: false,
+              capabilities: { workspace_access: 'remote_tools', build_execution: false, device_access: false, network_publish: false },
+              errors: [{ code: error?.code ?? 'workspace_probe_failed', message: error?.message ?? String(error) }],
+            };
+          }
+        }
+        workspaceProbeResults.set(workspace.workspace_id, result);
+        send(res, 200, result);
+        return;
+      }
+      if (req.method === 'GET' && url.pathname === '/api/observability/probes') {
+        const workspaceId = url.searchParams.get('workspace_id') ?? 'wsl-local';
+        const afterEnvironmentSeq = Number(url.searchParams.get('after_environment_seq') ?? 0);
+        const afterDeviceSeq = Number(url.searchParams.get('after_device_seq') ?? 0);
+        const limit = Number(url.searchParams.get('limit') ?? 1000);
+        const probes = arRuntime.listTelemetryProbes({ workspaceId, afterEnvironmentSeq, afterDeviceSeq, limit });
+        send(res, 200, { probes, workspace_id: workspaceId });
         return;
       }
       if (req.method === 'GET' && url.pathname === '/api/rag/status') {
@@ -456,6 +783,63 @@ export function createLocalConsoleServer({
         const body = await readJson(req);
         const workspace = store.workspaces().find((item) => item.workspace_id === body.workspace_id);
         if (!workspace) throw Object.assign(new Error('workspace not found'), { code: 'workspace_not_found' });
+        if (workspace.transport !== 'local') {
+          const execution = await getWorkspaceExecution(workspace);
+          const remoteRoot = workspace.code_root;
+          const sourceRoot = remoteWorkspacePath(remoteRoot, body.repo_root || body.source_root || remoteRoot, 'repo_root');
+          if (!(typeof body.ar_text === 'string' && body.ar_text.trim())
+              && !(typeof body.ar_path === 'string' && body.ar_path.trim())) {
+            throw Object.assign(new Error('AR 描述或源码内的 AR 文件路径不能为空'), { code: 'ar_input_required' });
+          }
+          const preflightResult = await execution.preflight({
+            ...body, workspace_id: workspace.workspace_id, repo_root: sourceRoot,
+          });
+          if (preflightResult?.can_start_p0 !== true) {
+            const blocked = (preflightResult?.checks ?? [])
+              .filter((item) => ['blocked', 'failed'].includes(item.status))
+              .map((item) => `${item.label ?? item.id}: ${item.reason ?? '需要处理'}`)
+              .join('；');
+            throw Object.assign(new Error(`AR P0 前置检查阻断${blocked ? `：${blocked}` : ''}`), {
+              code: 'preflight_blocked',
+              details: { preflight: preflightResult, status: preflightResult?.status ?? 'blocked' },
+            });
+          }
+          const arPath = typeof body.ar_path === 'string' && body.ar_path.trim()
+            ? remoteWorkspacePath(sourceRoot, body.ar_path, 'ar_path')
+            : (!body.ar_text ? posix.join(sourceRoot, MANIFEST_PATH) : null);
+          const pipelineDir = body.pipeline_dir
+            ? remoteWorkspacePath(sourceRoot, body.pipeline_dir, 'pipeline_dir') : undefined;
+          const gitDir = body.git_dir
+            ? remoteWorkspacePath(sourceRoot, body.git_dir, 'git_dir') : undefined;
+          const selectedSettings = settings.snapshot();
+          const startInput = {
+            runId: body.run_id,
+            inputRef: body.input_ref,
+            arText: body.ar_text,
+            arPath,
+            pipelineDir,
+            repoRoot: sourceRoot,
+            environment: body.environment,
+            componentType: body.component_type,
+            deviceType: body.device_type,
+            deviceSerial: body.device_serial,
+            gitDir,
+            buildTarget: body.build_target,
+            part: body.part,
+            baseCommit: body.base_commit,
+            agent: body.agent ?? selectedSettings.selected,
+            model: body.model ?? selectedSettings.model,
+            confirmDefaults: body.confirm_defaults,
+            skills: body.skills,
+            publication: body.publication,
+            idempotencyKey: body.idempotency_key,
+          };
+          const result = arScheduler?.start
+            ? await arScheduler.start(startInput)
+            : await arRuntime.start(startInput);
+          send(res, 202, result);
+          return;
+        }
         const workspaceRoot = resolve(workspace.code_root);
         const sourceRoot = await workspacePath(
           workspaceRoot, body.repo_root || body.source_root || workspaceRoot, 'repo_root');
@@ -528,7 +912,7 @@ export function createLocalConsoleServer({
         send(res, 202, result);
         return;
       }
-      const arRunPath = url.pathname.match(/^\/api\/ar\/runs\/([^/]+)(?:\/(artifacts|events|claim|context|submit|validate|consent|sync|heartbeat|release|scheduler|resume|cancel|inputs|actions))?$/);
+      const arRunPath = url.pathname.match(/^\/api\/ar\/runs\/([^/]+)(?:\/(artifacts|events|claim|context|submit|validate|consent|review|sync|heartbeat|release|scheduler|resume|cancel|inputs|actions))?$/);
       if (arRunPath && req.method === 'GET' && !arRunPath[2]) {
         const status = await arRuntime.status(arRunPath[1], Number(url.searchParams.get('cursor') ?? 0));
         if (arScheduler?.job) status.scheduler = arScheduler.job(arRunPath[1]);
@@ -607,6 +991,22 @@ export function createLocalConsoleServer({
         if (body.actor !== undefined) input.actor = body.actor;
         if (body.kind !== undefined) input.kind = body.kind;
         send(res, 200, await (arScheduler?.consent ? arScheduler.consent(input) : arRuntime.consent(input)));
+        return;
+      }
+      if (arRunPath && req.method === 'POST' && arRunPath[2] === 'review') {
+        if (!arScheduler?.reviewDecision) {
+          throw Object.assign(new Error('review decision scheduler is unavailable'), { code: 'scheduler_unavailable' });
+        }
+        const body = await readJson(req);
+        send(res, 200, await arScheduler.reviewDecision({
+          runId: arRunPath[1],
+          taskId: body.task_id,
+          phase: body.phase,
+          decision: body.decision,
+          actor: body.actor,
+          note: body.note ?? '',
+          idempotencyKey: body.idempotency_key,
+        }));
         return;
       }
       if (arRunPath && req.method === 'POST' && arRunPath[2] === 'inputs') {
@@ -719,6 +1119,8 @@ export function createLocalConsoleServer({
     } catch (error) {
       const status = error.code === 'body_too_large' || error.code === 'invalid_json'
         || error.code === 'workflow_not_available' || error.code === 'workspace_not_found'
+        || error.code === 'dsh_codeagent_provider_invalid' || error.code === 'dsh_codeagent_request_invalid'
+        || error.code === 'workspace_configuration_invalid'
         || error.code === 'run_not_found' || error.code === 'input_kind_required'
         || error.code === 'input_content_required' || error.code === 'rag_query_required'
         || error.code === 'rag_query_too_long' || error.code === 'environment_selection_invalid'
@@ -739,9 +1141,11 @@ export function createLocalConsoleServer({
         || error.code === 'preflight_blocked'
         || error.code === 'action_not_supported'
         || error.code === 'workflow_not_available' ? 400
-        : ['rag_workspace_changed_during_index', 'source_changed', 'resource_busy',
-          'resource_lock_reconcile_failed'].includes(error.code) ? 409
-          : ['rag_index_failed', 'codeagent_adapter_unavailable', 'codeagent_command_missing',
+          : ['rag_workspace_changed_during_index', 'source_changed', 'resource_busy',
+          'resource_lock_reconcile_failed', 'workspace_transport_unavailable', 'codeagent_session_unbound',
+          'codeagent_provider_mismatch', 'codeagent_model_mismatch', 'codeagent_workspace_mismatch'].includes(error.code) ? 409
+          : ['rag_index_failed', 'codeagent_adapter_unavailable', 'codeagent_command_missing', 'codeagent_unavailable',
+            'dsh_codeagent_response_invalid',
             'codeagent_spawn_failed', 'codeagent_timeout', 'codeagent_output_limit',
             'codeagent_failed', 'codeagent_cancelled', 'agent_artifacts_missing',
             'agent_artifact_invalid'].includes(error.code) ? 422 : 500;

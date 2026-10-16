@@ -9,8 +9,7 @@
   "exports": {
     ".": "./src/dsh/plugin.js",
     "./core": "./src/core/controller.js",
-    "./mcp": "./src/mcp/server.js",
-    "./client": "./src/dsh/client.js"
+    "./mcp": "./src/mcp/server.js"
   },
   "bin": {
     "ai-ar-dsh": "./bin/ai-ar-dsh.js",
@@ -28,14 +27,6 @@
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
-    },
-    "client": {
-      "inject": [
-        "@deepseek-ai/dsh-client-ui-renderer",
-        "@deepseek-ai/dsh-client-ui-layout",
-        "@deepseek-ai/dsh-client-ui-sidebar"
-      ],
-      "platform": "web"
     }
   },
   "scripts": {

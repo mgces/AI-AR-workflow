@@ -1,5 +1,7 @@
 # DSH 云端 Agent 编排平台使用手册
 
+> **本手册描述旧 DSH Web + Connector 路线，已不适用于新产品入口。** 旧页面实现位于 `pending-delete/legacy-dsh-web/`，仅供迁移对照。当前桌面客户端、OIDC 单实例部署和云端审核的软件能力见[客户端与云端实施说明](../client-cloud-separated-implementation.md)；Windows 安装、真实目标环境完整 P0–P8 及生产部署仍需验收。
+
 版本：2.0 · 日期：2026-09-20
 适用范围：官方 DSH Web 页面中的 AR Delivery Workbench、CodeAgent 选择、AR P0–P8 run 和维测查看。
 

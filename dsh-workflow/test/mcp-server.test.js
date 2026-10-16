@@ -20,6 +20,8 @@ test('MCP stdio server lists tools and resolves modules', async () => {
     },
     stderr: 'pipe',
   });
+  let childStderr = '';
+  transport.stderr?.on('data', (chunk) => { childStderr += chunk.toString(); });
   try {
     await client.connect(transport);
     const tools = await client.listTools();
@@ -38,6 +40,8 @@ test('MCP stdio server lists tools and resolves modules', async () => {
     const text = result.content.find((item) => item.type === 'text')?.text;
     const payload = JSON.parse(text);
     assert.ok(payload.modules.some((item) => item.id === 'ohos-dev-sa-codegen'));
+  } catch (error) {
+    throw new Error(`${error.message}${childStderr ? `; MCP server stderr: ${childStderr}` : ''}`, { cause: error });
   } finally {
     await client.close();
   }

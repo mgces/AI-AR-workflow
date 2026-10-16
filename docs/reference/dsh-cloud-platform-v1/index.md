@@ -1,8 +1,13 @@
-# DSH 云端 Agent 编排平台：一期完整实施方案
+# DSH 云端 Agent 编排平台：一期历史方案
 
 版本：1.2 · 日期：2026-09-15 · 状态：架构设计与实施基线；官方 DSH AR 面板、远端 Gateway/RAG/调试、维测投影，“本地 Connector + SSHFS 挂载/remote-tools MCP + 本地 CodeAgent”执行切片，以及部署 doctor/systemd/cgroup admission 已实现并通过定向本地测试；Connector 连接边界已加入 Origin/TLS/mTLS 策略、配对撤销/轮换和断线命令回放。多租户、真实证书部署、真实宿主验收和真实 CLI/SSH/设备 P0–P8 验收仍未完成。
 
+> **历史路线，当前不再作为实施入口。** 旧 DSH Web AR 页面和安装路由已归档到 `pending-delete/legacy-dsh-web/`。当前实施以[客户端与云端分离详细设计](../client-cloud-separated-detailed-design.md)和[客户端与云端当前实施说明](../client-cloud-separated-implementation.md)为准；本页仅保存原 DSH Web + Connector 方案与遗留验收背景。
+
 面向实施者：Qwen3.8 等同类型模型、项目开发者、测试与运维人员。文中技术选型是本方案的设计决定；上游接口事实以引用资料及任务 T00 的固定版本实测为准。不得把设计、现有夹具测试或本文示例当作上线验收证据。
+
+> 2026-09-21 架构演进评估：当前网页 + Connector 路线、客户端优先方案以及 DSH 实际能力使用情况，见[《DSH 平台客户端化与框架价值分析》](../client-first-platform-architecture-analysis.md)。
+> 客户端、Cloud API、独立网页端、交互协议、数据模型和运行流程的评审稿，见[《DSH Agent 客户端与云端网页分离详细设计》](../client-cloud-separated-detailed-design.md)。
 
 ## 1. 目标与交付物
 
@@ -13,7 +18,7 @@
 | 文件 | 用途 |
 |---|---|
 | [扩展：RAG、环境分支、调试与 remote-tools](rag-environment-debug.md) | 云端模型/知识库入口、工程三分支、产物与设备识别、本地 MCP 访问 SSH 代码 |
-| [DSH 官方 Web UI 接入边界](dsh-integration.md) | 官方 Session/Tool/Approval 页面、AR runtime 工具和本地启动方式 |
+| [DSH Runtime 接入与旧网页迁移说明](dsh-integration.md) | 当前 DSH tools/MCP adapter 状态与网页归档位置 |
 | [迁移到计算云部署手册](deploy-to-compute-cloud.md) | 从 WSL 单机验证迁移到 Linux 计算云、CodeAgent、SSH、反向代理和验收 |
 | [平台使用手册](usage-guide.md) | 最终用户从 CodeAgent、工程初始化到 AR P0–P8、审核、产物、维测和 API 的操作步骤 |
 | [本文](index.md) | 产品边界、部署拓扑、模块职责、状态权威和关键决策 |

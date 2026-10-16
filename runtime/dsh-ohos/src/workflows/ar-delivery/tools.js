@@ -58,6 +58,26 @@ export const DELIVERY_TOOLS = Object.freeze([
     invoke: (controller, args, principal) => controller.delivery.consent(args, principal),
   },
   {
+    name: 'ohos_delivery_review_decision',
+    description: 'Resolve a pending human delivery review. A return requeues the same phase with reviewer notes; rejection cancels the run. Neither decision advances Python or bypasses its gate.',
+    principals: ['parent', 'all'],
+    inputSchema: objectSchema({
+      run_id: id,
+      task_id: id,
+      phase: {
+        oneOf: [
+          { type: 'string', enum: ['P1', 'P6', 'P7', 'P8', 'P8-precheck'] },
+          { type: 'integer', enum: [1, 6, 7, 8] },
+        ],
+      },
+      decision: { type: 'string', enum: ['returned', 'rejected'] },
+      actor: { type: 'string', minLength: 1, maxLength: 256 },
+      note: { type: 'string', minLength: 1, maxLength: 4096 },
+      idempotency_key: id,
+    }, ['run_id', 'task_id', 'phase', 'decision', 'note', 'idempotency_key']),
+    invoke: (controller, args, principal) => controller.delivery.reviewDecision(args, principal),
+  },
+  {
     name: 'ohos_delivery_sync',
     description: 'Reconcile a DSH delivery run with authoritative Python phase, evidence, consent, reset, or completion state.',
     principals: ['parent', 'all'],

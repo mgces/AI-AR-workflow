@@ -14,6 +14,10 @@
 - [两套 DSH 实现对比与融合建议](/reference/dsh-implementation-comparison) — GitCode 与本地实现、验证发现及分阶段选型建议
 - [DSH 融合、自修复与自迭代方案 v1](/reference/dsh-fusion-self-repair-evolution-v1) — GitCode 主干、构建修复闭环、受管执行与策略演进设计
 - [DSH 融合实施状态与未完成项](/reference/dsh-fusion-implementation-status) — 已实现能力、测试证据、未接入的执行与自迭代链路
+- [DSH 客户端化与框架价值分析](/reference/client-first-platform-architecture-analysis) — 当前 DSH 使用审计、客户端化路线比较和目标定位
+- [DSH 客户端与云端分离详细设计](/reference/client-cloud-separated-detailed-design) — 客户端、Cloud API、网页端、交互协议、数据模型、流程和验收设计
+- [DSH 客户端与云端分离实施状态](/reference/client-cloud-separated-implementation) — 当前功能证据、限制与验证方式
+- [DSH Cloud Console 单实例部署](/reference/dsh-client-cloud-deployment) — Docker Compose、OIDC、HTTPS、备份与恢复
 - [FAQ](/reference/faq) — 高频误解速查
 - [文档站部署与双仓库同步](/reference/docs-deployment) — GitCode/GitHub 双仓、双推、Pages 自动部署
 

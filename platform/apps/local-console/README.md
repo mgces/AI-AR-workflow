@@ -1,6 +1,6 @@
 # DSH Local Console
 
-这是 Windows→WSL 开发模式下的 API 和自动化验收后端。它默认绑定 `127.0.0.1:8787`，不提供浏览器 UI；官方 DSH Web 页面和 AR Delivery 面板是唯一用户入口。本 console 只作为本地 fallback 和自动化验收面。
+这是 Windows/WSL 开发模式下的共享 API、运行时和自动化验收后端。它默认绑定 loopback，不提供用户网页。新桌面端经 `dsh-client-platform/apps/local-core` 的随机端口与进程 token 访问此 runtime；旧本机 API fallback 仅供兼容测试。
 
 ## 能力
 
@@ -54,4 +54,4 @@ npm --prefix platform run console
 
 ## 运行边界
 
-本地 console 适合 WSL 单机和内网调试；要把代码留在用户电脑并由云端 DSH 调度，部署 `workspace-gateway` 的 JSONL/HTTP 传输和受限 SSH Connector，再在官方 DSH patch 中启用 `workspaceGateway`。该模式仍需要真实 OHOS/HarmonyOS 产品、工具链、设备和 gate 环境，不能用当前平台仓库冒充完整产品验收。
+本地 console 的 API 可供 Electron Local Core 复用；WSL/SSH 目录和设备 adapter 正迁入 `dsh-client-platform/`。旧云端 DSH + Connector 部署路径已停止扩展，归档代码见 `pending-delete/legacy-dsh-web/`。完整 P0–P8 验收仍需要真实 OHOS/HarmonyOS 产品、工具链、设备和发布后端。

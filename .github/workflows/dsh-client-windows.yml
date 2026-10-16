@@ -1,0 +1,56 @@
+name: DSH Client Windows installer
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'dsh-client-platform/**'
+      - 'platform/apps/local-console/**'
+      - 'platform/packages/**'
+      - 'workspace-gateway/src/**'
+      - 'workspace-gateway/bin/dsh-device-probe.js'
+      - 'workspace-gateway/bin/dsh-ar-delivery.js'
+      - 'workspace-gateway/bin/dsh-ar-gate.js'
+      - 'runtime/dsh-ohos/**'
+      - 'skills/ohos-ar-dev-phases/**'
+      - 'docs/reference/dsh-cloud-platform-v1/examples/ar-delivery.workflow.json'
+      - '.github/workflows/dsh-client-windows.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'dsh-client-platform/**'
+      - 'platform/apps/local-console/**'
+      - 'platform/packages/**'
+      - 'workspace-gateway/src/**'
+      - 'workspace-gateway/bin/dsh-device-probe.js'
+      - 'workspace-gateway/bin/dsh-ar-delivery.js'
+      - 'workspace-gateway/bin/dsh-ar-gate.js'
+      - 'runtime/dsh-ohos/**'
+      - 'skills/ohos-ar-dev-phases/**'
+      - 'docs/reference/dsh-cloud-platform-v1/examples/ar-delivery.workflow.json'
+      - '.github/workflows/dsh-client-windows.yml'
+
+jobs:
+  windows-installer:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: dsh-client-platform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: dsh-client-platform/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build:win
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dsh-agent-client-windows-installer
+          path: dsh-client-platform/release/*.exe
+          if-no-files-found: error
+          retention-days: 14

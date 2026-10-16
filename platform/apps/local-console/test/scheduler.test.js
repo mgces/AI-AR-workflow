@@ -108,6 +108,20 @@ class FakeArRuntime {
     this.state.tasks[0].status = 'cancelled';
     return { status: 'cancelled', run_id: this.state.run_id };
   }
+
+  async reviewDecision(input) {
+    this.calls.push(['reviewDecision', input]);
+    if (input.decision === 'returned') {
+      this.state.revision += 1;
+      this.state.tasks[0].revision += 1;
+      this.state.tasks[0].status = 'queued';
+      this.state.status = 'awaiting_host';
+      return { status: 'queued', run_id: this.state.run_id, revision: this.state.revision };
+    }
+    this.state.tasks[0].status = 'cancelled';
+    this.state.status = 'cancelled';
+    return { status: 'cancelled', run_id: this.state.run_id };
+  }
 }
 
 test('scheduler runs a leased task through submit and deterministic validation', async () => {
@@ -187,6 +201,31 @@ test('scheduler cancellation updates the authoritative runtime after stopping th
   assert.equal((await runtime.status()).status, 'cancelled');
   assert.deepEqual(runtime.calls.find((entry) => entry[0] === 'cancel'), ['cancel', { runId: 'run-cancel', reason: 'operator stop' }]);
   assert.equal(scheduler.job(result.run_id).status, 'cancelled');
+});
+
+test('returned review requeues the authoritative phase and rejection terminally closes without rerunning', async () => {
+  const runtime = new FakeArRuntime({ needsConsent: true });
+  let executions = 0;
+  const scheduler = new ArDeliveryScheduler({
+    service: runtime,
+    resolveAgent: async () => ({ id: 'fixture-agent', available: true, dispatchable: true }),
+    executor: { async run() { executions += 1; return { artifactRefs: ['evidence/review.json'] }; } },
+    hostBindingId: 'review-host',
+  });
+  const started = await scheduler.start({ runId: 'run-review-return', agent: 'fixture-agent' });
+  await scheduler.waitForIdle(started.run_id);
+  assert.equal(scheduler.job(started.run_id).status, 'awaiting_consent');
+  await scheduler.reviewDecision({ runId: started.run_id, taskId: 'task-P0', phase: 'P0',
+    decision: 'returned', actor: 'reviewer', note: 'Add device details', idempotencyKey: 'review-return-1' });
+  await scheduler.waitForIdle(started.run_id);
+  assert.equal(executions, 2);
+  assert.equal(scheduler.job(started.run_id).status, 'awaiting_consent');
+
+  const rejected = await scheduler.reviewDecision({ runId: started.run_id, taskId: 'task-P0', phase: 'P0',
+    decision: 'rejected', actor: 'reviewer', note: 'Out of scope', idempotencyKey: 'review-reject-1' });
+  assert.equal(rejected.status, 'cancelled');
+  assert.equal(scheduler.job(started.run_id).status, 'cancelled');
+  assert.equal(executions, 2);
 });
 
 test('scheduler forwards the selected model to the agent resolver and executor', async () => {

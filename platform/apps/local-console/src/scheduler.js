@@ -131,6 +131,39 @@ export class ArDeliveryScheduler {
     return result;
   }
 
+  /** Apply a signed cloud review return/rejection without treating it as consent. */
+  async reviewDecision(input) {
+    if (typeof this.service.reviewDecision !== 'function') {
+      throw Object.assign(new Error('review decision workflow is unavailable'), {
+        code: 'review_decision_unavailable',
+      });
+    }
+    const runId = input?.runId ?? input?.run_id;
+    const active = this.active.get(runId);
+    if (active) await active.promise.catch(() => {});
+    const result = await this.service.reviewDecision(input);
+    const job = this.#ensureJob(runId);
+    job.cancel_requested = false;
+    job.last_error = null;
+    job.updated_at = timestamp(this.clock);
+    if (result.status === 'cancelled' || result.status === 'rejected') {
+      job.status = 'cancelled';
+      this.#persist(job);
+      this.#notify(job);
+      return result;
+    }
+    if (result.status !== 'queued' && result.status !== 'awaiting_host') {
+      throw Object.assign(new Error(`review decision returned unsupported status: ${result.status}`), {
+        code: 'review_decision_status_invalid',
+      });
+    }
+    job.status = 'queued';
+    this.#persist(job);
+    this.#schedule(job.run_id);
+    this.#notify(job);
+    return result;
+  }
+
   /** Resume a run after a repair, reconciliation or process restart. */
   async resume(runId) {
     const job = this.#ensureJob(runId);

@@ -38,6 +38,7 @@ export class OhosController extends TaskController {
   startDelivery(args, principal) { return this.delivery.start(args, principal); }
   validateDeliveryTask(args, principal) { return this.delivery.validate(args, principal); }
   consentDelivery(args, principal) { return this.delivery.consent(args, principal); }
+  reviewDelivery(args, principal) { return this.delivery.reviewDecision(args, principal); }
   syncDelivery(args, principal) { return this.delivery.sync(args, principal); }
   get deliveryAdapter() { return this.delivery.adapter; }
   set deliveryAdapter(adapter) { this.delivery.adapter = adapter; this.repairs.adapter = adapter; }

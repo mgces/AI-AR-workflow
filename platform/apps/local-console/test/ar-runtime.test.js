@@ -65,6 +65,30 @@ const VERIFIED_CAPABILITIES = Object.freeze({
 });
 
 describe('authoritative AR runtime service', () => {
+  test('records bounded environment and device probes for durable cloud sync', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-telemetry-probes-'));
+    const runtime = createRuntime({ dataRoot: join(root, 'runtime'), principal: 'all' });
+    const service = new ArRuntimeService({ runtime });
+    try {
+      service.recordTelemetryProbe({ workspaceId: 'workspace-1', kind: 'environment',
+        checkedAt: '2026-09-22T01:00:00.000Z', capabilityId: 'hdc', status: 'blocked', reasonCode: 'executable_not_found', durationMs: 12 });
+      service.recordTelemetryProbe({ workspaceId: 'workspace-1', kind: 'device',
+        checkedAt: '2026-09-22T01:00:01.000Z', capabilityId: 'hdc_device', status: 'available', deviceAlias: 'private-device-serial', productFamily: 'openharmony' });
+      const probes = service.listTelemetryProbes({ workspaceId: 'workspace-1' });
+      assert.equal(probes.length, 2);
+      assert.equal(probes[0].kind, 'environment');
+      assert.equal(probes[0].reason_code, 'executable_not_found');
+      assert.equal(probes[1].kind, 'device');
+      assert.equal(probes[1].device_alias, 'private-device-serial');
+      assert.equal(service.listTelemetryProbes({ workspaceId: 'workspace-1', afterEnvironmentSeq: probes[0].seq, afterDeviceSeq: probes[1].seq }).length, 0);
+      assert.throws(() => service.recordTelemetryProbe({ workspaceId: 'workspace-1', kind: 'environment',
+        capabilityId: 'hdc', status: 'blocked;secret', checkedAt: new Date().toISOString() }), { code: 'invalid_input' });
+    } finally {
+      service.close();
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   test('persists Connector device probe facts in the DSH SQLite runtime', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-device-probe-audit-'));
     const dataRoot = join(root, 'runtime');
@@ -514,6 +538,27 @@ describe('authoritative AR runtime service', () => {
     const service = new ArRuntimeService({ runtime, hostKind: 'local-codeagent' });
     await service.ensureHost();
     assert.equal(calls[0].host_kind, 'other');
+  });
+
+  test('routes returned and rejected cloud review decisions through the DSH delivery workflow tool', async () => {
+    const calls = [];
+    const runtime = {
+      tools: new Map([['ohos_delivery_review_decision', { async call(args) {
+        calls.push(args);
+        return { ok: true, result: { run_id: args.run_id, status: args.decision === 'returned' ? 'queued' : 'cancelled', revision: 2 } };
+      } }]]),
+    };
+    const service = new ArRuntimeService({ runtime });
+    const returned = await service.reviewDecision({ runId: 'run-1', taskId: 'task-1', phase: 'P1',
+      decision: 'returned', actor: 'cloud:reviewer', note: '补充测试证据', idempotencyKey: 'intent-1' });
+    const rejected = await service.reviewDecision({ runId: 'run-1', taskId: 'task-1', phase: 'P1',
+      decision: 'rejected', actor: 'cloud:reviewer', note: '不符合范围', idempotencyKey: 'intent-2' });
+    assert.equal(returned.status, 'queued');
+    assert.equal(rejected.status, 'cancelled');
+    assert.deepEqual(calls[0], { run_id: 'run-1', task_id: 'task-1', phase: 'P1', decision: 'returned',
+      actor: 'cloud:reviewer', note: '补充测试证据', idempotency_key: 'intent-1' });
+    assert.deepEqual(calls[1], { run_id: 'run-1', task_id: 'task-1', phase: 'P1', decision: 'rejected',
+      actor: 'cloud:reviewer', note: '不符合范围', idempotency_key: 'intent-2' });
   });
 
   test('keeps cancellation request idempotent when an operator changes the displayed reason', async () => {

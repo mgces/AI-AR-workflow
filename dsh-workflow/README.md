@@ -4,9 +4,9 @@
 `skills/ohos-ar-dev-phases/scripts/advance.py`、`gate_*.py`、签名证据和 consent 规则；开发流只通过
 子进程调用这些权威脚本。
 
-当前状态：`0.1.0` 本地可运行版。官方 Web 面板和本地 scheduler 已接入真实 runtime、CodeAgent 执行、产物、人工审核和 usage；生产云仍需按部署手册绑定真实 OHOS/HarmonyOS 主机、身份、对象存储和 Gateway。
+当前状态：`0.1.0` DSH tools/MCP 运行时适配。旧官方 Web 面板已归档到仓库根目录 `pending-delete/legacy-dsh-web/`；客户端与独立云页面迁移正在 `dsh-client-platform/` 实施。
 
-官方 AR 面板还提供 RAG 模型配置入口；`ohos_rag_profile`/`ohos_rag_profile_update` 只保存 provider、模型和服务地址等非敏感配置。单机模式执行本地索引；启用 Workspace Gateway 后执行带文件元数据的远端索引，并在返回命中前回读 hash。为 RAG 服务配置 OpenAI-compatible endpoint（通过 `DSH_RAG_ENDPOINT` 或受信 patch 配置）并由宿主注入 `DSH_RAG_API_KEY` 后，索引和查询会真实调用 embedding/reranker，profile 返回 `execution=active`；没有模型服务时明确返回 `execution=planned` 并使用可观测的词法 fallback，不伪装成向量检索。API key 不会写入 profile、SQLite 或日志。远端调试面板通过 `workspace.hash` 在代码端识别二进制产物，旧 Gateway 才回退文本读取。
+`ohos_rag_profile`/`ohos_rag_profile_update` DSH tools 只保存 provider、模型和服务地址等非敏感配置。单机模式执行本地索引；启用 Workspace Gateway 后执行带文件元数据的远端索引，并在返回命中前回读 hash。RAG 模型的真实状态和客户端入口迁移到 `dsh-client-platform/` 后续阶段。API key 不会写入 profile、SQLite 或日志。
 
 ## 已实现
 
@@ -146,39 +146,27 @@ dsh --profile ai-ar --dump-config
 
 `cordis.patch.yml` 会加载 `@ai-ar/dsh-workflow` 插件，插件向 `ctx.tools` 注册与 MCP 入口相同的控制工具。
 
-将 `cordis.patch.yml` 作为官方 `dsh --profile web --patch ...` 的最后一层加载时，设置
-`enableDeliveryRuntime: true` 会额外注册 `ohos_delivery_*`、`ohos_task_*` 和
-`ohos_run_observability/events/artifacts` 工具。这样官方 Web UI 的 Session、Tool card 和
-Approval 展示直接承载 AR workflow；P0–P8 的 PASS 仍由本仓 runtime 调用 Python authority 决定。
+设置 `enableDeliveryRuntime: true` 会让 DSH Agent 注册 `ohos_delivery_*`、`ohos_task_*` 和
+`ohos_run_observability/events/artifacts` tools。此包当前保留为 DSH 的工具适配层和 MCP facade。
+桌面客户端与独立 Cloud Console 正在 `dsh-client-platform/` 实施。
 
-同一 patch 还加载 `src/dsh/client.js` 官方客户端扩展：左侧会出现 **AR Delivery** 主面板，
-面板内提供 OpenHarmony/HarmonyOS 启动、阶段耗时、人工审核、阻塞原因、事件和哈希产物展示。
-面板调用官方 DSH Web Server 的 `/api/ohos-ar/*` 认证路由，因此用户只需要一个 DSH 页面；
-`platform/apps/local-console` 仅作为自动化测试面，不是第二个用户入口。
+## 网页入口迁移状态
 
-官方 AR 面板还会在启动区展示 `/api/ohos-ar/preflight` 前置检查：它列出代码工作区是否可达可写、
-Python/Git/gate、选中的 CodeAgent、环境 profile digest、设备通道和 P8 发布目标，并明确标记
-Agent 的加载方式（DSH provider、本机 CLI 或 Gateway profile）及执行主机。`ready_for_p0` 只说明
-可以派发 P0；环境/设备/发布检查为 `pending` 时不会报告 `ready_for_p8`。
+旧的 `src/dsh/client.js` AR 主面板、`web-routes.js`、网页 Connector 安装包逻辑和原 plugin glue
+已移至仓库根目录 `pending-delete/legacy-dsh-web/`，并从当前 DSH bundle 移除。不要按历史章节启动
+`dsh --profile web` 来使用 AR 工作台，也不要继续在旧 Web routes 中增加功能。
 
-计算云 DSH 使用 SSH 代码端时，应登记 `workspaceGateway.profiles` 和六个
-`workspaceGateway.deliveryProfiles`，让 CodeAgent 与 Python gate 在同一 `remoteRoot` 执行。
-本地 CLI 不能直接把未挂载的 SSH 路径作为 cwd。当前可选 SSHFS 挂载模式，也可在不安装 SSHFS 时
-使用 Connector 的 remote-tools MCP：CLI 在一次性本地 sandbox 运行，通过受限工具读写 SSH 工作区；
-页面会显示 `connector_sshfs_mount` 或 `connector_remote_tools_mcp`。大仓编译和断线恢复的成本仍需按
-实际仓库实测，远端 profile 适合希望 Agent 与 gate 完全在代码主机运行的部署。
+当前主入口是 `dsh-client-platform/apps/desktop` 的桌面工程；执行 runtime 复用
+`platform/apps/local-console` 与 `runtime/dsh-ohos`。独立运行页面位于
+`dsh-client-platform/apps/cloud-web`，云端事件接收位于 `apps/cloud-api`。当前已实现设备配对、
+签名事件与审核回执、审核产物上传、WSL/SSH adapters，以及接入外部 OIDC 的单实例部署。
+Windows 安装及首次启动、目标环境真实 P0–P8 和生产部署仍待验收；签名 workflow 更新分发与正式发行尚未实现。状态及后续门槛
+以 [`dsh-client-platform/README.md`](../dsh-client-platform/README.md) 和架构评审稿为准。
 
-本地 patch 同时关闭只针对 DeepSeek API 的首次使用 onboarding，并挂载官方
-`@deepseek-ai/dsh-subagent-claude-code`。`dsh-workflow/config/presets/claude-code/`
-是默认 Agent Preset，开启 `subagent_claude_code`，让同一个 DSH Session 可以把一次性代码任务交给
-WSL 工作区中的 Claude Code；Claude 认证仍使用 Claude Code 原生设置或 provider 显式环境变量。
+DSH 继续负责 Tool/Session/Provider 适配方向；本地 P0–P8 gate、签名证据、consent 和 run 真相仍由
+本仓确定性 runtime 管理。旧页面完整源码与测试归档仅供迁移对照，满足真实验收门槛后再删除。
 
-官方 AR 面板中的 **CodeAgent 设置**支持在 Claude Code、OpenCode、Codex CLI、Cursor Agent、Trae CLI
-和自定义命令之间选择。选择保存在 DSH runtime 数据目录的 `codeagent-settings.json`，新建 run 会把
-选择的 `agent` 和可选 `model` 写入权威 SQLite 状态；每个 run 详情和列表都会显示启动时的 Agent。
-OpenCode 等非官方 provider 会先探测 WSL CLI 是否存在；自定义命令只保存配置，不会在探测阶段执行。
-面板中的“刷新本地 Agent”会重新执行受限的 `--version` 探测，并返回命令名、解析路径、版本和失败原因。
-当前 DSH 官方 provider 直接可执行 Claude Code；OpenCode 和 Codex CLI 在本机探测成功时可由内置非交互 adapter 派发。自定义命令使用受限 `argv-cli` adapter，本机可直接执行，远端需登记 `codeagent.custom` profile。部署 `workspaceGateway` 并登记 `codeagent.claude`/`codeagent.opencode`/`codeagent.codex` profile 后，Claude Code、OpenCode 和 Codex 也可通过受限 SSH Gateway 派发；未登记 `codeagent.claude` 时 Claude 继续使用官方 DSH provider。同时登记 `debug.device_probe` 后，官方页面可扫描远端产物并探测 hdc 设备。Cursor、Trae 和没有受支持协议的命令仍会被 adapter 门控拒绝。
+安装 DSH preset 时可使用官方 Claude Code subagent provider；它是独立的 DSH 能力，不是桌面客户端的当前默认调度路径。桌面端的 Agent 发现和使用按 `dsh-client-platform/` 实施进度逐步接入，凭据仍由各 CodeAgent 的本机原生配置管理。
 
 如果 DSH 配有模型 Provider，可将 [`examples/dsh-repair-workflow.js`](examples/dsh-repair-workflow.js)
 作为动态 workflow script 的参考。DSH 当前的 workflow 是模型提交的脚本，并不是稳定的“保存 workflow”接口，

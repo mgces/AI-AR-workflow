@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { createHash, randomUUID } from 'node:crypto';
-import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { dirname, isAbsolute, join, posix, relative, resolve, sep } from 'node:path';
 import { detectEnvironment } from '../../../packages/contracts/src/environment-profile.js';
 
 const STAGES = Object.freeze([
@@ -24,12 +24,12 @@ function isWithin(root, candidate) {
   return remainder === '' || (remainder !== '..' && !remainder.startsWith(`..${sep}`) && !isAbsolute(remainder));
 }
 
-function defaultState(repoRoot) {
+function defaultState(workspaceRoot) {
   return {
     schema_version: 1,
     projects: [{
       project_id: 'local-project',
-      name: '当前 WSL 工程',
+      name: '当前本机工程',
       environment: null,
       component_type: null,
       status: 'awaiting_environment_confirmation',
@@ -38,13 +38,11 @@ function defaultState(repoRoot) {
     workspaces: [{
       workspace_id: 'wsl-local',
       project_id: 'local-project',
-      name: 'WSL 本地代码端',
-      transport: 'wsl-local-ssh',
-      host: '127.0.0.1',
-      port: 22,
-      username: 'mgces',
-      code_root: repoRoot,
-      status: 'ssh_service_not_configured',
+      name: '本机代码端',
+      transport: 'local',
+      code_root: workspaceRoot,
+      status: 'configured',
+      managed_default: true,
       capabilities: { read: true, write: true, exec: false, device: false },
     }],
     runs: [],
@@ -52,8 +50,9 @@ function defaultState(repoRoot) {
 }
 
 export class LocalRunStore {
-  constructor({ repoRoot, stateFile }) {
+  constructor({ repoRoot, workspaceRoot = repoRoot, stateFile }) {
     this.repoRoot = resolve(repoRoot);
+    this.workspaceRoot = resolve(workspaceRoot);
     this.stateFile = resolve(stateFile);
     this.state = this.#load();
     this.#ensureSeed();
@@ -63,7 +62,7 @@ export class LocalRunStore {
     try {
       return JSON.parse(readFileSync(this.stateFile, 'utf8'));
     } catch {
-      return defaultState(this.repoRoot);
+      return defaultState(this.workspaceRoot);
     }
   }
 
@@ -75,15 +74,35 @@ export class LocalRunStore {
   }
 
   #ensureSeed() {
+    let changed = false;
     if (!Array.isArray(this.state.projects)) this.state.projects = [];
     if (!Array.isArray(this.state.workspaces)) this.state.workspaces = [];
     if (!Array.isArray(this.state.runs)) this.state.runs = [];
     if (!this.state.workspaces.some((item) => item.workspace_id === 'wsl-local')) {
-      const seed = defaultState(this.repoRoot);
+      const seed = defaultState(this.workspaceRoot);
       this.state.projects.push(seed.projects[0]);
       this.state.workspaces.push(seed.workspaces[0]);
-      this.#save();
+      changed = true;
+    } else {
+      // Previous client versions seeded a fake WSL/SSH profile pointing at the
+      // runtime repository. Upgrade that generated record once, while leaving
+      // profiles explicitly configured by a user untouched.
+      const seeded = this.state.workspaces.find((item) => item.workspace_id === 'wsl-local');
+      if (seeded.managed_default === true
+          || (seeded.transport === 'wsl-local-ssh' && seeded.status === 'ssh_service_not_configured')) {
+        seeded.name = '本机代码端';
+        seeded.transport = 'local';
+        seeded.code_root = this.workspaceRoot;
+        seeded.status = 'configured';
+        seeded.managed_default = true;
+        delete seeded.host;
+        delete seeded.port;
+        delete seeded.username;
+        delete seeded.connection;
+        changed = true;
+      }
     }
+    if (changed) this.#save();
   }
 
   projects() {
@@ -92,6 +111,67 @@ export class LocalRunStore {
 
   workspaces() {
     return clone(this.state.workspaces);
+  }
+
+  updateWorkspace(workspaceId, input) {
+    if (!input || typeof input !== 'object' || Array.isArray(input)) {
+      throw Object.assign(new Error('workspace settings must be an object'), { code: 'workspace_configuration_invalid' });
+    }
+    const workspace = this.state.workspaces.find((item) => item.workspace_id === workspaceId);
+    if (!workspace) throw Object.assign(new Error('workspace not found'), { code: 'workspace_not_found' });
+    const allowed = new Set(['transport', 'target', 'code_root', 'port', 'name']);
+    if (Object.keys(input).some((key) => !allowed.has(key))) {
+      throw Object.assign(new Error('workspace settings contain unsupported or secret fields'), { code: 'workspace_configuration_invalid' });
+    }
+
+    const transport = input.transport;
+    const codeRoot = typeof input.code_root === 'string' ? input.code_root.trim() : '';
+    if (!['local', 'wsl', 'ssh'].includes(transport) || !codeRoot || codeRoot.length > 4096 || /[\0\r\n]/u.test(codeRoot)) {
+      throw Object.assign(new Error('transport and an absolute source directory are required'), { code: 'workspace_configuration_invalid' });
+    }
+    const absolute = transport === 'local' ? isAbsolute(codeRoot) : posix.isAbsolute(codeRoot);
+    if (!absolute || (transport !== 'local' && codeRoot.split('/').includes('..'))) {
+      throw Object.assign(new Error('source directory must be an absolute path for the selected transport'), { code: 'workspace_configuration_invalid' });
+    }
+
+    let connection = null;
+    if (transport === 'wsl') {
+      if (typeof input.target !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/u.test(input.target)) {
+        throw Object.assign(new Error('select a valid WSL distribution name'), { code: 'workspace_configuration_invalid' });
+      }
+      connection = { target: input.target };
+    } else if (transport === 'ssh') {
+      if (typeof input.target !== 'string' || !/^(?:[A-Za-z0-9_.-]{1,128}|[A-Za-z0-9_.-]{1,64}@[A-Za-z0-9_.:[\]-]{1,255})$/u.test(input.target)
+          || input.target.startsWith('-') || input.target.includes('..') || input.target.includes(':')) {
+        throw Object.assign(new Error('SSH target must be a configured Host alias or user@host'), { code: 'workspace_configuration_invalid' });
+      }
+      const target = { target: input.target };
+      if (input.port !== undefined) {
+        if (!Number.isInteger(input.port) || input.port < 1 || input.port > 65535) {
+          throw Object.assign(new Error('SSH port must be between 1 and 65535'), { code: 'workspace_configuration_invalid' });
+        }
+        target.port = input.port;
+      }
+      connection = target;
+    } else if (input.target !== undefined || input.port !== undefined) {
+      throw Object.assign(new Error('local workspaces do not accept remote connection settings'), { code: 'workspace_configuration_invalid' });
+    }
+    if (input.name !== undefined && (typeof input.name !== 'string' || !input.name.trim() || input.name.length > 120)) {
+      throw Object.assign(new Error('workspace name must contain 1 to 120 characters'), { code: 'workspace_configuration_invalid' });
+    }
+
+    workspace.name = input.name?.trim() ?? (transport === 'local' ? '本机代码端' : transport === 'wsl' ? `WSL · ${input.target}` : `SSH · ${input.target}`);
+    workspace.transport = transport;
+    workspace.code_root = transport === 'local' ? resolve(codeRoot) : posix.normalize(codeRoot);
+    workspace.connection = connection;
+    workspace.status = transport === 'local' ? 'configured' : 'connector_required';
+    workspace.managed_default = false;
+    workspace.capabilities = transport === 'local'
+      ? { read: true, write: true, exec: false, device: false }
+      : { read: false, write: false, exec: false, device: false };
+    workspace.updated_at = new Date().toISOString();
+    this.#save();
+    return clone(workspace);
   }
 
   runs() {
