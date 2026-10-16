@@ -34,3 +34,21 @@ test('unsupported or missing shared files fail closed, credentials must be nonem
  const m=mock();const f=async(u,o)=>u.includes('/contents/')?response({sha:'sha',encoding:'base64',content:encoded({schema_version:99,runs:[]})}):m.fetch(u,o);
  await assert.rejects(()=>preparePublish('t',[run()],f),/格式/);
 });
+
+test('read preview does not claim token write permission is verified',async()=>{
+ const {preparePublish}=await api();const draft=await preparePublish('t',[run()],mock().fetch);
+ assert.equal(draft.tokenWriteVerified,false);
+});
+test('write denial distinguishes token permission and rate limits without exposing response secrets',async()=>{
+ const {preparePublish,commitPublish}=await api();const draft=await preparePublish('t',[run()],mock().fetch);
+ const denied=async()=>({...response({message:'Resource not accessible by personal access token fictional-secret'},403),headers:{get:k=>k.toLowerCase()==='x-github-request-id'?'ABCD:1234:5678:9ABC':null}});
+ await assert.rejects(()=>commitPublish('t',draft,denied),e=>e.message.includes('HTTP 403')&&e.message.includes('Contents')&&e.message.includes('Read and write')&&e.message.includes('ABCD:1234:5678:9ABC')&&!e.message.includes('fictional-secret'));
+ const limited=async()=>({...response({message:'private arbitrary body'},403),headers:{get:k=>k.toLowerCase()==='x-ratelimit-remaining'?'0':null}});
+ await assert.rejects(()=>commitPublish('t',draft,limited),/API.*额度|请求.*限流/);
+ await assert.rejects(()=>commitPublish('t',draft,async()=>response({message:'You have exceeded a secondary rate limit.'},403)),/限流/);
+});
+test('branch rule failures and write 404 give actionable diagnostics',async()=>{
+ const {preparePublish,commitPublish}=await api();const draft=await preparePublish('t',[run()],mock().fetch);
+ await assert.rejects(()=>commitPublish('t',draft,async()=>response({message:'GH013: Repository rule violations found; fictional-secret'},422)),e=>e.message.includes('main')&&e.message.includes('分支')&&!e.message.includes('fictional-secret'));
+ await assert.rejects(()=>commitPublish('t',draft,async()=>response({},404)),e=>e.message.includes('HTTP 404')&&e.message.includes('Token')&&e.message.includes('mgces/AI-AR-workflow'));
+});

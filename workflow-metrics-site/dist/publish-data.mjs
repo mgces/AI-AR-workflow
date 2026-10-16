@@ -13,12 +13,28 @@ async function request(token,url,fetcher,options={}){
  let response;
  try{response=await fetcher(url,{...options,redirect:'error',cache:'no-store',headers:{Accept:'application/vnd.github+json',Authorization:`Bearer ${token.trim()}`,'X-GitHub-Api-Version':'2026-03-10',...(options.method==='PUT'?{'Content-Type':'application/json'}:{}),...options.headers}});}catch{throw Error('无法连接 GitHub，请检查网络后重试');}
  if(!response.ok){
-  if(response.status===409)throw Error('远端已更新，请重新检查共享差异后再发布；本次没有覆盖远端修改');
-  if(response.status===401)throw Error('GitHub 授权无效或已过期');
-  if(response.status===403||response.status===404)throw Error('无法访问共享仓库，请检查仓库授权、Contents 写入权限及 API 限额');
-  if(response.status===422)throw Error('GitHub 拒绝提交，请检查 main 分支保护或重新检查共享差异');
-  throw Error(`GitHub 请求失败（HTTP ${response.status}），请稍后重试`);
+  // Classify GitHub's response, but never echo arbitrary response text or credentials.
+  let body;try{body=await response.json();}catch{body={};}
+  const detail=typeof body?.message==='string'?body.message.toLowerCase():'';
+  const header=name=>response.headers?.get?.(name)||'';
+  const rawId=header('x-github-request-id');
+  const requestId=/^[a-f0-9:]{8,100}$/i.test(rawId)?rawId.toUpperCase():'';
+  const writing=options.method==='PUT';
+  let reason;
+  if(response.status===401)reason='GitHub 授权无效或已过期，请重新填写有效 Token';
+  else if(response.status===429||response.status===403&&(header('x-ratelimit-remaining')==='0'||/rate limit|abuse detection/.test(detail)))reason='GitHub API 请求被限流或额度耗尽，请稍后重新检查共享差异再发布';
+  else if([403,409,422].includes(response.status)&&/protected branch|repository rule|pull request|gh006|gh013|push declined/.test(detail))reason='main 分支规则拒绝直接写入，请按仓库要求通过 PR 提交，不会绕过分支限制';
+  else if(response.status===409)reason='远端已更新，请重新检查共享差异后再发布；本次没有覆盖远端修改';
+  else if(response.status===403&&writing&&/resource not accessible|permission|write access|not authorized/.test(detail))reason='GitHub 拒绝这枚 Token 的写入授权：请编辑 fine-grained Token，Resource owner 选 mgces，仓库选 AI-AR-workflow，并将 Contents 设为 Read and write。账号可写不代表 Token 可写';
+  else if(response.status===404&&writing)reason='写入目标 mgces/AI-AR-workflow 不可访问：请检查 Token 的仓库授权范围及 Contents: Read and write；此前能读取公开快照不能证明可写';
+  else if(response.status===403&&writing)reason='GitHub 拒绝写入共享快照。请先检查 Token 是否授权 mgces/AI-AR-workflow 的 Contents: Read and write；若权限正确，再检查仓库规则及组织策略';
+  else if(response.status===403||response.status===404)reason='无法读取共享仓库，请检查 Token 的仓库授权范围和访问策略';
+  else if(response.status===422)reason='GitHub 拒绝提交，请检查 main 分支规则或重新检查共享差异';
+  else reason='GitHub 请求失败，请稍后重新检查共享差异';
+  const error=Error(`${reason}（HTTP ${response.status}${requestId?'；请求编号 '+requestId:''}）`);
+  error.status=response.status;error.requestId=requestId;throw error;
  }
+
  return response;
 }
 export async function preparePublish(token,imports,fetcher=fetch){
@@ -39,7 +55,7 @@ export async function preparePublish(token,imports,fetcher=fetch){
  let base;try{base=validateSnapshot(JSON.parse(text));}catch{throw Error('共享快照格式不兼容，尚未上传任何数据');}
  const snapshot=mergeSnapshot(base,incoming);
  snapshot.generated_at=new Date().toISOString();snapshot.source_label='共享运行指标';snapshot.source_count=snapshot.runs.length;
- return {sha:file.sha,account:typeof user.login==='string'?user.login:'管理员',changes:previewChanges(base.runs,incoming),snapshot};
+ return {tokenWriteVerified:false,sha:file.sha,account:typeof user.login==='string'?user.login:'管理员',changes:previewChanges(base.runs,incoming),snapshot};
 }
 export async function commitPublish(token,draft,fetcher=fetch){
  if(!draft?.sha||typeof draft.sha!=='string'||!draft.changes?.some(c=>c.action==='新增'||c.action==='更新'))throw Error('没有新增或更新的运行，请先重新检查共享差异');

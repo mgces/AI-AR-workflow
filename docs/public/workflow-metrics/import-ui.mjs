@@ -53,9 +53,9 @@ export function createImportController({getSnapshot,onChange}){
   const url=URL.createObjectURL(new Blob([JSON.stringify(snapshot,null,2)+'\n'],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='workflow-metrics-imports.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
  });
  $('prepare-publish').addEventListener('click',async()=>{
-  invalidate();message('publish-result','');const rev=++revision;busy=true;preview();message('publish-review','正在检查写入权限和云端最新版本，尚未上传…');
+  invalidate();message('publish-result','');const rev=++revision;busy=true;preview();message('publish-review','正在检查账号、读取权限和云端最新版本，尚未上传…');
   try{const next=await preparePublish($('admin-token').value,candidates());if(rev!==revision)return;draft=next;const n=next.changes.filter(c=>['新增','更新'].includes(c.action)).length;
-   message('publish-review',`管理员 ${redact(next.account)} · 将公开 ${n} 条新增或更新运行；共享快照共 ${next.snapshot.runs.length} 条。\n`+next.changes.map(c=>`${c.run.id}：${c.action}`).join('\n')+'\n请核对上面的去敏明细，再点击“确认公开并发布”。');
+   message('publish-review',`账号 ${redact(next.account)}（仓库角色可写；Token 的 Contents 写权限将在实际提交时验证） · 将公开 ${n} 条新增或更新运行；共享快照共 ${next.snapshot.runs.length} 条。\n`+next.changes.map(c=>`${c.run.id}：${c.action}`).join('\n')+'\n请核对上面的去敏明细，再点击“确认公开并发布”。');
   }catch(e){$('admin-token').value='';message('publish-review',e.message,true);}finally{busy=false;preview();}
  });
  $('confirm-publish').addEventListener('click',async()=>{

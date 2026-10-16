@@ -64,9 +64,9 @@
     <p class="small muted">使用该仓库的 GitHub fine-grained token，授权 Contents 读写。请在下方输入，授权只用于本次请求，关闭窗口或提交后清空，不保存在浏览器。</p>
     <a class="text-button" href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener noreferrer">在 GitHub 创建仓库发布授权 ↗</a>
     <label class="admin-token-label" for="admin-token">GitHub 发布授权<input id="admin-token" type="password" autocomplete="off" spellcheck="false" placeholder="仅此处输入，请勿放进 JSON" /></label>
-    <div class="import-actions"><button id="prepare-publish" class="button" disabled>检查权限与共享差异</button><button id="confirm-publish" class="button primary" disabled>确认公开并发布</button></div>
+    <div class="import-actions"><button id="prepare-publish" class="button" disabled>检查账号与共享差异</button><button id="confirm-publish" class="button primary" disabled>确认公开并发布</button></div>
     <div id="publish-review" class="notice" hidden></div><div id="publish-result" class="notice" role="status" aria-live="polite" hidden></div>
-    <p class="small muted">公开前请核对预览。自由文本去敏不能识别所有私人信息；若仍有不适合公开的文字，请修改文件后重新选择。</p>
+    <p class="small muted">前面的检查仅确认账号角色及读取权限，不能预先证明 Token 有写入权限；请确认 Contents 为 Read and write。公开前请核对预览。自由文本去敏不能识别所有私人信息；若仍有不适合公开的文字，请修改文件后重新选择。</p>
   </details>
 </dialog>
 <script type="module" src="./optimization-nav.mjs"></script>
