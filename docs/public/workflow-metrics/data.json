@@ -1,11 +1,938 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-16T11:39:50.865Z",
+  "generated_at": "2026-10-16T11:52:30.493Z",
   "source_label": "共享运行指标",
-  "source_count": 10,
+  "source_count": 11,
   "duplicate_count": 0,
   "warnings": [],
   "runs": [
+    {
+      "id": "2026-10-15-hiview-resmon",
+      "workflow": "ar-development",
+      "kind": "AR",
+      "status": "blocked",
+      "current_phase": "P2",
+      "agent": "claude-code",
+      "model": "deepseek-flash",
+      "updated_at": "2026-10-16T11:24:01Z",
+      "started_at": "2026-10-15T10:55:23Z",
+      "source": "browser-import/ar-development/2026-10-15-hiview-resmon/workflow_metrics.json",
+      "phases": [
+        {
+          "id": "P0",
+          "name": "bootstrap",
+          "status": "passed",
+          "wall_seconds": 8,
+          "wait_seconds": 0,
+          "effective_seconds": 8,
+          "gate_attempts": 1,
+          "pass_attempts": 1,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 1,
+          "skills": [
+            "ohos-ar-dev-workflow"
+          ],
+          "gate": "gate_env_init.py",
+          "opened_at": "2026-10-15T10:55:23Z",
+          "closed_at": "2026-10-15T10:55:31Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-15T10:55:23Z",
+              "closed_at": "2026-10-15T10:55:31Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P1",
+          "name": "design-orchestrate",
+          "status": "passed",
+          "wall_seconds": 4462,
+          "wait_seconds": 2608,
+          "effective_seconds": 1854,
+          "gate_attempts": 3,
+          "pass_attempts": 3,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 3,
+          "skills": [],
+          "gate": "gate_design.py",
+          "opened_at": "2026-10-16T11:23:44Z",
+          "closed_at": "2026-10-16T11:23:53Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-15T10:55:31Z",
+              "closed_at": "2026-10-15T11:54:56Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-15T11:56:50Z",
+              "closed_at": "2026-10-15T12:11:38Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-16T11:23:44Z",
+              "closed_at": "2026-10-16T11:23:53Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P2",
+          "name": "feature-develop",
+          "status": "failed",
+          "wall_seconds": 3292,
+          "wait_seconds": 0,
+          "effective_seconds": 3292,
+          "gate_attempts": 12,
+          "pass_attempts": 9,
+          "fail_attempts": 3,
+          "stage_attempts": null,
+          "rounds": 10,
+          "skills": [
+            "code-ruleset-style-check",
+            "ohos-dev-cpp-coding-style"
+          ],
+          "gate": "gate_develop.py",
+          "opened_at": "2026-10-16T11:23:53Z",
+          "closed_at": "",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-15T11:54:56Z",
+              "closed_at": "2026-10-15T12:47:42Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-15T12:51:28Z",
+              "closed_at": "2026-10-15T12:51:32Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-15T13:25:32Z",
+              "closed_at": "2026-10-15T13:25:33Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-16T01:57:30Z",
+              "closed_at": "2026-10-16T01:57:32Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-16T06:24:24Z",
+              "closed_at": "2026-10-16T06:24:35Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-16T06:39:20Z",
+              "closed_at": "2026-10-16T06:39:28Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-16T08:51:42Z",
+              "closed_at": "2026-10-16T08:51:47Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-16T09:52:02Z",
+              "closed_at": "2026-10-16T09:52:08Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-16T10:15:54Z",
+              "closed_at": "2026-10-16T10:17:15Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-16T11:23:53Z",
+              "closed_at": "",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P3",
+          "name": "test-develop",
+          "status": "passed",
+          "wall_seconds": 923,
+          "wait_seconds": 0,
+          "effective_seconds": 923,
+          "gate_attempts": 9,
+          "pass_attempts": 9,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 8,
+          "skills": [],
+          "gate": "gate_test_develop.py",
+          "opened_at": "2026-10-16T10:17:15Z",
+          "closed_at": "2026-10-16T10:17:23Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-15T12:47:42Z",
+              "closed_at": "2026-10-15T12:47:47Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-15T12:51:32Z",
+              "closed_at": "2026-10-15T12:51:37Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-15T13:25:33Z",
+              "closed_at": "2026-10-15T13:25:34Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-16T01:57:32Z",
+              "closed_at": "2026-10-16T01:57:32Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-16T06:24:35Z",
+              "closed_at": "2026-10-16T06:39:32Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-16T08:51:47Z",
+              "closed_at": "2026-10-16T08:51:51Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-16T09:52:08Z",
+              "closed_at": "2026-10-16T09:52:11Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-16T10:17:15Z",
+              "closed_at": "2026-10-16T10:17:23Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P4",
+          "name": "build-verify",
+          "status": "passed",
+          "wall_seconds": 50527,
+          "wait_seconds": 0,
+          "effective_seconds": 50527,
+          "gate_attempts": 12,
+          "pass_attempts": 7,
+          "fail_attempts": 5,
+          "stage_attempts": null,
+          "rounds": 4,
+          "skills": [],
+          "gate": "gate_build.py",
+          "opened_at": "2026-10-16T09:52:11Z",
+          "closed_at": "2026-10-16T10:20:12Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-15T12:47:47Z",
+              "closed_at": "2026-10-16T02:09:30Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-16T06:39:32Z",
+              "closed_at": "2026-10-16T06:42:34Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-16T08:51:51Z",
+              "closed_at": "2026-10-16T09:01:12Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-16T09:52:11Z",
+              "closed_at": "2026-10-16T10:20:12Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P5",
+          "name": "test-author",
+          "status": "passed",
+          "wall_seconds": 2738,
+          "wait_seconds": 0,
+          "effective_seconds": 2738,
+          "gate_attempts": 7,
+          "pass_attempts": 4,
+          "fail_attempts": 3,
+          "stage_attempts": null,
+          "rounds": 4,
+          "skills": [],
+          "gate": "gate_test_ut.py",
+          "opened_at": "2026-10-16T10:20:12Z",
+          "closed_at": "2026-10-16T10:21:49Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-16T02:09:30Z",
+              "closed_at": "2026-10-16T02:49:59Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-16T06:42:34Z",
+              "closed_at": "2026-10-16T06:44:17Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-16T09:01:12Z",
+              "closed_at": "2026-10-16T09:03:01Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-16T10:20:12Z",
+              "closed_at": "2026-10-16T10:21:49Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P6",
+          "name": "device-functional",
+          "status": "passed",
+          "wall_seconds": 990,
+          "wait_seconds": 38,
+          "effective_seconds": 952,
+          "gate_attempts": 6,
+          "pass_attempts": 4,
+          "fail_attempts": 2,
+          "stage_attempts": null,
+          "rounds": 4,
+          "skills": [],
+          "gate": "gate_device_func.py",
+          "opened_at": "2026-10-16T10:21:49Z",
+          "closed_at": "2026-10-16T10:24:04Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-16T02:49:59Z",
+              "closed_at": "2026-10-16T03:00:24Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-16T06:44:17Z",
+              "closed_at": "2026-10-16T06:45:19Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-16T09:03:01Z",
+              "closed_at": "2026-10-16T09:05:49Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-16T10:21:49Z",
+              "closed_at": "2026-10-16T10:24:04Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P7",
+          "name": "quality-verify",
+          "status": "passed",
+          "wall_seconds": 18087,
+          "wait_seconds": 77,
+          "effective_seconds": 18010,
+          "gate_attempts": 4,
+          "pass_attempts": 3,
+          "fail_attempts": 1,
+          "stage_attempts": null,
+          "rounds": 4,
+          "skills": [],
+          "gate": "gate_integration.py",
+          "opened_at": "2026-10-16T10:24:04Z",
+          "closed_at": "",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-16T03:00:24Z",
+              "closed_at": "2026-10-16T05:21:03Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-16T06:45:19Z",
+              "closed_at": "2026-10-16T08:00:17Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-16T09:05:49Z",
+              "closed_at": "2026-10-16T09:31:59Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-16T10:24:04Z",
+              "closed_at": "2026-10-16T11:23:44Z",
+              "kind": "phase",
+              "interrupted": true
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P8",
+          "name": "upload-review",
+          "status": "failed",
+          "wall_seconds": 18046,
+          "wait_seconds": 2041,
+          "effective_seconds": 16005,
+          "gate_attempts": 6,
+          "pass_attempts": 0,
+          "fail_attempts": 6,
+          "stage_attempts": null,
+          "rounds": 1,
+          "skills": [],
+          "gate": "gate_upload_ci.py",
+          "opened_at": "2026-10-16T05:21:03Z",
+          "closed_at": "",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-16T05:21:03Z",
+              "closed_at": "2026-10-16T10:21:49Z",
+              "kind": "phase",
+              "interrupted": true
+            }
+          ],
+          "upload_wait_history": null
+        }
+      ],
+      "failure_details": [
+        {
+          "id": "manifest:4",
+          "phase": "P2",
+          "gate": "gate_develop.py",
+          "reason": "base/head 428e80c18ff1->428e80c18ff1, 29 file(s) changed (26 untracked), style_ok=False strict_ok=True hygiene_ok=False change_scope=29/29 inside",
+          "at": "2026-10-15T12:44:27Z",
+          "source": "browser-import/ar-development/2026-10-15-hiview-resmon/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "passed_without_recorded_fix",
+          "verified_by": "manifest:5",
+          "count": 1,
+          "category": "其他门禁问题",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:61",
+          "phase": "P2",
+          "gate": "gate_develop.py",
+          "reason": "base/head 428e80c18ff1->7abfeab4e041, 29 file(s) changed (0 untracked), style_ok=False strict_ok=True hygiene_ok=True change_scope=29/29 inside",
+          "at": "2026-10-16T10:15:55Z",
+          "source": "browser-import/ar-development/2026-10-15-hiview-resmon/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 9,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "passed_without_recorded_fix",
+          "verified_by": "manifest:62",
+          "count": 1,
+          "category": "其他门禁问题",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:69",
+          "phase": "P2",
+          "gate": "gate_develop.py",
+          "reason": "base/head 428e80c18ff1->7abfeab4e041, 30 file(s) changed (0 untracked), style_ok=False strict_ok=True hygiene_ok=False change_scope=30/30 inside",
+          "at": "2026-10-16T11:24:01Z",
+          "source": "browser-import/ar-development/2026-10-15-hiview-resmon/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 10,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "unresolved",
+          "verified_by": "",
+          "count": 1,
+          "category": "其他门禁问题",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:7",
+          "phase": "P4",
+          "gate": "gate_build.py",
+          "reason": "rc=1 banner_ok=False banner_err=True; 69 marker line(s) artifacts 0/1 present; MISSING build_artifacts: out/rk3568/hiviewdfx/hiview/libresmon.z.so",
+          "at": "2026-10-15T12:48:33Z",
+          "source": "browser-import/ar-development/2026-10-15-hiview-resmon/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:11",
+          "count": 1,
+          "category": "编译构建",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:11",
+          "phase": "P4",
+          "gate": "gate_build.py",
+          "reason": "rc=1 banner_ok=False banner_err=True; 50 marker line(s) artifacts 0/1 present; MISSING build_artifacts: out/rk3568/hiviewdfx/hiview/libresmon.z.so",
+          "at": "2026-10-15T12:52:53Z",
+          "source": "browser-import/ar-development/2026-10-15-hiview-resmon/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:15",
+          "count": 1,
+          "category": "编译构建",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:15",
+          "phase": "P4",
+          "gate": "gate_build.py",
+          "reason": "rc=1 banner_ok=False banner_err=True; 63 marker line(s) artifacts 0/1 present; MISSING build_artifacts: out/rk3568/hiviewdfx/hiview/libresmon.z.so",
+          "at": "2026-10-16T01:42:53Z",
+          "source": "browser-import/ar-development/2026-10-15-hiview-resmon/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:16",
+          "count": 1,
+          "category": "编译构建",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:16",
+          "phase": "P4",
+          "gate": "gate_build.py",
+          "reason": "rc=1 banner_ok=False banner_err=True; 49 marker line(s) artifacts 0/1 present; MISSING build_artifacts: out/rk3568/hiviewdfx/hiview/libresmon.z.so",
+          "at": "2026-10-16T01:53:24Z",
+          "source": "browser-import/ar-development/2026-10-15-hiview-resmon/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:20",
+          "count": 1,
+          "category": "编译构建",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:20",
+          "phase": "P4",
+          "gate": "gate_build.py",
+          "reason": "build ok but clang-tidy found 11 issue(s) (target=hiview_package); clang-tidy found 11 issue(s) — HARD block; fix and re-run P2→P4",
+          "at": "2026-10-16T02:00:11Z",
+          "source": "browser-import/ar-development/2026-10-15-hiview-resmon/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "passed_without_recorded_fix",
+          "verified_by": "manifest:21",
+          "count": 1,
+          "category": "编译构建",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:22",
+          "phase": "P5",
+          "gate": "gate_test_ut.py",
+          "reason": "no new reports/<timestamp>/ dir produced this run",
+          "at": "2026-10-16T02:15:57Z",
+          "source": "browser-import/ar-development/2026-10-15-hiview-resmon/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:23",
+          "count": 1,
+          "category": "测试与验证",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:23",
+          "phase": "P5",
+          "gate": "gate_test_ut.py",
+          "reason": "test target build failed: hiview_test_package",
+          "at": "2026-10-16T02:37:00Z",
+          "source": "browser-import/ar-development/2026-10-15-hiview-resmon/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:24",
+          "count": 1,
+          "category": "测试与验证",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:24",
+          "phase": "P5",
+          "gate": "gate_test_ut.py",
+          "reason": "tests=0 failures=0 errors=0 fresh=2026-10-16-10-43-34 gtest_cov=0/10 MISSING: ResmonConfigTest.LoadDefaults_001, ResmonConfigTest.ParseJson_001, ResmonCpuCollectorTest.ParseProcStat_001, ResmonCpuCollectorTest.ParseLoadAvg_001, ResmonMemCollectorTest.ParseMeminfo_001, ResmonNetCollectorTest.ParseNetDev_001, ResmonLandingTest.FileNaming_001, ResmonLandingTest.RotateByQuota_001, ResmonThresholdTest.Debounce_001, ResmonPluginTest.OnLoadInit_001",
+          "at": "2026-10-16T02:43:47Z",
+          "source": "browser-import/ar-development/2026-10-15-hiview-resmon/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "passed_without_recorded_fix",
+          "verified_by": "manifest:25",
+          "count": 1,
+          "category": "测试与验证",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:26",
+          "phase": "P6",
+          "gate": "gate_device_func.py",
+          "reason": "scenario script exited 1",
+          "at": "2026-10-16T02:58:08Z",
+          "source": "browser-import/ar-development/2026-10-15-hiview-resmon/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "passed_without_recorded_fix",
+          "verified_by": "manifest:27",
+          "count": 1,
+          "category": "设备连接",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:49",
+          "phase": "P6",
+          "gate": "gate_device_func.py",
+          "reason": "nonce=True trigger_window=True marker=True runtime=True e2e=True device_cases=3/3 artifact_hash=True provenance=False artifact_loaded=False side_effect=True negative_control=True uptime 105347.15->105384.98 mono=True BAD_device_cases=DC-01,DC-02,DC-03",
+          "at": "2026-10-16T09:03:41Z",
+          "source": "browser-import/ar-development/2026-10-15-hiview-resmon/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 3,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "passed_without_recorded_fix",
+          "verified_by": "manifest:50",
+          "count": 1,
+          "category": "设备连接",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:40",
+          "phase": "P7",
+          "gate": "gate_integration.py",
+          "reason": "type=UT tests=0 failures=0 errors=0 fresh=2026-10-16-15-57-47 | quality:coverage=evidence/phase7/coverage_report.html; performance=evidence/phase7/performance_report.md; power=evidence/phase7/power_report.md; stability=evidence/phase7/stability_report.md | review:auto_review_issues=0 guard rc=0 metric_findings=0 on 21 file(s) | external_review=not-provided",
+          "at": "2026-10-16T07:58:03Z",
+          "source": "browser-import/ar-development/2026-10-15-hiview-resmon/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 2,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "passed_without_recorded_fix",
+          "verified_by": "manifest:41",
+          "count": 1,
+          "category": "测试与验证",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:29",
+          "phase": "P8",
+          "gate": "gate_upload_ci.py:consent-precheck",
+          "reason": "dry run prepared upload plan (no --allow-push)",
+          "at": "2026-10-16T05:29:00Z",
+          "source": "browser-import/ar-development/2026-10-15-hiview-resmon/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 1,
+          "failure_kind": "expected_review_hold",
+          "failure_category": "expected_review_hold",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:30",
+          "count": 1,
+          "category": "待人工确认",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:30",
+          "phase": "P8",
+          "gate": "gate_upload_ci.py",
+          "reason": "pr-review-report missing: pass --pr-review-report <path> (machine-readable zero-issue report). Run the review, drive issues to zero, then re-run.",
+          "at": "2026-10-16T06:02:51Z",
+          "source": "browser-import/ar-development/2026-10-15-hiview-resmon/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "unresolved",
+          "verified_by": "",
+          "count": 1,
+          "category": "其他门禁问题",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:42",
+          "phase": "P8",
+          "gate": "gate_upload_ci.py:consent-precheck",
+          "reason": "dry run prepared upload plan (no --allow-push)",
+          "at": "2026-10-16T08:03:34Z",
+          "source": "browser-import/ar-development/2026-10-15-hiview-resmon/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 1,
+          "failure_kind": "expected_review_hold",
+          "failure_category": "expected_review_hold",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:43",
+          "count": 1,
+          "category": "待人工确认",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:43",
+          "phase": "P8",
+          "gate": "gate_upload_ci.py",
+          "reason": "oh-gc pr create failed: ›   Error: API error 409: \n ›   {\"error_code\":409,\"error_code_name\":\"UN_KNOW\",\"error_message\":\"Another \n ›   open merge request already exists for this source branch: \n ›   !4607\",\"trace_id\":\"0c4ba83d5c735219064842efbef2fcd7\"}",
+          "at": "2026-10-16T08:04:09Z",
+          "source": "browser-import/ar-development/2026-10-15-hiview-resmon/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "unresolved",
+          "verified_by": "",
+          "count": 1,
+          "category": "其他门禁问题",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:52",
+          "phase": "P8",
+          "gate": "gate_upload_ci.py:consent-precheck",
+          "reason": "dry run prepared upload plan (no --allow-push)",
+          "at": "2026-10-16T09:32:23Z",
+          "source": "browser-import/ar-development/2026-10-15-hiview-resmon/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 1,
+          "failure_kind": "expected_review_hold",
+          "failure_category": "expected_review_hold",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:53",
+          "count": 1,
+          "category": "待人工确认",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:53",
+          "phase": "P8",
+          "gate": "gate_upload_ci.py",
+          "reason": "oh-gc pr create failed: ›   Error: API error 409: \n ›   {\"error_code\":409,\"error_code_name\":\"UN_KNOW\",\"error_message\":\"Another \n ›   open merge request already exists for this source branch: \n ›   !4607\",\"trace_id\":\"1c8736316a45ff2a3a59344946a60003\"}",
+          "at": "2026-10-16T09:32:38Z",
+          "source": "browser-import/ar-development/2026-10-15-hiview-resmon/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "unresolved",
+          "verified_by": "",
+          "count": 1,
+          "category": "其他门禁问题",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        }
+      ],
+      "failures": 20,
+      "gate_attempts": 60,
+      "human_interventions": [
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "device functional test review",
+          "phase": "P6"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "quality reports and code review review",
+          "phase": "P7"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P8 pre-upload diff and target review",
+          "phase": "P8"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "device functional test review",
+          "phase": "P6"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "quality reports and code review review",
+          "phase": "P7"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P8 pre-upload diff and target review",
+          "phase": "P8"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "device functional test review",
+          "phase": "P6"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "quality reports and code review review",
+          "phase": "P7"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P8 pre-upload diff and target review",
+          "phase": "P8"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "device functional test review",
+          "phase": "P6"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        }
+      ],
+      "open_waits": 0,
+      "open_wait_details": [],
+      "effective_seconds": 94309,
+      "wall_seconds": 99073,
+      "wait_seconds": 4764,
+      "first_gate_attempts": 39,
+      "first_gate_failures": 10,
+      "first_gate_passes": 29,
+      "first_gate_review_holds": 1,
+      "unrecorded_gate_attempts": 0,
+      "preflight_summary": {
+        "attempts": null,
+        "failed_attempts": null,
+        "issues": null
+      },
+      "preflight_failures": [],
+      "session_later_outcome": "",
+      "recording_quality": {
+        "status": "complete",
+        "initialization_count": 1,
+        "note": "指标历史连续保留；实际工作起点仍需登记。"
+      },
+      "import_origin": "browser"
+    },
     {
       "id": "20261016-hicollie",
       "workflow": "ar-development",
