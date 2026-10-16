@@ -349,7 +349,7 @@ def _resolve_ninja(repo):
     return shutil.which("ninja")
 
 
-def clang_tidy_substep(pdir, repo, changed_cxx, out_dir_rel):
+def clang_tidy_substep(pdir, repo, changed_cxx, out_dir_rel, line_filter=None, component_root=None):
     """P4 post-build clang-tidy over the changed C/C++ files.
 
     Contract (per user decision): when a compile database can be produced AND
@@ -368,7 +368,7 @@ def clang_tidy_substep(pdir, repo, changed_cxx, out_dir_rel):
     def _note(msg, degraded):
         with open(os.path.join(pdir, note_rel), "w", encoding="utf-8") as f:
             f.write("degraded=%s\n%s\n" % (degraded, msg))
-        return msg
+        return "degraded=%s; %s" % (degraded, msg)
 
     abs_cxx = [os.path.join(repo, f) for f in changed_cxx
                if os.path.isfile(os.path.join(repo, f))]
@@ -403,34 +403,83 @@ def clang_tidy_substep(pdir, repo, changed_cxx, out_dir_rel):
             "compile_commands.json generation error: %s; clang-tidy skipped, "
             "CI will still scan" % exc, degraded=True)
 
-    # 2) run the guard's clang-tidy pass. The guard itself returns an empty
-    #    finding list + a note when clang-tidy is not on PATH, so we detect that
-    #    from its JSON (clang_tidy_note) and degrade rather than hard-fail.
-    cp = subprocess.run(
-        [sys.executable, STYLE_GUARD, "--clang-tidy", out_dir,
-         "--json", os.path.join(pdir, ct_json_rel), "--repository-root", repo,
-         "--ohos-root", repo, *abs_cxx],
-        text=True, capture_output=True, timeout=600)
-    rels.append(ct_json_rel)
-    ct_note = ""
-    findings = []
+    # 2) Only this invocation's structured report may authorize a clean scan.
+    # Explicit tool unavailability retains the agreed advisory policy; a
+    # checker crash, timeout or invalid report is a recordable backend failure.
+    report_path = os.path.join(pdir, ct_json_rel)
+
+    def _include_current_report():
+        if os.path.isfile(report_path) and ct_json_rel not in rels:
+            rels.append(ct_json_rel)
+
+    def _backend_failure(message):
+        _include_current_report()
+        finding = {
+            "file": "", "line": 1, "rule_id": "clang-tidy-backend",
+            "severity": "严重", "remediation": message,
+        }
+        return [finding], rels, _note(message, degraded=False)
+
     try:
-        import json
-        data = json.loads(open(os.path.join(pdir, ct_json_rel),
-                               encoding="utf-8").read())
-        findings = data.get("clang_tidy_findings") or []
-        ct_note = data.get("clang_tidy_note") or ""
-    except Exception:
-        ct_note = "clang-tidy findings JSON unreadable"
-    if ct_note:
-        # clang-tidy unavailable / compile_commands.json unusable per the guard.
-        return [], rels, _note(
-            "clang-tidy not executed by guard (%s); CI will still scan" % ct_note,
-            degraded=True)
+        os.unlink(report_path)
+    except FileNotFoundError:
+        pass
+    except OSError as exc:
+        return _backend_failure(
+            "clang-tidy backend failure: cannot clear previous report: %s" % exc)
+    try:
+        scope_args = []
+        if line_filter is not None:
+            scope_path = os.path.join(pdir, "evidence/phase4/changed_lines.json")
+            with open(scope_path, "w", encoding="utf-8") as stream:
+                json.dump(line_filter, stream)
+            rels.append("evidence/phase4/changed_lines.json")
+            scope_args = ["--line-filter-json", scope_path]
+        cp = subprocess.run(
+            [sys.executable, STYLE_GUARD, "--rules-only", "--clang-tidy", out_dir,
+             "--json", report_path, "--repository-root", component_root or repo,
+             "--ohos-root", repo, *scope_args, *abs_cxx],
+            text=True, capture_output=True, timeout=600)
+    except subprocess.TimeoutExpired:
+        return _backend_failure("clang-tidy backend timeout after 600 seconds")
+    except OSError as exc:
+        return _backend_failure(
+            "clang-tidy backend failure: checker could not start: %s" % exc)
+    _include_current_report()
+    try:
+        with open(report_path, encoding="utf-8") as stream:
+            data = json.load(stream)
+    except (OSError, ValueError) as exc:
+        return _backend_failure(
+            "clang-tidy backend failure: current findings JSON unreadable "
+            "(rc=%d): %s" % (cp.returncode, exc))
+    if not isinstance(data, dict):
+        return _backend_failure("clang-tidy backend failure: report must be an object")
+    ct_note = data.get("clang_tidy_note") or ""
+    findings = data.get("clang_tidy_findings")
+    if findings is None and isinstance(ct_note, str) and ct_note:
+        findings = []
+    if (not isinstance(ct_note, str) or not isinstance(findings, list) or
+            any(not isinstance(finding, dict) for finding in findings)):
+        return _backend_failure(
+            "clang-tidy backend failure: report lacks valid findings or tool status")
+    content_findings = data.get("findings", [])
+    if not isinstance(content_findings, list) or any(not isinstance(finding, dict) for finding in content_findings):
+        return _backend_failure("clang-tidy backend failure: invalid content findings")
+    findings = findings + content_findings
+    # A partial-tool note must not hide the defects the checker did find.
     if findings:
         return findings, rels, _note(
             "clang-tidy found %d issue(s) — HARD block; fix and re-run P2→P4"
             % len(findings), degraded=False)
+    if cp.returncode != 0:
+        return _backend_failure(
+            "clang-tidy backend failure: checker exited rc=%d without findings; %s"
+            % (cp.returncode, (cp.stderr or "")[:500]))
+    if ct_note:
+        return [], rels, _note(
+            "clang-tidy not executed by guard (%s); CI will still scan" % ct_note,
+            degraded=True)
     return [], rels, _note("clang-tidy PASS: 0 findings over %d file(s)"
                            % len(abs_cxx), degraded=False)
 
@@ -474,6 +523,8 @@ def main():
     pdir = gl.pipeline_dir(args.pipeline_dir)
     state = gl.load_state(pdir)
     gl.require_current_phase(state, 4, "gate_build.py")
+    from workflow_checks import enforce
+    enforce(pdir, 4)
     repo = state["repo"]
     target = args.target or state.get("build_target")
     if not target:
@@ -564,12 +615,37 @@ def main():
     # build into a false FAIL. An explicit error banner remains contradictory and
     # therefore blocking even with rc=0.
     if rc == 0 and not banner_err and not artifacts_missing:
+        # Check exports against this build's artifacts, never before a first
+        # build has produced them. Early preflight only checks nm readiness.
+        from workflow_checks import post_build_checks
+        post_checks = post_build_checks(pdir, contract or {})
+        if post_checks:
+            arts.append("evidence/phase4/symbol_checks.json")
+        bad_post = [check for check in post_checks if check["status"] != "PASS"]
+        if bad_post:
+            reason = "build ok but exported symbol checks failed: " + "; ".join(check["reason"] for check in bad_post)
+            _record_result(pdir, "FAIL", reason, arts, cmd=cmd, exit_code=rc, target=target,
+                           failure_class="build_verdict_failed", static_analysis_status="FAIL",
+                           problems=[check["id"] + ": " + check["reason"] for check in bad_post],
+                           resume_hint="核对实际链接库、导出接口和 BUILD.gn 依赖，修复后回 P2 重走")
+            sys.exit("PHASE 4 FAIL: " + reason)
         # Post-build clang-tidy substep (user decision: run it at P4, right after
         # the build succeeds, so AST-level defects are caught before P5/P6 waste
         # work). Hard-fails when a compdb + clang-tidy are available; degrades to
         # advisory otherwise. changed_files come from the signed contract.
         changed_cxx = [p for p in (contract.get("changed_files") or [])
                        if os.path.splitext(p)[1].lower() in CXX_EXTS] if c_ok else []
+        line_filter = None
+        # P3 can add test sources absent from P1's changed_files. Use the actual
+        # pinned Git diff, not a stale authored-file list, for AST and metrics.
+        if os.path.isdir(os.path.join(gl.resolve_git_dir(state), ".git")) or os.path.isfile(os.path.join(gl.resolve_git_dir(state), ".git")):
+            from workflow_checks import current_scope
+            try:
+                gdir, _base, actual_changed, line_filter = current_scope(state)
+                changed_cxx = [os.path.join(gdir,p) for p in actual_changed if os.path.splitext(p)[1].lower() in CXX_EXTS]
+            except ValueError as exc:
+                _record_result(pdir, "FAIL", str(exc), arts, failure_class="build_verdict_failed", static_analysis_status="FAIL")
+                sys.exit("PHASE 4 FAIL: cannot determine actual changed scope: %s" % exc)
         metric_findings, metric_rel = metric_substep(pdir, repo, changed_cxx)
         arts.append(metric_rel)
         if metric_findings:
@@ -586,8 +662,10 @@ def main():
                 static_analysis_status="FAIL",
                 resume_hint="修复 metric 报告的函数/文件规模问题后回 P2 重走并重跑 gate_build.py")
             sys.exit("PHASE 4 FAIL: %s" % reason)
-        ct_findings, ct_rels, ct_note = clang_tidy_substep(pdir, repo, changed_cxx, out_dir_rel)
+        ct_findings, ct_rels, ct_note = clang_tidy_substep(pdir, repo, changed_cxx, out_dir_rel, line_filter=line_filter, component_root=gl.resolve_git_dir(state))
         arts += ct_rels
+        if not ct_findings and "degraded=True" in ct_note and state.get("optimization_policy_version") == 1:
+            ct_findings = [{"file":"", "line":0, "rule_id":"clang-tidy-unavailable", "remediation":ct_note}]
         if ct_findings:
             reason = ("build ok but clang-tidy found %d issue(s) (target=%s); %s"
                       % (len(ct_findings), target, ct_note))
@@ -610,7 +688,7 @@ def main():
             arts, cmd=cmd, exit_code=rc, target=target,
             banner_ok=banner_ok, banner_err=banner_err,
             artifacts_missing=artifacts_missing, contract_status=contract_status,
-            static_analysis_status="PASS")
+            static_analysis_status="UNAVAILABLE" if "degraded=True" in ct_note else "PASS")
         print("PHASE 4 PASS — advance.py advance --phase 4")
         return
 

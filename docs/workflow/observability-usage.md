@@ -1,5 +1,9 @@
 # OpenHarmony 作业线维测使用说明
 
+2026-10-09 的 workflow 优化及离线评估见 [优化实现与评估](./workflow-optimization.md)。
+优化模式新增 `preflight_history`、`preflight_summary`；它们与原始门禁 FAIL 分开保存，
+包含检查状态、原因、修复与复验，不能因问题提前发现就删去失败记录或宣称真实失败率下降。
+
 本说明用于收集可横向比较的作业线运行数据。需求开发入口每个 run 只提交一份
 `$PDIR/workflow_metrics.json`；需求分析与设计工作流（Requirement workflow）每个需求目录只提交一份
 `{docs_dir}/workflow_metrics.json`。不要手改统计文件：需求开发通过 `advance.py`，需求分析与设计工作流
@@ -15,11 +19,35 @@
 - `human_wait_excluded_seconds`：等待人工回复的时间；
 - `effective_elapsed_seconds`：`elapsed_seconds - human_wait_excluded_seconds`，用于评价 workflow 效率；
 - 多次 `repair/reset` 产生多个 `runs`，分别保存后累计；
-- 同阶段多个等待区间重叠时按时间并集扣除一次，不重复扣减；
+- 同阶段多个等待区间重叠时按并集计算，再与该阶段实际工作区间取交集，不扣除轮次之间的空档；
 - 人工一直没有回复时，等待区间保持 `waiting`，墙钟时间和排除时间同时增长，因此有效耗时不增长。
 
 后续汇总性能时使用 `workflow_effective_elapsed_seconds`，不要用墙钟时间评价模型或 workflow。
 墙钟时间只用于观察真实交付周期。
+
+### P1 / P2 / P3 实际工作起点与重新初始化
+
+开始设计调研、功能开发、测试开发之前分别登记工作起点，不能等写完后才登记：
+
+```bash
+python3 "$S/advance.py" --pipeline-dir "$PDIR" work-start --phase 1 --reason "开始设计调研与契约编写"
+# 正常推进到 P2 后，开始功能代码工作前：
+python3 "$S/advance.py" --pipeline-dir "$PDIR" work-start --phase 2 --reason "开始功能开发"
+# 正常推进到 P3 后，开始测试工作前：
+python3 "$S/advance.py" --pipeline-dir "$PDIR" work-start --phase 3 --reason "开始测试开发"
+```
+
+首次工作不得越过尚未进入的阶段。返工可登记已经进入过的 P1/P2/P3，再按既有 `reset` / `repair`
+规则重新验证；此命令不修改阶段指针、不产生 PASS、不保留失效证据的效力。切换工作阶段时结束
+旧阶段区间，但不表示旧阶段通过。同阶段重复登记不会重置起点。
+
+同一 run 的 `init --force` 保留开始时间、阶段各轮区间、门禁/预检失败和人工等待；在
+`$PDIR/metrics-history/` 保存初始化前的原始快照，并追加 `timing.initializations`。新验证状态仍从
+P0 开始，旧 PASS/consent 不能据指标复用。归档只留本地，不上传；换任务应使用新 run-id 和新目录。
+损坏的指标或另一 run 的指标会阻止初始化覆盖，避免静默丢失历史。
+
+`timing.history_complete` 表示观测历史是否连续保留，并不保证使用者登记了每项工作。旧记录没有
+此字段时保持未知；已经确认历史缺失的快照，不用于计算完整任务耗时或失败减少度。
 
 ## 需求分析与设计工作流（Requirement workflow）初始化
 
@@ -111,7 +139,37 @@ python3 $S/advance.py --pipeline-dir "$PDIR" intervene \
 | `blocked_unplanned` | 不由人处理就无法继续 | 否 |
 | `user_correction` | 用户主动修正目标、输入、输出或预期 | 否 |
 
-## 6. 提交维测文件前检查
+## 6. 逐次失败与修复
+
+每次 P0-P8 门禁签名 PASS/FAIL 都会自动写入该阶段的 `attempt_history`：`id=manifest:<seq>`、
+`round`、`first_attempt`、`verdict`、门禁名和真实 `reason`。首次尝试以“同一阶段轮次内的同一门禁”为口径；
+`summary.first_gate_attempts_total/first_gate_passes_total/first_gate_failures_total` 给出首轮通过情况，
+`first_gate_review_holds_total` 单列 P8 预期的 consent 预检停点。旧文件只有汇总次数而没有逐次记录时，
+`first_attempt` 是 `null`，`unrecorded_gate_attempts_total` 显示缺失次数，不反推失败原因。
+
+实际修改完成后、重跑同一门禁前，先查看失败序号并记录修改：
+
+```bash
+# 在含有已初始化 PDIR 的源码仓中运行，命令只更新 PDIR/workflow_metrics.json；
+# 签名证据仍由 gate_*.py 产生，不由以下命令改动。
+S="$SKILLS_DIR/ohos-ar-dev-phases/scripts"
+python3 "$S/advance.py" --pipeline-dir "$PDIR" failures
+python3 "$S/advance.py" --pipeline-dir "$PDIR" fix \
+  --attempt-id manifest:3 --root-cause "目标 BUILD.gn 遗漏依赖" \
+  --action "补全 BUILD.gn 中缺失的目标依赖" \
+  --change-ref "base/hiviewdfx/hiview/BUILD.gn"
+# 再运行当前阶段 gate_*.py；同一门禁下一次签名结果决定复验状态。
+python3 "$S/advance.py" --pipeline-dir "$PDIR" failures --json
+```
+
+`fix` 保存人工查明的根因与实际修改说明，默认 `pending_verification`；后续同门禁 PASS 才成为 `resolved`，
+后续同原因 FAIL 成为 `not_resolved`；若 FAIL 的原因变化，则标为
+`gate_still_failed_different_reason`（门禁仍未通过，原根因是否解决待确认），并生成独立的新失败记录。未经记录修改而重跑 PASS 标为
+`passed_without_recorded_fix`，不冒称修复生效。不同门禁的 PASS 不会解除这次失败。P8
+`gate_upload_ci.py:consent-precheck` 的 FAIL 属于 `expected_review_hold`，应走正常人工确认，
+不是“代码修复失败”。不要在 `--action` 或 `--change-ref` 中写入令牌、账号、密钥或设备序列号。
+
+## 7. 提交维测文件前检查
 
 ```bash
 python3 $S/advance.py --pipeline-dir "$PDIR" status
@@ -126,7 +184,7 @@ python3 -m json.tool "$PDIR/workflow_metrics.json" >/dev/null
 - 人工介入 reason 是具体事实，不写“有问题”“人工处理”等模糊描述；
 - 不提交 consent token、账号密码、设备密钥等敏感内容。
 
-## 7. 文件关键结构示例
+## 8. 文件关键结构示例
 
 ```json
 {
@@ -151,7 +209,16 @@ python3 -m json.tool "$PDIR/workflow_metrics.json" >/dev/null
       ],
       "gate_attempts": 2,
       "pass_attempts": 1,
-      "fail_attempts": 1
+      "fail_attempts": 1,
+      "attempt_history": [
+        {
+          "id": "manifest:3", "gate": "gate_develop.py", "verdict": "FAIL",
+          "reason": "缺少目标依赖", "round": 1, "first_attempt": true,
+          "fixes": [{"root_cause": "目标 BUILD.gn 遗漏依赖", "action": "补全 BUILD.gn 依赖", "change_ref": "BUILD.gn",
+                     "verification_verdict": "PASS", "verification_attempt_id": "manifest:4"}],
+          "resolution_status": "resolved", "verified_by": "manifest:4"
+        }
+      ]
     }
   },
   "human_interventions": [],
@@ -165,3 +232,17 @@ python3 -m json.tool "$PDIR/workflow_metrics.json" >/dev/null
 ```
 
 后续根据各团队返回的原始 JSON 和本说明统一生成汇总文档。原始文件应保留，不要只提交人工整理后的表格。
+
+## P8：失败、确认停点与等待分开记录
+
+GitCode 上库使用签名检查点复用已创建 PR。相同计划重复 dry-run 不重复追加确认停点，
+变更计划仍必须重新确认；首次签名确认预检仍保留。
+
+CI pending 和缺评审报告记录为 WAIT，并在 manifest 写 INFO，不能闭合 P8；等待历史在
+`phases["8"].wait_history`，与 `fail_attempts` 独立。`advance.py next --json` 给出
+`awaiting_external` / `awaiting_review_report`、缺少条件及恢复命令。CI 默认 120 秒查询间隔，
+CLI 直接返回等待，不阻塞睡眠。旧指标没有等待历史时按未知展示，不能将历史 FAIL 批量改成 WAIT。
+
+真正的 CI 失败、评审非零、SHA/目标不一致仍记 FAIL。分支非快进在提交/推送前阻断，
+只修改控制说明，不自动强推、合并或改功能代码；代码变更后按既有 reset/repair 规则重验。
+网站运行详情将 P8 等待记录折叠展示；本次回归是机制验证，真实失败减少度待后续任务评估。

@@ -278,7 +278,7 @@ def changed_files_coverage(declared, touched):
     return present, missing
 
 
-def changed_files_within_scope(allowed_paths, touched):
+def changed_files_within_scope(allowed_paths, touched, *, source_root=None, git_root=None):
     """Return touched paths outside the v3 semantic change boundary.
 
     An allowed path may name a file or a directory. Suffix matching keeps the
@@ -286,6 +286,14 @@ def changed_files_within_scope(allowed_paths, touched):
     the design. P1 therefore freezes ownership/scope, while P2 freezes the exact
     files actually discovered during implementation.
     """
+    if source_root and git_root:
+        from workflow_checks import canonical_path
+        try:
+            allowed = [canonical_path(path, source_root, git_root).rstrip("/") for path in allowed_paths]
+            normalized = [(p, canonical_path(p, source_root, git_root)) for p in touched]
+        except ValueError:
+            return list(touched)
+        return [p for p,n in normalized if not any(n==a or n.startswith(a+"/") for a in allowed)]
     allowed = [_norm(path).rstrip("/") for path in allowed_paths]
     outside = []
     for path in touched:
@@ -340,6 +348,8 @@ def main():
     if not os.path.isabs(gdir):
         gdir = os.path.join(repo, gdir)
     gl.evidence_dir(pdir, 2)
+    from workflow_checks import enforce
+    enforce(pdir, 2)
 
     # DESIGN DEPENDENCY (P1a): develop refuses unless AR_design was fixed and
     # signed by gate_design.py first, and that signed evidence is still intact.
@@ -494,7 +504,7 @@ def main():
     c_ok, contract, c_detail = gl.load_signed_contract(pdir)
     if c_ok and contract.get("version", 1) >= 3:
         allowed_paths = (contract.get("change_scope") or {}).get("allowed_paths") or []
-        outside_scope = changed_files_within_scope(allowed_paths, changed)
+        outside_scope = changed_files_within_scope(allowed_paths, changed, source_root=repo, git_root=gdir)
         cov_ok = not outside_scope
         cov_missing = outside_scope
         cov_rel = "evidence/phase2/changed_files_coverage.txt"

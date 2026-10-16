@@ -297,9 +297,9 @@ def parse_hilog_pid(line):
     if not line:
         return None
     for pat in (
+        r"^\s*\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}(?:\.\d+)?\s+(\d+)\s+\d+\b",
         r"\bpid\s*[=:]\s*(\d+)\b",
         r"\bPID\s*[=:]\s*(\d+)\b",
-        r"^\s*\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}(?:\.\d+)?\s+(\d+)\s+\d+\b",
     ):
         m = re.search(pat, line)
         if m:
@@ -683,6 +683,8 @@ def main():
     ap.add_argument("--phase", type=int, default=6, help="6 (device) or 7 (integration reuse)")
     args = ap.parse_args()
     phase = args.phase
+    from workflow_checks import enforce
+    enforce(pdir, phase, scenario=args.scenario_script, deploy=args.deploy_script)
     if phase == 6:
         missing = missing_phase4_proof_args(args)
         if missing:
@@ -807,7 +809,7 @@ def main():
     if args.deploy_script:
         with open(args.deploy_script) as f:
             dep = f.read()
-        cp = sh(dep, env=_merged_env({"GATE_NONCE": nonce}))
+        cp = sh(dep, env=_merged_env({"GATE_NONCE": nonce, "WORKFLOW_LIFECYCLE_DIR": os.path.join(pdir, "evidence", "phase%d" % phase, "lifecycle-" + nonce)}))
         record("deploy", cp, cmd=args.deploy_script)
         if cp.returncode != 0:
             _fail(pdir, phase, nonce, cmds_log, "deploy script exited %d" % cp.returncode,
@@ -864,7 +866,7 @@ def main():
     # 3. drive the functional scenario (nonce exported for the component to echo)
     with open(args.scenario_script) as f:
         scen = f.read()
-    cp = sh(scen, env=_merged_env({"GATE_NONCE": nonce}))
+    cp = sh(scen, env=_merged_env({"GATE_NONCE": nonce, "WORKFLOW_LIFECYCLE_DIR": os.path.join(pdir, "evidence", "phase%d" % phase, "lifecycle-" + nonce)}))
     record("scenario", cp, cmd=args.scenario_script)
     if cp.returncode != 0:
         _fail(pdir, phase, nonce, cmds_log, "scenario script exited %d" % cp.returncode,

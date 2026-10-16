@@ -29,6 +29,9 @@ P1 先形成 Given/When/Then 验收矩阵，再做依赖可行性调查。人工
 - gate/证据误判：修 gate 并重新取证，不为迁就门禁修改产品设计。
 
 历史签名证据不覆盖；新一轮通过 evidence epoch 与 `phases[].runs` 单独计时。
+每条新门禁 PASS/FAIL 在 `phases.<N>.attempt_history` 留存签名 manifest 序号、真实原因、阶段轮次及是否首次尝试。
+查明的根因与修复动作由 `advance.py fix --root-cause ... --action ...` 指定失败序号并记录；其结果只能由后续同一门禁的签名重跑判定，
+不能把自述修改当作 PASS。旧版 metrics 只有计数、没有逐次记录时不推断首轮结果或历史修复。
 
 ## 统一维测文件
 
@@ -73,3 +76,11 @@ python3 $S/advance.py --pipeline-dir "$PDIR" context \
 ```
 
 面向使用者的完整操作口径见 `docs/workflow/observability-usage.md`。
+
+## P1/P2/P3 计时连续性
+
+开始设计调研、功能开发、测试开发前使用 `advance.py work-start --phase 1/2/3 --reason ...`（选择一个数字），
+再按证据规则 reset/repair 和推进。计时与 PASS/consent 权限独立；不能写完才启动返工计时。
+同一 run 的 `init --force` 保留原始开始时间、各阶段轮次、失败和等待，追加初始化轮次并归档旧指标。
+阶段切换停止旧计时，等待只扣对应工作区间内的交集。历史缺失/未知时不宣称完整任务成本下降。
+归档仅本地保存；新任务使用新 run-id。详细命令见阶段技能与仓库 `docs/workflow/observability-usage.md`。

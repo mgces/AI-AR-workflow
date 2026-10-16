@@ -1,0 +1,133 @@
+{
+  "evaluated_at": "2026-10-09",
+  "method": "隔离进程 A/B，模拟历史失败机制；clang 输出使用确定性夹具，不是 OHOS 构建或完整会话重跑",
+  "historical_gate_attempts": 90,
+  "historical_gate_failures": 37,
+  "misleading_rejection_scenarios": 8,
+  "before_misleading_rejections": 8,
+  "after_misleading_rejections": 0,
+  "scenario_reduction_percent": 100.0,
+  "unsafe_status_scenarios": 2,
+  "negative_controls": 6,
+  "cases": [
+    {
+      "id": "dfx-heading",
+      "category": "misleading_rejection",
+      "description": "DFX 章节标题冲突",
+      "before_expected_behavior": false,
+      "after_expected_behavior": true
+    },
+    {
+      "id": "component-paths",
+      "category": "misleading_rejection",
+      "description": "20 个组件路径被源码根前缀误判",
+      "before_expected_behavior": false,
+      "after_expected_behavior": true
+    },
+    {
+      "id": "plugin-config",
+      "category": "misleading_rejection",
+      "description": "插件计数配置被要求添加注释",
+      "before_expected_behavior": false,
+      "after_expected_behavior": true
+    },
+    {
+      "id": "hwtest",
+      "category": "misleading_rejection",
+      "description": "HWTEST_F 注册被漏识别",
+      "before_expected_behavior": false,
+      "after_expected_behavior": true
+    },
+    {
+      "id": "relative-header",
+      "category": "misleading_rejection",
+      "description": "保护宏被绝对工作区路径影响",
+      "before_expected_behavior": false,
+      "after_expected_behavior": true
+    },
+    {
+      "id": "xdevice-environment",
+      "category": "misleading_rejection",
+      "description": "远端 xdevice 配置缺 environment",
+      "before_expected_behavior": false,
+      "after_expected_behavior": true
+    },
+    {
+      "id": "hilog-pid",
+      "category": "misleading_rejection",
+      "description": "正文 PID 覆盖 hilog 行头",
+      "before_expected_behavior": false,
+      "after_expected_behavior": true
+    },
+    {
+      "id": "nested-report",
+      "category": "misleading_rejection",
+      "description": "本次测试报告多一层目录",
+      "before_expected_behavior": false,
+      "after_expected_behavior": true
+    },
+    {
+      "id": "clang-error",
+      "category": "unsafe_status",
+      "description": "执行报错被当作工具未安装",
+      "before_expected_behavior": false,
+      "after_expected_behavior": true
+    },
+    {
+      "id": "clang-timeout",
+      "category": "unsafe_status",
+      "description": "检查器超时没有结构化阻断",
+      "before_expected_behavior": false,
+      "after_expected_behavior": true
+    },
+    {
+      "id": "ordinary-license",
+      "category": "negative_control",
+      "description": "普通无扩展文件仍需许可证",
+      "before_expected_behavior": true,
+      "after_expected_behavior": true
+    },
+    {
+      "id": "malformed-plugin",
+      "category": "negative_control",
+      "description": "损坏插件计数仍拒绝",
+      "before_expected_behavior": true,
+      "after_expected_behavior": true
+    },
+    {
+      "id": "bare-suite",
+      "category": "negative_control",
+      "description": "只写套件名而未注册仍拒绝",
+      "before_expected_behavior": true,
+      "after_expected_behavior": true
+    },
+    {
+      "id": "invalid-dfx",
+      "category": "negative_control",
+      "description": "DFX 缺可测试性仍拒绝",
+      "before_expected_behavior": true,
+      "after_expected_behavior": true
+    },
+    {
+      "id": "real-special-member",
+      "category": "negative_control",
+      "description": "真实特殊成员函数问题仍阻断",
+      "before_expected_behavior": true,
+      "after_expected_behavior": true
+    },
+    {
+      "id": "stale-report",
+      "category": "negative_control",
+      "description": "旧运行报告仍不能代替本次报告",
+      "before_expected_behavior": true,
+      "after_expected_behavior": true
+    }
+  ],
+  "actual_run_failure_reduction_percent": null,
+  "limitations": [
+    "样例按失败机制计数，不能分配到历史 37 次 FAIL；同一次 FAIL 可包含多个原因。",
+    "提前发现真实缺陷不算消除缺陷；预检 FAIL 与原始门禁 FAIL 均保留。",
+    "设备、完整构建、MinGW、远端 CI、真实状态隔离需要后续真实运行。",
+    "不承诺 100% 真实门禁通过率；外部平台和未知原因不能由这次本地改动消除。"
+  ]
+}

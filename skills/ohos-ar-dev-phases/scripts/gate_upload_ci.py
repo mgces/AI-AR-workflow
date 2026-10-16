@@ -43,6 +43,7 @@ import subprocess
 import sys
 import time
 import re
+from urllib.parse import urlparse
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 import gatelib as gl  # noqa: E402
@@ -123,6 +124,8 @@ P8_FAILURE_TO_SUBSTATE = {
     "local_review_blocked": "local_review",
     "dry_run_no_pass": "consent_await",
     "push_failed": "push_pr",
+    "branch_not_fast_forward": "push_pr",
+    "pr_discovery_failed": "push_pr",
     "pr_create_failed": "push_pr",
     "pr_metadata_incomplete": "push_pr",
     "change_id_missing": "push_pr",
@@ -135,6 +138,8 @@ P8_FAILURE_TO_SUBSTATE = {
     "commit_message_invalid": "push_pr",
     "pr_review_blocked": "pr_review",
     "ci_not_green": "ci_green",
+    "ci_wait": "ci_green",
+    "external_platform": "ci_green",
     "pr_head_sha_mismatch": "ci_green",
     "ci_stale_pre_push": "ci_green",
     "sha_mismatch": "ci_green",
@@ -149,7 +154,7 @@ P8_FAILURE_TO_SUBSTATE = {
 # SHA (review/CI bound to a different commit than we shipped) is such a conflict.
 EXTERNAL_CONFLICT_CLASSES = {
     "review_ci_sha_conflict", "sha_mismatch", "pr_head_sha_mismatch"}
-EXTERNAL_INSTABILITY_CLASSES = {"external_api_unstable"}
+EXTERNAL_INSTABILITY_CLASSES = {"external_api_unstable", "external_platform"}
 
 
 
@@ -162,6 +167,166 @@ def run(cmd, cwd=None):
     if isinstance(cmd, str):
         raise TypeError("run() requires an argv list, never a shell command string")
     return subprocess.run(cmd, text=True, capture_output=True, cwd=cwd)
+
+
+def matching_open_pr(items, repo_slug, head_ref, base):
+    """Match both repositories and refs; never infer identity from title/number."""
+    owner, sep, branch = head_ref.partition(":")
+    if not sep:
+        owner, branch = repo_slug.split("/", 1)[0], head_ref
+    matches = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        head, target = item.get("head") or {}, item.get("base") or {}
+        source_repo = (head.get("repo") or {}).get("full_name", "")
+        target_repo = (target.get("repo") or {}).get("full_name", "")
+        source_ok = source_repo == owner + "/" + repo_slug.rsplit("/", 1)[-1] if source_repo else head.get("label") == owner+":"+branch
+        if target_repo:
+            target_ok = target_repo == repo_slug
+        else:
+            url = urlparse(str(item.get("html_url") or ""))
+            target_ok = (url.scheme == "https" and url.netloc == "gitcode.com"
+                         and url.path.rstrip("/") == "/%s/pull/%s" % (repo_slug, item.get("number"))
+                         and target.get("label") == repo_slug.split("/", 1)[0]+":"+base)
+        if (item.get("state") == "open" and head.get("ref") == branch
+                and source_ok and target.get("ref") == base and target_ok):
+            number = item.get("number")
+            if isinstance(number, int) and not isinstance(number, bool) and number > 0:
+                matches.append(item)
+    if len(matches) > 1:
+        raise ValueError("multiple matching open PRs; provide an explicit --pr")
+    return matches[0] if matches else None
+
+
+def find_open_pr(repo_slug, head_ref, base):
+    result = run(["oh-gc", "pr", "list", "--repo", repo_slug, "--state", "open", "--limit", "100", "--json"])
+    if result.returncode:
+        raise ValueError("PR discovery failed; no create/push attempted")
+    try:
+        items = json.loads(result.stdout)
+    except (ValueError, TypeError):
+        raise ValueError("PR discovery returned invalid JSON")
+    if not isinstance(items, list):
+        raise ValueError("PR discovery did not return a list")
+    if any(not isinstance(p, dict) or not isinstance(p.get("head"), dict)
+           or not isinstance(p.get("base"), dict)
+           or not ((p["head"].get("repo") or {}).get("full_name") or p["head"].get("label"))
+           or not ((p["base"].get("repo") or {}).get("full_name") or (p["base"].get("label") and p.get("html_url"))) for p in items):
+        raise ValueError("PR discovery lacks repository/ref identity; provide explicit --pr")
+    match = matching_open_pr(items, repo_slug, head_ref, base)
+    if not match and len(items) >= 100:
+        raise ValueError("PR listing may be truncated; provide explicit --pr before upload")
+    return match
+
+
+def check_push_ancestry(gdir, branch):
+    ref = "refs/heads/" + branch
+    check = run(["git", "-C", gdir, "check-ref-format", ref])
+    if check.returncode:
+        return False, "invalid upload branch"
+    remote = run(["git", "-C", gdir, "ls-remote", "--exit-code", "origin", ref])
+    if remote.returncode == 2:
+        return True, "new remote branch"
+    if remote.returncode:
+        return False, "remote branch query failed; check authentication/network"
+    rows = [line.split() for line in remote.stdout.splitlines() if line.strip()]
+    rows = [row for row in rows if len(row) == 2 and row[1] == ref]
+    if len(rows) != 1 or not re.fullmatch(r"[0-9a-f]{40,64}", rows[0][0]):
+        return False, "remote branch identity unreadable"
+    fetched = run(["git", "-C", gdir, "fetch", "--no-tags", "origin", ref])
+    if fetched.returncode:
+        return False, "remote branch fetch failed"
+    ancestor = run(["git", "-C", gdir, "merge-base", "--is-ancestor", rows[0][0], branch])
+    if ancestor.returncode:
+        return False, "non-fast-forward: remote branch is ahead/diverged; integrate changes and revalidate before upload"
+    return True, "fast-forward permitted"
+
+
+CHECKPOINT_REL = "evidence/phase8/upload_checkpoint.json"
+CHECKPOINT_GATE = "gate_upload_ci.py:checkpoint"
+
+
+def save_upload_checkpoint(pdir, payload):
+    path = os.path.join(pdir, CHECKPOINT_REL)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as stream:
+        json.dump(payload, stream, sort_keys=True, indent=2)
+    gl.emit(pdir, 8, CHECKPOINT_GATE, verdict="INFO", reason="uploaded PR checkpoint; not a PASS",
+            artifacts_rel=[CHECKPOINT_REL])
+
+
+def load_upload_checkpoint(pdir, repo_slug, branch, base, head_owner, head_sha):
+    try:
+        state = gl.load_state(pdir)
+        ok, _, entries = gl.verify_chain(pdir)
+        candidates = [e for e in entries if e.get("gate") == CHECKPOINT_GATE and e.get("phase") == 8]
+        if not ok or not candidates:
+            return None
+        entry = candidates[-1]
+        if entry.get("seq", -1) < (gl.evidence_floor(state, 8) or 0):
+            return None
+        art = next((a for a in entry.get("artifacts", []) if a.get("path") == CHECKPOINT_REL), None)
+        if not art or gl.sha256_file(os.path.join(pdir, CHECKPOINT_REL)) != art["sha256"]:
+            return None
+        with open(os.path.join(pdir, CHECKPOINT_REL), encoding="utf-8") as stream:
+            payload = json.load(stream)
+        expected = dict(repo_slug=repo_slug, branch=branch, base=base, head_owner=head_owner or "", pushed_sha=head_sha)
+        if any(payload.get(k) != v for k, v in expected.items()):
+            return None
+        if not isinstance(payload.get("pr"), int) or isinstance(payload["pr"], bool) or payload["pr"] <= 0:
+            return None
+        return payload
+    except (OSError, ValueError, TypeError, KeyError, StopIteration):
+        return None
+
+
+def record_upload_wait(pdir, kind, reason, *, pr_number=None, pushed_sha=None, poll_interval=120, pr_review_report=None):
+    """An advisory WAIT/INFO cannot close P8 or create a code-repair loop."""
+    if kind not in ("ci_wait", "pr_review_missing", "local_review_missing"):
+        raise ValueError("unsupported upload wait")
+    substate = "ci_green" if kind == "ci_wait" else "pr_review" if kind == "pr_review_missing" else "local_review"
+    previous = gl.read_control_json(pdir, *SUBSTATE_PARTS) or {}
+    same = (previous.get("waiting_for"), previous.get("pr"), previous.get("pushed_sha")) == (kind, pr_number, pushed_sha)
+    payload = _write_substate_snapshot(pdir, substate_id=substate, pr_number=pr_number)
+    payload.update(waiting_for=kind, pr=pr_number, pushed_sha=pushed_sha,
+                   retry_after_epoch=previous.get("retry_after_epoch", 0) if same else time.time()+max(0, poll_interval))
+    ok_pre, _, _ = gl.validate_upload_consent_entry(pdir)
+    if ok_pre:
+        with open(os.path.join(pdir, "evidence/phase8/upload_consent_request.json"), encoding="utf-8") as stream:
+            request = json.load(stream)
+        resume = ["gate_upload_ci.py", "--pipeline-dir", pdir]
+        for flag, key in [("--repo-slug", "repo_slug"), ("--branch", "branch"), ("--base", "base"),
+                          ("--issue", "issue"), ("--head-owner", "head_owner")]:
+            if request.get(key):
+                resume.extend([flag, str(request[key])])
+        if pr_number:
+            resume.extend(["--pr", str(pr_number)])
+        else:
+            resume.extend(["--allow-push", "--local-review-report", "<local-review-report>"])
+        if pr_review_report:
+            resume.extend(["--pr-review-report", str(pr_review_report)])
+        elif pr_number:
+            resume.extend(["--pr-review-report", "<pr-review-report>"])
+        payload["resume_argv"] = resume
+    gl.write_substate_snapshot(pdir, SUBSTATE_PARTS, payload)
+    gl.clear_failure_report(pdir, 8)
+    gl.write_repair_packet(pdir, REPAIR_PACKET_PARTS, gl.build_cleared_repair_packet(8, "upload-review", cleared_by="upload-wait"))
+    gl.write_phase_summary(pdir, 8, "gate_upload_ci.py", "WAIT", reason,
+                           extra={"waiting_for":kind,"pr":pr_number,"pushed_sha":pushed_sha})
+    gl.write_gate_phase_memory_card(pdir, 8, "upload-review", verdict="WAIT",
+                                   current_blocker=kind, next_expected_action_class="wait",
+                                   primary_entry_doc=gl.controls_relpath("next_action.json"),
+                                   primary_handoff_doc=gl.controls_relpath(*COMPLETION_RECEIPT_PARTS))
+    gl.write_gate_stage_packet_from_def(pdir, "upload_review", "upload-review", physical_phase=8)
+    if not same:
+        gl.emit(pdir, 8, "gate_upload_ci.py", verdict="INFO", reason="WAIT %s: %s" % (kind, reason))
+        metrics = gl.read_workflow_metrics(pdir)
+        if metrics:
+            metrics["phases"]["8"].setdefault("wait_history", []).append(
+                {"at_utc":gl._utc_now(),"kind":kind,"reason":reason,"pr":pr_number,"pushed_sha":pushed_sha})
+            gl.write_workflow_metrics(pdir, metrics)
+    print("PHASE 8 WAIT: %s. %s" % (kind, reason))
 
 
 def _unique_ordered(items):
@@ -1458,6 +1623,8 @@ def main():
                          "Same zero-issue contract. Non-zero blocks the CI check and the PASS.")
     ap.add_argument("--allow-push", action="store_true",
                     help="actually push + create PR (irreversible). Without it: DRY run.")
+    ap.add_argument("--ci-poll-interval", type=int, default=120,
+                    help="minimum seconds between pending-CI queries; returns WAIT without sleeping")
     ap.add_argument("--ci-query-attempts", type=int, default=3,
                     help="E1: max attempts for the CI/PR status query. Retry fires "
                          "ONLY on transport failure (endpoint down/throttled); any "
@@ -1472,9 +1639,13 @@ def main():
                          "than (push_time - this) to prove it ran on the pushed "
                          "commit, not a prior commit on the same PR. Default 300.")
     args = ap.parse_args()
+    if args.ci_poll_interval < 1:
+        ap.error("--ci-poll-interval must be positive")
     pdir = gl.pipeline_dir(args.pipeline_dir)
     state = gl.load_state(pdir)
     gl.require_current_phase(state, 8, "gate_upload_ci.py")
+    from workflow_checks import enforce
+    enforce(pdir, 8)
     repo = state["repo"]
     gdir = state.get("git_dir", repo)
     if not os.path.isabs(gdir):
@@ -1514,6 +1685,15 @@ def main():
     # Require --issue whenever we would create a PR (not when re-verifying an
     # existing --pr). Fail closed early so a missing issue never produces a PR
     # whose gates silently never fire.
+    initial_sha = run(["git", "-C", gdir, "rev-parse", args.branch]).stdout.strip()
+    checkpoint = load_upload_checkpoint(pdir, args.repo_slug, args.branch, args.base, args.head_owner, initial_sha)
+    if checkpoint and run(["git", "-C", gdir, "status", "--porcelain"]).stdout.strip():
+        checkpoint = None
+    if checkpoint and args.issue and normalize_issue(args.issue) != checkpoint.get("issue"):
+        checkpoint = None
+    if checkpoint and args.pr is None:
+        args.pr = checkpoint["pr"]
+        args.issue = args.issue or checkpoint.get("issue")
     creating_pr = args.pr is None
     if creating_pr:
         current_branch = run(
@@ -1553,6 +1733,7 @@ def main():
             issue=issue_ref, head_owner=args.head_owner, head_sha=head_sha,
             diff_rel=diff_rel, stat_rel=stat_rel)
         planned_head = fork_qualified_head(gdir, args.repo_slug, args.branch, args.head_owner)
+        reuse_precheck = gl.validate_upload_consent_entry(pdir)[0]
         reason = "dry run prepared upload plan (no --allow-push)"
         _record_result(
             pdir, "FAIL", reason, [diff_rel, stat_rel, consent_request_rel],
@@ -1563,7 +1744,7 @@ def main():
             failure_class="dry_run_no_pass",
             problems=["dry run only: no irreversible upload was performed"],
             resume_hint="人工确认 diff 后记录 phase 8 consent，并带 --allow-push 重跑",
-            emit_manifest=True, manifest_gate=gl.UPLOAD_CONSENT_GATE)
+            emit_manifest=not reuse_precheck, manifest_gate=gl.UPLOAD_CONSENT_GATE)
         print("\n" + "=" * 64)
         print("P8 上库前 —— 全部代码改动已保存,待人工确认")
         print("=" * 64)
@@ -1616,14 +1797,33 @@ def main():
     local_detail = "skipped (--pr re-verify)"
 
     pr_number = args.pr
-    pushed_at = None  # epoch secs of THIS run's push; None on the re-verify path
+    pushed_at = checkpoint.get("pushed_at") if checkpoint and checkpoint["pr"] == pr_number else None
+    if checkpoint and checkpoint["pr"] == pr_number:
+        local_detail = checkpoint.get("local_review_detail", local_detail)
     if pr_number is None:
         # A. LOCAL SELF-REVIEW HARD GATE (before any irreversible action).
         # Fails closed on a non-zero / missing / count-less report — nothing is
         # committed or pushed until the local review is clean.
+        if not args.local_review_report or not os.path.isfile(args.local_review_report):
+            record_upload_wait(pdir, "local_review_missing", "prepare --local-review-report before any commit/push", pushed_sha=head_sha)
+            return
         local_rel, local_detail = require_zero_issue_report(
             args.local_review_report, "local-review-report",
             "evidence/phase8/local_code_review_report", pdir, arts)
+        head_ref = fork_qualified_head(gdir, args.repo_slug, args.branch, args.head_owner)
+        try:
+            existing_pr = find_open_pr(args.repo_slug, head_ref, args.base)
+        except ValueError as error:
+            _fail(pdir, str(error), failure_class="pr_discovery_failed")
+        ancestry_ok, ancestry_reason = check_push_ancestry(gdir, args.branch)
+        from workflow_checks import record_preflight
+        record_preflight(pdir, 8, [{"id":"push-ancestry", "status":"PASS" if ancestry_ok else "FAIL",
+                                  "reason":ancestry_reason}], source_hash=gl.sha256_file(__file__))
+        if not ancestry_ok:
+            _record_result(pdir, "FAIL", ancestry_reason, arts, repo_slug=args.repo_slug,
+                           branch=args.branch, mode="precheck", failure_class="branch_not_fast_forward",
+                           problems=[ancestry_reason], resume_hint="同步分支并重新验证；不要强推或重复上传", emit_manifest=False)
+            sys.exit("PHASE 8 BLOCKED: %s" % ancestry_reason)
         # Commit any pending work-tree changes with DCO sign-off, then push.
         # Committing here is safe: the code fingerprint is base_commit-relative,
         # so it stays equal to the value P1 locked (no false "code drift").
@@ -1639,24 +1839,35 @@ def main():
         # event to have completed at/after this, proving its green is for the
         # commit we just pushed and not a prior commit on the same PR.
         pushed_at = time.time()
+        pr_number = existing_pr["number"] if existing_pr else None
         pr_body = build_pr_body(gdir, issue_ref, pdir)
         # Qualify the head as <fork-owner>:<branch> for the fork -> upstream flow;
         # a bare name would be resolved on the base repo and 403 on an upstream PR.
         head_ref = fork_qualified_head(gdir, args.repo_slug, args.branch, args.head_owner)
-        create = run(["oh-gc", "pr", "create", "--repo", args.repo_slug,
-                      "--head", head_ref, "--base", args.base,
-                      "--title", args.title or args.branch,
-                      "--body", pr_body, "--json"])
-        with open(os.path.join(pdir, "evidence/phase8/pr_create.txt"), "w") as f:
-            f.write(create.stdout + "\n----\n" + create.stderr)
-        if create.returncode != 0:
-            _fail(pdir, "oh-gc pr create failed: %s" % create.stderr.strip()[:500],
-                  failure_class="pr_create_failed")
-        try:
-            pr_number = json.loads(create.stdout).get("number")
-        except Exception:
-            _fail(pdir, "could not parse PR number from oh-gc output",
-                  failure_class="pr_create_failed")
+        if pr_number is None:
+            create = run(["oh-gc", "pr", "create", "--repo", args.repo_slug,
+                          "--head", head_ref, "--base", args.base,
+                          "--title", args.title or args.branch,
+                          "--body", pr_body, "--json"])
+            with open(os.path.join(pdir, "evidence/phase8/pr_create.txt"), "w") as f:
+                f.write(create.stdout + "\n----\n" + create.stderr)
+            if create.returncode != 0:
+                recovered = None
+                if re.search(r"\b409\b", create.stderr):
+                    try:
+                        recovered = find_open_pr(args.repo_slug, head_ref, args.base)
+                    except ValueError:
+                        pass
+                if not recovered:
+                    _fail(pdir, "oh-gc pr create failed: %s" % create.stderr.strip()[:500], failure_class="pr_create_failed")
+                pr_number = recovered["number"]
+            else:
+                try:
+                    pr_number = json.loads(create.stdout).get("number")
+                    if not isinstance(pr_number, int) or isinstance(pr_number, bool) or pr_number <= 0:
+                        raise ValueError("invalid PR number")
+                except (ValueError, TypeError, AttributeError):
+                    _fail(pdir, "could not parse PR number from oh-gc output", failure_class="pr_create_failed")
 
     # record PR view (head SHA from the remote PR)
     view = run(["oh-gc", "pr", "view", str(pr_number),
@@ -1665,21 +1876,43 @@ def main():
     with open(os.path.join(pdir, pr_rel), "w") as f:
         f.write(view.stdout or view.stderr)
     pr_head = ""
+    pv = {}
     try:
         pv = json.loads(view.stdout)
         pr_head = (pv.get("head", {}) or {}).get("sha", "") or pv.get("head_sha", "")
     except Exception:
         pass
+    head_ref = fork_qualified_head(gdir, args.repo_slug, args.branch, args.head_owner)
+    matching_view = matching_open_pr([pv], args.repo_slug, head_ref, args.base)
+    if view.returncode or not matching_view or matching_view["number"] != pr_number:
+        _fail(pdir, "PR does not match the reviewed source/target or is not open", failure_class="publication_target_mismatch")
+    if not pr_head or pr_head != head_sha:
+        _fail(pdir, "PR head SHA does not match local upload SHA", failure_class="pr_head_sha_mismatch")
     arts.append(pr_rel)
     if os.path.exists(os.path.join(pdir, "evidence/phase8/pr_create.txt")):
         arts.append("evidence/phase8/pr_create.txt")
+    if not checkpoint or checkpoint["pr"] != pr_number:
+        save_upload_checkpoint(pdir, dict(repo_slug=args.repo_slug, branch=args.branch, base=args.base,
+                               head_owner=args.head_owner or "", issue=issue_ref, pr=pr_number,
+                               pushed_sha=head_sha, pushed_at=pushed_at, local_review_detail=local_detail))
+    arts.append(CHECKPOINT_REL)
 
     # B. PR REVIEW HARD GATE — the PR now exists, so review it, and require a
     # machine-readable zero-issue report BEFORE spending a CI check / PASS. A
     # non-zero report fails closed: fix the code and `advance.py reset` to P1.
+    if not args.pr_review_report or not os.path.isfile(args.pr_review_report):
+        record_upload_wait(pdir, "pr_review_missing", "PR saved; prepare --pr-review-report and rerun (no PR creation)",
+                           pr_number=pr_number, pushed_sha=head_sha)
+        return
     pr_review_rel, pr_review_detail = require_zero_issue_report(
         args.pr_review_report, "pr-review-report",
         "evidence/phase8/pr_review_report", pdir, arts)
+    waiting = gl.read_control_json(pdir, *SUBSTATE_PARTS) or {}
+    if (waiting.get("waiting_for") == "ci_wait" and waiting.get("pr") == pr_number
+            and waiting.get("pushed_sha") == head_sha and time.time() < waiting.get("retry_after_epoch", 0)):
+        record_upload_wait(pdir, "ci_wait", "CI polling interval has not elapsed", pr_number=pr_number, pushed_sha=head_sha,
+                           poll_interval=args.ci_poll_interval, pr_review_report=args.pr_review_report)
+        return
 
     # CI status for this PR
     env = dict(os.environ)
@@ -1693,6 +1926,7 @@ def main():
     with open(os.path.join(pdir, ci_rel), "w") as f:
         f.write(ci.stdout or ci.stderr)
     overall = ""
+    ci_json = {}
     ci_defect_locations = []
     ci_end_raw = ""
     try:
@@ -1739,6 +1973,12 @@ def main():
         local_detail, pr_review_detail)
     print(reason)
     verdict = "PASS" if (ci_ok and sha_ok and fresh_ok and pr_number) else "FAIL"
+    from workflow_checks import ci_failure_category
+    if (not ci_ok and sha_ok and overall.lower() in {"pending", "running", "queued", "waiting", "in_progress"}
+            and ci_failure_category(ci_json) == "ci_wait" and not ci_defect_locations):
+        record_upload_wait(pdir, "ci_wait", reason, pr_number=pr_number, pushed_sha=head_sha,
+                           poll_interval=args.ci_poll_interval, pr_review_report=args.pr_review_report)
+        return
     problems = []
     if not ci_ok:
         if ci_transport_failure:
@@ -1763,6 +2003,11 @@ def main():
             # code defect — escalate rather than loop the model on local repairs.
             failure_class = (
                 "external_api_unstable" if ci_transport_failure else "ci_not_green")
+            from workflow_checks import ci_failure_category
+            category = "external_transport" if ci_transport_failure else ci_failure_category(ci_json)
+            if category in ("ci_wait", "external_platform"):
+                failure_class = category
+            reason += " failure_category=%s" % category
         elif not pr_head or not sha_ok:
             failure_class = "pr_head_sha_mismatch"
         elif not fresh_ok:

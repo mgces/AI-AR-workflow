@@ -115,3 +115,38 @@ dev_now() { dev_shell 'date +"%m-%d %H:%M:%S.%N"' | tr -d '\r'; }
 
 # Remount / as rw for /system writes (rooted board).
 dev_remount_rw() { dev_shell 'mount -o remount,rw /'; }
+
+# One lifecycle owner across deployment/scenario subprocesses. The gate gives
+# both the same fresh nonce and ledger directory. Repeated calls by this owner
+# are idempotent; a second owner must not replace the instance being observed.
+dev_restart_once() {
+  local owner="$1" command="$2" dir="${WORKFLOW_LIFECYCLE_DIR:?gate lifecycle directory required}"
+  : "${GATE_NONCE:?gate nonce required}"
+  [[ "$owner" =~ ^[A-Za-z0-9_-]+$ ]] || return 64
+  mkdir -p "$dir"
+  if ! mkdir "$dir/restart.lock" 2>/dev/null; then
+    if [[ -f "$dir/restart-owner" && "$(cat "$dir/restart-owner")" == "$owner" && -f "$dir/restart-complete" ]]; then
+      return 0
+    fi
+    echo 'restart ownership conflict or incomplete restart; inspect lifecycle evidence' >&2
+    return 78
+  fi
+  printf '%s\n' "$owner" > "$dir/restart-owner"
+  printf '%s\n' "$GATE_NONCE" > "$dir/nonce"
+  dev_shell "$command" || return $?
+  date -u +%FT%TZ > "$dir/restart-complete"
+}
+
+# Fixed working directory/program basename, recorded by gate command capture.
+# This prevents accidentally treating the binary path as a directory.
+dev_test_run() {
+  local dir="$1" program="$2" arg quoted='' piece
+  shift 2
+  [[ "$dir" =~ ^/[A-Za-z0-9_./-]+$ && "$program" =~ ^[A-Za-z0-9_.-]+$ ]] || return 64
+  [[ "$program" != '.' && "$program" != '..' ]] || return 64
+  for arg in "$@"; do
+    printf -v piece '%q' "$arg"
+    quoted+=" $piece"
+  done
+  dev_shell "cd '$dir' && './$program'$quoted"
+}

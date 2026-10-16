@@ -228,7 +228,7 @@ def _coverage(contract, gdir, test_paths):
     covered, missing, lines = [], [], []
     # matches TEST(FooManagerTest, Case) / TEST_F(Test::FooManagerTest, ...) ...
     _GTEST_MACRO_RE = re.compile(
-        r"\b(?:TEST|TEST_F|TEST_P|TYPED_TEST|TYPED_TEST_P)\s*\(\s*"
+        r"\b(?:TEST|TEST_F|TEST_P|TYPED_TEST|TYPED_TEST_P|HWTEST|HWTEST_F|HWTEST_P)\s*\(\s*"
         r"([A-Za-z_][A-Za-z0-9_]*\s*::\s*)*[A-Za-z_][A-Za-z0-9_]*")
     for tc in contract.get("test_cases") or []:
         gtest = tc.get("gtest")
@@ -291,6 +291,8 @@ def main():
     gl.require_current_phase(state, 3, "gate_test_develop.py")
     gdir = gl.resolve_git_dir(state)
     gl.evidence_dir(pdir, PHASE)
+    from workflow_checks import enforce
+    enforce(pdir, 3)
 
     # The freeze snapshot (written at phase-2 close) is the entry precondition:
     # without it there is no frozen feature bundle to author tests over.

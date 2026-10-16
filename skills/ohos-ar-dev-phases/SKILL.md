@@ -8,17 +8,32 @@ description: >
 
 # 生命周期阶段(做事 + 门控)
 
+新 workflow 运行按 [优化预检说明](optimization-preflight.md) 使用 `advance.py init --optimized-checks`。
+P1 在 `ar-contract` 中填写并签名 `verification_plan`；P1–P8 自动执行阶段预检并保留预检失败。
+预检不能代替签名 PASS。旧运行保持旧策略；未实测的优化效果不能宣称已验证。
+
 承重核心在 `scripts/`:`gate_*.py`(唯一 PASS 来源)、`advance.py`(唯一状态写入器)、
 `lib/gatelib.py`(签名账本)、`lib/device.sh`(hdc-over-WSL helper)。
 
 ## 公共约定
+
+- **P1/P2/P3 工作计时**：实际开始调研/设计、功能写码、测试写码前，执行
+  `python3 "$S/advance.py" --pipeline-dir "$PDIR" work-start --phase N --reason "<本轮工作>"`，
+  N 分别为 1、2、3。首次工作应先推进至对应阶段；返工可登记已经进入过的阶段。
+  此命令只记录工作起点，不改变阶段指针、签名证据或 consent。设计/验收修改仍需 `reset`，
+  纯实现修复仍需 `repair`，测试修改仍按原有测试与证据失效规则重验。先登记/回退，再编辑。
+  同一阶段连续登记不重置起点；切换工作阶段或回退会结束旧区间，各轮累计保留。
+  `init --force` 只重建验证状态，指标历史保留并在 `metrics-history/` 归档；旧历史完整性未知时不升级为完整。
+  归档与原始证据一样只留本地，不提交。没有登记的前期工作不会被自动补算。
 
 - 统一变量:`PDIR=specs/pipeline/<run>`,`AGENT_SKILLS_DIR=<Agent 技能根目录>`,`S=$AGENT_SKILLS_DIR/ohos-ar-dev-phases/scripts`。
 - 每阶段三步,**不可省第 2、3 步**:
   1. 用本阶段命名的 ohos-* 技能做事(写代码 / 生成测试 / 部署 / 建 PR)。
   2. `python3 $S/gate_<phase>.py --pipeline-dir "$PDIR" [参数]` —— 跑真实动作、产签名证据。
   3. 门控 PASS 后 `python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase N`。
-- 门控 FAIL:读 `$PDIR/evidence/phaseN/` 真实日志定位,修复后重跑门控(≤3 次),仍失败停下报告。
+- 门控 FAIL:读 `$PDIR/evidence/phaseN/` 真实日志定位，运行 `advance.py --pipeline-dir "$PDIR" failures` 获取失败序号；
+  实际修改后使用 `advance.py --pipeline-dir "$PDIR" fix --attempt-id manifest:<seq> --root-cause "<根因>" --action "<修改>"` 记录，
+  再重跑同一门控(≤3 次)。PASS/FAIL 的复验结果由签名门禁自动写入指标，仍失败则停下报告。
 - 任何阶段都不得用文字"宣布通过";`advance.py` 不认文字,只认签名证据。
 
 各阶段详情见 `phase1-design.md` … `phase8-upload-review.md`(物理 phase 1–8;phase0 是 bootstrap 预检,无独立文档)。
@@ -55,3 +70,20 @@ description: >
   由 `gate_upload_ci` 注入 PR。渲染是编排器动作,不影响门控 verdict。
   (`test_report.md`:P6 通过后渲染,聚合 P5 单元测试执行结果 + P6 端到端关键证据点。)
 - **todo 刷新**:每轮循环开头 `refresh_todo.py` 依 AR_design 重写 `todo.md`,再与 `TodoWrite` 对齐。
+
+## P8 GitCode 上库恢复与等待
+
+- 相同 diff、上传坐标与分支 SHA 的重复 dry-run 复用原签名确认预检，不重新生成失败/失效旧 consent。
+  改动或目标变化仍重新预检并要求人工确认，首次确认停点的历史记录保留。
+- 创建前查询 open PR，严格匹配源仓、源分支、目标仓及目标分支；409 时重新查询而不是盲目取错误信息中的编号。
+  查询失败、列表身份不完整、达到上限仍无法确认或候选不唯一时停止，不能当作“没有 PR”。PR view 的编号及 SHA 也必须匹配。
+- 提交/推送前检查 origin 分支及祖先关系，非快进提前阻断；不自动强推。同步分支改变代码后仍须重验。
+- 上传后在 `evidence/phase8/upload_checkpoint.json` 保存签名检查点。重跑自动复用同目标、同 SHA、干净工作区
+  的 PR 与原推送时刻，继续 PR review / CI；重签或代码变化后的旧检查点不可复用。
+- 缺本地/PR 评审报告分别返回 WAIT，不提交/推送或不查询 CI；提供机器可读零问题报告后继续。
+  已存在但有问题/格式无效的报告仍失败，不得以 WAIT 隐藏真实缺陷。
+- CI pending/running/queued 在 PR 身份和 SHA 验证后记录 WAIT/INFO，既不 PASS 也不增加 FAIL；
+  默认 `--ci-poll-interval 120` 秒，重复调用在间隔内不查询 CI、不推送、不创建 PR。
+  `advance.py next --json` / `resume` 会提供待补条件、下次查询时间和含 `--pr` 的恢复命令。
+- 真正 CI 红灯、身份/SHA 不一致、旧绿色事件仍阻断；历史失败不删除。新等待保存在 P8 `wait_history`。
+  本次恢复改进针对 GitCode 分支；Gerrit 的受保护配置、审查标签与原有门禁保持原规则。

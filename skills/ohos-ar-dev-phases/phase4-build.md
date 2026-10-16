@@ -32,20 +32,31 @@ HarmonyOS 系统/芯片组件为各自命令,**占位未填时门控硬失败并
 证据:`build_tail.log`、`build_banner.txt`、`artifact_check.txt`(、`error_distill.txt`)。
 契约缺失(legacy/`--allow-missing-contract`)→ 跳过产物覆盖并留 bypass 标;契约被篡改 → FAIL。
 
-### 编译成功后的 clang-tidy 子步(有 compdb 硬控 / 缺失降级)
-编译一旦成功,`compile_commands.json` 立即可得,门控**紧接着**跑一遍 clang-tidy AST 复检
+### 编译成功后的 clang-tidy 子步
+编译成功后，门控尝试从真实构建输出生成 `compile_commands.json`，紧接着运行 clang-tidy AST 复检。
+新运行使用 `init --optimized-checks`：P4 前先执行工具、规则、矩阵及符号预检；AST 未执行不能放行。
+下文的缺工具 advisory 仅适用于未启用优化策略的旧运行，其静态检查状态显示 UNAVAILABLE，不能宣称检查已通过。
 (这类规则正则判不了,又依赖编译数据库,所以放在 P4 而非 P2/P3):
 - 生成编译数据库:`ninja -C out/rk3568 -t compdb cc cxx > out/rk3568/compile_commands.json`
   (优先用 `prebuilts/build-tools/linux-x86/bin/ninja`,回退 PATH 上的 ninja)。
-- 对 P2 锁定的 changed C/C++ 文件调
+- 对真实 Git diff 中的 C/C++ 文件（包含 P3 新增测试）调用
   `code_ruleset_guard.py --clang-tidy out/rk3568 --json evidence/phase4/clang_tidy_findings.json`。
 - **compdb 生成成功 + clang-tidy 在 PATH → findings 非空则 P4 FAIL**(与编译失败同级硬控,需改代码回 P2 重走)。
 - **compdb 生成失败 / clang-tidy 不在 PATH → 降级 advisory**:写 `evidence/phase4/clang_tidy_note.txt`,
-  P4 仍 PASS(fail-open),note 里明说"clang-tidy 未执行,CI 仍会扫此类问题"。
+  仅旧模式可以 advisory 放行，优化模式必须阻断；note 明确记录"clang-tidy 未执行"。
 证据:`evidence/phase4/clang_tidy_findings.json` + `clang_tidy_note.txt`。
 
 `phase_summary.json` 分别输出 `compile_execution`、`artifact_verification`、`static_analysis` 和
 `phase_verdict`，因此“BUILD PASS; STATIC ANALYSIS FAIL”不会再显示成含糊的“构建失败”。
+
+### 本轮静态报告与后端错误
+
+每次 clang-tidy 扫描前先移除旧报告，仅本次生成的有效 JSON 可以证明扫描结果。
+报告缺失、无效、扫描器异常退出或超时均返回 `clang-tidy-backend` 阻断，
+由 P4 记录 FAIL 与诊断证据；不能沿用旧报告或把异常当作零告警。
+报告内真实 findings 优先于附带的工具说明，说明不能掩盖已发现的问题。
+旧运行明确的工具缺失仍遵循原有 advisory 约定，并在 `clang_tidy_note.txt` 标明
+`degraded=True`；它不同于检查已执行且零告警。签名证据只引用实际存在的本轮文件。
 
 ## 通过条件
 build.sh exit 0 **且** 无 error 横幅

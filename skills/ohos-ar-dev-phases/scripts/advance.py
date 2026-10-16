@@ -155,6 +155,8 @@ P8_FAILURE_TO_SUBSTATE = {
     "local_review_blocked": "local_review",
     "dry_run_no_pass": "consent_await",
     "push_failed": "push_pr",
+    "branch_not_fast_forward": "push_pr",
+    "pr_discovery_failed": "push_pr",
     "pr_create_failed": "push_pr",
     "pr_metadata_incomplete": "push_pr",
     "publication_target_mismatch": "precheck",
@@ -657,6 +659,8 @@ def _logical_phase(cur, substate):
 def _action_kind(substate, next_gate):
     if substate == "complete":
         return "complete"
+    if substate in ("awaiting_external", "awaiting_review_report"):
+        return "wait"
     if substate in ("ready_to_advance", "ready_to_build_verify"):
         return "advance"
     if substate in ("awaiting_consent", "awaiting_design_consent"):
@@ -1054,6 +1058,21 @@ def _derive_next_action(pdir, state):
                     resume_hint = _phase_resume_hint(cur, substate, reason)
             required_inputs = _phase_required_inputs(cur, substate)
 
+    if cur == 8 and substate == "awaiting_gate":
+        upload_wait = _read_upload_substate(pdir) or {}
+        waiting_for = upload_wait.get("waiting_for")
+        if waiting_for in ("ci_wait", "pr_review_missing", "local_review_missing"):
+            import shlex
+            substate = "awaiting_external" if waiting_for == "ci_wait" else "awaiting_review_report"
+            required_inputs = ["ci_green"] if waiting_for == "ci_wait" else [
+                "pr_review_report" if waiting_for == "pr_review_missing" else "local_review_report"]
+            resume = upload_wait.get("resume_argv")
+            next_gate = shlex.join(resume) if isinstance(resume, list) and resume else PHASE_GATE_CMD[8]
+            resume_hint = ("等待 CI 状态变化后继续，勿重复推送/创建 PR；查询间隔至 epoch %s" %
+                           upload_wait.get("retry_after_epoch", 0)) if waiting_for == "ci_wait" else (
+                           "先生成零问题评审报告，再执行恢复命令；不要从 PR 创建步骤重跑。")
+            payload["retry_after_epoch"] = upload_wait.get("retry_after_epoch")
+
     # A6: `inspect` must never be a dead-end. Any path that ends with the
     # catch-all action (no known next_gate prefix) and a null next_gate gets a
     # concrete recovery command — present the failure evidence to a human and
@@ -1287,6 +1306,16 @@ def cmd_init(args):
     product = envs.derive_product(args.environment, component_type)
 
     run_id = args.run_id or run_id
+    # Re-initializing verification must not erase advisory work/failure history.
+    # Validate/archive metrics BEFORE overwriting pipeline state or its secret.
+    try:
+        metrics_path = gl.init_workflow_metrics(
+            pdir, run_id, agent=getattr(args, "agent", ""),
+            model=getattr(args, "model", ""), skills=getattr(args, "skill", []))
+    except ValueError as error:
+        sys.exit("REFUSED: %s" % error)
+    if not metrics_path:
+        sys.exit("REFUSED: could not preserve workflow metrics; pipeline state was not replaced")
     gl.create_secret(run_id)
     state = {
         "run_id": run_id,
@@ -1314,6 +1343,7 @@ def cmd_init(args):
         # stamped 7 (or unstamped) use the legacy 3-in-1 phase-1 subflow and are
         # refused by load_state until migrated (advance.py migrate).
         "phase_scheme": gl.PHASE_SCHEME,
+        "optimization_policy_version": 1 if getattr(args, "optimized_checks", False) else 0,
         "current_phase": 0,
         "phase_opened_seq": {"0": 0},
         "consent_tokens": {},
@@ -1326,13 +1356,16 @@ def cmd_init(args):
             for i, n in gl.PHASES
         ],
     }
+    if args.force:
+        state["evidence_epoch"] = len(gl.read_manifest(pdir))
+        state["evidence_epoch_min_phase"] = 0
+        state["phase_opened_seq"]["0"] = state["evidence_epoch"]
+        _clear_repair_packet(pdir)
+        _clear_stale_controls(pdir, min_phase=0)
     # Persist first: _refresh_state_metadata derives next-action via
     # validate_closing_entry, which reads pipeline.json back off disk. Then
     # re-save so the derived navigation metadata lands in pipeline.json too.
     gl.save_state(pdir, state)
-    gl.init_workflow_metrics(
-        pdir, run_id, agent=getattr(args, "agent", ""),
-        model=getattr(args, "model", ""), skills=getattr(args, "skill", []))
     _refresh_state_metadata(pdir, state)
     gl.save_state(pdir, state)
     # Active-run pointer: write the PDIR into <repo>/specs/pipeline/ACTIVE so a
@@ -1638,6 +1671,20 @@ def cmd_consent(args):
              rec["evidence_ref"][:8]))
 
 
+def cmd_work_start(args):
+    """Record actual P1/P2/P3 work before edits; grants no workflow progress."""
+    pdir = gl.pipeline_dir(args.pipeline_dir)
+    state = gl.load_state(pdir)
+    if args.phase not in (1, 2, 3) or args.phase > state.get("current_phase", 0):
+        sys.exit("REFUSED: work-start supports entered P1/P2/P3 only; advance the prerequisite first")
+    if not gl.read_workflow_metrics(pdir):
+        sys.exit("REFUSED: metrics unavailable; use context to initialize observability first")
+    if not gl.observe_phase_opened(pdir, args.phase, kind="work", reason=args.reason):
+        sys.exit("REFUSED: work start could not be recorded")
+    print("WORK STARTED: P%d. Timing only; signed evidence and consent remain unchanged." % args.phase)
+    print("Before amendments use the required reset/repair path; work-start never authorizes stale evidence.")
+
+
 def cmd_reset(args):
     """Rewind the pipeline to P1 (design_orchestrate) — used whenever a fix touches code.
     Marks P1..P8 pending, clears consent + code fingerprint, keeps P0 (env) intact.
@@ -1723,6 +1770,57 @@ def cmd_repair(args):
             artifacts_rel=[])
     print("REPAIR → P2. P1 v3 behavior/dependency/scope contract remains signed.")
     print("If acceptance, dependency, public API or behavior changed, stop and use reset.")
+
+
+def cmd_fix(args):
+    """Attach a described change to one signed FAIL; the next gate verifies it."""
+    pdir = gl.pipeline_dir(args.pipeline_dir)
+    try:
+        gl.record_gate_fix(pdir, args.attempt_id, args.action,
+                           change_ref=args.change_ref,
+                           root_cause=args.root_cause)
+    except (ValueError, OSError) as error:
+        sys.exit("ERROR: %s" % error)
+    print("recorded fix for %s; resolution pending next signed same-gate retry"
+          % args.attempt_id)
+
+
+def cmd_failures(args):
+    """Show why first attempts failed and whether described fixes were verified."""
+    pdir = gl.pipeline_dir(args.pipeline_dir)
+    data = gl.read_workflow_metrics(pdir)
+    if not data:
+        sys.exit("ERROR: workflow_metrics.json unavailable")
+    attempts = [dict(phase=phase, **attempt)
+                for phase, item in (data.get("phases") or {}).items()
+                for attempt in item.get("attempt_history", [])]
+    summary = data.get("summary") or {}
+    if args.json:
+        print(json.dumps({"summary": summary, "attempts": attempts},
+                         ensure_ascii=False, indent=2))
+        return
+    print("first gate attempts: %s passed / %s failed (%s expected review holds)"
+          % (summary.get("first_gate_passes_total", 0),
+             summary.get("first_gate_failures_total", 0),
+             summary.get("first_gate_review_holds_total", 0)))
+    if summary.get("unrecorded_gate_attempts_total"):
+        print("historical attempts without individual reasons: %s"
+              % summary["unrecorded_gate_attempts_total"])
+    for attempt in attempts:
+        if attempt.get("verdict") != "FAIL":
+            continue
+        first = " first-attempt" if attempt.get("first_attempt") is True else ""
+        print("P%s %s %s%s: %s" % (
+            attempt["phase"], attempt.get("id"), attempt.get("gate"), first,
+            attempt.get("reason") or "reason not recorded"))
+        for fix in attempt.get("fixes") or []:
+            print("  root cause: %s  change: %s  ref: %s  retry: %s" % (
+                fix.get("root_cause") or "not diagnosed", fix.get("action"),
+                fix.get("change_ref") or "—",
+                fix.get("verification_verdict") or "pending"))
+        print("  resolution: %s%s" % (
+            attempt.get("resolution_status") or "unknown",
+            " by " + attempt["verified_by"] if attempt.get("verified_by") else ""))
 
 
 def cmd_intervene(args):
@@ -2132,6 +2230,8 @@ def main():
                         "(芯片组件); REQUIRED when --environment harmonyos (their "
                         "build commands differ). Ignored for openharmony.")
     p.add_argument("--base-commit", default="")
+    p.add_argument("--optimized-checks", action="store_true",
+                   help="require signed verification_plan and execute early checks before P1-P7 gates")
     p.add_argument("--agent", default=os.environ.get("WORKFLOW_AGENT", ""),
                    help="agent/client name recorded at the top of workflow_metrics.json")
     p.add_argument("--model", default=os.environ.get("WORKFLOW_MODEL", ""),
@@ -2156,6 +2256,11 @@ def main():
                                      "a fix touches code; invalidates downstream phases")
     p.add_argument("--reason", default="", help="what was fixed (audit trail)")
     p.set_defaults(func=cmd_reset)
+
+    p = sub.add_parser("work-start", help="record P1/P2/P3 actual work BEFORE editing; no gate/consent bypass")
+    p.add_argument("--phase", type=int, choices=(1, 2, 3), required=True)
+    p.add_argument("--reason", required=True)
+    p.set_defaults(func=cmd_work_start)
 
     p = sub.add_parser("intervene", help="record an unplanned or user-initiated human intervention")
     p.add_argument("--phase", type=int, help="default: current phase")
@@ -2182,6 +2287,17 @@ def main():
     p = sub.add_parser("repair", help="rewalk from P2 for implementation-only changes under signed v3 scope")
     p.add_argument("--reason", required=True)
     p.set_defaults(func=cmd_repair)
+
+    p = sub.add_parser("fix", help="record how one signed FAIL was addressed; retry verifies outcome")
+    p.add_argument("--attempt-id", required=True, help="manifest:<seq> from failures")
+    p.add_argument("--root-cause", required=True, help="diagnosed cause of the failed first/retry attempt")
+    p.add_argument("--action", required=True, help="what was changed to address this failure")
+    p.add_argument("--change-ref", default="", help="file, commit, configuration or other change reference")
+    p.set_defaults(func=cmd_fix)
+
+    p = sub.add_parser("failures", help="show first-attempt reasons, fixes and signed retry outcomes")
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(func=cmd_failures)
 
     p = sub.add_parser("context", help="update agent/model/skills in workflow_metrics.json")
     p.add_argument("--agent", default="")

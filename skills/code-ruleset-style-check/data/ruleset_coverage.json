@@ -3,7 +3,7 @@
   "source": "黄区C语言门禁规则集_OAT_敏感词 - 20260126.xlsx",
   "source_sha256": "82180cd3c566141a183df0dac2f3d41c9d5f5208f79d28504e9e3d0f9fbd585a",
   "ruleset_data_sha256": "61f372ed94bc95e5b21c20b7b34b1b8f830ac31a677a58377f60bbb827bf63e5",
-  "guard_sha256": "4b78a5b72ceebd4c45684d4db2d6c4dbb45d9b7c4d08e666ff6ad3a2801f5507",
+  "guard_sha256": "7014365828a81ea3c5722fdf89a3ae020832142a9adb4afc50222efac3af3419",
   "metric_sha256": "a8d0903b5be564d10e38e376aa1b3054829d75d4f82e94c5e675264a09bcf0ba",
   "backend_capabilities": {
     "sensitive-word": "deterministic-local",

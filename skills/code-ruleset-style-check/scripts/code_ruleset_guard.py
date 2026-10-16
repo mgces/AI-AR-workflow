@@ -991,7 +991,22 @@ def _format_failures(files, line_filter=None, clang_format=None):
     return failures
 
 
-def _clang_tidy_findings(files, compile_commands_dir, clang_tidy=None):
+def _component_guard_ok(path, root):
+    if not root:
+        return False
+    try:
+        root = Path(root).resolve(); path = Path(path).resolve()
+        rel = path.relative_to(root).as_posix()
+        text = path.read_text(encoding="utf-8")
+    except (OSError, ValueError):
+        return False
+    expected = re.sub(r"[^A-Za-z0-9]", "_", root.name + "/" + rel).upper().rstrip("_")
+    heads = re.findall(r"^\s*#\s*ifndef\s+(\w+)", text, re.M)
+    defines = re.findall(r"^\s*#\s*define\s+(\w+)", text, re.M)
+    return bool(heads and heads[0].rstrip("_") == expected and heads[0] in defines)
+
+
+def _clang_tidy_findings(files, compile_commands_dir, clang_tidy=None, repository_root=None):
     """Run clang-tidy on *files* using a compilation database at
     *compile_commands_dir*, then map each warning to a workbook rule_id via
     _CLANG_TIDY_RULE_MAP.  Returns [] if clang-tidy is unavailable or the
@@ -1005,7 +1020,13 @@ def _clang_tidy_findings(files, compile_commands_dir, clang_tidy=None):
 
     cmd = [clang_tidy, "--config-file=" + str(CLANG_TIDY_CFG),
            "-p", str(ccd.parent), *map(str, files)]
-    cp = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+    def backend_error(detail):
+        return [{"file": "", "line": 0, "rule_id": "clang-tidy-backend",
+                 "severity": "严重", "remediation": detail}], ""
+    try:
+        cp = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        return backend_error("clang-tidy execution failed: %s" % exc)
     findings = []
     for line in (cp.stdout + "\n" + cp.stderr).splitlines():
         # clang-tidy output: /path/file.cpp:42:5: warning: check-name [check-name]
@@ -1013,6 +1034,8 @@ def _clang_tidy_findings(files, compile_commands_dir, clang_tidy=None):
         if not m:
             continue
         file_name, line_number, _column, check = m.groups()
+        if check == "llvm-header-guard" and _component_guard_ok(file_name, repository_root):
+            continue
         # Map check name to rule_id
         for pattern, rule_id in _CLANG_TIDY_RULE_MAP:
             if re.match(pattern.replace("*", ".*") + "$", check):
@@ -1026,9 +1049,9 @@ def _clang_tidy_findings(files, compile_commands_dir, clang_tidy=None):
                     "remediation": "clang-tidy: %s" % line.strip(),
                 })
                 break
-    if cp.returncode != 0 and not findings:
+    if cp.returncode != 0:
         detail = (cp.stderr or cp.stdout or "unknown clang-tidy error").strip()
-        return [], "clang-tidy failed with rc=%d: %s" % (cp.returncode, detail[:500])
+        findings.extend(backend_error("clang-tidy failed with rc=%d: %s" % (cp.returncode, detail[:500]))[0])
     return findings, ""
 
 
@@ -1096,7 +1119,7 @@ def main():
     clang_tidy_findings = []
     clang_tidy_note = ""
     if args.clang_tidy and files:
-        ct_findings, ct_note = _clang_tidy_findings(files, args.clang_tidy, clang_tidy)
+        ct_findings, ct_note = _clang_tidy_findings(files, args.clang_tidy, clang_tidy, repository_root=args.repository_root)
         clang_tidy_findings = _filter_findings(ct_findings, line_filter)
         clang_tidy_note = ct_note
 
