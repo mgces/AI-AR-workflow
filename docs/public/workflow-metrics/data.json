@@ -1,11 +1,2645 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-10T08:38:28.800999+00:00",
-  "source_label": "AI-AR-workflow",
-  "source_count": 7,
+  "generated_at": "2026-10-16T03:00:59.592Z",
+  "source_label": "共享运行指标",
+  "source_count": 8,
   "duplicate_count": 0,
   "warnings": [],
   "runs": [
+    {
+      "id": "20261013-fd-leak-detect",
+      "workflow": "ar-development",
+      "kind": "AR",
+      "status": "completed",
+      "current_phase": "P8",
+      "agent": "claude-code",
+      "model": "deepseek-flash",
+      "updated_at": "2026-10-15T03:21:14Z",
+      "started_at": "2026-10-13T12:50:24Z",
+      "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+      "phases": [
+        {
+          "id": "P0",
+          "name": "bootstrap",
+          "status": "passed",
+          "wall_seconds": 22,
+          "wait_seconds": 0,
+          "effective_seconds": 22,
+          "gate_attempts": 1,
+          "pass_attempts": 1,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 1,
+          "skills": [
+            "ohos-ar-dev-workflow"
+          ],
+          "gate": "gate_env_init.py",
+          "opened_at": "2026-10-13T12:50:24Z",
+          "closed_at": "2026-10-13T12:50:46Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-13T12:50:24Z",
+              "closed_at": "2026-10-13T12:50:46Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P1",
+          "name": "design-orchestrate",
+          "status": "passed",
+          "wall_seconds": 4930,
+          "wait_seconds": 2354,
+          "effective_seconds": 2576,
+          "gate_attempts": 27,
+          "pass_attempts": 27,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 25,
+          "skills": [
+            "ohos-ar-dev-workflow"
+          ],
+          "gate": "gate_design.py",
+          "opened_at": "2026-10-14T13:35:05Z",
+          "closed_at": "2026-10-14T13:36:24Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-13T12:50:46Z",
+              "closed_at": "2026-10-13T13:42:17Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-13T14:28:45Z",
+              "closed_at": "2026-10-13T14:30:04Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T01:54:25Z",
+              "closed_at": "2026-10-14T01:55:58Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T01:57:06Z",
+              "closed_at": "2026-10-14T01:58:30Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T02:05:04Z",
+              "closed_at": "2026-10-14T02:06:28Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T02:16:10Z",
+              "closed_at": "2026-10-14T02:17:47Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T02:49:06Z",
+              "closed_at": "2026-10-14T02:50:29Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T03:19:42Z",
+              "closed_at": "2026-10-14T03:21:05Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T03:39:40Z",
+              "closed_at": "2026-10-14T03:40:51Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T03:54:12Z",
+              "closed_at": "2026-10-14T03:55:24Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T04:31:23Z",
+              "closed_at": "2026-10-14T04:32:35Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T05:22:32Z",
+              "closed_at": "2026-10-14T05:23:44Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T06:04:54Z",
+              "closed_at": "2026-10-14T06:06:07Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T06:50:56Z",
+              "closed_at": "2026-10-14T06:52:08Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T07:20:06Z",
+              "closed_at": "2026-10-14T07:21:18Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T07:27:13Z",
+              "closed_at": "2026-10-14T07:28:25Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T08:11:03Z",
+              "closed_at": "2026-10-14T08:12:16Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T08:16:15Z",
+              "closed_at": "2026-10-14T08:17:28Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T08:24:21Z",
+              "closed_at": "2026-10-14T08:25:34Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T08:35:35Z",
+              "closed_at": "2026-10-14T08:36:47Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T08:45:08Z",
+              "closed_at": "2026-10-14T08:46:20Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T08:57:54Z",
+              "closed_at": "2026-10-14T08:59:07Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T09:21:12Z",
+              "closed_at": "2026-10-14T09:22:25Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T10:26:19Z",
+              "closed_at": "2026-10-14T10:27:31Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T13:35:05Z",
+              "closed_at": "2026-10-14T13:36:24Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P2",
+          "name": "feature-develop",
+          "status": "passed",
+          "wall_seconds": 2022,
+          "wait_seconds": 0,
+          "effective_seconds": 2022,
+          "gate_attempts": 33,
+          "pass_attempts": 25,
+          "fail_attempts": 8,
+          "stage_attempts": null,
+          "rounds": 27,
+          "skills": [],
+          "gate": "gate_develop.py",
+          "opened_at": "2026-10-14T13:36:25Z",
+          "closed_at": "2026-10-14T13:46:59Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-13T13:42:17Z",
+              "closed_at": "2026-10-13T13:54:26Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-13T14:22:23Z",
+              "closed_at": "2026-10-13T14:23:30Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-13T14:30:04Z",
+              "closed_at": "2026-10-13T14:30:09Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-13T14:32:55Z",
+              "closed_at": "2026-10-13T14:33:01Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T01:55:58Z",
+              "closed_at": "2026-10-14T01:57:06Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-10-14T01:58:30Z",
+              "closed_at": "2026-10-14T01:59:09Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T02:06:28Z",
+              "closed_at": "2026-10-14T02:06:33Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T02:17:47Z",
+              "closed_at": "2026-10-14T02:17:52Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T02:50:29Z",
+              "closed_at": "2026-10-14T02:51:30Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T03:21:05Z",
+              "closed_at": "2026-10-14T03:21:11Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T03:40:51Z",
+              "closed_at": "2026-10-14T03:40:57Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T03:55:24Z",
+              "closed_at": "2026-10-14T03:56:38Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T04:32:35Z",
+              "closed_at": "2026-10-14T04:32:42Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T05:23:45Z",
+              "closed_at": "2026-10-14T05:23:50Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T06:06:07Z",
+              "closed_at": "2026-10-14T06:06:13Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T06:52:08Z",
+              "closed_at": "2026-10-14T06:52:14Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T07:21:19Z",
+              "closed_at": "2026-10-14T07:21:24Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T07:28:25Z",
+              "closed_at": "2026-10-14T07:28:32Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T08:12:16Z",
+              "closed_at": "2026-10-14T08:16:15Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-10-14T08:17:28Z",
+              "closed_at": "2026-10-14T08:17:34Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T08:25:34Z",
+              "closed_at": "2026-10-14T08:25:39Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T08:36:47Z",
+              "closed_at": "2026-10-14T08:36:53Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T08:46:20Z",
+              "closed_at": "2026-10-14T08:46:26Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T08:59:07Z",
+              "closed_at": "2026-10-14T08:59:13Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T09:22:25Z",
+              "closed_at": "2026-10-14T09:22:31Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T10:27:31Z",
+              "closed_at": "2026-10-14T10:27:38Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T13:36:25Z",
+              "closed_at": "2026-10-14T13:46:59Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P3",
+          "name": "test-develop",
+          "status": "passed",
+          "wall_seconds": 213,
+          "wait_seconds": 0,
+          "effective_seconds": 213,
+          "gate_attempts": 25,
+          "pass_attempts": 25,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 25,
+          "skills": [],
+          "gate": "gate_test_develop.py",
+          "opened_at": "2026-10-14T13:46:59Z",
+          "closed_at": "2026-10-14T13:47:11Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-13T13:54:26Z",
+              "closed_at": "2026-10-13T13:55:50Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-13T14:23:30Z",
+              "closed_at": "2026-10-13T14:23:34Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-13T14:30:09Z",
+              "closed_at": "2026-10-13T14:30:14Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-13T14:33:01Z",
+              "closed_at": "2026-10-13T14:33:05Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T01:59:09Z",
+              "closed_at": "2026-10-14T01:59:23Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T02:06:34Z",
+              "closed_at": "2026-10-14T02:06:38Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T02:17:53Z",
+              "closed_at": "2026-10-14T02:17:57Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T02:51:30Z",
+              "closed_at": "2026-10-14T02:51:35Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T03:21:11Z",
+              "closed_at": "2026-10-14T03:21:16Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T03:40:57Z",
+              "closed_at": "2026-10-14T03:41:02Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T03:56:39Z",
+              "closed_at": "2026-10-14T03:56:43Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T04:32:42Z",
+              "closed_at": "2026-10-14T04:32:47Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T05:23:51Z",
+              "closed_at": "2026-10-14T05:23:55Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T06:06:13Z",
+              "closed_at": "2026-10-14T06:06:18Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T06:52:14Z",
+              "closed_at": "2026-10-14T06:52:19Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T07:21:25Z",
+              "closed_at": "2026-10-14T07:21:29Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T07:28:32Z",
+              "closed_at": "2026-10-14T07:28:37Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T08:17:34Z",
+              "closed_at": "2026-10-14T08:17:39Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T08:25:40Z",
+              "closed_at": "2026-10-14T08:25:45Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T08:36:53Z",
+              "closed_at": "2026-10-14T08:36:58Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T08:46:26Z",
+              "closed_at": "2026-10-14T08:46:31Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T08:59:13Z",
+              "closed_at": "2026-10-14T08:59:18Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T09:22:31Z",
+              "closed_at": "2026-10-14T09:22:36Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T10:27:38Z",
+              "closed_at": "2026-10-14T10:27:43Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T13:46:59Z",
+              "closed_at": "2026-10-14T13:47:11Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P4",
+          "name": "build-verify",
+          "status": "passed",
+          "wall_seconds": 64713,
+          "wait_seconds": 0,
+          "effective_seconds": 64713,
+          "gate_attempts": 20,
+          "pass_attempts": 6,
+          "fail_attempts": 14,
+          "stage_attempts": null,
+          "rounds": 25,
+          "skills": [],
+          "gate": "gate_build.py",
+          "opened_at": "2026-10-14T13:47:11Z",
+          "closed_at": "2026-10-14T13:57:54Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-13T13:55:50Z",
+              "closed_at": "2026-10-13T14:22:23Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-10-13T14:23:34Z",
+              "closed_at": "2026-10-13T14:28:45Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-10-13T14:30:14Z",
+              "closed_at": "2026-10-13T14:32:55Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-10-13T14:33:05Z",
+              "closed_at": "2026-10-14T01:54:25Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-10-14T01:59:23Z",
+              "closed_at": "2026-10-14T02:05:04Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-10-14T02:06:38Z",
+              "closed_at": "2026-10-14T02:16:10Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-10-14T02:17:57Z",
+              "closed_at": "2026-10-14T02:49:06Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-10-14T02:51:35Z",
+              "closed_at": "2026-10-14T03:19:42Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-10-14T03:21:16Z",
+              "closed_at": "2026-10-14T03:39:40Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-10-14T03:41:02Z",
+              "closed_at": "2026-10-14T03:54:12Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-10-14T03:56:43Z",
+              "closed_at": "2026-10-14T04:31:23Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-10-14T04:32:47Z",
+              "closed_at": "2026-10-14T04:55:13Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T05:23:56Z",
+              "closed_at": "2026-10-14T06:04:54Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-10-14T06:06:18Z",
+              "closed_at": "2026-10-14T06:50:56Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-10-14T06:52:19Z",
+              "closed_at": "2026-10-14T07:03:41Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T07:21:29Z",
+              "closed_at": "2026-10-14T07:27:13Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-10-14T07:28:37Z",
+              "closed_at": "2026-10-14T07:38:13Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T08:17:39Z",
+              "closed_at": "2026-10-14T08:24:21Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-10-14T08:25:45Z",
+              "closed_at": "2026-10-14T08:35:35Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-10-14T08:36:59Z",
+              "closed_at": "2026-10-14T08:45:08Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-10-14T08:46:31Z",
+              "closed_at": "2026-10-14T08:57:54Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-10-14T08:59:18Z",
+              "closed_at": "2026-10-14T09:21:12Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-10-14T09:22:36Z",
+              "closed_at": "2026-10-14T09:32:36Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T10:27:43Z",
+              "closed_at": "2026-10-14T10:36:23Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T13:47:11Z",
+              "closed_at": "2026-10-14T13:57:54Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P5",
+          "name": "test-author",
+          "status": "passed",
+          "wall_seconds": 5646,
+          "wait_seconds": 289,
+          "effective_seconds": 5357,
+          "gate_attempts": 6,
+          "pass_attempts": 4,
+          "fail_attempts": 2,
+          "stage_attempts": null,
+          "rounds": 6,
+          "skills": [],
+          "gate": "gate_test_ut.py",
+          "opened_at": "2026-10-14T13:57:54Z",
+          "closed_at": "2026-10-14T14:09:15Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-14T04:55:13Z",
+              "closed_at": "2026-10-14T05:22:32Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-10-14T07:03:41Z",
+              "closed_at": "2026-10-14T07:20:06Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-10-14T07:38:13Z",
+              "closed_at": "2026-10-14T08:03:23Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T09:32:36Z",
+              "closed_at": "2026-10-14T09:44:03Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T10:36:23Z",
+              "closed_at": "2026-10-14T10:38:47Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T13:57:54Z",
+              "closed_at": "2026-10-14T14:09:15Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P6",
+          "name": "device-functional",
+          "status": "passed",
+          "wall_seconds": 5593,
+          "wait_seconds": 673,
+          "effective_seconds": 4920,
+          "gate_attempts": 4,
+          "pass_attempts": 2,
+          "fail_attempts": 2,
+          "stage_attempts": null,
+          "rounds": 4,
+          "skills": [],
+          "gate": "gate_device_func.py",
+          "opened_at": "2026-10-14T14:09:15Z",
+          "closed_at": "2026-10-14T14:17:02Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-14T08:03:23Z",
+              "closed_at": "2026-10-14T08:11:03Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-10-14T09:44:03Z",
+              "closed_at": "2026-10-14T10:26:19Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-10-14T10:38:47Z",
+              "closed_at": "2026-10-14T11:14:17Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T14:09:15Z",
+              "closed_at": "2026-10-14T14:17:02Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P7",
+          "name": "quality-verify",
+          "status": "passed",
+          "wall_seconds": 40815,
+          "wait_seconds": 33848,
+          "effective_seconds": 6967,
+          "gate_attempts": 7,
+          "pass_attempts": 3,
+          "fail_attempts": 4,
+          "stage_attempts": null,
+          "rounds": 2,
+          "skills": [],
+          "gate": "gate_integration.py",
+          "opened_at": "2026-10-14T14:17:03Z",
+          "closed_at": "2026-10-15T00:29:09Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-14T11:14:17Z",
+              "closed_at": "2026-10-14T12:22:26Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-14T14:17:03Z",
+              "closed_at": "2026-10-15T00:29:09Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P8",
+          "name": "upload-review",
+          "status": "passed",
+          "wall_seconds": 14684,
+          "wait_seconds": 1364,
+          "effective_seconds": 13320,
+          "gate_attempts": 10,
+          "pass_attempts": 1,
+          "fail_attempts": 9,
+          "stage_attempts": null,
+          "rounds": 2,
+          "skills": [],
+          "gate": "gate_upload_ci.py",
+          "opened_at": "2026-10-15T00:29:09Z",
+          "closed_at": "2026-10-15T03:21:14Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-14T12:22:26Z",
+              "closed_at": "2026-10-14T13:35:05Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-10-15T00:29:09Z",
+              "closed_at": "2026-10-15T03:21:14Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": [
+            {
+              "kind": "pr_review_missing",
+              "reason": "PR saved; prepare --pr-review-report and rerun (no PR creation)",
+              "at": "2026-10-14T12:54:23Z",
+              "pr": 4603
+            }
+          ]
+        }
+      ],
+      "failure_details": [
+        {
+          "id": "manifest:4",
+          "phase": "P2",
+          "gate": "gate_develop.py",
+          "reason": "base/head b87fa9079045->b87fa9079045, 23 file(s) changed (14 untracked), style_ok=False strict_ok=True hygiene_ok=True change_scope=23/23 inside",
+          "at": "2026-10-13T13:51:16Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "not_resolved",
+          "verified_by": "manifest:5",
+          "count": 1,
+          "category": "其他门禁问题",
+          "fixes": [
+            {
+              "root_cause": "clang-format 段失败：新增/改动 C++ 文件未按仓内 OHOS 风格格式化（4 空格缩进/括号换行），且 TerminateProcess 函数名误命中 G.FUU.05、_exit 命中 G.STD.16、signal.h 命中 G.STD.01",
+              "action": "1) 规则类：_exit→std::_Exit、TerminateProcess→RemoveLeakedProcess、含 Kill( 的函数名改 DeferredRemoval、signal.h→csignal、kill(→syscall(SYS_kill) 前置校验；2) 格式化：用 skill 自带 OHOS 风格 .clang-format 按 diff 行范围重排 18 个 C++ 文件",
+              "change_ref": "base/hiviewdfx/hiview/plugins/reliability/fd_leak_detector, base/hiviewdfx/hiview/plugins/reliability/leak_detectors, base/hiviewdfx/hiview/plugins/plugin_build",
+              "verification_verdict": "FAIL"
+            }
+          ],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:5",
+          "phase": "P2",
+          "gate": "gate_develop.py",
+          "reason": "base/head b87fa9079045->b87fa9079045, 23 file(s) changed (14 untracked), style_ok=False strict_ok=True hygiene_ok=True change_scope=23/23 inside",
+          "at": "2026-10-13T13:52:55Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "passed_without_recorded_fix",
+          "verified_by": "manifest:6",
+          "count": 1,
+          "category": "其他门禁问题",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:9",
+          "phase": "P2",
+          "gate": "gate_develop.py",
+          "reason": "base/head b87fa9079045->b87fa9079045, 30 file(s) changed (21 untracked), style_ok=False strict_ok=True hygiene_ok=True change_scope=30/30 inside",
+          "at": "2026-10-13T14:22:45Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 2,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "passed_without_recorded_fix",
+          "verified_by": "manifest:10",
+          "count": 1,
+          "category": "其他门禁问题",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:22",
+          "phase": "P2",
+          "gate": "gate_develop.py",
+          "reason": "base/head b87fa9079045->b87fa9079045, 32 file(s) changed (22 untracked), style_ok=False strict_ok=True hygiene_ok=True change_scope=31/32 inside; OUTSIDE change_scope: interfaces/inner_api/unified_collection/utility/mem_profiler_collector.h",
+          "at": "2026-10-14T01:56:04Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 5,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:25",
+          "count": 1,
+          "category": "其他门禁问题",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:25",
+          "phase": "P2",
+          "gate": "gate_develop.py",
+          "reason": "base/head b87fa9079045->b87fa9079045, 32 file(s) changed (22 untracked), style_ok=False strict_ok=True hygiene_ok=True change_scope=32/32 inside",
+          "at": "2026-10-14T01:58:35Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 6,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "passed_without_recorded_fix",
+          "verified_by": "manifest:26",
+          "count": 1,
+          "category": "其他门禁问题",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:41",
+          "phase": "P2",
+          "gate": "gate_develop.py",
+          "reason": "base/head b87fa9079045->b87fa9079045, 32 file(s) changed (22 untracked), style_ok=False strict_ok=True hygiene_ok=True change_scope=32/32 inside",
+          "at": "2026-10-14T02:50:35Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 9,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "passed_without_recorded_fix",
+          "verified_by": "manifest:42",
+          "count": 1,
+          "category": "其他门禁问题",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:57",
+          "phase": "P2",
+          "gate": "gate_develop.py",
+          "reason": "base/head b87fa9079045->b87fa9079045, 33 file(s) changed (22 untracked), style_ok=False strict_ok=True hygiene_ok=True change_scope=33/33 inside",
+          "at": "2026-10-14T03:55:30Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 12,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "passed_without_recorded_fix",
+          "verified_by": "manifest:58",
+          "count": 1,
+          "category": "其他门禁问题",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:97",
+          "phase": "P2",
+          "gate": "gate_develop.py",
+          "reason": "base/head b87fa9079045->b87fa9079045, 33 file(s) changed (22 untracked), style_ok=False strict_ok=True hygiene_ok=True change_scope=33/33 inside",
+          "at": "2026-10-14T08:12:22Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 19,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "passed_without_recorded_fix",
+          "verified_by": "manifest:100",
+          "count": 1,
+          "category": "其他门禁问题",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:19",
+          "phase": "P4",
+          "gate": "gate_build.py",
+          "reason": "rc=0 banner_ok=True banner_err=False; 0 marker line(s) artifacts 1/3 present; MISSING build_artifacts: out/rk3568/tests/unittest/hiview/hiview/leak_detector/LeakDetectorUnitTest, out/rk3568/tests/moduletest/hiview/hiview/leak_detector/LeakDetectorModuleTest",
+          "at": "2026-10-14T01:42:31Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 4,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:28",
+          "count": 1,
+          "category": "测试与验证",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:28",
+          "phase": "P4",
+          "gate": "gate_build.py",
+          "reason": "build ok but exported symbol checks failed: symbol not exported/defined: OHOS::HiviewDFX::FaultDetectorManager; symbol not exported/defined: OHOS::HiviewDFX::FileDescriptorLeakDetector; symbol not exported/defined: OHOS::HiviewDFX::FdLeakInfo; symbol not exported/defined: OHOS::HiviewDFX::FdLeakStateContext",
+          "at": "2026-10-14T02:03:35Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 5,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:33",
+          "count": 1,
+          "category": "编译构建",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:33",
+          "phase": "P4",
+          "gate": "gate_build.py",
+          "reason": "build ok but clang-tidy found 36 issue(s) (target=hiview_package); degraded=False; clang-tidy found 36 issue(s) — HARD block; fix and re-run P2→P4",
+          "at": "2026-10-14T02:11:59Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 6,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:38",
+          "count": 1,
+          "category": "编译构建",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:38",
+          "phase": "P4",
+          "gate": "gate_build.py",
+          "reason": "build ok but clang-tidy found 24 issue(s) (target=hiview_package); degraded=False; clang-tidy found 24 issue(s) — HARD block; fix and re-run P2→P4",
+          "at": "2026-10-14T02:23:45Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 7,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:44",
+          "count": 1,
+          "category": "编译构建",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:44",
+          "phase": "P4",
+          "gate": "gate_build.py",
+          "reason": "build ok but clang-tidy found 4 issue(s) (target=hiview_package); degraded=False; clang-tidy found 4 issue(s) — HARD block; fix and re-run P2→P4",
+          "at": "2026-10-14T03:14:11Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 8,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:49",
+          "count": 1,
+          "category": "编译构建",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:49",
+          "phase": "P4",
+          "gate": "gate_build.py",
+          "reason": "build ok but clang-tidy found 2 issue(s) (target=hiview_package); degraded=False; clang-tidy found 2 issue(s) — HARD block; fix and re-run P2→P4",
+          "at": "2026-10-14T03:35:19Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 9,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:54",
+          "count": 1,
+          "category": "编译构建",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:54",
+          "phase": "P4",
+          "gate": "gate_build.py",
+          "reason": "build ok but clang-tidy found 1 issue(s) (target=hiview_package); degraded=False; clang-tidy found 1 issue(s) — HARD block; fix and re-run P2→P4",
+          "at": "2026-10-14T03:46:44Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 10,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:60",
+          "count": 1,
+          "category": "编译构建",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:60",
+          "phase": "P4",
+          "gate": "gate_build.py",
+          "reason": "build ok but clang-tidy found 2 issue(s) (target=hiview_package); degraded=False; clang-tidy found 2 issue(s) — HARD block; fix and re-run P2→P4",
+          "at": "2026-10-14T04:01:51Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 11,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:65",
+          "count": 1,
+          "category": "编译构建",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:65",
+          "phase": "P4",
+          "gate": "gate_build.py",
+          "reason": "build ok but clang-tidy found 1 issue(s) (target=hiview_package); degraded=False; clang-tidy found 1 issue(s) — HARD block; fix and re-run P2→P4",
+          "at": "2026-10-14T04:38:57Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 12,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "passed_without_recorded_fix",
+          "verified_by": "manifest:66",
+          "count": 1,
+          "category": "编译构建",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:75",
+          "phase": "P4",
+          "gate": "gate_build.py",
+          "reason": "build ok but clang-tidy found 1 issue(s) (target=hiview_package); degraded=False; clang-tidy found 1 issue(s) — HARD block; fix and re-run P2→P4",
+          "at": "2026-10-14T06:14:04Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 14,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:76",
+          "count": 1,
+          "category": "编译构建",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:76",
+          "phase": "P4",
+          "gate": "gate_build.py",
+          "reason": "build ok but clang-tidy found 2 issue(s) (target=hiview_package); degraded=False; clang-tidy found 2 issue(s) — HARD block; fix and re-run P2→P4",
+          "at": "2026-10-14T06:48:30Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 14,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "passed_without_recorded_fix",
+          "verified_by": "manifest:81",
+          "count": 1,
+          "category": "编译构建",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:86",
+          "phase": "P4",
+          "gate": "gate_build.py",
+          "reason": "rc=0 banner_ok=True banner_err=False; 0 marker line(s) artifacts 2/3 present; MISSING build_artifacts: out/rk3568/src/tests/unittest/hiview/hiview/leak_detector/LeakDetectorUnitTest",
+          "at": "2026-10-14T07:25:55Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 16,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "passed_without_recorded_fix",
+          "verified_by": "manifest:91",
+          "count": 1,
+          "category": "测试与验证",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:114",
+          "phase": "P4",
+          "gate": "gate_build.py",
+          "reason": "build ok but clang-tidy found 2 issue(s) (target=hiview_package); degraded=False; clang-tidy found 2 issue(s) — HARD block; fix and re-run P2→P4",
+          "at": "2026-10-14T08:55:32Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 21,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:119",
+          "count": 1,
+          "category": "编译构建",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:119",
+          "phase": "P4",
+          "gate": "gate_build.py",
+          "reason": "build ok but clang-tidy found 1 issue(s) (target=hiview_package); degraded=False; clang-tidy found 1 issue(s) — HARD block; fix and re-run P2→P4",
+          "at": "2026-10-14T09:09:13Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 22,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "passed_without_recorded_fix",
+          "verified_by": "manifest:124",
+          "count": 1,
+          "category": "编译构建",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:92",
+          "phase": "P5",
+          "gate": "gate_test_ut.py",
+          "reason": "tests=0 failures=0 errors=0 fresh=2026-10-14-15-40-31 gtest_cov=0/13 MISSING: FdLeakDetectorUnitTest.FdLeakConfigParse_001, FdLeakDetectorUnitTest.GetProcessFdNum_001, FdLeakDetectorUnitTest.FdLeakGradeJudge_001, FdLeakDetectorUnitTest.FdKillingStateJudge_001, FdLeakDetectorUnitTest.FdDumpLevelJudge_001, FdLeakDetectorUnitTest.FdAnonymizeLine_001, FdLeakDetectorUnitTest.FdMonitorCapAndDedup_001, FdLeakDetectorUnitTest.FdWhiteListSkip_001, FdLeakDetectorUnitTest.FdStateTransition_001, FdLeakDetectorUnitTest.FdDumpFile_001, FdLeakDetectorUnitTest.FdRemovalState_001, FdLeakDetectorUnitTest.FdMainProcess_001, FdLeakDetectorModuleTest.PluginLoad_001",
+          "at": "2026-10-14T07:40:35Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 3,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:93",
+          "count": 1,
+          "category": "测试与验证",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:93",
+          "phase": "P5",
+          "gate": "gate_test_ut.py",
+          "reason": "tests=0 failures=0 errors=0 fresh=2026-10-14-15-49-56 gtest_cov=0/13 MISSING: FdLeakDetectorUnitTest.FdLeakConfigParse_001, FdLeakDetectorUnitTest.GetProcessFdNum_001, FdLeakDetectorUnitTest.FdLeakGradeJudge_001, FdLeakDetectorUnitTest.FdKillingStateJudge_001, FdLeakDetectorUnitTest.FdDumpLevelJudge_001, FdLeakDetectorUnitTest.FdAnonymizeLine_001, FdLeakDetectorUnitTest.FdMonitorCapAndDedup_001, FdLeakDetectorUnitTest.FdWhiteListSkip_001, FdLeakDetectorUnitTest.FdStateTransition_001, FdLeakDetectorUnitTest.FdDumpFile_001, FdLeakDetectorUnitTest.FdRemovalState_001, FdLeakDetectorUnitTest.FdMainProcess_001, FdLeakDetectorModuleTest.PluginLoad_001",
+          "at": "2026-10-14T07:50:00Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 3,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "passed_without_recorded_fix",
+          "verified_by": "manifest:94",
+          "count": 1,
+          "category": "测试与验证",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:132",
+          "phase": "P6",
+          "gate": "gate_device_func.py",
+          "reason": "nonce=True trigger_window=True marker=False runtime=False e2e=False device_cases=1/7 artifact_hash=True provenance=False artifact_loaded=False side_effect=True negative_control=True uptime 83249.36->83314.13 mono=True MISSING_device_markers=AR_FD_DETECT_OK,AR_FD_GRADE_OK,AR_FD_DISPOSE_OK,AR_FD_REPORT_OK,AR_FD_DUMP_OK,AR_FD_PLUGIN_OK BAD_device_cases=CASE_DETECT,CASE_GRADE,CASE_DISPOSE,CASE_REPORT,CASE_DUMP,CASE_PLUGIN",
+          "at": "2026-10-14T10:57:08Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 3,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:133",
+          "count": 1,
+          "category": "设备连接",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:133",
+          "phase": "P6",
+          "gate": "gate_device_func.py",
+          "reason": "nonce=True trigger_window=True marker=True runtime=True e2e=True device_cases=6/7 artifact_hash=True provenance=False artifact_loaded=False side_effect=True negative_control=True uptime 83585.57->83650.47 mono=True MISSING_device_markers=AR_FD_PLUGIN_OK BAD_device_cases=CASE_PLUGIN",
+          "at": "2026-10-14T11:02:47Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 3,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "passed_without_recorded_fix",
+          "verified_by": "manifest:134",
+          "count": 1,
+          "category": "设备连接",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:135",
+          "phase": "P7",
+          "gate": "gate_integration.py",
+          "reason": "no new reports/<timestamp>/ dir produced this run",
+          "at": "2026-10-14T11:47:19Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:136",
+          "count": 1,
+          "category": "其他门禁问题",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:136",
+          "phase": "P7",
+          "gate": "gate_integration.py",
+          "reason": "type=MST tests=1 failures=0 errors=0 fresh=2026-10-14-19-54-08 | quality:coverage=evidence/phase7/coverage_report.md; performance=evidence/phase7/performance_report.md; power=evidence/phase7/power_report.md; stability=evidence/phase7/stability_report.md | review:auto_review_issues=1 guard rc=1 metric_findings=0 on 26 file(s) | external_review=not-provided",
+          "at": "2026-10-14T11:54:17Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:137",
+          "count": 1,
+          "category": "测试与验证",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:137",
+          "phase": "P7",
+          "gate": "gate_integration.py",
+          "reason": "type=MST tests=1 failures=0 errors=0 fresh=2026-10-14-20-13-47 | quality:coverage=evidence/phase7/coverage_report.md; performance=evidence/phase7/performance_report.md; power=evidence/phase7/power_report.md; stability=evidence/phase7/stability_report.md | review:auto_review_issues=1 guard rc=1 metric_findings=0 on 26 file(s) | external_review=not-provided",
+          "at": "2026-10-14T12:13:56Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "passed_without_recorded_fix",
+          "verified_by": "manifest:138",
+          "count": 1,
+          "category": "测试与验证",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:153",
+          "phase": "P7",
+          "gate": "gate_integration.py",
+          "reason": "type=MST tests=1 failures=1 errors=0 fresh=2026-10-14-22-47-11 | quality:coverage=evidence/phase7/coverage_report.md; performance=evidence/phase7/performance_report.md; power=evidence/phase7/power_report.md; stability=evidence/phase7/stability_report.md | review:auto_review_issues=0 guard rc=0 metric_findings=0 on 26 file(s) | external_review=not-provided",
+          "at": "2026-10-14T14:50:23Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 2,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "passed_without_recorded_fix",
+          "verified_by": "manifest:154",
+          "count": 1,
+          "category": "测试与验证",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:139",
+          "phase": "P8",
+          "gate": "gate_upload_ci.py:consent-precheck",
+          "reason": "dry run prepared upload plan (no --allow-push)",
+          "at": "2026-10-14T12:31:57Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 1,
+          "failure_kind": "expected_review_hold",
+          "failure_category": "expected_review_hold",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:140",
+          "count": 1,
+          "category": "待人工确认",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:140",
+          "phase": "P8",
+          "gate": "gate_upload_ci.py:consent-precheck",
+          "reason": "dry run prepared upload plan (no --allow-push)",
+          "at": "2026-10-14T12:44:56Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 1,
+          "failure_kind": "expected_review_hold",
+          "failure_category": "expected_review_hold",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:143",
+          "count": 1,
+          "category": "待人工确认",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:143",
+          "phase": "P8",
+          "gate": "gate_upload_ci.py:consent-precheck",
+          "reason": "dry run prepared upload plan (no --allow-push)",
+          "at": "2026-10-14T13:20:13Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 1,
+          "failure_kind": "expected_review_hold",
+          "failure_category": "expected_review_hold",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:145",
+          "count": 1,
+          "category": "待人工确认",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:145",
+          "phase": "P8",
+          "gate": "gate_upload_ci.py",
+          "reason": "pr=4603 overall= ci_ok=False pushed=c8e7ec6ebd1d pr_head=c8e7ec6ebd1d sha_ok=True fresh=False local_review=issue_count=0 finding_count=0 problem_count=0 blocker_count=0 issues=0 findings=0 problems=0 blockers=0 pr_review=issue_count=0 finding_count=0 problem_count=0 blocker_count=0 issues=0 findings=0 problems=0 blockers=0 failure_category=unknown",
+          "at": "2026-10-14T13:20:39Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "unresolved",
+          "verified_by": "",
+          "count": 1,
+          "category": "其他门禁问题",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:156",
+          "phase": "P8",
+          "gate": "gate_upload_ci.py:consent-precheck",
+          "reason": "dry run prepared upload plan (no --allow-push)",
+          "at": "2026-10-15T00:30:04Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 2,
+          "failure_kind": "expected_review_hold",
+          "failure_category": "expected_review_hold",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:157",
+          "count": 1,
+          "category": "待人工确认",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:157",
+          "phase": "P8",
+          "gate": "gate_upload_ci.py",
+          "reason": "PR head SHA does not match local upload SHA",
+          "at": "2026-10-15T00:34:17Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 2,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:159",
+          "count": 1,
+          "category": "其他门禁问题",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:159",
+          "phase": "P8",
+          "gate": "gate_upload_ci.py",
+          "reason": "pr=4603 overall=failed ci_ok=False pushed=95d8706c9fda pr_head=95d8706c9fda sha_ok=True fresh=True local_review=issue_count=0 finding_count=0 problem_count=0 blocker_count=0 issues=0 findings=0 problems=0 blockers=0 pr_review=issue_count=0 finding_count=0 problem_count=0 blocker_count=0 issues=0 findings=0 problems=0 blockers=0 failure_category=code_defect",
+          "at": "2026-10-15T00:42:38Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 2,
+          "failure_kind": "gate_failure",
+          "failure_category": "code_defect",
+          "resolution_status": "unresolved",
+          "verified_by": "",
+          "count": 1,
+          "category": "其他门禁问题",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:160",
+          "phase": "P8",
+          "gate": "gate_upload_ci.py:consent-precheck",
+          "reason": "dry run prepared upload plan (no --allow-push)",
+          "at": "2026-10-15T01:10:34Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 2,
+          "failure_kind": "expected_review_hold",
+          "failure_category": "expected_review_hold",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:161",
+          "count": 1,
+          "category": "待人工确认",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:161",
+          "phase": "P8",
+          "gate": "gate_upload_ci.py",
+          "reason": "PR head SHA does not match local upload SHA",
+          "at": "2026-10-15T01:12:52Z",
+          "source": "browser-import/ar-development/20261013-fd-leak-detect/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 2,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "passed_without_recorded_fix",
+          "verified_by": "manifest:163",
+          "count": 1,
+          "category": "其他门禁问题",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        }
+      ],
+      "failures": 39,
+      "gate_attempts": 133,
+      "human_interventions": [
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "device functional test review",
+          "phase": "P6"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "quality reports and code review review",
+          "phase": "P7"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P8 pre-upload diff and target review",
+          "phase": "P8"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P8 pre-upload diff and target review",
+          "phase": "P8"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "device functional test review",
+          "phase": "P6"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "quality reports and code review review",
+          "phase": "P7"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P8 pre-upload diff and target review",
+          "phase": "P8"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P8 pre-upload diff and target review",
+          "phase": "P8"
+        }
+      ],
+      "open_waits": 0,
+      "open_wait_details": [],
+      "effective_seconds": 100110,
+      "wall_seconds": 138638,
+      "wait_seconds": 38528,
+      "first_gate_attempts": 108,
+      "first_gate_failures": 28,
+      "first_gate_passes": 80,
+      "first_gate_review_holds": 2,
+      "unrecorded_gate_attempts": 0,
+      "preflight_summary": {
+        "attempts": 187,
+        "failed_attempts": 26,
+        "issues": 71
+      },
+      "preflight_failures": [
+        {
+          "id": "preflight-1",
+          "phase": "P1",
+          "at": "2026-10-13T12:54:42Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-2",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "CASE_DETECT:trigger",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "CASE_GRADE:trigger",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "CASE_DISPOSE:trigger",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "CASE_REPORT:trigger",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "CASE_DUMP:trigger",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "CASE_DEDUP:trigger",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "CASE_DEVICE_OFFLINE:failure-injection",
+              "status": "FAIL",
+              "reason": "probe expected observation missing: CASE_DEVICE_OFFLINE_INJECTED_FAIL",
+              "rule_ids": []
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-2",
+          "phase": "P1",
+          "at": "2026-10-13T13:01:18Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-3",
+          "resolution_status": "resolved",
+          "checks": [
+            {
+              "id": "CASE_DEVICE_OFFLINE:failure-injection",
+              "status": "FAIL",
+              "reason": "probe expected observation missing: CASE_DEVICE_OFFLINE_INJECTED_FAIL",
+              "rule_ids": []
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-4",
+          "phase": "P1",
+          "at": "2026-10-13T13:16:32Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-5",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "CASE_DETECT:trigger",
+              "status": "FAIL",
+              "reason": "probe expected observation missing: CASE_DETECT_DRIVEN_OK",
+              "rule_ids": []
+            },
+            {
+              "id": "CASE_GRADE:trigger",
+              "status": "FAIL",
+              "reason": "probe expected observation missing: CASE_GRADE_DRIVEN_OK",
+              "rule_ids": []
+            },
+            {
+              "id": "CASE_DISPOSE:trigger",
+              "status": "FAIL",
+              "reason": "probe expected observation missing: CASE_DISPOSE_DRIVEN_OK",
+              "rule_ids": []
+            },
+            {
+              "id": "CASE_REPORT:trigger",
+              "status": "FAIL",
+              "reason": "probe expected observation missing: CASE_REPORT_DRIVEN_OK",
+              "rule_ids": []
+            },
+            {
+              "id": "CASE_DUMP:trigger",
+              "status": "FAIL",
+              "reason": "probe expected observation missing: CASE_DUMP_DRIVEN_OK",
+              "rule_ids": []
+            },
+            {
+              "id": "CASE_DEDUP:trigger",
+              "status": "FAIL",
+              "reason": "probe expected observation missing: CASE_DEDUP_DRIVEN_OK",
+              "rule_ids": []
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-5",
+          "phase": "P1",
+          "at": "2026-10-13T13:22:18Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-6",
+          "resolution_status": "resolved",
+          "checks": [
+            {
+              "id": "CASE_DETECT:trigger",
+              "status": "FAIL",
+              "reason": "probe expected observation missing: CASE_DETECT_DRIVEN_OK",
+              "rule_ids": []
+            },
+            {
+              "id": "CASE_GRADE:trigger",
+              "status": "FAIL",
+              "reason": "probe expected observation missing: CASE_GRADE_DRIVEN_OK",
+              "rule_ids": []
+            },
+            {
+              "id": "CASE_DISPOSE:trigger",
+              "status": "FAIL",
+              "reason": "probe expected observation missing: CASE_DISPOSE_DRIVEN_OK",
+              "rule_ids": []
+            },
+            {
+              "id": "CASE_REPORT:trigger",
+              "status": "FAIL",
+              "reason": "probe expected observation missing: CASE_REPORT_DRIVEN_OK",
+              "rule_ids": []
+            },
+            {
+              "id": "CASE_DUMP:trigger",
+              "status": "FAIL",
+              "reason": "probe expected observation missing: CASE_DUMP_DRIVEN_OK",
+              "rule_ids": []
+            },
+            {
+              "id": "CASE_DEDUP:trigger",
+              "status": "FAIL",
+              "reason": "probe expected observation missing: CASE_DEDUP_DRIVEN_OK",
+              "rule_ids": []
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-8",
+          "phase": "P2",
+          "at": "2026-10-13T13:49:13Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-9",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "G.FUU.05",
+                "G.STD.01-CPP",
+                "G.STD.16-CPP"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-9",
+          "phase": "P2",
+          "at": "2026-10-13T13:50:17Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-10",
+          "resolution_status": "resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "G.FUU.05",
+                "G.STD.01-CPP"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-14",
+          "phase": "P4",
+          "at": "2026-10-13T13:58:35Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-18",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "leakdetector-ut-build",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "leakdetector-mst-build",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-18",
+          "phase": "P4",
+          "at": "2026-10-13T14:25:55Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-22",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "leakdetector-ut-build",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "leakdetector-mst-build",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-22",
+          "phase": "P4",
+          "at": "2026-10-13T14:32:45Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-25",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "leakdetector-ut-build",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "leakdetector-mst-build",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "hiview-package-build",
+              "status": "FAIL",
+              "reason": "component/dependency Git diff changed during probe; existing dirty work preserved, inspect before manual recovery",
+              "rule_ids": []
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-25",
+          "phase": "P4",
+          "at": "2026-10-13T14:35:42Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-26",
+          "resolution_status": "resolved",
+          "checks": [
+            {
+              "id": "leakdetector-ut-build",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "leakdetector-mst-build",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-34",
+          "phase": "P4",
+          "at": "2026-10-14T02:03:35Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-39",
+          "resolution_status": "resolved",
+          "checks": [
+            {
+              "id": "leakdetector-symbols",
+              "status": "FAIL",
+              "reason": "symbol not exported/defined: OHOS::HiviewDFX::FaultDetectorManager; symbol not exported/defined: OHOS::HiviewDFX::FileDescriptorLeakDetector; symbol not exported/defined: OHOS::HiviewDFX::FdLeakInfo; symbol not exported/defined: OHOS::HiviewDFX::FdLeakStateContext",
+              "rule_ids": []
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-49",
+          "phase": "P4",
+          "at": "2026-10-14T02:54:20Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-50",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "bdfr-so-device",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "leakdetector-ut-build",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "leakdetector-mst-build",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "hiview-package-build",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-50",
+          "phase": "P4",
+          "at": "2026-10-14T03:03:05Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-51",
+          "resolution_status": "resolved",
+          "checks": [
+            {
+              "id": "bdfr-so-device",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "leakdetector-ut-build",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "leakdetector-mst-build",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "hiview-package-build",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-76",
+          "phase": "P5",
+          "at": "2026-10-14T04:56:37Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-94",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "repeat",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "shuffle",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "independent",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-80",
+          "phase": "P4",
+          "at": "2026-10-14T05:27:08Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-84",
+          "resolution_status": "resolved",
+          "checks": [
+            {
+              "id": "leakdetector-ut-build",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "leakdetector-mst-build",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-86",
+          "phase": "P4",
+          "at": "2026-10-14T06:35:06Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "",
+          "resolution_status": "",
+          "checks": [
+            {
+              "id": "preflight-backend",
+              "status": "FAIL",
+              "reason": "ruleset coverage does not match code_ruleset_guard.py; rebuild it",
+              "rule_ids": []
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-94",
+          "phase": "P5",
+          "at": "2026-10-14T07:03:49Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-104",
+          "resolution_status": "resolved",
+          "checks": [
+            {
+              "id": "repeat",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "shuffle",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "independent",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-105",
+          "phase": "P5",
+          "at": "2026-10-14T07:44:00Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-106",
+          "resolution_status": "resolved",
+          "checks": [
+            {
+              "id": "device-list",
+              "status": "FAIL",
+              "reason": "probe expected observation missing: 7001005458323933328a013ce39c3800",
+              "rule_ids": []
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-107",
+          "phase": "P5",
+          "at": "2026-10-14T07:52:52Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-108",
+          "resolution_status": "resolved",
+          "checks": [
+            {
+              "id": "repeat",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "shuffle",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "independent",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-114",
+          "phase": "P4",
+          "at": "2026-10-14T08:20:54Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-118",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "bdfr-so-device",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "leakdetector-ut-build",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "leakdetector-mst-build",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "hiview-package-build",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-118",
+          "phase": "P4",
+          "at": "2026-10-14T08:28:55Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-122",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "bdfr-so-device",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "leakdetector-ut-build",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "leakdetector-mst-build",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "hiview-package-build",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-122",
+          "phase": "P4",
+          "at": "2026-10-14T08:40:04Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-126",
+          "resolution_status": "resolved",
+          "checks": [
+            {
+              "id": "bdfr-so-device",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "leakdetector-ut-build",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "leakdetector-mst-build",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "hiview-package-build",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-138",
+          "phase": "P5",
+          "at": "2026-10-14T09:33:11Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-139",
+          "resolution_status": "resolved",
+          "checks": [
+            {
+              "id": "repeat",
+              "status": "FAIL",
+              "reason": "test report is not non-empty and zero-failure",
+              "rule_ids": []
+            },
+            {
+              "id": "shuffle",
+              "status": "FAIL",
+              "reason": "test report is not non-empty and zero-failure",
+              "rule_ids": []
+            },
+            {
+              "id": "independent",
+              "status": "FAIL",
+              "reason": "test report is not non-empty and zero-failure",
+              "rule_ids": []
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-149",
+          "phase": "P6",
+          "at": "2026-10-14T11:04:54Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-150",
+          "resolution_status": "resolved",
+          "checks": [
+            {
+              "id": "scene-lifecycle",
+              "status": "FAIL",
+              "reason": "deployment and scenario both own restart; select one lifecycle owner",
+              "rule_ids": []
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-151",
+          "phase": "P7",
+          "at": "2026-10-14T11:41:45Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-152",
+          "resolution_status": "resolved",
+          "checks": [
+            {
+              "id": "state-after",
+              "status": "FAIL",
+              "reason": "shared state not restored after tests (including failed exits)",
+              "rule_ids": []
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-174",
+          "phase": "P7",
+          "at": "2026-10-14T14:38:24Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-175",
+          "resolution_status": "resolved",
+          "checks": [
+            {
+              "id": "state-after",
+              "status": "FAIL",
+              "reason": "shared state not restored after tests (including failed exits)",
+              "rule_ids": []
+            }
+          ],
+          "fixes": []
+        }
+      ],
+      "session_later_outcome": "",
+      "recording_quality": {
+        "status": "complete",
+        "initialization_count": 1,
+        "note": "指标历史连续保留；实际工作起点仍需登记。"
+      },
+      "import_origin": "browser"
+    },
     {
       "id": "20261009-fd-leak-detect",
       "workflow": "ar-development",
@@ -401,9 +3035,12 @@
           "failure_category": "unknown",
           "resolution_status": "passed_without_recorded_fix",
           "verified_by": "manifest:73",
-          "fixes": [],
           "count": 1,
-          "category": "测试与验证"
+          "category": "测试与验证",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
         },
         {
           "id": "manifest:80",
@@ -418,9 +3055,12 @@
           "failure_category": "unknown",
           "resolution_status": "passed_without_recorded_fix",
           "verified_by": "manifest:81",
-          "fixes": [],
           "count": 1,
-          "category": "设备连接"
+          "category": "设备连接",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
         },
         {
           "id": "manifest:83",
@@ -435,9 +3075,12 @@
           "failure_category": "expected_review_hold",
           "resolution_status": "failed_again_without_recorded_fix",
           "verified_by": "manifest:84",
-          "fixes": [],
           "count": 1,
-          "category": "待人工确认"
+          "category": "待人工确认",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
         },
         {
           "id": "manifest:84",
@@ -452,9 +3095,12 @@
           "failure_category": "expected_review_hold",
           "resolution_status": "failed_again_without_recorded_fix",
           "verified_by": "manifest:85",
-          "fixes": [],
           "count": 1,
-          "category": "待人工确认"
+          "category": "待人工确认",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
         },
         {
           "id": "manifest:85",
@@ -469,9 +3115,12 @@
           "failure_category": "unknown",
           "resolution_status": "unresolved",
           "verified_by": "",
-          "fixes": [],
           "count": 1,
-          "category": "其他门禁问题"
+          "category": "其他门禁问题",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
         },
         {
           "id": "manifest:86",
@@ -486,9 +3135,12 @@
           "failure_category": "expected_review_hold",
           "resolution_status": "failed_again_without_recorded_fix",
           "verified_by": "manifest:87",
-          "fixes": [],
           "count": 1,
-          "category": "待人工确认"
+          "category": "待人工确认",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
         },
         {
           "id": "manifest:87",
@@ -503,9 +3155,12 @@
           "failure_category": "unknown",
           "resolution_status": "failed_again_without_recorded_fix",
           "verified_by": "manifest:88",
-          "fixes": [],
           "count": 1,
-          "category": "其他门禁问题"
+          "category": "其他门禁问题",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
         },
         {
           "id": "manifest:88",
@@ -520,9 +3175,12 @@
           "failure_category": "unknown",
           "resolution_status": "failed_again_without_recorded_fix",
           "verified_by": "manifest:89",
-          "fixes": [],
           "count": 1,
-          "category": "其他门禁问题"
+          "category": "其他门禁问题",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
         },
         {
           "id": "manifest:89",
@@ -537,9 +3195,12 @@
           "failure_category": "ci_wait",
           "resolution_status": "unresolved",
           "verified_by": "",
-          "fixes": [],
           "count": 1,
-          "category": "其他门禁问题"
+          "category": "其他门禁问题",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
         },
         {
           "id": "manifest:98",
@@ -554,9 +3215,12 @@
           "failure_category": "expected_review_hold",
           "resolution_status": "failed_again_without_recorded_fix",
           "verified_by": "manifest:99",
-          "fixes": [],
           "count": 1,
-          "category": "待人工确认"
+          "category": "待人工确认",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
         },
         {
           "id": "manifest:99",
@@ -571,9 +3235,12 @@
           "failure_category": "unknown",
           "resolution_status": "unresolved",
           "verified_by": "",
-          "fixes": [],
           "count": 1,
-          "category": "其他门禁问题"
+          "category": "其他门禁问题",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
         },
         {
           "id": "manifest:108",
@@ -588,9 +3255,12 @@
           "failure_category": "expected_review_hold",
           "resolution_status": "failed_again_without_recorded_fix",
           "verified_by": "manifest:109",
-          "fixes": [],
           "count": 1,
-          "category": "待人工确认"
+          "category": "待人工确认",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
         },
         {
           "id": "manifest:109",
@@ -605,9 +3275,12 @@
           "failure_category": "unknown",
           "resolution_status": "passed_without_recorded_fix",
           "verified_by": "manifest:110",
-          "fixes": [],
           "count": 1,
-          "category": "其他门禁问题"
+          "category": "其他门禁问题",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
         }
       ],
       "failures": 13,
@@ -701,6 +3374,14 @@
       ],
       "open_waits": 0,
       "open_wait_details": [],
+      "effective_seconds": 23696,
+      "wall_seconds": 55433,
+      "wait_seconds": 31737,
+      "first_gate_attempts": 32,
+      "first_gate_failures": 4,
+      "first_gate_passes": 28,
+      "first_gate_review_holds": 1,
+      "unrecorded_gate_attempts": 0,
       "preflight_summary": {
         "attempts": 50,
         "failed_attempts": 4,
@@ -795,18 +3476,11 @@
           "fixes": []
         }
       ],
-      "first_gate_attempts": 32,
-      "first_gate_failures": 4,
-      "first_gate_passes": 28,
-      "first_gate_review_holds": 1,
-      "unrecorded_gate_attempts": 0,
-      "effective_seconds": 23696,
-      "wall_seconds": 55433,
-      "wait_seconds": 31737,
+      "session_later_outcome": "",
       "recording_quality": {
         "status": "incomplete",
         "initialization_count": null,
-        "note": "2026-10-10 提供的 session 第 7027–7052 行确认：环境摘要变化后，同一 run-id 强制重新初始化；此前设计和开发历史未保留在当前指标中。P1 的 56 秒、P2 的 46 秒、P3 的 13 秒为重新初始化后累计记录，不能代表完整任务耗时。暂停据此计算耗时及失败减少度。"
+        "note": "会话已确认同一 run-id 重新初始化覆盖早期历史；当前阶段时间及失败数不能代表完整任务。"
       }
     },
     {
@@ -1135,13 +3809,21 @@
       ],
       "failure_details": [
         {
+          "id": "",
           "phase": "P2",
           "gate": "gate_develop.py",
           "reason": "阶段原因（无法逐次对应）：初次开发校验后发现 change_scope 的路径与 hiperf 组件 Git 根目录不一致；会话同时处理了改动行的格式与代码规则问题。缺少这次门禁的返回原文，不能确定三次 P2 FAIL 各对应哪一项。；后续修订本地代码规则扫描器后，风格/卫生检查再次失败；会话随即同步规则覆盖清单的 guard_sha256，再重跑开发门禁。原始诊断未随会话导出，无法确认此项占用几次 P2 FAIL。",
-          "count": 3,
-          "category": "阶段原因",
           "at": "2026-09-24T08:42:58Z",
           "source": "products/.run/run-06/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
+          "count": 3,
+          "category": "阶段原因",
+          "fixes": [],
           "session_findings": [
             {
               "phase": "P2",
@@ -1169,13 +3851,21 @@
           "session_source": "用户提供的 Cursor 会话导出；main:N 表示主会话 JSONL 从 1 开始的行号"
         },
         {
+          "id": "",
           "phase": "P3",
           "gate": "gate_test_develop.py",
           "reason": "阶段原因（无法逐次对应）：测试文件触发 WordsTool.100/190 敏感词静态检查；会话检查了版权头和 [anon:v8] 测试样例，P3 首轮未通过。",
-          "count": 1,
-          "category": "阶段原因",
           "at": "2026-09-24T08:43:24Z",
           "source": "products/.run/run-06/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
+          "count": 1,
+          "category": "阶段原因",
+          "fixes": [],
           "session_findings": [
             {
               "phase": "P3",
@@ -1193,13 +3883,21 @@
           "session_source": "用户提供的 Cursor 会话导出；main:N 表示主会话 JSONL 从 1 开始的行号"
         },
         {
+          "id": "",
           "phase": "P4",
           "gate": "gate_build.py",
           "reason": "阶段原因（无法逐次对应）：gate_build 的本地代码度量指出 subcommand_record.cpp 超过 3000 行限制。；clang-tidy 超时或把未改动的旧代码告警算入本次检查，导致构建成功后门控仍未放行。；本快照末次 P4 静态检查报 G.CLS.04-CPP：测试辅助类 MiniDebugRestore 定义了析构函数，却未声明拷贝和移动操作。",
-          "count": 4,
-          "category": "阶段原因",
           "at": "2026-09-24T08:49:41Z",
           "source": "products/.run/run-06/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
+          "count": 4,
+          "category": "阶段原因",
+          "fixes": [],
           "session_findings": [
             {
               "phase": "P4",
@@ -1259,13 +3957,21 @@
           "session_source": "用户提供的 Cursor 会话导出；main:N 表示主会话 JSONL 从 1 开始的行号"
         },
         {
+          "id": "",
           "phase": "P5",
           "gate": "gate_test_ut.py",
           "reason": "阶段原因（无法逐次对应）：xdevice 读到的设备配置缺少 environment/device 节点，框架识别出 0 台设备，单元测试没有启动。；rk3568 产品配置默认编成 32 位，但当时连接的真机用户态是 64 位，推送的测试程序无法执行。；新契约用例 MatchHitsWithoutFullSymbolTable 受同进程先前 mini-debug 全局开关状态影响，导致重跑中的单测未通过。",
-          "count": 3,
-          "category": "阶段原因",
           "at": "2026-09-24T05:57:21Z",
           "source": "products/.run/run-06/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
+          "count": 3,
+          "category": "阶段原因",
+          "fixes": [],
           "session_findings": [
             {
               "phase": "P5",
@@ -1305,13 +4011,21 @@
           "session_source": "用户提供的 Cursor 会话导出；main:N 表示主会话 JSONL 从 1 开始的行号"
         },
         {
+          "id": "",
           "phase": "P7",
           "gate": "gate_integration.py",
           "reason": "阶段原因（无法逐次对应）：首次质量验证运行方式使一条单测记录了错误的程序路径，先前那次门控被主动停止。；设备侧测试已经运行，但 xdevice 的 hdc file recv 把结果文件放进额外目录，门控在预期路径找不到测试结果。",
-          "count": 2,
-          "category": "阶段原因",
           "at": "2026-09-24T07:15:25Z",
           "source": "products/.run/run-06/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
+          "count": 2,
+          "category": "阶段原因",
+          "fixes": [],
           "session_findings": [
             {
               "phase": "P7",
@@ -1340,13 +4054,21 @@
           "session_source": "用户提供的 Cursor 会话导出；main:N 表示主会话 JSONL 从 1 开始的行号"
         },
         {
+          "id": "",
           "phase": "P8",
           "gate": "gate_upload_ci.py",
           "reason": "阶段原因（无法逐次对应）：最初执行的是不带 --allow-push 的上库预检；此类 FAIL 是预期停点，不能当成代码错误。之后 PR 创建并触发远端 CI，但快照时尚无覆盖当前提交的绿色结果，P8 不可放行。三次 P8 FAIL 缺少逐次返回日志，不能一一分配。",
-          "count": 3,
-          "category": "阶段原因",
           "at": "2026-09-24T07:48:14Z",
           "source": "products/.run/run-06/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
+          "count": 3,
+          "category": "阶段原因",
+          "fixes": [],
           "session_findings": [
             {
               "phase": "P8",
@@ -1396,17 +4118,17 @@
       ],
       "open_waits": 0,
       "open_wait_details": [],
-      "preflight_summary": null,
-      "preflight_failures": [],
-      "session_later_outcome": "会话在 2026-09-28 继续：先修复远端 MinGW 缺少 unique_fd.h 的包含链与后续静态检查问题，最终 P0–P8 通过；PR !1091 的绿色 CI 覆盖提交 5f6bb6c。本指标快照仍截止 2026-09-24T08:49:41Z。",
+      "effective_seconds": 16398,
+      "wall_seconds": 19513,
+      "wait_seconds": 3115,
       "first_gate_attempts": null,
       "first_gate_failures": null,
       "first_gate_passes": null,
       "first_gate_review_holds": null,
       "unrecorded_gate_attempts": null,
-      "effective_seconds": 16398,
-      "wall_seconds": 19513,
-      "wait_seconds": 3115,
+      "preflight_summary": null,
+      "preflight_failures": [],
+      "session_later_outcome": "会话在 2026-09-28 继续：先修复远端 MinGW 缺少 unique_fd.h 的包含链与后续静态检查问题，最终 P0–P8 通过；PR !1091 的绿色 CI 覆盖提交 5f6bb6c。本指标快照仍截止 2026-09-24T08:49:41Z。",
       "recording_quality": {
         "status": "unknown",
         "initialization_count": null,
@@ -1731,31 +4453,61 @@
       ],
       "failure_details": [
         {
+          "id": "",
           "phase": "P2",
           "gate": "gate_develop.py",
           "reason": "未记录具体失败原因",
+          "at": "2026-09-24T05:45:14Z",
+          "source": "products/.run/run-04/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
           "count": 1,
           "category": "原因缺失",
-          "at": "2026-09-24T05:45:14Z",
-          "source": "products/.run/run-04/workflow_metrics.json"
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
         },
         {
+          "id": "",
           "phase": "P3",
           "gate": "gate_test_develop.py",
           "reason": "未记录具体失败原因",
+          "at": "2026-09-24T05:45:18Z",
+          "source": "products/.run/run-04/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
           "count": 1,
           "category": "测试与验证",
-          "at": "2026-09-24T05:45:18Z",
-          "source": "products/.run/run-04/workflow_metrics.json"
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
         },
         {
+          "id": "",
           "phase": "P5",
           "gate": "gate_test_ut.py",
           "reason": "阶段原因（无法逐次对应）：hdc 可连接到服务端，但 list targets 返回 [Empty]，真机离线；ResmonPluginUnitTest 虽已构建，无法上机执行。",
-          "count": 1,
-          "category": "阶段原因",
           "at": "2026-09-24T06:09:06Z",
           "source": "products/.run/run-04/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
+          "count": 1,
+          "category": "阶段原因",
+          "fixes": [],
           "session_findings": [
             {
               "phase": "P5",
@@ -1774,13 +4526,21 @@
           "session_source": "原始 workflow_metrics.json 人工介入记录及用户提供的 res_mon_928.txt；引用行号从 1 开始"
         },
         {
+          "id": "",
           "phase": "P6",
           "gate": "gate_device_func.py",
           "reason": "阶段原因（无法逐次对应）：DC-7 要验证 RESMON_CONFIG_RELOADED，但 rk3568 上没有可用的运行时配置更新触发链：依赖的参数更新事件和签名材料不存在，原插件也没有自轮询或 SIGHUP 入口。；DC-8 要验证 RESMON_COLLECT_FAILED，同样依赖运行时配置重载；当时还受到门禁事后读取 /proc 标记进程及 init 重启预算的影响，失败注入无法可靠观测。",
-          "count": 2,
-          "category": "阶段原因",
           "at": "2026-09-24T06:11:10Z",
           "source": "products/.run/run-04/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
+          "count": 2,
+          "category": "阶段原因",
+          "fixes": [],
           "session_findings": [
             {
               "phase": "P6",
@@ -1812,22 +4572,41 @@
           "session_source": "原始 workflow_metrics.json 人工介入记录及用户提供的 res_mon_928.txt；引用行号从 1 开始"
         },
         {
+          "id": "",
           "phase": "P7",
           "gate": "gate_integration.py",
           "reason": "未记录具体失败原因",
+          "at": "2026-09-24T06:41:49Z",
+          "source": "products/.run/run-04/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
           "count": 1,
           "category": "原因缺失",
-          "at": "2026-09-24T06:41:49Z",
-          "source": "products/.run/run-04/workflow_metrics.json"
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
         },
         {
+          "id": "",
           "phase": "P8",
           "gate": "gate_upload_ci.py",
           "reason": "逐次门禁原因未记录；会话只有阶段相关线索，未证实计入本次失败次数",
-          "count": 2,
-          "category": "原因缺失",
           "at": "2026-09-24T07:26:56Z",
           "source": "products/.run/run-04/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
+          "count": 2,
+          "category": "原因缺失",
+          "fixes": [],
           "session_findings": [
             {
               "phase": "P8",
@@ -1904,17 +4683,17 @@
           "started_at_utc": "2026-09-24T05:53:05Z"
         }
       ],
-      "preflight_summary": null,
-      "preflight_failures": [],
-      "session_later_outcome": "9 月 28 日后续会话定位并消除平台静态检查 No.bundle.002 误判：改动文件中的 plugin_bundle.json 信任名单被误当部件描述文件，改源文件名为 plugin_trustlist.json 后静态检查通过且编译/测试任务首次派发。附件结束前 dayu600_7885 仍报 ecotest 任务解析异常，未见 P8 最终 PASS；这不回写 9 月 24 日的快照判定。",
+      "effective_seconds": 18522,
+      "wall_seconds": 70902,
+      "wait_seconds": 52380,
       "first_gate_attempts": null,
       "first_gate_failures": null,
       "first_gate_passes": null,
       "first_gate_review_holds": null,
       "unrecorded_gate_attempts": null,
-      "effective_seconds": 18522,
-      "wall_seconds": 70902,
-      "wait_seconds": 52380,
+      "preflight_summary": null,
+      "preflight_failures": [],
+      "session_later_outcome": "9 月 28 日后续会话定位并消除平台静态检查 No.bundle.002 误判：改动文件中的 plugin_bundle.json 信任名单被误当部件描述文件，改源文件名为 plugin_trustlist.json 后静态检查通过且编译/测试任务首次派发。附件结束前 dayu600_7885 仍报 ecotest 任务解析异常，未见 P8 最终 PASS；这不回写 9 月 24 日的快照判定。",
       "recording_quality": {
         "status": "unknown",
         "initialization_count": null,
@@ -2262,76 +5041,164 @@
       ],
       "failure_details": [
         {
+          "id": "",
           "phase": "P0",
           "gate": "gate_env_init.py",
           "reason": "未记录具体失败原因",
+          "at": "2026-09-23T02:50:08Z",
+          "source": "products/.run/run-05/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
           "count": 1,
           "category": "原因缺失",
-          "at": "2026-09-23T02:50:08Z",
-          "source": "products/.run/run-05/workflow_metrics.json"
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
         },
         {
+          "id": "",
           "phase": "P2",
           "gate": "gate_develop.py",
           "reason": "未记录具体失败原因",
+          "at": "2026-09-24T03:31:21Z",
+          "source": "products/.run/run-05/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
           "count": 6,
           "category": "原因缺失",
-          "at": "2026-09-24T03:31:21Z",
-          "source": "products/.run/run-05/workflow_metrics.json"
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
         },
         {
+          "id": "",
           "phase": "P3",
           "gate": "gate_test_develop.py",
           "reason": "未记录具体失败原因",
+          "at": "2026-09-24T03:35:04Z",
+          "source": "products/.run/run-05/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
           "count": 4,
           "category": "测试与验证",
-          "at": "2026-09-24T03:35:04Z",
-          "source": "products/.run/run-05/workflow_metrics.json"
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
         },
         {
+          "id": "",
           "phase": "P4",
           "gate": "gate_build.py",
           "reason": "未记录具体失败原因",
+          "at": "2026-09-24T03:55:43Z",
+          "source": "products/.run/run-05/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
           "count": 5,
           "category": "编译构建",
-          "at": "2026-09-24T03:55:43Z",
-          "source": "products/.run/run-05/workflow_metrics.json"
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
         },
         {
+          "id": "",
           "phase": "P5",
           "gate": "gate_test_ut.py",
           "reason": "未记录具体失败原因",
+          "at": "2026-09-24T03:57:29Z",
+          "source": "products/.run/run-05/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
           "count": 4,
           "category": "测试与验证",
-          "at": "2026-09-24T03:57:29Z",
-          "source": "products/.run/run-05/workflow_metrics.json"
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
         },
         {
+          "id": "",
           "phase": "P6",
           "gate": "gate_device_func.py",
           "reason": "未记录具体失败原因",
+          "at": "2026-09-23T08:35:19Z",
+          "source": "products/.run/run-05/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
           "count": 3,
           "category": "设备连接",
-          "at": "2026-09-23T08:35:19Z",
-          "source": "products/.run/run-05/workflow_metrics.json"
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
         },
         {
+          "id": "",
           "phase": "P7",
           "gate": "gate_integration.py",
           "reason": "未记录具体失败原因",
+          "at": "2026-09-23T09:23:14Z",
+          "source": "products/.run/run-05/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
           "count": 3,
           "category": "原因缺失",
-          "at": "2026-09-23T09:23:14Z",
-          "source": "products/.run/run-05/workflow_metrics.json"
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
         },
         {
+          "id": "",
           "phase": "P8",
           "gate": "gate_upload_ci.py",
           "reason": "未记录具体失败原因",
+          "at": "2026-09-24T01:06:34Z",
+          "source": "products/.run/run-05/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
           "count": 4,
           "category": "原因缺失",
-          "at": "2026-09-24T01:06:34Z",
-          "source": "products/.run/run-05/workflow_metrics.json"
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
         }
       ],
       "failures": 30,
@@ -2397,16 +5264,17 @@
           "started_at_utc": "2026-09-24T04:06:21Z"
         }
       ],
-      "preflight_summary": null,
-      "preflight_failures": [],
+      "effective_seconds": 97132,
+      "wall_seconds": 99553,
+      "wait_seconds": 2421,
       "first_gate_attempts": null,
       "first_gate_failures": null,
       "first_gate_passes": null,
       "first_gate_review_holds": null,
       "unrecorded_gate_attempts": null,
-      "effective_seconds": 97132,
-      "wall_seconds": 99553,
-      "wait_seconds": 2421,
+      "preflight_summary": null,
+      "preflight_failures": [],
+      "session_later_outcome": "",
       "recording_quality": {
         "status": "unknown",
         "initialization_count": null,
@@ -2717,22 +5585,44 @@
       ],
       "failure_details": [
         {
+          "id": "",
           "phase": "P2",
           "gate": "gate_develop.py",
           "reason": "未记录具体失败原因",
+          "at": "2026-09-21T09:23:34Z",
+          "source": "products/.run/run-03/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
           "count": 4,
           "category": "原因缺失",
-          "at": "2026-09-21T09:23:34Z",
-          "source": "products/.run/run-03/workflow_metrics.json"
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
         },
         {
+          "id": "",
           "phase": "P5",
           "gate": "gate_host_cli.py",
           "reason": "未记录具体失败原因",
+          "at": "2026-09-21T09:30:38Z",
+          "source": "products/.run/run-03/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
           "count": 2,
           "category": "原因缺失",
-          "at": "2026-09-21T09:30:38Z",
-          "source": "products/.run/run-03/workflow_metrics.json"
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
         }
       ],
       "failures": 6,
@@ -2776,16 +5666,17 @@
       ],
       "open_waits": 0,
       "open_wait_details": [],
-      "preflight_summary": null,
-      "preflight_failures": [],
+      "effective_seconds": 11306,
+      "wall_seconds": 154815,
+      "wait_seconds": 143509,
       "first_gate_attempts": null,
       "first_gate_failures": null,
       "first_gate_passes": null,
       "first_gate_review_holds": null,
       "unrecorded_gate_attempts": null,
-      "effective_seconds": 11306,
-      "wall_seconds": 154815,
-      "wait_seconds": 143509,
+      "preflight_summary": null,
+      "preflight_failures": [],
+      "session_later_outcome": "",
       "recording_quality": {
         "status": "unknown",
         "initialization_count": null,
@@ -3097,13 +5988,21 @@
       ],
       "failure_details": [
         {
+          "id": "",
           "phase": "P1",
           "gate": "gate_design.py",
           "reason": "阶段原因（无法逐次对应）：首次设计门控只识别到 6/7 个章节：NFR-5 的“可观测性”标题抢占了 DFX 章节锚点；同时 device_cases 的 side_effect 写法不是门控要求的 shell_assert 类型结构。",
-          "count": 1,
-          "category": "阶段原因",
           "at": "2026-09-22T03:19:11Z",
           "source": "products/.run/run-01/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
+          "count": 1,
+          "category": "阶段原因",
+          "fixes": [],
           "session_findings": [
             {
               "phase": "P1",
@@ -3120,13 +6019,21 @@
           "session_source": "用户提供的 Claude Code 会话导出；session:N 表示本地附件从 1 开始的行号"
         },
         {
+          "id": "",
           "phase": "P2",
           "gate": "gate_develop.py",
           "reason": "阶段原因（无法逐次对应）：设计契约的 change_scope.allowed_paths 写成源码根相对路径，但门控用组件 Git 仓根相对路径比较，20 个改动文件全部被误判越界。；同一次 P2 门控的 file_hygiene 检查把无扩展名 bdfr_plugin_config 判为缺少许可证头；但该文件首个非空行必须是 plugins:N，直接加头会让 hiview 配置解析失败。未修改的同族文件也触发相同规则。",
-          "count": 1,
-          "category": "阶段原因",
           "at": "2026-09-22T08:33:13Z",
           "source": "products/.run/run-01/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
+          "count": 1,
+          "category": "阶段原因",
+          "fixes": [],
           "session_findings": [
             {
               "phase": "P2",
@@ -3156,13 +6063,21 @@
           "session_source": "用户提供的 Claude Code 会话导出；session:N 表示本地附件从 1 开始的行号"
         },
         {
+          "id": "",
           "phase": "P3",
           "gate": "gate_test_develop.py",
           "reason": "阶段原因（无法逐次对应）：测试开发门控找到 3 个测试文件，但 authored=0：注册识别正则只认裸 TEST_F/TEST，无法识别 OpenHarmony 使用的 HWTEST_F/HWTEST，9 个契约用例都被误判缺失。",
-          "count": 1,
-          "category": "阶段原因",
           "at": "2026-09-22T08:33:13Z",
           "source": "products/.run/run-01/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
+          "count": 1,
+          "category": "阶段原因",
+          "fixes": [],
           "session_findings": [
             {
               "phase": "P3",
@@ -3179,13 +6094,21 @@
           "session_source": "用户提供的 Claude Code 会话导出；session:N 表示本地附件从 1 开始的行号"
         },
         {
+          "id": "",
           "phase": "P4",
           "gate": "gate_build.py",
           "reason": "阶段原因（无法逐次对应）：首次构建在 hisysevent 组件报 HiSysEvent::Write 等符号缺失；检查发现真实 hisysevent.h 被先前测试探针误覆盖成 22 行桩头，导致跨组件编译失败。；第二次 P4 构建已经成功，但 clang-tidy 报 11 条硬阻断：5 条真实的特殊成员/override 问题，加上 6 条把构建机绝对路径编码进头文件守卫名的 llvm-header-guard 假阳性。",
-          "count": 2,
-          "category": "阶段原因",
           "at": "2026-09-22T08:38:20Z",
           "source": "products/.run/run-01/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
+          "count": 2,
+          "category": "阶段原因",
+          "fixes": [],
           "session_findings": [
             {
               "phase": "P4",
@@ -3214,13 +6137,21 @@
           "session_source": "用户提供的 Claude Code 会话导出；session:N 表示本地附件从 1 开始的行号"
         },
         {
+          "id": "",
           "phase": "P6",
           "gate": "gate_device_func.py",
           "reason": "阶段原因（无法逐次对应）：首次真机门禁缺 nonce 与 fd leak detected 标记：场景脚本把 $GATE_NONCE 误转义成字面量，且监控表已被设备上的高 fd 系统进程占满，测试进程未新入列。；第二次 P6 的 process/provenance 与 artifact_loaded 校验失败：门控优先取日志正文中的被检测进程 pid，而不是 hilog 行头的 hiview PID，导致探针查错进程。；修复远端静态检查后重走 P6 时又出现时序竞态：部署脚本与场景各重启一次 hiview，捕获窗口首条标记来自已退出的旧实例，事后 /proc 探针找不到该 PID。",
-          "count": 3,
-          "category": "阶段原因",
           "at": "2026-09-22T08:52:25Z",
           "source": "products/.run/run-01/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
+          "count": 3,
+          "category": "阶段原因",
+          "fixes": [],
           "session_findings": [
             {
               "phase": "P6",
@@ -3257,13 +6188,21 @@
           "session_source": "用户提供的 Claude Code 会话导出；session:N 表示本地附件从 1 开始的行号"
         },
         {
+          "id": "",
           "phase": "P7",
           "gate": "gate_integration.py",
           "reason": "阶段原因（无法逐次对应）：首次质量门禁只传 FdLeakDetectorModuleTest，而契约还声明 FdLeakDetectorUnitTest；--suites 未覆盖全部必需套件，门禁在执行前拒绝。",
-          "count": 1,
-          "category": "阶段原因",
           "at": "2026-09-22T08:56:15Z",
           "source": "products/.run/run-01/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
+          "count": 1,
+          "category": "阶段原因",
+          "fixes": [],
           "session_findings": [
             {
               "phase": "P7",
@@ -3280,13 +6219,21 @@
           "session_source": "用户提供的 Claude Code 会话导出；session:N 表示本地附件从 1 开始的行号"
         },
         {
+          "id": "",
           "phase": "P8",
           "gate": "gate_upload_ci.py",
           "reason": "阶段原因（无法逐次对应）：上库门禁起初缺少已签名的 P8 dry-run 预检与 consent；尝试 dry-run 时又因额外传 --pr 跳过预检分支，本地分支名也与 --branch 不一致。；PR 已创建但远端 CI 尚未触发或尚未出绿，门禁显示 ci_ok=False；OpenHarmony 需要在 PR 上评论 start build 才会启动验证。；首轮远端 codeCheck noPass：FdLeakConfig::Parse() 分别触发 59 行/61 nbnc 行超大函数规则，测试中的空 while(read...) 触发 G.CTL.03 循环退出规则。；第二轮 CI 的 part_compile 在进入实际编译前报 codearts build exception（E01）；日志显示构建容器的预加载钩子、PyMongo 协议版本及上传环节异常，没有指向本次代码的编译错误。",
-          "count": 4,
-          "category": "阶段原因",
           "at": "2026-09-22T12:26:49Z",
           "source": "products/.run/run-01/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
+          "count": 4,
+          "category": "阶段原因",
+          "fixes": [],
           "session_findings": [
             {
               "phase": "P8",
@@ -3382,16 +6329,17 @@
       ],
       "open_waits": 0,
       "open_wait_details": [],
-      "preflight_summary": null,
-      "preflight_failures": [],
+      "effective_seconds": 38575,
+      "wall_seconds": 40657,
+      "wait_seconds": 2082,
       "first_gate_attempts": null,
       "first_gate_failures": null,
       "first_gate_passes": null,
       "first_gate_review_holds": null,
       "unrecorded_gate_attempts": null,
-      "effective_seconds": 38575,
-      "wall_seconds": 40657,
-      "wait_seconds": 2082,
+      "preflight_summary": null,
+      "preflight_failures": [],
+      "session_later_outcome": "",
       "recording_quality": {
         "status": "unknown",
         "initialization_count": null,
@@ -3827,49 +6775,104 @@
       ],
       "failure_details": [
         {
+          "id": "",
           "phase": "P1",
           "gate": "gate_design.py",
           "reason": "未记录具体失败原因",
+          "at": "2026-09-21T11:39:41Z",
+          "source": "products/.run/run-02/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
           "count": 3,
           "category": "原因缺失",
-          "at": "2026-09-21T11:39:41Z",
-          "source": "products/.run/run-02/workflow_metrics.json"
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
         },
         {
+          "id": "",
           "phase": "P2",
           "gate": "gate_develop.py",
           "reason": "未记录具体失败原因",
+          "at": "2026-09-21T11:46:29Z",
+          "source": "products/.run/run-02/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
           "count": 2,
           "category": "原因缺失",
-          "at": "2026-09-21T11:46:29Z",
-          "source": "products/.run/run-02/workflow_metrics.json"
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
         },
         {
+          "id": "",
           "phase": "P3",
           "gate": "gate_test_develop.py",
           "reason": "未记录具体失败原因",
+          "at": "2026-09-21T11:46:30Z",
+          "source": "products/.run/run-02/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
           "count": 1,
           "category": "测试与验证",
-          "at": "2026-09-21T11:46:30Z",
-          "source": "products/.run/run-02/workflow_metrics.json"
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
         },
         {
+          "id": "",
           "phase": "P4",
           "gate": "gate_build.py",
           "reason": "未记录具体失败原因",
+          "at": "2026-09-21T11:50:26Z",
+          "source": "products/.run/run-02/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
           "count": 11,
           "category": "编译构建",
-          "at": "2026-09-21T11:50:26Z",
-          "source": "products/.run/run-02/workflow_metrics.json"
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
         },
         {
+          "id": "",
           "phase": "P5",
           "gate": "gate_test_ut.py",
           "reason": "未记录具体失败原因",
+          "at": "2026-09-21T11:51:47Z",
+          "source": "products/.run/run-02/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
           "count": 1,
           "category": "测试与验证",
-          "at": "2026-09-21T11:51:47Z",
-          "source": "products/.run/run-02/workflow_metrics.json"
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
         }
       ],
       "failures": 18,
@@ -3913,16 +6916,17 @@
       ],
       "open_waits": 0,
       "open_wait_details": [],
-      "preflight_summary": null,
-      "preflight_failures": [],
+      "effective_seconds": 17204,
+      "wall_seconds": 19316,
+      "wait_seconds": 2112,
       "first_gate_attempts": null,
       "first_gate_failures": null,
       "first_gate_passes": null,
       "first_gate_review_holds": null,
       "unrecorded_gate_attempts": null,
-      "effective_seconds": 17204,
-      "wall_seconds": 19316,
-      "wait_seconds": 2112,
+      "preflight_summary": null,
+      "preflight_failures": [],
+      "session_later_outcome": "",
       "recording_quality": {
         "status": "unknown",
         "initialization_count": null,
