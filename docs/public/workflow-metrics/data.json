@@ -1,11 +1,850 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-16T03:02:47.063Z",
+  "generated_at": "2026-10-16T11:39:50.865Z",
   "source_label": "共享运行指标",
-  "source_count": 9,
+  "source_count": 10,
   "duplicate_count": 0,
   "warnings": [],
   "runs": [
+    {
+      "id": "20261016-hicollie",
+      "workflow": "ar-development",
+      "kind": "AR",
+      "status": "waiting",
+      "current_phase": "P8",
+      "agent": "cursor",
+      "model": "grok-4.7",
+      "updated_at": "2026-10-16T08:48:57Z",
+      "started_at": "2026-10-16T01:16:28Z",
+      "source": "browser-import/ar-development/20261016-hicollie/workflow_metrics.json",
+      "phases": [
+        {
+          "id": "P0",
+          "name": "bootstrap",
+          "status": "passed",
+          "wall_seconds": 19,
+          "wait_seconds": 0,
+          "effective_seconds": 19,
+          "gate_attempts": 2,
+          "pass_attempts": 2,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 2,
+          "skills": [],
+          "gate": "gate_env_init.py",
+          "opened_at": "2026-10-16T01:33:22Z",
+          "closed_at": "2026-10-16T01:33:29Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-16T01:16:28Z",
+              "closed_at": "2026-10-16T01:16:40Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-16T01:33:22Z",
+              "closed_at": "2026-10-16T01:33:29Z",
+              "kind": "reinit",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P1",
+          "name": "design-orchestrate",
+          "status": "passed",
+          "wall_seconds": 3436,
+          "wait_seconds": 2308,
+          "effective_seconds": 1128,
+          "gate_attempts": 2,
+          "pass_attempts": 2,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 2,
+          "skills": [
+            "ohos-ar-dev-workflow",
+            "ohos-ar-dev-phases"
+          ],
+          "gate": "gate_design.py",
+          "opened_at": "2026-10-16T01:33:29Z",
+          "closed_at": "2026-10-16T02:14:03Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-16T01:16:40Z",
+              "closed_at": "2026-10-16T01:33:22Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-10-16T01:33:29Z",
+              "closed_at": "2026-10-16T02:14:03Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P2",
+          "name": "feature-develop",
+          "status": "passed",
+          "wall_seconds": 1978,
+          "wait_seconds": 0,
+          "effective_seconds": 1978,
+          "gate_attempts": 7,
+          "pass_attempts": 4,
+          "fail_attempts": 3,
+          "stage_attempts": null,
+          "rounds": 4,
+          "skills": [
+            "ohos-ar-dev-workflow",
+            "ohos-dev-cpp-coding-style",
+            "code-ruleset-style-check",
+            "tdd-enforcer",
+            "ohos-ar-dev-phases",
+            "ohos-dev-build-execution-diagnosis"
+          ],
+          "gate": "gate_develop.py",
+          "opened_at": "2026-10-16T06:31:34Z",
+          "closed_at": "2026-10-16T06:34:31Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-16T02:14:03Z",
+              "closed_at": "2026-10-16T02:43:49Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-16T03:08:57Z",
+              "closed_at": "2026-10-16T03:09:05Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-16T03:32:56Z",
+              "closed_at": "2026-10-16T03:33:03Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-16T06:31:34Z",
+              "closed_at": "2026-10-16T06:34:31Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P3",
+          "name": "test-develop",
+          "status": "passed",
+          "wall_seconds": 222,
+          "wait_seconds": 0,
+          "effective_seconds": 222,
+          "gate_attempts": 5,
+          "pass_attempts": 4,
+          "fail_attempts": 1,
+          "stage_attempts": null,
+          "rounds": 4,
+          "skills": [
+            "ohos-test-ut-generation",
+            "tdd-enforcer",
+            "ohos-dev-cpp-coding-style",
+            "code-ruleset-style-check"
+          ],
+          "gate": "gate_test_develop.py",
+          "opened_at": "2026-10-16T06:34:31Z",
+          "closed_at": "2026-10-16T06:34:34Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-16T02:43:49Z",
+              "closed_at": "2026-10-16T02:47:21Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-16T03:09:05Z",
+              "closed_at": "2026-10-16T03:09:10Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-16T03:33:03Z",
+              "closed_at": "2026-10-16T03:33:05Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-16T06:34:31Z",
+              "closed_at": "2026-10-16T06:34:34Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P4",
+          "name": "build-verify",
+          "status": "passed",
+          "wall_seconds": 4043,
+          "wait_seconds": 0,
+          "effective_seconds": 4043,
+          "gate_attempts": 3,
+          "pass_attempts": 2,
+          "fail_attempts": 1,
+          "stage_attempts": null,
+          "rounds": 4,
+          "skills": [
+            "ohos-dev-build-execution-diagnosis",
+            "code-ruleset-style-check"
+          ],
+          "gate": "gate_build.py",
+          "opened_at": "2026-10-16T06:34:34Z",
+          "closed_at": "2026-10-16T06:46:21Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-16T02:47:21Z",
+              "closed_at": "2026-10-16T03:08:57Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-10-16T03:09:10Z",
+              "closed_at": "2026-10-16T03:32:56Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-10-16T03:33:05Z",
+              "closed_at": "2026-10-16T03:43:19Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-16T06:34:34Z",
+              "closed_at": "2026-10-16T06:46:21Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P5",
+          "name": "test-author",
+          "status": "passed",
+          "wall_seconds": 5077,
+          "wait_seconds": 0,
+          "effective_seconds": 5077,
+          "gate_attempts": 4,
+          "pass_attempts": 2,
+          "fail_attempts": 2,
+          "stage_attempts": null,
+          "rounds": 2,
+          "skills": [
+            "ohos-test-ut-generation",
+            "tdd-enforcer"
+          ],
+          "gate": "gate_test_ut.py",
+          "opened_at": "2026-10-16T06:46:21Z",
+          "closed_at": "2026-10-16T06:54:00Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-16T03:43:19Z",
+              "closed_at": "2026-10-16T05:00:17Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-10-16T06:46:21Z",
+              "closed_at": "2026-10-16T06:54:00Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P6",
+          "name": "device-functional",
+          "status": "passed",
+          "wall_seconds": 8035,
+          "wait_seconds": 76,
+          "effective_seconds": 7959,
+          "gate_attempts": 5,
+          "pass_attempts": 1,
+          "fail_attempts": 4,
+          "stage_attempts": null,
+          "rounds": 2,
+          "skills": [
+            "ohos-build-flash",
+            "ohos-dev-hdc-command-usage"
+          ],
+          "gate": "gate_device_func.py",
+          "opened_at": "2026-10-16T06:54:00Z",
+          "closed_at": "2026-10-16T07:36:38Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-16T05:00:17Z",
+              "closed_at": "2026-10-16T06:31:34Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-10-16T06:54:00Z",
+              "closed_at": "2026-10-16T07:36:38Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P7",
+          "name": "quality-verify",
+          "status": "passed",
+          "wall_seconds": 4279,
+          "wait_seconds": 3779,
+          "effective_seconds": 500,
+          "gate_attempts": 4,
+          "pass_attempts": 2,
+          "fail_attempts": 2,
+          "stage_attempts": null,
+          "rounds": 1,
+          "skills": [
+            "ohos-ar-dev-phases",
+            "ohos-test-ut-generation",
+            "ohos-test-coverage",
+            "code-ruleset-style-check"
+          ],
+          "gate": "gate_device_func.py",
+          "opened_at": "2026-10-16T07:36:38Z",
+          "closed_at": "2026-10-16T08:47:57Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-16T07:36:38Z",
+              "closed_at": "2026-10-16T08:47:57Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P8",
+          "name": "upload-review",
+          "status": "failed",
+          "wall_seconds": 60,
+          "wait_seconds": 0,
+          "effective_seconds": 60,
+          "gate_attempts": 1,
+          "pass_attempts": 0,
+          "fail_attempts": 1,
+          "stage_attempts": null,
+          "rounds": 1,
+          "skills": [],
+          "gate": "gate_upload_ci.py:consent-precheck",
+          "opened_at": "2026-10-16T08:47:57Z",
+          "closed_at": "",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-10-16T08:47:57Z",
+              "closed_at": "",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        }
+      ],
+      "failure_details": [
+        {
+          "id": "manifest:19",
+          "phase": "P2",
+          "gate": "gate_develop.py",
+          "reason": "base/head a7f97bec11fd->a7f97bec11fd, 14 file(s) changed (4 untracked), style_ok=False strict_ok=True hygiene_ok=True change_scope=14/14 inside",
+          "at": "2026-10-16T06:32:40Z",
+          "source": "browser-import/ar-development/20261016-hicollie/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 4,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:20",
+          "count": 1,
+          "category": "其他门禁问题",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:20",
+          "phase": "P2",
+          "gate": "gate_develop.py",
+          "reason": "base/head a7f97bec11fd->a7f97bec11fd, 14 file(s) changed (4 untracked), style_ok=False strict_ok=True hygiene_ok=True change_scope=14/14 inside",
+          "at": "2026-10-16T06:33:29Z",
+          "source": "browser-import/ar-development/20261016-hicollie/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 4,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:21",
+          "count": 1,
+          "category": "其他门禁问题",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:21",
+          "phase": "P2",
+          "gate": "gate_develop.py",
+          "reason": "base/head a7f97bec11fd->a7f97bec11fd, 14 file(s) changed (4 untracked), style_ok=False strict_ok=True hygiene_ok=True change_scope=14/14 inside",
+          "at": "2026-10-16T06:33:55Z",
+          "source": "browser-import/ar-development/20261016-hicollie/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 4,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "passed_without_recorded_fix",
+          "verified_by": "manifest:22",
+          "count": 1,
+          "category": "其他门禁问题",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:5",
+          "phase": "P3",
+          "gate": "gate_test_develop.py",
+          "reason": "test-develop authorship: contract=ok, required=3 authored=3, authored_test_files=2",
+          "at": "2026-10-16T02:43:50Z",
+          "source": "browser-import/ar-development/20261016-hicollie/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "resolved",
+          "verified_by": "manifest:6",
+          "count": 1,
+          "category": "测试与验证",
+          "fixes": [
+            {
+              "root_cause": "P3 whole-file hygiene scans the touched unittest BUILD.gn and flags the legacy copyright line",
+              "action": "Rewrite that BUILD.gn copyright line so the whole-file hygiene scan passes; test sources unchanged",
+              "change_ref": "base/hiviewdfx/hicollie/frameworks/native/test/unittest/common/BUILD.gn",
+              "verification_verdict": "PASS"
+            }
+          ],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:10",
+          "phase": "P4",
+          "gate": "gate_build.py",
+          "reason": "build ok but clang-tidy found 5 issue(s) (target=hicollie); degraded=False; clang-tidy found 5 issue(s) — HARD block; fix and re-run P2→P4",
+          "at": "2026-10-16T03:31:01Z",
+          "source": "browser-import/ar-development/20261016-hicollie/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 2,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "passed_without_recorded_fix",
+          "verified_by": "manifest:14",
+          "count": 1,
+          "category": "编译构建",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:15",
+          "phase": "P5",
+          "gate": "gate_test_ut.py",
+          "reason": "tests=0 failures=0 errors=0 fresh=2026-10-16-12-32-02 gtest_cov=0/3 MISSING: WatchdogInnerTest.MainThreadJankCallback_001, WatchdogInnerTest.MainThreadJankCallback_002, WatchdogInnerTest.MainThreadJankTracePath_001",
+          "at": "2026-10-16T04:32:05Z",
+          "source": "browser-import/ar-development/20261016-hicollie/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "gate_still_failed_different_reason",
+          "verified_by": "manifest:16",
+          "count": 1,
+          "category": "测试与验证",
+          "fixes": [
+            {
+              "root_cause": "xdevice ignores device nodes without type and does not read ip/port/sn child elements",
+              "action": "Write user_config with usb-hdc device and info attributes so the pinned remote hdc device is visible",
+              "change_ref": ".cursor/skills/ohos-ar-dev-phases/scripts/gate_test_ut.py",
+              "verification_verdict": "FAIL"
+            }
+          ],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:16",
+          "phase": "P5",
+          "gate": "gate_test_ut.py",
+          "reason": "tests=0 failures=0 errors=0 fresh=2026-10-16-12-40-07 gtest_cov=0/3 MISSING: WatchdogInnerTest.MainThreadJankCallback_001, WatchdogInnerTest.MainThreadJankCallback_002, WatchdogInnerTest.MainThreadJankTracePath_001",
+          "at": "2026-10-16T04:40:55Z",
+          "source": "browser-import/ar-development/20261016-hicollie/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "resolved",
+          "verified_by": "manifest:17",
+          "count": 1,
+          "category": "测试与验证",
+          "fixes": [
+            {
+              "root_cause": "Stock gtest_main does not write the result xml, and LeftTimeExitProcess _exit(0)s on a non-debug device before the listener can flush. InitAsyncStack also fails because this device is not beta/fans and const.dfx.async_stack.enable is false.",
+              "action": "Pass --gtest_output=xml to the on-device binary and skip the three device-incompatible legacy cases so the suite finishes and the contract cases are recorded as testcase nodes.",
+              "change_ref": "test/testfwk/developer_test/src/core/driver/drivers.py",
+              "verification_verdict": "PASS"
+            }
+          ],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:26",
+          "phase": "P6",
+          "gate": "gate_device_func.py",
+          "reason": "nonce=True trigger_window=True marker=False runtime=False e2e=False device_cases=0/2 artifact_hash=False provenance=False artifact_loaded=False side_effect=True negative_control=True uptime 2688.01->2698.82 mono=True MISSING_device_markers=MTJANK_INAPP_REPORT,MTJANK_TRACE_SANDBOX BAD_device_cases=DC-1,DC-2",
+          "at": "2026-10-16T06:58:13Z",
+          "source": "browser-import/ar-development/20261016-hicollie/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 2,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "gate_still_failed_different_reason",
+          "verified_by": "manifest:27",
+          "count": 1,
+          "category": "设备连接",
+          "fixes": [
+            {
+              "root_cause": "file recv stdout was captured into the live path, so cp never replaced the system files and the trigger still loaded the stock library",
+              "action": "Keep only the readlink path, require INSTALL_OK size match before restarting hiview",
+              "change_ref": "specs/pipeline/20261016-hicollie/device/deploy.sh",
+              "verification_verdict": "FAIL"
+            }
+          ],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:27",
+          "phase": "P6",
+          "gate": "gate_device_func.py",
+          "reason": "deploy script exited 1",
+          "at": "2026-10-16T07:00:16Z",
+          "source": "browser-import/ar-development/20261016-hicollie/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 2,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "not_resolved",
+          "verified_by": "manifest:28",
+          "count": 1,
+          "category": "设备连接",
+          "fixes": [
+            {
+              "root_cause": "device shell has no tr, so the size check aborted after libhicollie was already replaced",
+              "action": "Compare wc field 1 in the shell without tr, and only then continue",
+              "change_ref": "specs/pipeline/20261016-hicollie/device/deploy.sh",
+              "verification_verdict": "FAIL"
+            }
+          ],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:28",
+          "phase": "P6",
+          "gate": "gate_device_func.py",
+          "reason": "deploy script exited 1",
+          "at": "2026-10-16T07:02:06Z",
+          "source": "browser-import/ar-development/20261016-hicollie/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 2,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "gate_still_failed_different_reason",
+          "verified_by": "manifest:29",
+          "count": 1,
+          "category": "设备连接",
+          "fixes": [
+            {
+              "root_cause": "boot service hiview does not respawn after kill, and the new binary was not executable; start is not a shell command",
+              "action": "chmod 755 the installed hiview and start it with begetctl start_service; clear the daily trace flow record so the sandbox dump can run again",
+              "change_ref": "specs/pipeline/20261016-hicollie/device/deploy.sh",
+              "verification_verdict": "FAIL"
+            }
+          ],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:29",
+          "phase": "P6",
+          "gate": "gate_device_func.py",
+          "reason": "nonce=True trigger_window=True marker=True runtime=True e2e=False device_cases=1/2 artifact_hash=True provenance=False artifact_loaded=False side_effect=True negative_control=True uptime 3816.12->4024.04 mono=True MISSING_device_markers=MTJANK_TRACE_SANDBOX BAD_device_cases=DC-1,DC-2",
+          "at": "2026-10-16T07:20:19Z",
+          "source": "browser-import/ar-development/20261016-hicollie/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 2,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "resolved",
+          "verified_by": "manifest:30",
+          "count": 1,
+          "category": "设备连接",
+          "fixes": [
+            {
+              "root_cause": "the trigger exited before the map probe, and an immediate dump produced no in-window trace file so hiview did not log the sandbox marker",
+              "action": "keep the trigger alive for 600s and write app trace events for 2s after opening the trace so the dump has a file to copy",
+              "change_ref": "base/hiviewdfx/hicollie/frameworks/native/test/unittest/common/mtjank_report_trigger.cpp",
+              "verification_verdict": "PASS"
+            }
+          ],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:32",
+          "phase": "P7",
+          "gate": "gate_device_func.py",
+          "reason": "nonce=True trigger_window=True marker=True runtime=True e2e=False device_cases=0/0 artifact_hash=True provenance=False artifact_loaded=False side_effect=False negative_control=False uptime 1687.13->1716.03 mono=True",
+          "at": "2026-10-16T08:16:17Z",
+          "source": "browser-import/ar-development/20261016-hicollie/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "gate_still_failed_different_reason",
+          "verified_by": "manifest:33",
+          "count": 1,
+          "category": "设备连接",
+          "fixes": [
+            {
+              "root_cause": "On an idle device the app trace session never sealed a second ftrace page, so dump deleted the file because the only page timestamp had first==last. The in-app marker and the replaced libhicollie hash were already correct.",
+              "action": "The device trigger now writes 400 app trace records after the session opens so more than one page is sealed inside the dump window.",
+              "change_ref": "base/hiviewdfx/hicollie/frameworks/native/test/unittest/common/mtjank_report_trigger.cpp",
+              "verification_verdict": "FAIL"
+            }
+          ],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:33",
+          "phase": "P7",
+          "gate": "gate_device_func.py",
+          "reason": "nonce=True trigger_window=True marker=True runtime=True e2e=False device_cases=0/0 artifact_hash=True provenance=False artifact_loaded=False side_effect=False negative_control=False uptime 2056.04->2085.26 mono=True",
+          "at": "2026-10-16T08:22:25Z",
+          "source": "browser-import/ar-development/20261016-hicollie/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "resolved",
+          "verified_by": "manifest:34",
+          "count": 1,
+          "category": "设备连接",
+          "fixes": [
+            {
+              "root_cause": "A capture started immediately after hiview restarts seals only one trace page, so dump deletes the file. The same trigger succeeded on the next capture after that session had closed.",
+              "action": "The trigger retries the capture once after waiting 12 seconds for the first app-trace session to close.",
+              "change_ref": "base/hiviewdfx/hicollie/frameworks/native/test/unittest/common/mtjank_report_trigger.cpp",
+              "verification_verdict": "PASS"
+            }
+          ],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:35",
+          "phase": "P8",
+          "gate": "gate_upload_ci.py:consent-precheck",
+          "reason": "dry run prepared upload plan (no --allow-push)",
+          "at": "2026-10-16T08:48:57Z",
+          "source": "browser-import/ar-development/20261016-hicollie/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 1,
+          "failure_kind": "expected_review_hold",
+          "failure_category": "expected_review_hold",
+          "resolution_status": "unresolved",
+          "verified_by": "",
+          "count": 1,
+          "category": "待人工确认",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        }
+      ],
+      "failures": 14,
+      "gate_attempts": 33,
+      "human_interventions": [
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "device functional test review",
+          "phase": "P6"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "quality reports and code review review",
+          "phase": "P7"
+        }
+      ],
+      "open_waits": 1,
+      "open_wait_details": [
+        {
+          "phase": "P8",
+          "category": "required_workflow",
+          "reason": "awaiting P8 pre-upload diff and target review",
+          "started_at_utc": "2026-10-16T08:48:57Z"
+        }
+      ],
+      "effective_seconds": 20986,
+      "wall_seconds": 27149,
+      "wait_seconds": 6163,
+      "first_gate_attempts": 20,
+      "first_gate_failures": 7,
+      "first_gate_passes": 13,
+      "first_gate_review_holds": 1,
+      "unrecorded_gate_attempts": 0,
+      "preflight_summary": {
+        "attempts": 40,
+        "failed_attempts": 4,
+        "issues": 6
+      },
+      "preflight_failures": [
+        {
+          "id": "preflight-3",
+          "phase": "P2",
+          "at": "2026-10-16T02:40:08Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-4",
+          "resolution_status": "resolved",
+          "checks": [
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "H2.CRLF",
+                "WordsTool.249"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-4",
+          "phase": "P2",
+          "at": "2026-10-16T02:42:10Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-5",
+          "resolution_status": "resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-16",
+          "phase": "P5",
+          "at": "2026-10-16T03:43:20Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-17",
+          "resolution_status": "resolved",
+          "checks": [
+            {
+              "id": "abi:out/rk3568/hiviewdfx/hicollie/libhicollie.z.so",
+              "status": "FAIL",
+              "reason": "user ELF ABI (64, 183); artifact ABI (32, 40)",
+              "rule_ids": []
+            },
+            {
+              "id": "abi:out/rk3568/hiviewdfx/hiappevent/libhiappevent_base.z.so",
+              "status": "FAIL",
+              "reason": "user ELF ABI (64, 183); artifact ABI (32, 40)",
+              "rule_ids": []
+            },
+            {
+              "id": "abi:out/rk3568/hiviewdfx/hiview/hiview",
+              "status": "FAIL",
+              "reason": "user ELF ABI (64, 183); artifact ABI (32, 40)",
+              "rule_ids": []
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-34",
+          "phase": "P7",
+          "at": "2026-10-16T07:41:15Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-35",
+          "resolution_status": "resolved",
+          "checks": [
+            {
+              "id": "device-list",
+              "status": "FAIL",
+              "reason": "probe expected observation missing: 150100424a5444345209d953be1fb900",
+              "rule_ids": []
+            }
+          ],
+          "fixes": []
+        }
+      ],
+      "session_later_outcome": "",
+      "recording_quality": {
+        "status": "complete",
+        "initialization_count": 2,
+        "note": "指标历史连续保留；实际工作起点仍需登记。"
+      },
+      "import_origin": "browser"
+    },
     {
       "id": "20261013-fd-leak-detect",
       "workflow": "ar-development",
