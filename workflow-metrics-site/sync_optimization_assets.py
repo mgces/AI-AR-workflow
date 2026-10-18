@@ -7,7 +7,7 @@ from pathlib import Path
 
 ASSETS = (
     "optimization.html", "optimization.css", "optimization.mjs",
-    "optimization-plan.mjs", "optimization-nav.mjs",
+    "optimization-plan.mjs", "optimization-nav.mjs", "failure-review.mjs",
 )
 NAV_TAG = '<script type="module" src="./optimization-nav.mjs"></script>'
 
@@ -19,16 +19,21 @@ def sync_assets(public_dir, source_dir=None):
     if missing:
         raise ValueError("optimization assets missing: " + ", ".join(missing))
     index_path = target / "index.html"
-    html = index_path.read_text(encoding="utf-8")
+    with index_path.open(encoding="utf-8", newline="") as stream:
+        original_html = stream.read()
+    html = original_html
     if "optimization-nav.mjs" not in html:
         if not re.search(r"</body\s*>", html, flags=re.IGNORECASE):
             raise ValueError("public index.html has no closing body")
-        html = re.sub(r"</body\s*>", NAV_TAG + "\n</body>", html, count=1,
+        newline = "\r\n" if "\r\n" in html else "\n"
+        html = re.sub(r"</body\s*>", NAV_TAG + newline + "</body>", html, count=1,
                       flags=re.IGNORECASE)
     if source.resolve() != target.resolve():
         for name in ASSETS:
             shutil.copy2(source / name, target / name)
-    index_path.write_text(html, encoding="utf-8")
+    if html != original_html:
+        with index_path.open("w", encoding="utf-8", newline="") as stream:
+            stream.write(html)
 
 
 def sync_requested_public_assets(argv=None):

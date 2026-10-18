@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {plans,validatePlans,filterPlans,offlineAssessment} from '../dist/optimization-plan.mjs';
+import {reviewedRunUpdates} from '../dist/failure-review.mjs';
 
 test('each improvement has actionable workflow measures, acceptance and scoped evidence',()=>{
   assert.equal(validatePlans(plans),true);
@@ -23,7 +24,15 @@ test('offline assessment never claims measured real-world improvement',()=>{
   assert.equal(offlineAssessment.cases.length,16);
   assert.equal(offlineAssessment.cases.filter(c=>c.category==='misleading_rejection').length,8);
   assert.ok(offlineAssessment.cases.every(c=>c.after_expected_behavior));
-  assert.ok(plans.every(p=>p.status==='implemented'&&p.changeRef&&p.regressionEvidence&&!p.effectEvidence));
+  const historical=plans.filter(p=>Number(p.id.slice(3))<=15);
+  assert.equal(historical.length,15);
+  assert.ok(historical.every(p=>p.status==='implemented'&&p.changeRef&&p.regressionEvidence&&!p.effectEvidence));
+});
+test('new snapshot review covers every reviewed run without claiming shipped improvements',()=>{
+  for(const runId of Object.keys(reviewedRunUpdates))assert.ok(plans.some(p=>p.sourceCases.some(c=>c.runId===runId)),runId);
+  const followUps=plans.filter(p=>Number(p.id.slice(3))>15);
+  assert.equal(followUps.length,8);
+  assert.ok(followUps.every(p=>p.status==='planned'&&!p.changeRef&&!p.regressionEvidence&&!p.effectEvidence));
 });
 test('duplicate IDs and unsupported phases are rejected',()=>{
   assert.throws(()=>validatePlans([plans[0],plans[0]]));

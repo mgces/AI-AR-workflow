@@ -1,11 +1,11 @@
 import {plans,planUpdatedAt,priorityLabels,statusLabels,attributionLabels,scopeLabels,filterPlans,validatePlans,offlineAssessment,realRunAssessment} from './optimization-plan.mjs';
 import {mergeSnapshot,loadLocalRuns} from './import-data.mjs';
+import {failureReview,runName} from './failure-review.mjs';
 const $ = id => document.getElementById(id);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const list = values => '<ul>'+values.map(v=>'<li>'+esc(v)+'</li>').join('')+'</ul>';
-const sourceNames = {'20260922-fd-leak-detection':'fd-leak-detection','20260923-resmon':'resmon','20260924-hiperf-symbol-mem':'hiperf-symbol-mem'};
 function caseHtml(c) {
-  return '<article class="case"><button type="button" class="evidence-link" data-evidence-run="'+esc(c.runId)+'" data-evidence-phase="'+esc(c.phase)+'">'+esc(sourceNames[c.runId]||c.runId)+' · '+esc(c.phase)+'</button>'+
+  return '<article class="case"><button type="button" class="evidence-link" data-evidence-run="'+esc(c.runId)+'" data-evidence-phase="'+esc(c.phase)+'">'+esc(runName(c.runId))+' · '+esc(c.phase)+'</button>'+
     '<p class="scope scope-'+esc(c.scope)+'">'+esc(scopeLabels[c.scope])+(c.confidence==='inferred'?' · 根据会话顺序推断':'')+'</p><p>'+esc(c.reason)+'</p><p><strong>当时处理结果：</strong>'+esc(c.result)+'</p></article>';
 }
 function rowHtml(p) {
@@ -34,14 +34,18 @@ function fillSelect(id, labels) {
 }
 let snapshotPromise;
 async function snapshot() {
-  if (!snapshotPromise) snapshotPromise = fetch('./data.json').then(r=>{if(!r.ok) throw new Error('快照暂不可用');return r.json();}).catch(e=>{snapshotPromise=null;throw e;});
+  if (!snapshotPromise) snapshotPromise = fetch('./data.json',{cache:'no-store'}).then(r=>{
+    if(r.status===404)return {schema_version:1,runs:[]};
+    if(!r.ok)throw new Error('快照暂不可用');
+    return r.json();
+  }).catch(e=>{snapshotPromise=null;throw e;});
   const base=await snapshotPromise;
   let imports=[];try{imports=loadLocalRuns(window.localStorage).runs;}catch{}
   return mergeSnapshot(base,imports);
 }
 const dialog = $('evidence-dialog');
 async function showEvidence(runId,phase) {
-  $('evidence-title').textContent = (sourceNames[runId]||runId)+' · '+phase+' 运行证据';
+  $('evidence-title').textContent = runName(runId)+' · '+phase+' 运行证据';
   $('evidence-content').textContent='正在读取当前指标快照…';
   dialog.showModal();
   try {
@@ -49,15 +53,45 @@ async function showEvidence(runId,phase) {
     const run = (data.runs||[]).find(r=>r.id===runId);
     if (!run) { $('evidence-content').textContent='当前快照未收录该运行，请查看改进项中的历史线索。';return; }
     const details = (run.failure_details||[]).filter(d=>d.phase===phase);
-    const meta = '<p class="evidence-meta">运行 ID：'+esc(run.id)+'<br>指标更新：'+esc(run.updated_at||'未记录')+'<br>以下是当前快照的阶段证据；后续会话线索不能反推旧 FAIL。</p>';
+    const meta = '<p class="evidence-meta">运行：'+esc(runName(run.id))+'<br>以下是当前快照的阶段证据；后续会话线索不能反推旧 FAIL。</p>';
     const body = details.map(d=>{
       const findings = (d.session_findings||[]).map(f=>'<article class="evidence-card"><strong>'+esc(f.reason)+'</strong><p>处理：'+esc(f.action||'未记录')+'</p><p>结果：'+esc(f.outcome||'未记录')+'</p><p class="evidence-meta">依据：'+esc(f.basis||'未记录')+(f.evidence_refs?.length?' · '+esc(f.evidence_refs.join('、')):'')+'</p></article>').join('');
-      return '<article class="evidence-card"><strong>'+esc(d.gate||'门禁')+' · '+(d.count==null?'仅最近结果':esc(d.count)+' 次失败')+'</strong><p>'+esc(d.reason)+'</p>'+findings+'</article>';
+      return '<article class="evidence-card"><strong>'+esc(d.gate||'门禁')+' · '+(d.count==null?'仅最近结果':esc(d.count)+' 次失败')+'</strong><p>'+esc(d.reason)+'</p><p>'+esc(resolutionText(d))+'</p>'+fixHtml(d.fixes)+findings+'</article>';
     }).join('');
-    $('evidence-content').innerHTML=meta+(body||'<p>当前快照未记录该阶段的失败明细。改进项的手动排查或后续会话仍保留各自证据口径。</p>')+(run.session_later_outcome?'<p class="evidence-meta">后续进展：'+esc(run.session_later_outcome)+'</p>':'');
+    const preflights=(run.preflight_failures||[]).filter(f=>f.phase===phase).map(f=>'<article class="evidence-card"><strong>预检 '+esc(f.id)+'</strong>'+list((f.checks||[]).map(c=>c.id+'：'+c.reason+(c.rule_ids?.length?' · '+c.rule_ids.join('、'):'')))+'<p>'+esc(resolutionText(f))+'</p>'+fixHtml(f.fixes,true)+'</article>').join('');
+    $('evidence-content').innerHTML=meta+(body||'<p>当前快照未记录该阶段的失败明细。改进项的手动排查或后续会话仍保留各自证据口径。</p>')+(preflights?'<h3>预检记录（单独统计）</h3>'+preflights:'')+(run.session_later_outcome?'<p class="evidence-meta">后续进展：'+esc(run.session_later_outcome)+'</p>':'');
   } catch(e) {
     $('evidence-content').textContent='暂时无法读取运行快照。改进项中仍保留失败原因、当时处理和证据口径。';
   }
+}
+const resolutionLabels={resolved:'修改后同检查复验通过',not_resolved:'修改后仍失败',pending_verification:'已登记修改，待复验',unresolved:'尚未复验',passed_without_recorded_fix:'重跑通过，未登记修改',failed_again_without_recorded_fix:'再次失败，未登记修改',gate_still_failed_different_reason:'门禁仍失败，报错已变化；原问题是否解决待确认',review_hold_released:'人工确认后放行'};
+function resolutionText(item){if(item.resolution_status==='resolved'&&!item.fixes?.length)return '记录为已解决，未登记修改';return resolutionLabels[item.resolution_status]||'未记录修复与复验结论';}
+function fixHtml(fixes,preflight=false){return (fixes||[]).map(f=>'<p class="fix-record">已登记根因：'+esc(preflight?f.cause:f.root_cause)+'<br>修改：'+esc(f.action)+'<br>记录的复验：'+esc(preflight?f.verification_status||'未记录':f.verification_verdict||'未记录')+'</p>').join('');}
+const count=n=>n==null?'未知':String(n);
+function reviewRow(row){
+  const r=row.run;
+  const phases=[...new Set([...row.details,...row.preflightDetails].map(d=>d.phase))];
+  const observations=row.observations.length?row.observations.map(c=>'<li><strong>'+esc(c.phase)+'</strong> '+esc(c.reason)+'<p class="progress-note">'+esc(c.result)+'</p></li>').join(''):'<li>尚未人工归因，下面保留本次导入的原始原因与修复记录。</li>';
+  const records=row.details.map(d=>'<article class="evidence-card"><strong>'+esc(d.phase)+' · '+esc(d.gate||'门禁')+' · '+(d.count==null?'次数未记录':esc(d.count)+' 次')+'</strong><p>'+esc(d.reason||'原因未记录')+'</p><p class="progress-note">'+esc(resolutionText(d))+'</p>'+fixHtml(d.fixes)+'</article>').join('');
+  const links=phases.map(phase=>'<button class="evidence-link" data-evidence-run="'+esc(r.id)+'" data-evidence-phase="'+esc(phase)+'">'+esc(phase)+' 证据</button>').join(' · ');
+  return '<tr><td><strong>'+esc(runName(r.id))+'</strong><p class="progress-note">'+esc(r.agent)+' / '+esc(r.model)+'</p><span class="status '+(row.reviewed?'':'status-in_progress')+'">'+(row.reviewed?'已纳入本轮复盘':'新增或更新 · 待人工复盘')+'</span>'+(r.recording_quality?.status==='incomplete'?'<p class="error">历史不完整，仅覆盖现有记录</p>':'')+'</td>'+
+    '<td>'+count(r.failures)+' / '+count(r.gate_attempts)+'<p class="progress-note">缺原因 '+row.missing+' 次'+(row.stage?' · 阶段线索 '+row.stage+' 次':'')+'</p>'+(row.unknownDetailCounts?'<p class="progress-note">另有 '+row.unknownDetailCounts+' 条次数未知的明细</p>':'')+(row.countConflict?'<p class="error">明细计数超过汇总，待核对</p>':'')+'</td>'+
+    '<td>'+count(row.preflight)+(row.preflight===null?'<p class="progress-note">未记录完整计数；不当作零</p>':' 次')+'<p class="progress-note">可查看 '+row.preflightDetails.length+' 条预检记录</p></td>'+
+    '<td><details><summary>失败总结与处理结果（'+row.observations.length+' 条线索）</summary><ul class="review-observations">'+observations+'</ul></details><details><summary>原始门禁记录（'+row.details.length+' 条）</summary>'+records+'</details><p class="evidence-links">'+links+'</p></td>'+
+    '<td>'+row.linkedPlans.map(p=>'<button class="evidence-link plan-jump" data-plan-id="'+esc(p.id)+'">'+esc(p.id)+' '+esc(p.title)+'</button>').join('<br>')+(row.linkedPlans.length?'':'待补人工改进项；先保存逐次证据')+'</td></tr>';
+}
+async function renderLatestReview(){
+  $('review-refresh').disabled=true;
+  try{
+    const data=await snapshot();const review=failureReview(data,plans);
+    $('review-state').textContent=review.runCount?'当前共享快照及本浏览器导入共 '+review.runCount+' 次运行；'+review.pending+' 次新增或更新记录待人工复盘。':'当前没有运行记录；在统计首页导入 JSON 后刷新本页。';
+    $('review-metrics').innerHTML=[['运行记录',review.runCount],['门禁 FAIL / 尝试',count(review.failures)+' / '+count(review.attempts)],['预检失败',count(review.preflight)],['缺少原因',review.missing+' 次']].map(([label,value])=>'<div><span>'+label+'</span><strong>'+value+'</strong></div>').join('');
+    $('review-limits').textContent='预检计数缺失的运行 '+review.unknownPreflight+' 次，不按零处理。已有阶段级原因涉及 '+review.stage+' 次 FAIL，不能逐次归因；明确标记的人工审核停点 '+review.reviewHolds+' 次、CI 等待 '+review.ciWaits+' 次，仍保留在原始 FAIL 中，不能当作产品缺陷。'+(review.unknownFailures?review.unknownFailures+' 次运行缺门禁总数。':'')+(review.incomplete?review.incomplete+' 次运行历史不完整。':'')+'原始原因、修复与复验均按记录展示；后续 PASS 不等于已验证优化效果。';
+    $('review-rows').innerHTML=review.rows.map(reviewRow).join('')||'<tr><td colspan="5" class="empty">暂无运行，历史优化清单仍可查看。</td></tr>';
+  }catch{
+    $('review-state').textContent='当前运行快照读取失败，请刷新重试；历史优化清单仍可查看。';
+    $('review-rows').innerHTML='<tr><td colspan="5" class="error">未读取到有效快照，未生成或猜测失败结论。</td></tr>';
+  }finally{$('review-refresh').disabled=false;}
 }
 try {
   validatePlans(plans);
@@ -65,6 +99,7 @@ try {
   $('plan-total').textContent=plans.length;
   $('plan-high').textContent=plans.filter(p=>p.priority==='high').length;
   $('plan-implemented').textContent=plans.filter(p=>p.status==='implemented').length;
+  $('plan-planned').textContent=plans.filter(p=>p.status==='planned').length;
   $('plan-verified').textContent=plans.filter(p=>p.status==='verified').length;
   const a=offlineAssessment;
   $('assessment-rows').innerHTML=[
@@ -105,7 +140,16 @@ try {
     const rect=dialog.getBoundingClientRect();
     if(e.target===dialog&&(e.clientX<rect.left||e.clientX>rect.right||e.clientY<rect.top||e.clientY>rect.bottom)) dialog.close();
   });
-  render();
+  $('review-refresh').addEventListener('click',()=>{snapshotPromise=null;renderLatestReview();});
+  $('latest-review').addEventListener('click',e=>{
+    const evidence=e.target.closest('[data-evidence-run]');
+    if(evidence){showEvidence(evidence.dataset.evidenceRun,evidence.dataset.evidencePhase);return;}
+    const plan=e.target.closest('[data-plan-id]');
+    if(plan){$('plan-filters').reset();$('plan-search').value=plan.dataset.planId;render();$('plan').scrollIntoView({behavior:'smooth'});}
+  });
+  window.addEventListener('storage',e=>{if(e.storageArea===window.localStorage)renderLatestReview();});
+  window.addEventListener('pageshow',()=>renderLatestReview());
+  render();renderLatestReview();
 } catch(e) {
   $('plan-count').textContent='清单校验未通过';
   $('plan-rows').innerHTML='<tr><td colspan="5" class="error">优化清单字段不完整，请修正后重新加载。</td></tr>';

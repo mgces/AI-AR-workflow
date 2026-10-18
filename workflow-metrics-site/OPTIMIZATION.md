@@ -8,6 +8,12 @@
 
 ## 维护改进项
 
+2026-10-18：依据当前公开快照的 11 次运行补充 WF-16–WF-23，均为待优化。快照共有 192 次门禁 FAIL / 535 次尝试；4 次运行记录了 41 次预检失败，其他 7 次运行的预检计数未知。59 次门禁 FAIL 缺少具体原因，其中新纳入的 unwinder、hdc、data-clean 合计 54 次；已有阶段级线索不能分摊成逐次根因。本次仅更新复盘页面与计划，不表示这些 workflow 机制已经实现或效果得到验证。
+
+“最新运行失败复盘”每次打开或点击“刷新总结”时读取当前 `data.json`，合并本浏览器导入。正式门禁、预检、缺失原因、阶段线索和预期审核停点分别展示，原始失败计数与共享数据不改写。已有修复及复验按原记录呈现；重跑 PASS 不等于修改已解决。
+
+`failure-review.mjs` 的 `reviewedRunUpdates` 记录本次人工复盘所依据的精确快照版本。新运行或同一 run-id 的更新版本会自动出现，但标记为待人工复盘。维护者核对新证据、更新 `plans[].sourceCases` 后才更新对应版本；不自动生成或声称已完成人工根因分析。
+
 唯一数据源是 `dist/optimization-plan.mjs` 的 `plans`。每项包含稳定编号、阶段、归因、优先级、历史案例、workflow 措施、验收标准和进度。
 
 - `planned`：待优化；默认状态。
@@ -41,7 +47,7 @@
 python3 workflow-metrics-site/export_metrics.py --public-dir docs/public/workflow-metrics
 ```
 
-该入口在指标导出后同步优化页资产及导航。同步仅复制五个页面文件，不读取或复制原始 session、ZIP 或 `products/.run`。仅修改优化内容时也可单独同步：
+该入口在指标导出后同步优化页资产及导航。同步仅复制六个页面文件（含最新复盘统计模块），不读取或复制原始 session、ZIP 或 `products/.run`。仅修改优化内容时也可单独同步：
 
 ```bash
 python3 workflow-metrics-site/sync_optimization_assets.py --public-dir docs/public/workflow-metrics

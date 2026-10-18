@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="根据三次 AR-workflow 运行失败案例整理的 workflow 自身改进清单、验收标准和定期复盘方法。">
+  <meta name="description" content="持续汇总最新导入的运行失败、预检与修复证据，维护 workflow 改进清单和验收标准。">
   <title>门禁失败的下一步优化总结 · Workflow 运行观测</title>
   <link rel="stylesheet" href="./optimization.css">
 </head>
@@ -22,18 +22,26 @@
       <p class="eyebrow">WORKFLOW 持续改进</p>
       <h1>门禁失败的下一步优化总结</h1>
       <p class="lead">将失败经验转成 workflow 自身的改进措施：完善门禁、预检、取证和规则，让后续运行减少重复失败与返工。</p>
-      <p class="meta">依据三次历史运行 · 计划更新 <time id="plan-updated">2026-10-09</time></p>
+      <p class="meta">依据当前运行快照与历史复盘 · 计划更新 <time id="plan-updated">2026-10-18</time></p>
     </section>
-    <section class="kpis" aria-label="优化计划概览">
-      <div><span>改进项</span><strong id="plan-total">15</strong></div>
+    <section class="kpis plan-kpis" aria-label="优化计划概览">
+      <div><span>改进项</span><strong id="plan-total">—</strong></div>
       <div><span>高优先级</span><strong id="plan-high">—</strong></div>
+      <div><span>待优化</span><strong id="plan-planned">—</strong></div>
       <div><span>已实现 · 持续验收</span><strong id="plan-implemented">15</strong></div>
       <div><span>效果已验证</span><strong id="plan-verified">0</strong></div>
     </section>
     <aside class="scope-note">
       <strong>进度以实现和验收证据为准</strong>
-      <p>历史会话中某次修复通过，只能证明当次问题已处理。本页的改进项需落实到 workflow，并完成回归及后续运行验证，才标记为“效果已验证”。三次快照共 90 次尝试、37 次 FAIL；一条 FAIL 可有多个原因，改进项数量不代表失败次数。</p>
+      <p>历史会话中某次修复通过，只能证明当次问题已处理。本页的改进项需落实到 workflow，并完成回归及后续运行验证，才标记为“效果已验证”。本轮新增项均为待优化；最初三次快照的 90 次尝试、37 次 FAIL 是历史基线，当前统计见下方。一条 FAIL 可有多个原因，改进项数量不代表失败次数。</p>
     </aside>
+    <section class="review" id="latest-review" aria-labelledby="latest-heading">
+      <div class="section-heading"><div><h2 id="latest-heading">最新运行失败复盘</h2><p id="review-state" role="status" aria-live="polite">正在读取当前共享快照与本浏览器导入…</p></div><button id="review-refresh" type="button">刷新总结</button></div>
+      <div class="kpis" id="review-metrics" aria-label="当前快照失败概览"></div>
+      <p id="review-limits" class="measurement"></p>
+      <div class="table-wrap" tabindex="0" aria-label="最新运行的失败总结与改进措施"><table class="run-review-table"><thead><tr><th scope="col">运行与复盘状态</th><th scope="col">门禁 FAIL / 尝试</th><th scope="col">预检失败</th><th scope="col">失败总结、处理与原始证据</th><th scope="col">后续改进项</th></tr></thead><tbody id="review-rows"><tr><td colspan="5">正在读取运行记录…</td></tr></tbody></table></div>
+    </section>
+    <details class="historical-review"><summary>历史离线评估与首次实测复盘</summary>
     <section class="review" aria-labelledby="assessment-heading">
       <h2 id="assessment-heading">本轮离线评估：覆盖样例改善，真实降幅待测</h2>
       <p>15 项机制已在仓库落实。下表是先前的模拟历史样例评估；真实运行的对照在下方单独展示，不把模拟样例的 100% 改善套用到真实任务。</p>
@@ -45,6 +53,7 @@
       <h2 id="real-run-heading">优化后的首次真实运行 · 2026-10-10 复盘</h2>
       <div id="real-run-report"></div>
     </section>
+    </details>
     <section id="plan" aria-labelledby="plan-heading">
       <div class="section-heading"><div><h2 id="plan-heading">Workflow 改进清单</h2><p>先按高优先级实施；失败案例保留快照、后续会话和未知原因的边界。</p></div><span id="plan-count" role="status" aria-live="polite">正在加载</span></div>
       <form id="plan-filters" class="filters" role="search" autocomplete="off">
@@ -74,7 +83,7 @@
       <p class="measurement">效果统计需分别记录真实缺陷、预期人工停点、环境阻塞及外部 CI 故障。减少正式门禁 FAIL 的同时，也要确认总返工与耗时减少。</p>
     </section>
   </main>
-  <footer>依据 fd-leak-detection、resmon、hiperf-symbol-mem 的会话分析整理 · <a href="./index.html#overview">返回运行统计</a></footer>
+  <footer>最新运行证据随快照与本浏览器导入读取；人工改进计划随仓库维护 · <a href="./index.html#overview">返回运行统计</a></footer>
   <dialog id="evidence-dialog" aria-labelledby="evidence-title">
     <div class="dialog-head"><h2 id="evidence-title">运行证据</h2><button id="evidence-close" type="button" aria-label="关闭运行证据">关闭</button></div>
     <div id="evidence-content"></div>

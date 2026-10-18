@@ -42,6 +42,15 @@ class OptimizationSyncTests(unittest.TestCase):
             self.assertEqual((target / "index.html").read_bytes(), before)
             self.assertFalse((target / sync.ASSETS[0]).exists())
 
+    def test_existing_navigation_preserves_index_bytes_and_newlines(self):
+        with tempfile.TemporaryDirectory() as temp:
+            source, target = self.setup_tree(Path(temp))
+            for newline in (b'\n', b'\r\n'):
+                original = b'<html><body>' + newline + sync.NAV_TAG.encode() + newline + b'</body></html>'
+                (target / 'index.html').write_bytes(original)
+                sync.sync_assets(target, source)
+                self.assertEqual((target / 'index.html').read_bytes(), original)
+
     def test_invalid_html_does_not_copy_assets(self):
         with tempfile.TemporaryDirectory() as temp:
             source, target = self.setup_tree(Path(temp))

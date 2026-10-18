@@ -13,7 +13,7 @@
 5. 点击 **检查账号与共享差异**。页面读取 main 的最新快照，显示账号身份、将新增/更新的运行和共享总数；这一步不验证 Token 的写权限，真正提交时由 GitHub 校验。核对去敏明细后点击 **确认公开并发布**。文件选择和权限检查均不会上传运行数据；最终确认才提交公开快照。
 6. GitHub Pages 自动部署后，所有访客无需登录即可看到新统计；可通过页面返回的提交链接查看此次变更。页面提示“已提交”时部署可能还未完成，请稍后刷新。并发修改导致 409 时，需要重新检查差异，不会盲目覆盖。
 
-共享发布只更新 GitHub 的 `docs/public/workflow-metrics/data.json`，不会创建新仓库、上传原始文件或自动修改 GitCode 镜像。网站源码维护仍按双仓同步。此入口不会自动生成新的会话推断或更新优化总结的固定评估样本；JSON 已记录的失败原因、修复和复验会自动进入统计详情，缺失信息仍明确显示未知。
+共享发布只更新 GitHub 的 `docs/public/workflow-metrics/data.json`，不会创建新仓库、上传原始文件或自动修改 GitCode 镜像。网站源码维护仍按双仓同步。优化页的“最新运行失败复盘”会读取最新共享快照和本浏览器导入，展示 JSON 已记录的原因、修改、复验及缺失信息；新运行或更新版本标记为待人工复盘。此入口不会自动生成新的会话推断、人工改进计划或更新固定评估样本。
 
 授权仅发往固定的 `api.github.com`，拒绝重定向。实现使用 GitHub 官方 [Contents API](https://docs.github.com/en/rest/repos/contents#create-or-update-file-contents) 和 [浏览器跨域支持](https://docs.github.com/en/rest/using-the-rest-api/using-cors-and-jsonp-to-make-cross-origin-requests)。自由文本只能遮掩已识别的敏感片段；公开前请核对预览，必要时修改文件后重新选择。
 
