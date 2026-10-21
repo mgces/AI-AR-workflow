@@ -395,29 +395,167 @@ class TestB1DevelopSequence(unittest.TestCase):
         self.assertEqual(self._advance(3).returncode, 0)
         self.assertEqual(gl.load_state(self.pdir)["current_phase"], 4)
 
-    # ---- H1 file-hygiene (license header) blocking at author time -------------
+    # ---- static policy: critical rules block, everything else is evidence -----
     def _repair_card(self, phase):
         card = gl.read_phase_memory_card(
             self.pdir, parts=("memory_cards", "phase%d.json" % phase))
         repair = gl.read_repair_packet(self.pdir, ("repairs", "current.json"))
         return card, repair
 
-    def test_p2_missing_license_header_fails_and_emits_repair(self):
-        # a changed C++ file with no Apache header must FAIL P2 (H1) and route
-        # through finalize_control: repair packet + enum FAIL card.
+    def _write_p2_cpp(self, body, name="a.cpp"):
+        os.makedirs(os.path.join(self.repo, "src"), exist_ok=True)
+        with open(os.path.join(self.repo, "src", name), "w", encoding="utf-8") as f:
+            f.write("/*\n * Copyright (c) 2026.\n"
+                    " * Licensed under the Apache License, Version 2.0.\n */\n")
+            f.write(body)
+
+    def test_p2_missing_license_header_is_observation_only(self):
+        # A changed C++ file with no Apache header is still recorded by the
+        # hygiene guard, but under the lifecycle policy it no longer closes P2.
         self._close_design()
+        with open(os.path.join(self.repo, "notes.txt"), "w", encoding="utf-8") as f:
+            f.write("some change\n")
         os.makedirs(os.path.join(self.repo, "src"), exist_ok=True)
         with open(os.path.join(self.repo, "src", "a.cpp"), "w", encoding="utf-8") as f:
             f.write("int f() { return 0; }\n")  # no license header
         cp = self._run("gate_develop.py")
-        self.assertNotEqual(cp.returncode, 0)
-        self.assertIn("hygiene", (cp.stdout + cp.stderr).lower())
+        self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+        self.assertIn("hygiene_observed=1", cp.stdout + cp.stderr)
+        hygiene_report = os.path.join(
+            self.pdir, "evidence", "phase2", "file_hygiene_report.txt")
+        self.assertTrue(os.path.isfile(hygiene_report))
+        card, repair = self._repair_card(2)
+        self.assertEqual(card["verdict"], "PASS")
+        self.assertIsNone(repair)
+
+    def test_p2_critical_rule_finding_blocks_with_rule_and_location(self):
+        self._close_design()
+        with open(os.path.join(self.repo, "notes.txt"), "w", encoding="utf-8") as f:
+            f.write("some change\n")
+        self._write_p2_cpp('void Use()\n{\n    system("ls");\n}\n')
+        cp = self._run("gate_develop.py")
+        self.assertNotEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+        out = cp.stdout + cp.stderr
+        self.assertIn("G.FUU.21-CPP", out)
         card, repair = self._repair_card(2)
         self.assertEqual(card["verdict"], "FAIL")
         self.assertEqual(card["last_failure_class"], "code_ruleset_finding")
-        self.assertIn(card["next_expected_action_class"], gl.ACTION_CLASSES)
         self.assertIsNotNone(repair)
-        self.assertTrue(repair.get("suspect_files"))
+        self.assertTrue(any(loc.get("rule") == "G.FUU.21-CPP"
+                            for loc in (repair.get("suspect_locations") or [])))
+
+    def test_p2_noncritical_rule_finding_is_observation_and_passes(self):
+        self._close_design()
+        with open(os.path.join(self.repo, "notes.txt"), "w", encoding="utf-8") as f:
+            f.write("some change\n")
+        self._write_p2_cpp("int *Legacy = NULL;\n")
+        cp = self._run("gate_develop.py")
+        self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+        style_report = os.path.join(
+            self.pdir, "evidence", "phase2", "style_report.txt")
+        with open(style_report, encoding="utf-8") as f:
+            detail = f.read()
+        self.assertIn("G.EXP.35-CPP", detail)
+        self.assertIn("observed_non_blocking=", detail)
+        with open(os.path.join(
+                self.pdir, "evidence", "phase2", "code_ruleset_findings.json"),
+                encoding="utf-8") as f:
+            findings = json.load(f)
+        self.assertTrue(any(f["rule_id"] == "G.EXP.35-CPP"
+                            for f in findings["findings"]))
+
+    def test_p2_format_failure_is_observation_and_passes(self):
+        self._close_design()
+        with open(os.path.join(self.repo, "notes.txt"), "w", encoding="utf-8") as f:
+            f.write("some change\n")
+        self._write_p2_cpp("int f() { return 0; }\n")
+        style_stub = os.path.join(self.repo, "format_stub.py")
+        with open(style_stub, "w", encoding="utf-8") as f:
+            f.write(
+                "#!/usr/bin/env python3\nimport json, sys\n"
+                "args=sys.argv[1:]\n"
+                "p=args[args.index('--json')+1]\n"
+                "open(p,'w').write(json.dumps({'findings':[],"
+                "'advisory_findings':[],'clang_tidy_findings':[],"
+                "'format_failures':['format guard failed: src/a.cpp']}))\n"
+                "raise SystemExit(1)\n")
+        env = os.environ.copy()
+        env["CODE_RULESET_GUARD"] = style_stub
+        cp = self._run("gate_develop.py", env=env)
+        self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+        with open(os.path.join(
+                self.pdir, "evidence", "phase2", "code_ruleset_findings.json"),
+                encoding="utf-8") as f:
+            report = json.load(f)
+        self.assertEqual(report["format_failures"],
+                         ["format guard failed: src/a.cpp"])
+
+    def test_p2_abnormal_guard_rc_with_clean_report_fails_closed(self):
+        self._close_design()
+        with open(os.path.join(self.repo, "notes.txt"), "w", encoding="utf-8") as f:
+            f.write("some change\n")
+        self._write_p2_cpp("int f() { return 0; }\n")
+        style_stub = os.path.join(self.repo, "rc_stub.py")
+        with open(style_stub, "w", encoding="utf-8") as f:
+            f.write(
+                "#!/usr/bin/env python3\nimport json, sys\n"
+                "args=sys.argv[1:]\n"
+                "p=args[args.index('--json')+1]\n"
+                "open(p,'w').write(json.dumps({'findings':[],"
+                "'advisory_findings':[],'clang_tidy_findings':[],"
+                "'format_failures':[]}))\n"
+                "raise SystemExit(2)\n")
+        env = os.environ.copy()
+        env["CODE_RULESET_GUARD"] = style_stub
+        cp = self._run("gate_develop.py", env=env)
+        self.assertNotEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+        self.assertIn("exited rc=2", cp.stdout + cp.stderr)
+
+    def test_p2_stale_critical_report_does_not_drive_repair(self):
+        self._close_design()
+        with open(os.path.join(self.repo, "notes.txt"), "w", encoding="utf-8") as f:
+            f.write("some change\n")
+        self._write_p2_cpp("int f() { return 0; }\n")
+        stale_rel = os.path.join(
+            self.pdir, "evidence", "phase2", "code_ruleset_findings.json")
+        os.makedirs(os.path.dirname(stale_rel), exist_ok=True)
+        with open(stale_rel, "w", encoding="utf-8") as f:
+            json.dump({
+                "findings": [{"file": "/old/a.cpp", "line": 1,
+                              "rule_id": "G.FUU.21-CPP"}],
+                "advisory_findings": [],
+            }, f)
+        style_stub = os.path.join(self.repo, "broken_stub.py")
+        with open(style_stub, "w", encoding="utf-8") as f:
+            f.write("#!/usr/bin/env python3\nraise SystemExit(1)\n")
+        env = os.environ.copy()
+        env["CODE_RULESET_GUARD"] = style_stub
+        cp = self._run("gate_develop.py", env=env)
+        self.assertNotEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+        self.assertFalse(os.path.exists(stale_rel),
+                         "every scan attempt must clear the previous report")
+        card, repair = self._repair_card(2)
+        self.assertIsNotNone(repair)
+        self.assertFalse(any(
+            loc.get("rule") == "G.FUU.21-CPP"
+            for loc in (repair.get("suspect_locations") or [])))
+
+    def test_p2_unusable_guard_report_fails_closed(self):
+        self._close_design()
+        with open(os.path.join(self.repo, "notes.txt"), "w", encoding="utf-8") as f:
+            f.write("some change\n")
+        self._write_p2_cpp("int f() { return 0; }\n")
+        style_stub = os.path.join(self.repo, "broken_stub.py")
+        with open(style_stub, "w", encoding="utf-8") as f:
+            f.write("#!/usr/bin/env python3\nraise SystemExit(1)\n")
+        env = os.environ.copy()
+        env["CODE_RULESET_GUARD"] = style_stub
+        cp = self._run("gate_develop.py", env=env)
+        self.assertNotEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+        self.assertIn("report unusable", cp.stdout + cp.stderr)
+        card, repair = self._repair_card(2)
+        self.assertEqual(card["last_failure_class"], "code_ruleset_finding")
+        self.assertIsNotNone(repair)
 
     def test_p2_licensed_header_passes_h1(self):
         # The same file WITH an Apache header clears H1 (no false positive).
@@ -448,20 +586,83 @@ class TestB1DevelopSequence(unittest.TestCase):
         cp = self._run("gate_develop.py", env=env)
         self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
 
-    def test_p3_missing_license_header_on_authored_test_fails(self):
-        # an authored test file with no header must FAIL P3 (H1) and emit a
-        # repair packet routed to a repair action.
-        self._close_design()
-        self._close_feature_develop()
+    def _author_bare_test(self, body):
         os.makedirs(os.path.join(self.repo, "test"), exist_ok=True)
         with open(os.path.join(self.repo, "test", "a_test.cpp"), "w", encoding="utf-8") as f:
-            f.write("TEST(ATest, Case001) { EXPECT_TRUE(true); }\n")  # no header
+            f.write(body)
+
+    def test_p3_missing_license_header_is_observation_only(self):
+        # The authored test still must satisfy suite + design-point coverage;
+        # a missing license header is recorded as hygiene observation only.
+        self._close_design()
+        self._close_feature_develop()
+        self._author_bare_test(
+            'TEST(ATest, Case001) { ASSERT_STRNE("点一", ""); }\n')  # no header
         cp = self._run("gate_test_develop.py")
-        self.assertNotEqual(cp.returncode, 0)
+        self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+        self.assertIn("hygiene_observed=1", cp.stdout + cp.stderr)
+        self.assertTrue(os.path.isfile(os.path.join(
+            self.pdir, "evidence", "phase3", "test_hygiene_report.txt")))
         card, repair = self._repair_card(3)
-        self.assertEqual(card["verdict"], "FAIL")
+        self.assertEqual(card["verdict"], "PASS")
+        self.assertIsNone(repair)
+
+    def test_p3_noncritical_rule_finding_is_observation_and_passes(self):
+        self._close_design()
+        self._close_feature_develop()
+        self._author_bare_test(
+            "/*\n * Copyright (c) 2026.\n"
+            " * Licensed under the Apache License, Version 2.0.\n */\n"
+            "int *Legacy = NULL;\n"
+            'TEST(ATest, Case001) { ASSERT_STRNE("点一", ""); }\n')
+        cp = self._run("gate_test_develop.py")
+        self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+        report = os.path.join(
+            self.pdir, "evidence", "phase3", "test_style_report.txt")
+        with open(report, encoding="utf-8") as f:
+            detail = f.read()
+        self.assertIn("G.EXP.35-CPP", detail)
+        self.assertIn("observed_non_blocking=", detail)
+
+    def test_p3_abnormal_guard_rc_with_clean_report_fails_closed(self):
+        self._close_design()
+        self._close_feature_develop()
+        self._author_bare_test(
+            "/*\n * Copyright (c) 2026.\n"
+            " * Licensed under the Apache License, Version 2.0.\n */\n"
+            'TEST(ATest, Case001) { ASSERT_STRNE("点一", ""); }\n')
+        style_stub = os.path.join(self.repo, "rc_test_stub.py")
+        with open(style_stub, "w", encoding="utf-8") as f:
+            f.write(
+                "#!/usr/bin/env python3\nimport json, sys\n"
+                "args=sys.argv[1:]\n"
+                "p=args[args.index('--json')+1]\n"
+                "open(p,'w').write(json.dumps({'findings':[],"
+                "'advisory_findings':[]}))\n"
+                "raise SystemExit(2)\n")
+        env = os.environ.copy()
+        env["CODE_RULESET_GUARD"] = style_stub
+        cp = self._run("gate_test_develop.py", env=env)
+        self.assertNotEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+        self.assertIn("exited rc=2", cp.stdout + cp.stderr)
+
+    def test_p3_unusable_guard_report_fails_closed(self):
+        self._close_design()
+        self._close_feature_develop()
+        self._author_bare_test(
+            "/*\n * Copyright (c) 2026.\n"
+            " * Licensed under the Apache License, Version 2.0.\n */\n"
+            'TEST(ATest, Case001) { ASSERT_STRNE("点一", ""); }\n')
+        style_stub = os.path.join(self.repo, "broken_test_stub.py")
+        with open(style_stub, "w", encoding="utf-8") as f:
+            f.write("#!/usr/bin/env python3\nraise SystemExit(1)\n")
+        env = os.environ.copy()
+        env["CODE_RULESET_GUARD"] = style_stub
+        cp = self._run("gate_test_develop.py", env=env)
+        self.assertNotEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+        self.assertIn("report unusable", cp.stdout + cp.stderr)
+        card, repair = self._repair_card(3)
         self.assertEqual(card["last_failure_class"], "test_style_finding")
-        self.assertEqual(card["next_expected_action_class"], "repair")
         self.assertIsNotNone(repair)
 
     # ---- C2: banned-API (rules-only) blocking on authored test code -----------

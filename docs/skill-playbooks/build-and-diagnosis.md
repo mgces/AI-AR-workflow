@@ -18,7 +18,7 @@
 
 ### 何时使用
 
-- P2(物理 phase 4)编译阶段:真跑 build.sh,捕获成功横幅
+- P4(物理 phase 4)编译阶段:真跑 build.sh,以退出码/无 error 横幅/产物为准,成功横幅仅作诊断
 - 编译失败排查:读 build.log 定位,修复后重跑门控
 - 修复窗口(Repair):新窗口修复,bundle revision 升级
 
@@ -35,7 +35,7 @@
 
 | 阶段 | skill | 做什么 |
 |---|---|---|
-| P4 编译 | `ohos-dev-build-execution-diagnosis` | 跑 build.sh,捕获横幅 |
+| P4 编译 | `ohos-dev-build-execution-diagnosis` | 跑 build.sh,以退出码/产物为准,横幅仅诊断 |
 | P4 编译 | `ohos-build-flash` | 增量构建产物(若需要) |
 | P6 端到端功能测试 | `ohos-build-flash` | 部署到设备 |
 
@@ -43,20 +43,20 @@
 
 ### 输入
 - build_target(GN 构建目标)
-- build.log 路径(失败时)
+- `build_stdout.log`(失败时另加 `error_distill.txt`)
 
 ### 输出
-- build.sh stdout(含成功横幅 `=====build…successful=====`)
+- `build_stdout.log`(含成功横幅 `=====build…successful=====`,仅作诊断)
 - 失败时:error 蒸馏行
 
 ## 常见误区
 
 - **build.log 横幅找不到**:build.sh 横幅打在 stdout,build.log 可能轮转/为空;门控已改为捕获 stdout 正则判定
-- **以为编译过就 advance**:还要校验成功横幅 + 无 error + build_artifacts 覆盖三者齐全
+- **以为编译过就 advance**:还要校验退出码、无 error 横幅、build_artifacts 覆盖，以及 P4 critical AST/backend；成功横幅仅诊断
 - **全量重编浪费时间**:局部失败用 narrow rebuild,只重编失败部件
 
 ## 延伸阅读
 
-- [P4 编译阶段](/workflow/phase-2-build) — gate_build 门控细节
+- [P4 编译阶段](/workflow/phase-4-build) — gate_build 门控细节
 - [增量构建与刷机](/skill-playbooks/build-and-flash) — ohos-build-flash 详解
 - [Skill 组合拳](/skill-playbooks/common-combinations) — 场景 B 编译失败排查

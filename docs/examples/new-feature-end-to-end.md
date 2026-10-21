@@ -75,7 +75,7 @@
 ### gate 检查什么
 - 已有签名 AR_design 且已有绑定的 P1 consent
 - 相对 base_commit 有 tracked/untracked 改动
-- C/C++ 格式 guard + 强规则检查通过
+- 本轮 guard 报告可读且 P2/P3 critical 规则子集无命中（format/其他规则/卫生留证）
 - 闭合时**锁定功能指纹**(仅非测试路径)
 
 ### 是否停下
@@ -111,8 +111,9 @@
 
 ### gate 检查什么
 - build.sh exit 0
-- 输出含成功横幅 `=====build…successful=====` 且无 error
+- 无 error 横幅（成功横幅仅诊断）
 - 契约 `build_artifacts` 全部编译出
+- P4 critical AST/backend 无命中；clang-tidy/compdb 不可用 fail-closed，metric 与非白名单 finding 留证
 
 ### 是否停下
 否,自动 advance --phase 4。

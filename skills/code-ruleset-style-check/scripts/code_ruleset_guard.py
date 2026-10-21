@@ -428,9 +428,13 @@ _TEXT_RULE_IDS = frozenset({
 # These rules need type, control-flow, paired-declaration, or comment-token
 # semantics that a line regex cannot prove. Keep their local hints visible, but
 # never block a change from the regex approximation alone.
+# G.INT.04 is deliberately NOT advisory: the lifecycle P2/P3 policy treats the
+# uint32-addition-without-widening SHAPE as a hard blocker. This is a shape-level
+# heuristic (the regex cannot see operand widths), so the remediation is to
+# widen/cast the operands explicitly.
 _ADVISORY_RULE_IDS = frozenset({
     "G.AST.02", "G.CLS.05-CPP", "G.CMT.02", "G.CMT.02-CPP",
-    "G.CNS.04-CPP", "G.CTL.03", "G.EXP.36-CPP", "G.INT.04",
+    "G.CNS.04-CPP", "G.CTL.03", "G.EXP.36-CPP",
     "G.RES.12-CPP", "G.STD.10-CPP",
 })
 
@@ -1009,8 +1013,14 @@ def _component_guard_ok(path, root):
 def _clang_tidy_findings(files, compile_commands_dir, clang_tidy=None, repository_root=None):
     """Run clang-tidy on *files* using a compilation database at
     *compile_commands_dir*, then map each warning to a workbook rule_id via
-    _CLANG_TIDY_RULE_MAP.  Returns [] if clang-tidy is unavailable or the
-    compilation database is missing (the caller logs those separately)."""
+    _CLANG_TIDY_RULE_MAP.
+
+    Returns ``(findings, note)``. A non-empty ``note`` means the checker was not
+    started at all (tool or compile database unavailable); a fail-closed caller
+    must treat that as blocking rather than clean. Once the checker ran, an
+    abnormal exit or a checker-tagged diagnostic we cannot parse is returned as
+    a ``clang-tidy-backend`` finding, so rule-id filtering can never swallow a
+    backend/report defect."""
     clang_tidy = clang_tidy or shutil.which("clang-tidy")
     if not clang_tidy:
         return [], "clang-tidy not found in PATH"
@@ -1020,18 +1030,27 @@ def _clang_tidy_findings(files, compile_commands_dir, clang_tidy=None, repositor
 
     cmd = [clang_tidy, "--config-file=" + str(CLANG_TIDY_CFG),
            "-p", str(ccd.parent), *map(str, files)]
-    def backend_error(detail):
-        return [{"file": "", "line": 0, "rule_id": "clang-tidy-backend",
-                 "severity": "严重", "remediation": detail}], ""
+
+    def backend_finding(detail):
+        return {"file": "", "line": 0, "rule_id": "clang-tidy-backend",
+                "severity": "严重", "remediation": detail}
+
     try:
         cp = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
     except (subprocess.TimeoutExpired, OSError) as exc:
-        return backend_error("clang-tidy execution failed: %s" % exc)
+        return [backend_finding("clang-tidy execution failed: %s" % exc)], ""
     findings = []
+    malformed = []
     for line in (cp.stdout + "\n" + cp.stderr).splitlines():
         # clang-tidy output: /path/file.cpp:42:5: warning: check-name [check-name]
         m = re.match(r'^(.*?):(\d+):(\d+):\s*(?:warning|error):\s+.*?\[([^\]]+)\]$', line)
         if not m:
+            # A checker-tagged diagnostic the strict parser cannot read means the
+            # report format is not trustworthy. Record it as a backend defect
+            # (never silently drop it as if the scan were clean).
+            if (re.search(r":\s*(?:warning|error):\s", line)
+                    and re.search(r"\[[^\]]+\]\s*$", line)):
+                malformed.append(line.strip()[:300])
             continue
         file_name, line_number, _column, check = m.groups()
         if check == "llvm-header-guard" and _component_guard_ok(file_name, repository_root):
@@ -1049,9 +1068,17 @@ def _clang_tidy_findings(files, compile_commands_dir, clang_tidy=None, repositor
                     "remediation": "clang-tidy: %s" % line.strip(),
                 })
                 break
+    if malformed:
+        findings.append(backend_finding(
+            "unparsable clang-tidy diagnostic(s); report format invalid: %s"
+            % " | ".join(malformed[:3])))
     if cp.returncode != 0:
+        # A non-zero exit is a backend failure even when some diagnostics were
+        # parsed: without --warnings-as-errors, warnings alone do not make
+        # clang-tidy fail, so rc!=0 means the scan did not complete cleanly.
         detail = (cp.stderr or cp.stdout or "unknown clang-tidy error").strip()
-        findings.extend(backend_error("clang-tidy failed with rc=%d: %s" % (cp.returncode, detail[:500]))[0])
+        findings.append(backend_finding(
+            "clang-tidy failed with rc=%d: %s" % (cp.returncode, detail[:500])))
     return findings, ""
 
 

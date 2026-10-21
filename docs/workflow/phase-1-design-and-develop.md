@@ -37,7 +37,7 @@ python3 $S/advance.py --pipeline-dir "$PDIR" consent --phase 1 --token <你的�
 跑 `gate_develop.py`(emit 2)校验:
 - 已有签名 AR_design **且** 已有绑定的 P1 consent
 - 相对 `base_commit` 有 tracked/untracked 改动
-- C/C++ 格式 guard + 强规则检查通过
+- 本轮 guard 报告可读，且 `gatelib.P2_P3_CRITICAL_RULESET_IDS` 无命中；format、非白名单规则与文件卫生仅签名留证
 
 闭合时**锁定功能指纹**(仅非测试路径内容,相对 base、commit 无关)。
 
@@ -81,7 +81,7 @@ python3 $S/advance.py --pipeline-dir "$PDIR" consent --phase 1 --token <你的�
 | `ohos-ar-dev-workflow` | 编排器,调度设计与开发 |
 | `ohos-dev-sa-codegen` | SA 代码生成 |
 | `ohos-dev-napi-module` | NAPI 模块生成 |
-| `code-ruleset-style-check` | C/C++ 格式与强规则门控 |
+| `code-ruleset-style-check` | C/C++ 规则扫描（critical 子集硬门，其余留证） |
 | `tdd-enforcer` | TDD 约束 |
 | `ohos-code-skeletons` | 写码脚手架(插件/单测/模块测试/模糊测试占位符骨架) |
 

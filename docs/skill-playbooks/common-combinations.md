@@ -12,7 +12,7 @@
 | P1 | [`ohos-ar-dev-workflow`](/skill-playbooks/workflow-orchestration) | 编排器调度:稳定导航 → 当前源码验证 → 写 AR_design → consent |
 | P2 | `ohos-dev-sa-codegen` / `ohos-dev-napi-module` / `code-ruleset-style-check` / `tdd-enforcer` / `ohos-code-skeletons` | 按签名设计写代码 |
 | P3 | [`ohos-test-ut-generation`](/skill-playbooks/unit-test-generation) / `tdd-enforcer` | 生成测试,只新增独立测试文件 |
-| P4 | [`ohos-dev-build-execution-diagnosis`](/skill-playbooks/build-and-diagnosis) | 真跑 build.sh,校验成功横幅 |
+| P4 | [`ohos-dev-build-execution-diagnosis`](/skill-playbooks/build-and-diagnosis) | 真跑 build.sh,校验退出码/无 error/产物 + P4 critical AST/backend |
 | P5 | [`ohos-test-ut-generation`](/skill-playbooks/unit-test-generation) | developer_test 跑单测 |
 | P6 | [`ohos-build-flash`](/skill-playbooks/build-and-flash) / [`ohos-dev-hdc-command-usage`](/skill-playbooks/device-debug-and-hdc) | 部署到真机 + scenario 触发 + hilog 抓取 |
 | P7 | `ohos-test-xts` / `check-test-code-quality` / `ohos-test-fuzz-generation` / `ohos-test-coverage` / `code-ruleset-style-check` / `ohos-dev-security-code-review` | 质量验证 + review |

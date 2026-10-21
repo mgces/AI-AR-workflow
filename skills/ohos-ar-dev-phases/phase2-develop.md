@@ -26,11 +26,12 @@
 - 编码规范先加载 `ohos-dev-cpp-coding-style` 的 OpenHarmony 指导和
   `code-ruleset-style-check/references/pre-write-contract.md` 的写码前契约，再开始第一处编辑。
   规则集仍以 `code_ruleset` C++ 门禁表为唯一来源；写码前契约用于减少返工，不能代替门控。
-- 写完后必须由共享 `code-ruleset-style-check` guard 执行可机器判断的硬规则；门控是唯一 PASS 来源。
+- 写完后必须由共享 `code-ruleset-style-check` guard 执行扫描；门控是唯一 PASS 来源，但只把显式
+  critical 子集当作硬门（见下「门控」）。
 - **就近一致**(advisory,写码时遵循,不硬门控):新增/改动代码的风格尽量与**同级目录既有代码**保持一致——
   命名约定、缩进/大括号、头文件包含顺序、错误处理与日志习惯、注释密度,优先随该目录现有代码,而非全局理想化风格。
-  改一个既有文件时沿用该文件的既有约定;新建文件时对齐同目录邻近文件。门控只判 `code_ruleset` 硬规则,
-  「就近一致」靠写码时自觉 + P8 review 兜底。
+  改一个既有文件时沿用该文件的既有约定;新建文件时对齐同目录邻近文件。门控的静态硬门只有 critical 子集,
+  format/其他规则/卫生留证；「就近一致」靠写码时自觉 + P8 review 兜底。
 - **安全左移**(advisory,写码时同步做,不硬门控):涉及 IPC Stub/`OnRemoteRequest`、`MessageParcel`/fd/回调解析、
   `AccessTokenKit` 权限校验、跨 SA/跨用户/跨设备访问、HILOG 隐私输出、共享状态并发时,用
   `ohos-dev-security-code-review` 边写边审,把攻击者可控入口→敏感 sink 的校验/权限/并发缺口在开发期就消除。
@@ -51,16 +52,23 @@ python3 $S/gate_develop.py --pipeline-dir "$PDIR"
 ```
 脚本逻辑:先校验已有**未被篡改**的签名 AR_design 证据(仍在物理 phase 1),再校验绑定到该签名记录的
 **P1 设计 consent**(缺失/因重跑 gate_design 而 stale 都 FAIL);首跑把当前 HEAD 记为 `base_commit`;之后取
-`git diff base..工作树` 并额外纳入 `git ls-files --others --exclude-standard` 的 untracked 文件,要求变更非空;对改动的 C/C++ 文件强制跑
-`code_ruleset_guard.py`;同时执行来自 `code_ruleset` C++ 门禁表的可机器判断硬规则
-(如禁用 `#pragma once`、头文件 `using namespace`、`.hpp/.cc/.cxx`、`NULL`、`system()/popen()`、默认 lambda 捕获);
-另按**文件扩展名**对全部改动路径查禁用后缀(G.INC.02:头文件必须用 `.h` 不用 `.inc`——`.inc` 会绕过 C/C++ 内容过滤)。
-依赖脚本、规则集 skill 或写码前契约缺失、手动传 `--no-style` 绕过、任一硬规则命中都会 FAIL。
-证据:`diff.patch`、`changed_files.txt`、`style_report.txt`、`strict_cpp_report.txt`。
+`git diff base..工作树` 并额外纳入 `git ls-files --others --exclude-standard` 的 untracked 文件,要求变更非空;
+对改动的 C/C++ 文件运行 `code_ruleset_guard.py`(format+rules)并读取**本轮** `--json` 报告:
+- 仅 `gatelib.P2_P3_CRITICAL_RULESET_IDS` 命中时 FAIL:`G.FUU.21`、`G.FUU.21-CPP`、
+  `G.STR.01`、`G.ARR.03`、`G.MEM.05`、`G.FUU.10`、`G.EXP.03`、`G.EXP.33-CPP`、
+  `G.INT.04`、`G.EXP.26-CPP`。
+- clang-format、其他内容规则、敏感词、`.inc` 文件名检查与文件卫生**不阻断 P2**；它们仍写入
+  `style_report.txt` / `strict_cpp_report.txt` / `file_hygiene_report.txt` 和本轮 JSON，作为签名观察证据，
+  交由 P8 review 与远端 CI 裁决。
+- 本轮报告缺失/不可读、guard/skill/写码前契约缺失、手动 `--no-style` 绕过必须 FAIL-closed；
+  变更范围、签名设计/consent、非空 diff、契约完整性等既有硬门不变。
+证据:`diff.patch`、`changed_files.txt`、`style_report.txt`、`strict_cpp_report.txt`、`file_hygiene_report.txt`；
+本轮 `code_ruleset_findings.json` 是策略分类输入。
 
 ## 通过条件
 已有签名 AR_design **且** 已有绑定该签名的 P1 设计 consent **且** 相对 `base_commit` 有 tracked 或
-untracked 改动 **且** 格式 guard 与强规则检查都通过。
+untracked 改动 **且** 本轮 guard 报告可读且 critical 子集无命中 **且** 依赖/范围/契约检查通过。
+format、非白名单规则与文件卫生仅是观察证据，不构成通过条件。
 
 ## 通过后
 ```bash

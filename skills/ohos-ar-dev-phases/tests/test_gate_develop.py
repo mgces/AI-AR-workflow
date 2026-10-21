@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import subprocess
 import sys
 import tempfile
@@ -30,6 +31,70 @@ DEVICE_GATE_SPEC.loader.exec_module(gate_device_func)
 
 def run_git(repo: Path, *args: str) -> None:
     subprocess.run(["git", "-C", str(repo), *args], check=True, text=True, capture_output=True)
+
+
+class StaticPolicyClassificationTest(unittest.TestCase):
+    """The lifecycle policy is one explicit rule-id split shared by P2/P3/P4."""
+
+    def test_partition_blocks_only_critical_ids(self):
+        findings = [
+            {"file": "a.cpp", "line": 1, "rule_id": "G.FUU.21-CPP"},
+            {"file": "a.cpp", "line": 2, "rule_id": "G.EXP.35-CPP"},
+            {"file": "a.cpp", "line": 3, "rule_id": "clang-tidy-backend"},
+            {"file": "a.cpp", "line": 4},
+            "not-a-dict",
+        ]
+        blocking, observed = gatelib.partition_rule_findings(
+            findings, gatelib.P2_P3_CRITICAL_RULESET_IDS)
+        self.assertEqual([f["rule_id"] for f in blocking], ["G.FUU.21-CPP"])
+        self.assertEqual([f.get("rule_id") for f in observed],
+                         ["G.EXP.35-CPP", "clang-tidy-backend", None])
+
+    def test_partition_does_not_treat_backend_as_critical_content(self):
+        blocking, observed = gatelib.partition_rule_findings(
+            [{"rule_id": "clang-tidy-backend"}],
+            gatelib.P4_CRITICAL_AST_RULESET_IDS)
+        self.assertEqual(blocking, [])
+        self.assertEqual(len(observed), 1)
+        self.assertIn("clang-tidy-backend", gatelib.STATIC_BACKEND_RULE_IDS)
+
+    def test_load_ruleset_findings_accepts_valid_report(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "report.json"
+            path.write_text(json.dumps({
+                "findings": [{"rule_id": "G.FUU.21"}],
+                "advisory_findings": [{"rule_id": "G.AST.02"}],
+            }), encoding="utf-8")
+            findings, advisory, error = gatelib.load_ruleset_findings(
+                temp_dir, "report.json")
+        self.assertEqual(error, "")
+        self.assertEqual(findings[0]["rule_id"], "G.FUU.21")
+        self.assertEqual(advisory[0]["rule_id"], "G.AST.02")
+
+    def test_load_ruleset_findings_fails_closed_on_missing_or_malformed(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            missing, _, missing_error = gatelib.load_ruleset_findings(
+                temp_dir, "missing.json")
+            self.assertEqual(missing, [])
+            self.assertTrue(missing_error)
+            bad = Path(temp_dir) / "bad.json"
+            bad.write_text(json.dumps({"findings": "not-a-list"}), encoding="utf-8")
+            findings, advisory, error = gatelib.load_ruleset_findings(
+                temp_dir, "bad.json")
+        self.assertEqual(findings, [])
+        self.assertEqual(advisory, [])
+        self.assertTrue(error)
+
+    def test_critical_sets_cover_every_requested_id(self):
+        self.assertTrue({
+            "G.FUU.21", "G.FUU.21-CPP", "G.STR.01", "G.ARR.03",
+            "G.MEM.05", "G.FUU.10", "G.EXP.03", "G.EXP.33-CPP",
+            "G.INT.04", "G.EXP.26-CPP",
+        }.issubset(gatelib.P2_P3_CRITICAL_RULESET_IDS))
+        self.assertTrue({
+            "G.RES.07-CPP", "G.FUU.11", "G.VAR.01", "G.EXP.08-CPP",
+            "G.STD.04-CPP", "G.EXP.12-CPP", "G.INT.03",
+        }.issubset(gatelib.P4_CRITICAL_AST_RULESET_IDS))
 
 
 class GateDevelopStrongControlTest(unittest.TestCase):

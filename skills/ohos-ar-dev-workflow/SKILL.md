@@ -3,7 +3,7 @@ name: ohos-ar-dev-workflow
 description: >
   端到端编排 OHOS(rk3568)研发生命周期:从可能尚未澄清的自然语言需求出发,先形成可观察验收基线并验证源码依赖,再推进
   设计固化→代码开发→测试用例编写→编译验证→单元测试→端到端功能测试→功能/覆盖率/性能/功耗/稳定性验证→代码上库review。
-  每个阶段只能由确定性门控脚本基于真实证据(构建日志成功横幅/真机 hdc+hilog 抓取/
+  每个阶段只能由确定性门控脚本基于真实证据(构建退出码/错误横幅与产物/真机 hdc+hilog 抓取/
   gtest+xdevice 报告/CI 绿状态)判定通过,绝不能用模型自由文本当作阶段结束。
   当用户说"跑流水线"、"从这个 AR 自动开发到上库"、"自动构建并验证 OHOS 代码"、
   "继续流水线"时触发。
@@ -148,9 +148,9 @@ python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-workflow/scripts/refresh_todo.py" --pipel
 | 阶段 | 做事(调用技能) | 门控脚本 | 结束证据 |
 |---|---|---|---|
 | P1 设计 | **(设计前)** `kb_search.py --source-root "$OHOS_ROOT"` 获取稳定导航 → 当前源码验证 → 写 `design_refs.md`(advisory)与 AR_design.md(7 章节含 DFX设计 + ```ar-contract``` 契约块)→ **人工 consent** | `gate_design.py`(`emit 1`) | 签名 AR_design(7 章节 + 契约)+ **P1 设计 consent**(绑签名条目) |
-| P2 开发 | **先加载** `code-ruleset-style-check` 写码前契约 + `ohos-dev-cpp-coding-style`，再用 `ohos-dev-sa-codegen` / `ohos-dev-napi-module` / `ohos-dev-security-code-review`(安全左移,advisory) / `tdd-enforcer` / `ohos-code-skeletons` 写码 | `gate_develop.py`(`emit 2`,强制依赖签名 AR_design + P1 consent；共享 guard 是唯一 PASS 来源) | git/untracked diff 非空 + C++ 强门控报告;**闭合时锁定功能指纹** |
-| P3 测试开发 | **先加载**同一写码前契约 + `ohos-dev-cpp-coding-style`，再用 `ohos-test-ut-generation` / `tdd-enforcer` / `code-ruleset-style-check`(只改测试路径,编译前写完测试代码；P2 已按 TDD 创建的测试可直接认领) | `gate_test_develop.py`(`emit 3`,对本次 run 新增/修改测试源强制 `--rules-only` 规则门控) | 契约每个 `test_cases[].gtest` 的 suite 出现在本次 run 的测试变更中(**编写**覆盖)+ 测试源签名快照 + 测试代码规则检测报告 |
-| P4 编译 | `ohos-dev-build-execution-diagnosis` / `ohos-build-flash` / `code-ruleset-style-check`(编译后 clang-tidy) | `gate_build.py`(`emit 4`) | build.log 成功横幅 + 契约 `build_artifacts` 全部编译出 + clang-tidy 子步(有 compdb 硬控/缺失降级) |
+| P2 开发 | **先加载** `code-ruleset-style-check` 写码前契约 + `ohos-dev-cpp-coding-style`，再用 `ohos-dev-sa-codegen` / `ohos-dev-napi-module` / `ohos-dev-security-code-review`(安全左移,advisory) / `tdd-enforcer` / `ohos-code-skeletons` 写码 | `gate_develop.py`(`emit 2`,强制依赖签名 AR_design + P1 consent；静态硬门为 `gatelib.P2_P3_CRITICAL_RULESET_IDS`) | git/untracked diff 非空 + 本轮 guard 报告可读且 critical 子集无命中（format/其他规则/卫生留证）;**闭合时锁定功能指纹** |
+| P3 测试开发 | **先加载**同一写码前契约 + `ohos-dev-cpp-coding-style`，再用 `ohos-test-ut-generation` / `tdd-enforcer` / `code-ruleset-style-check`(只改测试路径,编译前写完测试代码；P2 已按 TDD 创建的测试可直接认领) | `gate_test_develop.py`(`emit 3`,对本次 run 新增/修改测试源按 changed lines 跑 `--rules-only`，只阻断 critical 子集) | 契约每个 `test_cases[].gtest` 的 suite 出现在本次 run 的测试变更中(**编写**覆盖)+ 测试源签名快照 + 测试代码规则检测报告 |
+| P4 编译 | `ohos-dev-build-execution-diagnosis` / `ohos-build-flash` / `code-ruleset-style-check`(编译后 clang-tidy) | `gate_build.py`(`emit 4`) | exit0 + 无 error 横幅 + 契约 `build_artifacts` 全部编译出 + P4 critical AST/backend；工具/compdb/报告不可用 fail-closed，metric/非白名单 finding 留证；成功横幅仅诊断 |
 | P5 单元测试 | `ohos-test-ut-generation` / `tdd-enforcer`(**只增独立测试**) | `gate_test_ut.py`(`emit 5`) | developer_test summary_report.xml + 契约每个 `test_cases[].gtest` 通过(**执行**覆盖) |
 | P6 端到端功能测试 | `ohos-build-flash` / `ohos-dev-hdc-command-usage` | `gate_device_func.py`(`emit 6`) | 主机/设备产物 sha256 一致 + 含 nonce/功能 marker/运行时 marker/端到端 marker 的真机 hilog + 契约每个 `device_cases[].marker` 命中 **+ 人工确认(consent --phase 6)**;渲染 `reports/device_functional.md` + `reports/test_report.md`(P5 单元测试 + P6 端到端关键证据聚合) |
 | P7 质量验证 | `ohos-build-flash` / developer_test MST / `ohos-test-xts` / `check-test-code-quality` / `ohos-test-fuzz-generation` / `ohos-test-coverage` / `code-ruleset-style-check` / `ohos-ci-local-precheck`(可用时) / `ohos-dev-security-code-review` | `gate_integration.py`(`emit 7`;或 `gate_device_func.py --phase 7` + `gate_integration.py`) | 功能 summary + 覆盖率 + 性能 + 功耗 + 稳定性 + 代码 review 零问题 **+ 人工确认(consent --phase 7)**;渲染 `reports/quality.md`(六段聚合含 review) |

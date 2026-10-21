@@ -115,7 +115,7 @@ reports/               # 人读 Markdown 审计报告(脱敏,可归档)——与
 
 - `environment`
   - `openharmony`(**默认/向后兼容**):原 gitcode + rk3568 流程。编译 `./build.sh --product-name rk3568 ...`、
-    产物 `out/rk3568/`、成功横幅 `=====build.*successful=====`、上库走 `oh-gc` PR + OpenHarmony CI。
+    产物 `out/rk3568/`、成功横幅 `=====build.*successful=====`（诊断）、上库走 `oh-gc` PR + OpenHarmony CI。
     **旧 run 无此字段时自动当 openharmony**(`load_state` 不校验未知键,无需迁移)。
   - `harmonyos`:HarmonyOS 形态。代码不下载、不提交 gitcode(无 oh-gc);上库走 **Gerrit**
     (`git push refs/for` + review 标签)。编译命令按组件分两种,**目前为占位**(未填时门控硬失败并提示)。

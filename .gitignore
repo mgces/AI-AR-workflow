@@ -48,3 +48,6 @@ products/dsh-cloud-implementation/doctor-*.json
 # Imported private metrics may contain credentials; publish only redacted snapshots.
 /products/.run/
 **/metrics-history/
+
+# Local development-assistant materials; never commit.
+/development-assistant/

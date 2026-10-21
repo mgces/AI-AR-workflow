@@ -329,14 +329,14 @@ int main(void)
         contract = PREWRITE_CONTRACT.read_text(encoding="utf-8")
         coverage = json.loads(COVERAGE.read_text(encoding="utf-8"))
         self.assertIn("545 workbook rows", contract)
-        self.assertIn("414 rows", contract)
+        self.assertIn("415 rows", contract)
         self.assertIn("clang-tidy AST rows", contract)
         self.assertIn("repository OAT rows", contract)
         self.assertIn("public:", contract)
         self.assertIn("G.OTH.01", contract)
         self.assertIn("G.INC.08-CPP", contract)
         self.assertEqual(coverage["summary"]["workbook_rows"], 545)
-        self.assertEqual(coverage["summary"]["author_time_rows"], 414)
+        self.assertEqual(coverage["summary"]["author_time_rows"], 415)
         self.assertGreater(coverage["summary"]["later_stage_rows"], 0)
 
     def test_clang_tidy_finding_keeps_diagnostic_file_path(self):
@@ -398,6 +398,172 @@ int main(void)
         self.assertEqual(report["findings"], [])
         self.assertIn("G.AST.02", [finding["rule_id"]
                                    for finding in report["advisory_findings"]])
+
+    def test_gint04_is_a_hard_rule_not_advisory(self):
+        """G.INT.04 is retained in the lifecycle P2/P3 critical subset, so the
+        guard must report it as a blocking deterministic finding."""
+        cp, report = self._run(
+            "integer_overflow.cpp",
+            "void Add(uint32_t a, uint32_t b)\n{\n"
+            "    uint32_t total = a + b;\n    (void)total;\n}\n")
+        self.assertNotEqual(cp.returncode, 0)
+        self.assertIn("G.INT.04", self._rule_ids(report))
+        self.assertNotIn("G.INT.04", [finding["rule_id"]
+                                      for finding in report["advisory_findings"]])
+
+    def test_fuu21_variants_follow_translation_unit(self):
+        """C files report G.FUU.21; C++ files additionally report the -CPP
+        variant. The lifecycle critical subset keeps both ids."""
+        body = 'void Use(void)\n{\n    system("ls");\n}\n'
+        c_cp, c_report = self._run("unsafe.c", body)
+        self.assertNotEqual(c_cp.returncode, 0)
+        c_ids = self._rule_ids(c_report)
+        self.assertIn("G.FUU.21", c_ids)
+        self.assertNotIn("G.FUU.21-CPP", c_ids)
+
+        cpp_cp, cpp_report = self._run("unsafe.cpp", body)
+        self.assertNotEqual(cpp_cp.returncode, 0)
+        cpp_ids = self._rule_ids(cpp_report)
+        self.assertIn("G.FUU.21-CPP", cpp_ids)
+
+    def test_clang_tidy_malformed_diagnostic_is_a_backend_failure(self):
+        """A checker-tagged diagnostic the parser cannot read must become a
+        blocking backend finding, never an implicit clean result."""
+        spec = importlib.util.spec_from_file_location(
+            "code_ruleset_guard_malformed", GUARD)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        fake_bin = self.dir / "clang-tidy"
+        fake_bin.write_text(
+            "#!/bin/sh\n"
+            "echo '/tmp/sample.cpp:7: warning: odd diagnostic layout [bugprone-infinite-loop]'\n",
+            encoding="utf-8",
+        )
+        fake_bin.chmod(fake_bin.stat().st_mode | stat.S_IXUSR)
+        compile_dir = self.dir / "build-malformed"
+        compile_dir.mkdir()
+        (compile_dir / "compile_commands.json").write_text("[]\n", encoding="utf-8")
+        source = self.dir / "malformed.cpp"
+        source.write_text("int run() { return 0; }\n", encoding="utf-8")
+
+        old_path = os.environ.get("PATH", "")
+        os.environ["PATH"] = str(self.dir) + os.pathsep + old_path
+        try:
+            findings, note = module._clang_tidy_findings([source], compile_dir)
+        finally:
+            os.environ["PATH"] = old_path
+
+        self.assertEqual(note, "")
+        self.assertEqual([finding["rule_id"] for finding in findings],
+                         ["clang-tidy-backend"])
+
+    def test_clang_tidy_nonzero_with_findings_is_still_a_backend_failure(self):
+        """Warnings alone do not make clang-tidy exit non-zero. A nonzero rc is a
+        backend failure even if some diagnostics were parsed."""
+        spec = importlib.util.spec_from_file_location(
+            "code_ruleset_guard_nonzero", GUARD)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        fake_bin = self.dir / "clang-tidy"
+        fake_bin.write_text(
+            "#!/bin/sh\n"
+            "echo '/tmp/sample.cpp:7:3: warning: fixture [clang-analyzer-core.DivideZero]'\n"
+            "exit 3\n",
+            encoding="utf-8",
+        )
+        fake_bin.chmod(fake_bin.stat().st_mode | stat.S_IXUSR)
+        compile_dir = self.dir / "build-nonzero"
+        compile_dir.mkdir()
+        (compile_dir / "compile_commands.json").write_text("[]\n", encoding="utf-8")
+        source = self.dir / "nonzero.cpp"
+        source.write_text("int run() { return 0; }\n", encoding="utf-8")
+
+        findings, note = module._clang_tidy_findings(
+            [source], compile_dir, str(fake_bin))
+        self.assertEqual(note, "")
+        rules = [finding["rule_id"] for finding in findings]
+        self.assertIn("G.INT.03", rules)
+        self.assertIn("clang-tidy-backend", rules)
+
+    def test_clang_tidy_unavailable_returns_a_note_for_fail_closed_gates(self):
+        spec = importlib.util.spec_from_file_location(
+            "code_ruleset_guard_unavailable", GUARD)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        compile_dir = self.dir / "no-compdb"
+        findings, note = module._clang_tidy_findings(
+            [self.dir / "none.cpp"], compile_dir, "/fake/clang-tidy")
+        self.assertEqual(findings, [])
+        self.assertIn("compile_commands.json not found", note)
+
+    def test_p2_p3_critical_ids_are_detectable_by_guard(self):
+        """Every id in the lifecycle P2/P3 critical subset has a concrete,
+        deterministic fixture. This keeps the policy list and the regex
+        backends from drifting apart."""
+        cases = [
+            ("G.FUU.21", "critical_fuu21.c",
+             'void f(void) { system("ls"); }\n'),
+            ("G.FUU.21-CPP", "critical_fuu21.cpp",
+             'void f() { system("ls"); }\n'),
+            ("G.STR.01", "critical_str01.c",
+             'void f(void) { char b[8]; itoa(1, b, 10); }\n'),
+            ("G.ARR.03", "critical_arr03.c",
+             'void f(void) { unsigned long n = sizeof(char *); (void)n; }\n'),
+            ("G.MEM.05", "critical_mem05.c",
+             'void f(void) { char *p = malloc(8) + 1; (void)p; }\n'),
+            ("G.FUU.10", "critical_fuu10.c",
+             'void f(void) { void *p = alloca(8); (void)p; }\n'),
+            ("G.EXP.03", "critical_exp03.c",
+             'void f(int a, int b) { int x = a++ + b; (void)x; }\n'),
+            ("G.EXP.33-CPP", "critical_exp33.cpp",
+             'void f(int a, int b) { int x = a++ + b; (void)x; }\n'),
+            ("G.INT.04", "critical_int04.c",
+             'void f(uint32_t a, uint32_t b) { uint32_t t = a + b; (void)t; }\n'),
+            ("G.EXP.26-CPP", "critical_exp26.cpp",
+             'void f(uint32_t a, uint32_t b) { uint32_t t = a + b; (void)t; }\n'),
+        ]
+        for rule_id, name, source in cases:
+            with self.subTest(rule_id=rule_id):
+                cp, report = self._run(name, source)
+                self.assertNotEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+                self.assertIn(rule_id, self._rule_ids(report))
+
+    def test_p4_critical_checkers_map_to_expected_rule_ids(self):
+        """All clang-tidy checkers retained by P4 map to the explicit critical
+        ids; the two G.EXP.08-CPP checkers both resolve to that rule."""
+        spec = importlib.util.spec_from_file_location(
+            "code_ruleset_guard_p4_map", GUARD)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        checkers = [
+            ("clang-analyzer-cplusplus.NewDelete", "G.RES.07-CPP"),
+            ("clang-analyzer-unix.Malloc", "G.FUU.11"),
+            ("clang-analyzer-core.uninitialized", "G.VAR.01"),
+            ("cppcoreguidelines-pro-type-member-init", "G.EXP.08-CPP"),
+            ("clang-analyzer-core.CallAndMessage", "G.EXP.08-CPP"),
+            ("clang-analyzer-core.DanglingTempObject", "G.STD.04-CPP"),
+            ("bugprone-undefined-memory-manipulation", "G.EXP.12-CPP"),
+            ("clang-analyzer-core.DivideZero", "G.INT.03"),
+        ]
+        fake_bin = self.dir / "clang-tidy"
+        lines = ["/tmp/p4.cpp:%d:1: warning: fixture [%s]" % (n, checker)
+                 for n, (checker, _rule) in enumerate(checkers, 1)]
+        fake_bin.write_text("#!/bin/sh\nprintf '%s\\n' " + " ".join(
+            "'%s'" % line for line in lines) + "\n", encoding="utf-8")
+        fake_bin.chmod(fake_bin.stat().st_mode | stat.S_IXUSR)
+        compile_dir = self.dir / "build-p4"
+        compile_dir.mkdir()
+        (compile_dir / "compile_commands.json").write_text("[]\n", encoding="utf-8")
+        source = self.dir / "p4.cpp"
+        source.write_text("int run() { return 0; }\n", encoding="utf-8")
+
+        findings, note = module._clang_tidy_findings(
+            [source], compile_dir, str(fake_bin))
+        self.assertEqual(note, "")
+        mapped = [finding["rule_id"] for finding in findings]
+        expected = {rule for _checker, rule in checkers}
+        self.assertEqual(set(mapped), expected)
+        self.assertEqual(mapped.count("G.EXP.08-CPP"), 2)
 
 
 if __name__ == "__main__":

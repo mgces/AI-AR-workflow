@@ -17,7 +17,7 @@ Before writing code in P2 or P3, load [references/pre-write-contract.md](referen
 
 1. Identify **changed** `.c/.cpp/.h` files (only the workflow's changed code — never the whole tree, never non-code files) and preserve existing project conventions.
 2. Run `scripts/code_ruleset_guard.py` on those files. It resolves OpenHarmony prebuilt clang tools before PATH, scans sensitive terms in code/comments/strings, and executes the local regex/multiline subset. Pass `--repository-root` so an unambiguous `codecheck_ignore.json` is honored and recorded.
-3. A PASS applies only to executed deterministic/tool backends. Missing format tooling is a dependency failure; missing clang-tidy or metrics is `unavailable`, not clean. Remote CI remains the final verdict.
+3. A standalone PASS applies only to executed deterministic/tool backends; missing format tooling makes that run fail. The lifecycle gates classify the same `--json` report under the explicit critical subset below — format and non-critical findings there are signed observation, not phase blockers. Missing clang-tidy or metrics is `unavailable`, never clean; P4 fails closed for the clang-tidy subset. Remote CI remains the final verdict.
 4. Keep semantic review for ownership, API contracts, concurrency, validation, and rows owned by P4/P7/CI. The coverage map must name that owner; never delete a row merely because a line regex cannot prove it.
 
 ## Pre-write versus gate-time responsibilities
@@ -35,34 +35,42 @@ The rule data is regenerated from the workbook by `scripts/build_ruleset_data.py
 
 The lifecycle workflow uses this skill for deterministic local code-style checks. `ohos-dev-cpp-coding-style` supplies authoring guidance, `ohos-ci-local-precheck` optionally supplies a checksum-pinned CI-near run, and remote CI is authoritative.
 
-## Mandatory phases: run at author time, not at CI
+## Lifecycle policy: full scan, explicit critical subset blocks
 
-The guard is a **hard blocker in BOTH development phases**, so blockers are caught
-before code reaches the CI gate rather than leaking into it:
+The guard still scans at author time in both development phases, but the lifecycle
+gates consume its existing `--json` report under an explicit, single-sourced policy
+(`gatelib.P2_P3_CRITICAL_RULESET_IDS`). Everything outside that subset stays in the
+signed report/JSON as observation and is owned by P8 review / remote CI.
 
-- **P2 feature-develop** (`gate_develop.py`): full mode — clang-format + rule blockers
-  over changed C/C++ feature files.
+- **P2 feature-develop** (`gate_develop.py`): default mode — clang-format + rules
+  over changed C/C++ feature files. clang-format, non-critical regex, sensitive-word
+  and filename findings do **not** close P2.
 - **P3 test-develop** (`gate_test_develop.py`): `--rules-only` over newly authored
-  C/C++ test files. Format is skipped because gtest macro bodies legitimately vary in
-  layout, but banned APIs / sensitive words in test code are blocked here too.
+  C/C++ test files, scoped to changed lines. Other rules and file hygiene do **not**
+  close P3.
 
-Both invocations resolve the guard via `gatelib.resolve_dep(...)` so they share one
-source, and both fail closed if the guard is missing. Both are scoped to the
-**changed** code files only. A regex/format finding surfacing only at the CI/OAT gate
-— not at P2 or P3 — is a defect in this integration, not expected behavior.
+The blocking P2/P3 subset is exactly:
+
+`G.FUU.21`, `G.FUU.21-CPP`, `G.STR.01`, `G.ARR.03`, `G.MEM.05`, `G.FUU.10`,
+`G.EXP.03`, `G.EXP.33-CPP`, `G.INT.04`, `G.EXP.26-CPP`.
+
+Both invocations resolve the guard via `gatelib.resolve_dep(...)`, remove any
+previous report before scanning, and fail closed if the guard is missing or the
+current report is missing/unreadable. A critical finding that first surfaces at CI
+after a successful P2/P3 scan is an integration defect. A format or non-critical
+finding there is expected to be handled by P8 review / CI, not guaranteed by P2/P3.
 
 The **clang-tidy AST rules** (`_CLANG_TIDY_RULE_MAP`) need a `compile_commands.json`,
 which does not exist until code compiles, so they cannot run at P2/P3. They are pulled
-in at **P4 build** (`gate_build.py`), immediately after the build success banner, once
-the compile database is available — see "clang-tidy at P4" below. Any AST-class finding
-that first surfaces at CI when a compile database *was* available at P4 is likewise an
-integration defect.
+in at **P4 build** (`gate_build.py`), immediately after the successful build, once
+the compile database is available — see "clang-tidy at P4" below.
 
-Metric rows (`G.FUD.*`, `G.FUN.*`, `G.INC.11-CPP`) run after a successful P4
-build through `scripts/code_ruleset_metric.py`. Function metrics require
-`lizard`; without it the backend exits `unavailable` and the phase must not
-record a metric PASS. File-size checks still run but do not substitute for the
-missing function analysis.
+Metric rows (`G.FUD.*`, `G.FUN.*`, `G.INC.11-CPP`) still run after a successful P4
+build through `scripts/code_ruleset_metric.py`, but under the lifecycle policy their
+output is signed observation evidence only. Function metrics require `lizard`; when
+it is missing the metric observation records a `metric-backend` marker rather than
+claiming a pass. P8 review / remote CI own metric acceptance; P7 quality verification
+keeps its existing contracts.
 
 ### Guard modes
 
@@ -74,27 +82,33 @@ missing function analysis.
 | `--clang-tidy BUILD_DIR` | + clang-tidy AST checks | P4 build (after compile), when `compile_commands.json` exists |
 
 `--json PATH` writes the machine-readable finding list a gate attaches as evidence.
+In the lifecycle P2/P3 gates, the mode selects what is **scanned**, not the verdict:
+the explicit critical subset above decides pass/fail, and the remaining results are
+observation evidence.
 
-### clang-tidy at P4 (compile-database-gated, hard-block-or-degrade)
+### clang-tidy at P4 (critical AST subset, fail-closed)
 
 `_CLANG_TIDY_RULE_MAP` maps selected AST-level `G.*` rules (override, member init,
 lifetime, type-safety, ...). A mapping records intended ownership, not proof of
 semantic equivalence with CodeArts. They need
 `compile_commands.json`, so they are wired into **P4** (`gate_build.py`), not P2:
 
-- After the build success banner, `gate_build.py` generates a compile database
+- After the successful build, `gate_build.py` generates a compile database
   (`ninja -C out/<product> -t compdb cc cxx > out/<product>/compile_commands.json`,
   host prebuilt ninja preferred) and runs the guard with
   `--clang-tidy out/<product> --json evidence/phase4/clang_tidy_findings.json`
-  over the P2-locked changed C/C++ files.
-- **Compile database generated + clang-tidy on PATH → findings non-empty ⇒ P4 FAIL**
-  (hard block, same tier as a build failure — fix the code and re-run from P2).
-- **compdb generation fails / clang-tidy unavailable ⇒ degrade to advisory**: an
-  `evidence/phase4/clang_tidy_note.txt` note is written, P4 still PASSes (fail-open),
-  and the note states plainly that clang-tidy did not run so CI may still flag these.
-
-This is best-effort by design. When clang-tidy exits abnormally or its output is
-unreadable, the guard records the execution error instead of returning a clean result.
+  over the actual changed C/C++ files.
+- Only `gatelib.P4_CRITICAL_AST_RULESET_IDS` blocks: `G.RES.07-CPP`, `G.FUU.11`,
+  `G.VAR.01`, `G.EXP.08-CPP`, `G.STD.04-CPP`, `G.EXP.12-CPP`, `G.INT.03`.
+  Other clang-tidy/content findings remain in the signed JSON as observation.
+- **Tool, compile database, report or diagnostic failure is fail-closed**: missing
+  ninja/clang-tidy, compdb generation failure, timeout, abnormal exit, unreadable
+  report, or a checker-tagged diagnostic the parser cannot read all produce a
+  blocking `clang-tidy-backend` status. It is never "unavailable = clean" and
+  rule-id filtering never drops a backend finding.
+- Each scan clears the previous report first; only this invocation's report may
+  authorize a clean static result. The signed note states whether the scan ran and
+  how many non-blocking observations were recorded.
 
 ## CI-near precheck
 

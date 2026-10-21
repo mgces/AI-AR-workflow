@@ -79,7 +79,7 @@ advance.py consent --phase 1 --token <reviewer>
 
 - 强制要求存在**未篡改**的签名设计证据(仍在 phase 1);
 - 强制要求存在绑定该设计 entry 的 P1 consent;
-- 执行代码风格 / 严格校验;
+- 执行共享 guard 并只阻断 `gatelib.P2_P3_CRITICAL_RULESET_IDS`；format、其他规则与卫生留证;
 - 校验 `changed_files` 与真实 touched files 的覆盖关系;
 - 输出:
   - `evidence/phase2/changed_files_coverage.txt`
@@ -101,6 +101,7 @@ advance.py consent --phase 1 --token <reviewer>
 
 - phase-2 冻结快照(`development_freeze_snapshot.json`)存在;
 - 自 phase-2 冻结以来只增改测试路径(无功能路径漂移);
+- 本轮测试源 guard 报告可读且 `gatelib.P2_P3_CRITICAL_RULESET_IDS` 无命中；其他规则/卫生留证;
 - 签名 contract 的 `test_cases[].gtest` **每一个**的 suite 都在本次 run 相对 `base_commit` 新增或修改的测试文件中真实注册(**编写**覆盖,非执行)。
 
 导航输出包含:`authored_test_files` / `authored_count` / `contract_status` / `missing_suites` / `failure_class`;
@@ -117,8 +118,10 @@ advance.py consent --phase 1 --token <reviewer>
 P4 PASS 需要同时满足:
 
 - `build.sh` 真正成功;
-- fresh build 输出中出现 success banner 且没有 error banner;
-- 签名 contract 的 `build_artifacts[]` **全部**确实被编译产出。
+- fresh build 输出中没有 error banner（success banner 仅作诊断）;
+- 签名 contract 的 `build_artifacts[]` **全部**确实被编译产出;
+- clang-tidy 子步可执行且无 `P4_CRITICAL_AST_RULESET_IDS`/`clang-tidy-backend` 命中；
+  工具、compdb 或报告不可用一律 fail-closed；metric 与非白名单 finding 仅留证。
 
 导航输出包含:
 
@@ -138,9 +141,12 @@ P4 PASS 需要同时满足:
 
 证据文件示例:
 
-- `build_tail.log`
+- `build_stdout.log`
 - `build_banner.txt`
 - `artifact_check.txt`
+- `clang_tidy_findings.json`
+- `clang_tidy_note.txt`
+- `metric_findings.json`
 - `error_distill.txt`(失败时)
 
 ### P5 `gate_test_ut.py`(`emit 5`)

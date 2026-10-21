@@ -45,6 +45,89 @@ MAX_PHASE = max(i for i, _ in PHASES)
 # test_develop. load_state() refuses any pipeline.json not stamped with this.
 PHASE_SCHEME = 9
 
+# --- lifecycle static-gate policy (P2/P3/P4) --------------------------------
+# The code_ruleset guard stays the full author-time scanner; these sets are the
+# ONLY static rule_ids allowed to block the lifecycle gates. Everything else is
+# still signed as observation evidence but is left to P8 review / remote CI.
+# Keep the policy single-sourced here so P2, P3 and P4 cannot drift. The backend
+# and phase ownership of every workbook row lives in
+# code-ruleset-style-check/data/ruleset_coverage.json.
+#
+# P2/P3 are the deterministic regex rules that a line/diff scan can prove now.
+# P4 is the clang-tidy AST subset that needs a compile database after the build.
+P2_P3_CRITICAL_RULESET_IDS = frozenset({
+    "G.FUU.21",      # unsafe str*/mem* API, C translation units
+    "G.FUU.21-CPP",  # same pattern for C++ translation units
+    "G.STR.01",      # itoa/ltoa/ecvt family without a size bound
+    "G.ARR.03",      # sizeof(pointer) used as an array length
+    "G.MEM.05",      # pointer arithmetic applied to a malloc result
+    "G.FUU.10",      # alloca()
+    "G.EXP.03",      # variable modified and referenced in one expression (C)
+    "G.EXP.33-CPP",  # same evaluation-order defect (C++)
+    "G.INT.04",      # uint32 addition without widening (now a hard rule)
+    "G.EXP.26-CPP",  # same integer-overflow defect (C++)
+})
+P4_CRITICAL_AST_RULESET_IDS = frozenset({
+    "G.RES.07-CPP",  # NewDelete: use-after-free / double-free
+    "G.FUU.11",      # unix.Malloc: leak / bad free
+    "G.VAR.01",      # core.uninitialized: read of uninitialized memory
+    "G.EXP.08-CPP",  # CallAndMessage + member-init: null/uninitialized call
+    "G.STD.04-CPP",  # DanglingTempObject: dangling reference to a temporary
+    "G.EXP.12-CPP",  # memset/memcpy on non-trivial types
+    "G.INT.03",      # core.DivideZero
+})
+# Backend status is never a rule finding. Only backend ids that must BLOCK the
+# owning gate belong here; `metric-backend` is observation-only under the P4
+# policy and is deliberately excluded so it can never block clang-tidy content.
+STATIC_BACKEND_RULE_IDS = frozenset({"clang-tidy-backend"})
+
+
+def partition_rule_findings(findings, critical_ids):
+    """Split guard findings into (blocking_critical, observation_only).
+
+    Classification is by the finding's existing ``rule_id`` only; the shared
+    guard JSON schema is not extended. Findings without a usable rule_id are
+    observation-only: they can never prove that a critical rule ran and hit.
+    """
+    blocking, observed = [], []
+    for finding in findings or []:
+        if not isinstance(finding, dict):
+            continue
+        rule_id = finding.get("rule_id")
+        if isinstance(rule_id, str) and rule_id in critical_ids:
+            blocking.append(finding)
+        else:
+            observed.append(finding)
+    return blocking, observed
+
+
+def load_ruleset_findings(pdir, rel):
+    """Read a code_ruleset ``--json`` report a gate already produced.
+
+    Returns ``(findings, advisory, error)``. ``error`` is non-empty when the
+    report is missing, not an object, or lacks a valid findings list. Callers
+    must fail closed on that error: an unexecuted or unreadable scan cannot
+    prove the critical subset was clean. This reads the existing artifact only;
+    it does not change the guard's CLI or JSON schema.
+    """
+    path = rel if os.path.isabs(rel) else os.path.join(pdir, rel)
+    try:
+        with open(path, "r", encoding="utf-8") as stream:
+            data = json.load(stream)
+    except (OSError, ValueError) as exc:
+        return [], [], "findings JSON missing or unreadable: %s" % exc
+    if not isinstance(data, dict):
+        return [], [], "findings JSON must be an object"
+    findings = data.get("findings")
+    if not isinstance(findings, list) or any(
+            not isinstance(item, dict) for item in findings):
+        return [], [], "findings JSON lacks a valid 'findings' list"
+    advisory = data.get("advisory_findings") or []
+    if not isinstance(advisory, list) or any(
+            not isinstance(item, dict) for item in advisory):
+        return [], [], "findings JSON has an invalid 'advisory_findings' list"
+    return findings, advisory, ""
+
 
 def repo_relative_path_error(value):
     """Return an error for paths that could resolve outside a repository.

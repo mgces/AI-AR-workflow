@@ -34,8 +34,8 @@ DSH 运行时代码按业务分为 `src/workflows/requirement/`（需求分析 R
 ```
 
 **核心设计:每个阶段只能由确定性门控脚本基于"真实证据"判定通过 ——
-绝不能用模型的自由文本当作阶段结束。** 真实证据 = 真实构建日志的成功横幅、真机
-`hdc`+`hilog` 抓取、`gtest`/`xdevice` 测试报告、CI 绿状态。
+绝不能用模型的自由文本当作阶段结束。** 真实证据 = 真实构建的退出码/错误横幅与产物、
+真机 `hdc`+`hilog` 抓取、`gtest`/`xdevice` 测试报告、CI 绿状态；成功横幅仅作诊断。
 
 > **物理阶段 = 逻辑阶段 1:1(共 9 个,phase0–8)**:底层状态机、`evidence/` 目录、签名 manifest
 > 都用真实的 **物理 phase 0–8**,与面向模型执行的**逻辑阶段 P0–P8** 一一对应(见第 12 节)。
@@ -84,7 +84,7 @@ ohos-ar-dev-workflow                  # 需求开发工作流
    └──────────────────────────────────────────────┼──────────────────────────────────────────────┘
                                                   ▼
    ┌──────────── P2 代码开发 gate_develop.py ── 强制依赖签名 AR_design ＋ P1 consent ＋ diff 非空 ─── ┐
-   │      ＋ C++ 强门控(emit 2)── PASS ─▶ advance --phase 2 ── 闭合时锁定【功能指纹】(仅非测试路径)   │
+   │      ＋ critical 规则子集(emit 2)── PASS ─▶ advance --phase 2 ── 锁定【功能指纹】(仅非测试路径)  │
    │      ＋ locked_all_paths                                                                       │
    └──────────────────────────────────────────────┼──────────────────────────────────────────────┘
                                                   ▼
@@ -93,7 +93,7 @@ ohos-ar-dev-workflow                  # 需求开发工作流
    │      ⚠ 只允许新增独立测试文件(功能指纹漂移会被拒);PASS(emit 3)─▶ advance --phase 3 ─▶ 才到 build │
    └──────────────────────────────────────────────┼──────────────────────────────────────────────┘
                                                   ▼
-   ┌──────────── P4 编译 gate_build.py ── build.sh exit0 ＋ 成功横幅(无 error)＋ build_artifacts 覆盖 ┐
+   ┌──────────── P4 编译 gate_build.py ── exit0 + 无 error + 产物 + P4 critical AST/backend ────────┐
    │             PASS(emit 4)─▶ advance --phase 4                                                    │
    └──────────────────────────────────────────────┼──────────────────────────────────────────────┘
                                                   ▼
@@ -175,7 +175,7 @@ AI-AR-workflow/
     │       ├── advance.py                  ← 唯一状态写入器(init/advance/consent/reset/verify-all/migrate/status/next)
     │       ├── gate_env_init.py            ← P0 环境+真机预检
     │       ├── gate_design.py              ← P1 设计固化(校验 AR_design.md 7 章节含 DFX 设计 + ar-contract 契约并签名;派生 bundle;emit 1)
-    │       ├── gate_develop.py             ← P2 git/untracked diff + C++ 强门控(依赖签名 AR_design + P1 consent;emit 2;闭合锁功能指纹)
+    │       ├── gate_develop.py             ← P2 git/untracked diff + critical 规则子集(依赖签名 AR_design + P1 consent;emit 2;闭合锁功能指纹)
     │       ├── gate_test_develop.py        ← P3 测试开发真签名门(★Finding 1:编译前测试代码已写;契约 gtest suite 出现在新测试文件;emit 3)
     │       ├── prepare_test_bundle.py      ← P3 控制层薄层(test_intent_matrix + bundle revision;非真相门,由 gate_test_develop 调用)
     │       ├── gate_build.py               ← P4 编译(捕获 build.sh stdout 判横幅;emit 4)
@@ -279,9 +279,9 @@ P0 会把探测到的序列号回填进 `pipeline.json` 与 `evidence/phase0/env
 |---|---|---|---|---|
 | **P0** | ohos-ar-dev-init | `gate_env_init.py` | build/compile/git/testfwk/hdc 二进制/真机(自动探测并记录序列号)全部就绪;oh-gc + gitcode token 为 SOFT 告警 | `env.json` |
 | **P1 设计** | 需求验收矩阵 → kb_search 稳定导航 → 当前源码依赖验证 → 写 AR_design.md(7 章节 + ar-contract v3) | `gate_design.py`(emit 1) | 章节齐全 + 验收闭环 + 关键依赖均有源码/探针证据 + change_scope 合法并签名 | `AR_design.md`、`design_check.txt` |
-| **P2 开发** | ohos-dev-sa-codegen / -napi-module / code-ruleset-style-check / ohos-dev-cpp-coding-style(OHOS C++ 约定,可选) / ohos-dev-security-code-review(安全左移,advisory) / tdd-enforcer / ohos-code-skeletons | `gate_develop.py`(emit 2) | 已有签名 AR_design **且** 已有绑定的 P1 设计 consent **且** 相对 `base_commit` 有 tracked/untracked 改动 **且** C/C++ 格式 guard + 强规则检查通过;**闭合时锁功能指纹** | `diff.patch`、`changed_files.txt`、`style_report.txt`、`strict_cpp_report.txt` |
-| **P3 测试开发** | ohos-test-ut-generation / tdd-enforcer(只改测试路径；P2 TDD 测试可认领) | `gate_test_develop.py`(emit 3) | phase2 冻结快照存在 **且** 无新增非测试路径 **且** 契约 suite 被本次 run 相对 base 新增/修改的测试文件真实注册(编写覆盖) | `authored_test_files.txt`、`authorship_coverage.txt`、`authored/*`(签名快照) |
-| **P4 编译** | ohos-dev-build-execution-diagnosis / ohos-build-flash / code-ruleset-style-check(编译后 clang-tidy) | `gate_build.py`(emit 4) | exit=0 + 无 error 横幅 + 契约产物齐全；成功横幅仅辅助诊断；summary 分列编译/产物/静态分析/阶段结论 | `build_stdout.log`、`build_banner.txt`、`artifact_check.txt`、`clang_tidy_findings.json`、`clang_tidy_note.txt`(失败再加 `error_distill.txt`) |
+| **P2 开发** | ohos-dev-sa-codegen / -napi-module / code-ruleset-style-check / ohos-dev-cpp-coding-style(OHOS C++ 约定,可选) / ohos-dev-security-code-review(安全左移,advisory) / tdd-enforcer / ohos-code-skeletons | `gate_develop.py`(emit 2) | 已有签名 AR_design **且** 已有绑定的 P1 设计 consent **且** 相对 `base_commit` 有 tracked/untracked 改动 **且** 本轮 guard 报告可读 + `gatelib.P2_P3_CRITICAL_RULESET_IDS` 无命中（format/其他规则/卫生仅留证）;**闭合时锁功能指纹** | `diff.patch`、`changed_files.txt`、`style_report.txt`、`strict_cpp_report.txt`、`file_hygiene_report.txt` |
+| **P3 测试开发** | ohos-test-ut-generation / tdd-enforcer(只改测试路径；P2 TDD 测试可认领) | `gate_test_develop.py`(emit 3) | phase2 冻结快照存在 **且** 无新增非测试路径 **且** critical 规则子集无命中（其他规则/卫生留证）**且** 契约 suite 被本次 run 相对 base 新增/修改的测试文件真实注册(编写覆盖) | `authored_test_files.txt`、`test_style_report.txt`、`test_hygiene_report.txt`、`authorship_coverage.txt`、`authored/*`(签名快照) |
+| **P4 编译** | ohos-dev-build-execution-diagnosis / ohos-build-flash / code-ruleset-style-check(编译后 clang-tidy) | `gate_build.py`(emit 4) | exit=0 + 无 error 横幅 + 契约产物齐全；成功横幅仅辅助诊断；clang-tidy 只阻断 P4 critical AST/backend，工具/compdb/报告不可用 fail-closed；metric 与非白名单 finding 留证；summary 分列编译/产物/静态分析/阶段结论 | `build_stdout.log`、`build_banner.txt`、`artifact_check.txt`、`clang_tidy_findings.json`、`clang_tidy_note.txt`、`metric_findings.json`(失败再加 `error_distill.txt`) |
 | **P5 单元测试** | ohos-test-ut-generation / tdd-enforcer | `gate_test_ut.py`(emit 5) | 编出测试二进制 + developer_test 本次**新建**报告 + `tests>0 && failures==0 && errors==0` **且** 契约每个 `test_cases[].gtest` 通过(执行覆盖) | `summary_report.xml`、`result_*.xml`、`gtest_coverage.txt`、`start_sh_stdout.txt`、`report_dir.txt` |
 | **P6 端到端功能测试** | ohos-build-flash / ohos-dev-hdc-command-usage | `gate_device_func.py`(emit 6) | 部署命令全 exit 0 + 主机/设备产物 sha256 一致 + hilog 含**本次 nonce**、功能 marker、运行时 marker、端到端 marker + 契约每个 `device_cases[].marker` 命中 + uptime 单调 + **抗伪造三层**(进程溯源 `process` / `artifact_loaded` 加载证明 / `side_effect` shell 断言 / `absent_before_trigger` 负对照差分);**证据 PASS 后停下,人工核对真机真实结果并 `consent --phase 6` 才推进** | `hilog_capture.txt`、`device_cmds.txt`、`run_meta.txt`、`artifact_runtime_proof.txt`、`device_marker_coverage.txt` |
 | **P7 质量验证** | ohos-build-flash / developer_test(MST) / ohos-test-ut-generation / ohos-test-xts / check-test-code-quality / ohos-test-fuzz-generation / ohos-test-coverage / code-ruleset-style-check / ohos-ci-local-precheck(引擎可用时) / ohos-dev-security-code-review | `gate_integration.py`(emit 7;或 `gate_device_func.py --phase 7` + `gate_integration.py`) | 功能 summary `failures==0 && errors==0 && tests>0` **且 覆盖率、性能、功耗、稳定性报告全部生成并签名,代码 review 问题数为 0;证据 PASS 后需人工确认并 `consent --phase 7` 才进入 P8** | `summary_report.xml`、`coverage_report.*`、`performance_report.*`、`power_report.*`、`stability_report.*`、`code_review_report.txt`、`report_dir.txt` |
@@ -362,12 +362,12 @@ gate_env_init.py    --pipeline-dir P
 gate_design.py      --pipeline-dir P [--design F] [--allow-contract-v1]
                     # P1:校验 AR_design.md 7 章节含 DFX 设计 + ar-contract 契约(v3:拒 TODO/TBD 占位 + 需求/文件/测试/设备引用闭环)并签名(emit 1);派生初始 bundle 定义
 gate_develop.py     --pipeline-dir P [--no-style] [--allow-missing-design]
-                    # P2:强制依赖签名 AR_design + P1 consent(emit 2,闭合锁功能指纹);--no-style 仅无 C/C++ 改动时兼容;--allow-missing-design 仅 legacy run 留痕放行
+                    # P2:强制依赖签名 AR_design + P1 consent(emit 2,闭合锁功能指纹);只阻断 gatelib.P2_P3_CRITICAL_RULESET_IDS,format/其他规则/卫生留证;guard 报告不可读 fail-closed;--no-style 仅无 C/C++ 改动时兼容;--allow-missing-design 仅 legacy run 留痕放行
 gate_test_develop.py --pipeline-dir P [--allow-missing-contract]
-                    # P3:编译前测试代码已写(emit 3):契约每个 test_cases[].gtest 的 suite 出现在新测试文件;测试源签名快照;调 prepare_test_bundle 产控制层
+                    # P3:编译前测试代码已写(emit 3):契约每个 test_cases[].gtest 的 suite 出现在新测试文件;测试源按 changed-line 跑 critical 子集,其他留证;测试源签名快照;调 prepare_test_bundle 产控制层
 prepare_test_bundle.py --pipeline-dir P
                     # P3 控制层薄层(非真相门):冻结快照对齐 + test_intent_matrix + bundle revision 升级 + handoff;由 gate_test_develop 调用
-gate_build.py       --pipeline-dir P [--target T]          # P4,emit 4
+gate_build.py       --pipeline-dir P [--target T]          # P4,emit 4:编译/产物/符号硬门 + P4 critical AST/backend;工具不可用 fail-closed;metric 留证
 gate_test_ut.py     --pipeline-dir P --test-target T --suite S [--part P]   # P5,emit 5
 gate_device_func.py --pipeline-dir P [--deploy-script f] --scenario-script f --marker M
                     --host-artifact F --device-artifact P
@@ -392,7 +392,7 @@ gate_upload_ci.py   --pipeline-dir P --repo-slug owner/repo --branch B [--base m
 ## 10. 验证记录(已用真证据跑过)
 
 - **P0**:真机 `hdc` 取回 `uptime`,真实组件 HEAD → PASS → advance。
-- **P1/P2**:真实 `git diff` + untracked 文件清单 + `code_ruleset_guard` + `code-ruleset-style-check` 硬规则检查 → PASS → advance。
+- **P1/P2**:真实 `git diff` + untracked 文件清单 + `code_ruleset_guard` 本轮报告 + P2/P3 critical 规则子集检查 → PASS → advance；format/非白名单规则/卫生作为签名观察证据。
 - **P4**:真跑 `build.sh`,对非法目标捕获到真实 `=====build error=====` + 45 条
   `[OHOS ERROR]`(含 "unknown target")→ FAIL → advance 拒绝。
 - **防伪**:篡改 evidence 字节 → `verify-all` 因 sha256 失配降级回退;伪造 manifest
