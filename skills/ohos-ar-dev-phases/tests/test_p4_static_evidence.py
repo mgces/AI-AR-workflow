@@ -344,6 +344,45 @@ class P4MainPolicyTests(unittest.TestCase):
         self.assertEqual(findings[0]["rule_id"], "metric-backend")
         self.assertTrue((self.pdir / rel).is_file())
 
+    def test_stale_metric_findings_not_reused_when_tool_writes_nothing(self):
+        metric_report = self.pdir / "evidence" / "phase4" / "metric_findings.json"
+        metric_report.write_text(json.dumps({
+            "files": 1,
+            "findings": [{"file": "old.cpp", "line": 1,
+                          "rule_id": "G.FUN.01", "remediation": "stale"}],
+        }), encoding="utf-8")
+        script = self.root / "metric_no_write.py"
+        script.write_text(
+            "#!/usr/bin/env python3\nraise SystemExit(3)\n",
+            encoding="utf-8")
+        with patch.object(gate_build, "METRIC_GUARD", str(script)):
+            findings, rel = gate_build.metric_substep(
+                str(self.pdir), str(self.repo), [])
+        self.assertTrue(findings)
+        self.assertEqual(findings[0]["rule_id"], "metric-backend")
+        self.assertTrue(rel)
+        payload = json.loads(metric_report.read_text(encoding="utf-8"))
+        self.assertEqual(payload["findings"][0]["rule_id"], "metric-backend")
+        self.assertNotIn("old.cpp", metric_report.read_text(encoding="utf-8"))
+
+    def test_stale_clean_metric_report_not_reused_when_tool_writes_nothing(self):
+        metric_report = self.pdir / "evidence" / "phase4" / "metric_findings.json"
+        metric_report.write_text(json.dumps({
+            "files": 1, "findings": [],
+        }), encoding="utf-8")
+        script = self.root / "metric_no_write_clean.py"
+        script.write_text(
+            "#!/usr/bin/env python3\nraise SystemExit(0)\n",
+            encoding="utf-8")
+        with patch.object(gate_build, "METRIC_GUARD", str(script)):
+            findings, rel = gate_build.metric_substep(
+                str(self.pdir), str(self.repo), [])
+        self.assertTrue(findings)
+        self.assertEqual(findings[0]["rule_id"], "metric-backend")
+        self.assertTrue(rel)
+        payload = json.loads(metric_report.read_text(encoding="utf-8"))
+        self.assertEqual(payload["findings"][0]["rule_id"], "metric-backend")
+
 
 if __name__ == "__main__":
     unittest.main()

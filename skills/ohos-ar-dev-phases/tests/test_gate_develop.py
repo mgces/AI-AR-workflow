@@ -345,6 +345,39 @@ class GateDevelopStrongControlTest(unittest.TestCase):
 
         self.assertEqual([[2, 2]], ranges[str((repo / "tracked.cpp").resolve())])
 
+    def test_changed_line_ranges_resolve_symlinked_repo_keys(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            real = root / "real"
+            real.mkdir()
+            self.init_repo(real)
+            base = subprocess.run(
+                ["git", "-C", str(real), "rev-parse", "HEAD"], check=True,
+                text=True, capture_output=True).stdout.strip()
+            (real / "tracked.cpp").write_text(
+                "int OldValue() { return 1; }\nint Added() { return 2; }\n",
+                encoding="utf-8")
+            link = root / "link"
+            link.symlink_to(real, target_is_directory=True)
+
+            ranges = gate_develop.changed_line_ranges(
+                str(link), base, ["tracked.cpp"], [])
+
+            expected = str((real / "tracked.cpp").resolve())
+            self.assertEqual([[2, 2]], ranges[expected])
+            self.assertNotIn(str(link / "tracked.cpp"), ranges)
+
+            spec = importlib.util.spec_from_file_location(
+                "code_ruleset_guard_scope",
+                Path(__file__).resolve().parents[2]
+                / "code-ruleset-style-check" / "scripts" / "code_ruleset_guard.py")
+            guard = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(guard)
+            self.assertTrue(guard._line_selected(
+                link / "tracked.cpp", 2, ranges))
+            self.assertFalse(guard._line_selected(
+                link / "tracked.cpp", 1, ranges))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -27,6 +27,7 @@ import os
 import re
 import subprocess
 import sys
+from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 import gatelib as gl  # noqa: E402
@@ -152,11 +153,13 @@ def changed_line_ranges(gdir, base, changed, untracked):
     P2 content/style rules are author-time rules, so an old violation elsewhere
     in a touched legacy file must not be reclassified as part of this change.
     New files are wholly in scope; tracked files use zero-context diff hunks.
+    Keys are canonical resolved paths so the guard's Path.resolve() line-filter
+    lookup also matches when the checkout path traverses a symlink.
     """
     untracked_set = set(untracked)
     result = {}
     for rel in changed:
-        path = os.path.abspath(os.path.join(gdir, rel))
+        path = str(Path(os.path.join(gdir, rel)).resolve())
         if not os.path.isfile(path):
             continue
         if rel in untracked_set:

@@ -515,9 +515,11 @@ def metric_substep(pdir, repo, changed_cxx):
 
     Observation-only under the lifecycle static policy: the findings JSON remains
     a signed artifact so P8 review / remote CI can inspect it, but metric rows no
-    longer close P4. A missing script or unreadable report is still returned as a
-    ``metric-backend`` finding so the evidence states that the observation did
-    not execute; the caller records it without failing the build phase.
+    longer close P4. The previous report is removed before the run so a crashed
+    backend cannot leave stale observations looking current. A missing script or
+    unreadable report is still returned as a ``metric-backend`` finding so the
+    evidence states that the observation did not execute; the caller records it
+    without failing the build phase.
     """
     rel = "evidence/phase4/metric_findings.json"
     path = os.path.join(pdir, rel)
@@ -544,20 +546,27 @@ def metric_substep(pdir, repo, changed_cxx):
                     "function_metric_note": note,
                 }, stream, ensure_ascii=False, indent=2)
         except OSError:
-            # hash_artifacts() will fail closed on the missing artifact; never
-            # let a missing marker silently become a PASS without evidence.
-            pass
-        return findings
+            # Do not let an unwritable marker leave an old report eligible for
+            # signing: return an empty rel so the caller does not add it to arts.
+            return findings, ""
+        return findings, rel
 
     if not METRIC_GUARD or not os.path.isfile(METRIC_GUARD):
-        return _write_marker([_marker("code_ruleset_metric.py missing")]), rel
+        return _write_marker([_marker("code_ruleset_metric.py missing")])
+    try:
+        os.unlink(path)
+    except FileNotFoundError:
+        pass
+    except OSError as exc:
+        return _write_marker(
+            [_marker("cannot clear stale metric report: %s" % exc)])
     try:
         cp = subprocess.run(
             [sys.executable, METRIC_GUARD, "--json", path, *abs_cxx],
             text=True, capture_output=True, timeout=600)
     except (subprocess.TimeoutExpired, OSError) as exc:
         return _write_marker(
-            [_marker("metric observation did not execute: %s" % exc)]), rel
+            [_marker("metric observation did not execute: %s" % exc)])
     try:
         with open(path, encoding="utf-8") as stream:
             data = json.load(stream)
@@ -570,10 +579,10 @@ def metric_substep(pdir, repo, changed_cxx):
     except (OSError, ValueError, TypeError):
         return _write_marker(
             [_marker("metric findings JSON missing or invalid (rc=%d)"
-                     % cp.returncode)]), rel
+                     % cp.returncode)])
     if cp.returncode != 0 and not findings:
-        findings = [_marker("metric backend exited with rc=%d" % cp.returncode)]
-        _write_marker(findings)
+        return _write_marker(
+            [_marker("metric backend exited with rc=%d" % cp.returncode)])
     return findings, rel
 
 
@@ -708,7 +717,8 @@ def main():
                 _record_result(pdir, "FAIL", str(exc), arts, failure_class="build_verdict_failed", static_analysis_status="FAIL")
                 sys.exit("PHASE 4 FAIL: cannot determine actual changed scope: %s" % exc)
         metric_findings, metric_rel = metric_substep(pdir, repo, changed_cxx)
-        arts.append(metric_rel)
+        if metric_rel:
+            arts.append(metric_rel)
         metric_backend = [f for f in metric_findings
                           if f.get("rule_id") == "metric-backend"]
         if metric_backend:
