@@ -521,6 +521,22 @@ int main(void)
              'void f(uint32_t a, uint32_t b) { uint32_t t = a + b; (void)t; }\n'),
             ("G.EXP.26-CPP", "critical_exp26.cpp",
              'void f(uint32_t a, uint32_t b) { uint32_t t = a + b; (void)t; }\n'),
+            ("G.STD.15-CPP", "critical_std15.cpp",
+             'void f() { execl("/bin/sh", "sh", "-c", "x", nullptr); }\n'),
+            ("G.FUU.17", "critical_fuu17.c",
+             'void f(void) { dlopen("libx.so", 1); }\n'),
+            ("G.STD.07-CPP", "critical_std07.cpp",
+             'void f() { std::string password = "x"; }\n'),
+            ("G.FIL.03", "critical_fil03.c",
+             'void f(void) { open("/tmp/x", 0); }\n'),
+            ("G.FUU.05", "critical_fuu05.c",
+             'void f(void) { kill(1, 9); }\n'),
+            ("G.STD.17-CPP", "critical_std17.cpp",
+             'void f() { kill(1, 9); }\n'),
+            ("G.CRY.03", "critical_cry03.c",
+             'void f(void) { CRYPT_encrypt(0); }\n'),
+            ("G.FUU.09", "critical_fuu09.c",
+             'void f(void) { realloc(0, 1); }\n'),
         ]
         for rule_id, name, source in cases:
             with self.subTest(rule_id=rule_id):
@@ -544,6 +560,7 @@ int main(void)
             ("clang-analyzer-core.DanglingTempObject", "G.STD.04-CPP"),
             ("bugprone-undefined-memory-manipulation", "G.EXP.12-CPP"),
             ("clang-analyzer-core.DivideZero", "G.INT.03"),
+            ("cppcoreguidelines-virtual-class-destructor", "G.CLS.10-CPP"),
         ]
         fake_bin = self.dir / "clang-tidy"
         lines = ["/tmp/p4.cpp:%d:1: warning: fixture [%s]" % (n, checker)

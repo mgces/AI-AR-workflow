@@ -44,6 +44,9 @@ def _sha256(path):
 _CLANG_TIDY_RULE_MAP = [
     ("google-explicit-constructor",              "G.CLS.03-CPP"),
     ("cppcoreguidelines-special-member-functions","G.CLS.04-CPP"),
+    # First match wins. The virtual-destructor checker is the G.CLS.10 rule;
+    # G.CLS.06 (virtual calls in ctor/dtor) has no local checker yet.
+    ("cppcoreguidelines-virtual-class-destructor","G.CLS.10-CPP"),
     ("cppcoreguidelines-virtual-class-destructor","G.CLS.06-CPP"),
     ("performance-noexcept-move-constructor",    "G.CLS.08-CPP"),
     ("modernize-use-override",                   "G.CLS.12-CPP"),
@@ -72,7 +75,6 @@ _CLANG_TIDY_RULE_MAP = [
     ("clang-analyzer-security.insecureAPI",      "G.STD.05-CPP"),
     # Phase J additions — broader clang-tidy mapping for remaining AST rules
     ("cppcoreguidelines-special-member-functions",   "G.CLS.07-CPP"),
-    ("cppcoreguidelines-virtual-class-destructor",   "G.CLS.10-CPP"),
     ("misc-throw-by-value-catch-by-reference",       "G.ERR.03-CPP"),
     ("bugprone-exception-escape",                    "G.ERR.04-CPP"),
     ("cppcoreguidelines-pro-type-member-init",       "G.EXP.08-CPP"),
@@ -190,6 +192,10 @@ _RAW_RULES = [
      "avoid direct dlopen with external data; use a validated loading wrapper", None),
     ("G.STD.15-CPP", "致命", r"\b(LoadLibrary|LoadLibraryEx[AW])\s*\(",
      "do not pass external data to module loading functions", None),
+    ("G.STD.15-CPP", "致命",
+     r"\b(execl|execlp|execle|execv|execvp|execvpe|execve|fexecve|"
+     r"posix_spawn|posix_spawnp)\s*\(",
+     "do not pass external data to process launch functions", None),
     # --- extern declarations (should use header includes) ---
     ("G.EXP.05-CPP", "严重", r"\bextern\s+(int|char|void|bool|long|short|unsigned|signed|float|double)\s+\w+\s*\(",
      "use header includes instead of extern function declarations", None),
@@ -423,7 +429,7 @@ RULES = [(rid, sev, re.compile(pat), fix, exts) for rid, sev, pat, fix, exts in 
 _TEXT_RULE_IDS = frozenset({
     "G.CMT.02", "G.CMT.02-CPP", "G.CMT.04", "G.CMT.04-CPP",
     "G.CMT.05-CPP", "G.CMT.06", "G.EXP.43-CPP", "G.OTH.05",
-    "G.OTH.06-CPP",
+    "G.OTH.06-CPP", "G.FIL.03",
 })
 # These rules need type, control-flow, paired-declaration, or comment-token
 # semantics that a line regex cannot prove. Keep their local hints visible, but

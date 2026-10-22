@@ -66,6 +66,14 @@ P2_P3_CRITICAL_RULESET_IDS = frozenset({
     "G.EXP.33-CPP",  # same evaluation-order defect (C++)
     "G.INT.04",      # uint32 addition without widening (now a hard rule)
     "G.EXP.26-CPP",  # same integer-overflow defect (C++)
+    "G.STD.15-CPP",  # external-controlled process launch / module load
+    "G.FUU.17",      # external-controlled dlopen/LoadLibrary path
+    "G.STD.07-CPP",  # sensitive data stored in std::string
+    "G.FIL.03",      # temporary file created in a shared directory
+    "G.FUU.05",      # kill/TerminateProcess (C)
+    "G.STD.17-CPP",  # kill/TerminateProcess (C++)
+    "G.CRY.03",      # banned IPSI algorithm
+    "G.FUU.09",      # realloc()
 })
 P4_CRITICAL_AST_RULESET_IDS = frozenset({
     "G.RES.07-CPP",  # NewDelete: use-after-free / double-free
@@ -75,6 +83,7 @@ P4_CRITICAL_AST_RULESET_IDS = frozenset({
     "G.STD.04-CPP",  # DanglingTempObject: dangling reference to a temporary
     "G.EXP.12-CPP",  # memset/memcpy on non-trivial types
     "G.INT.03",      # core.DivideZero
+    "G.CLS.10-CPP",  # virtual-class-destructor: virtual base destructor
 })
 # Backend status is never a rule finding. Only backend ids that must BLOCK the
 # owning gate belong here; `metric-backend` is observation-only under the P4
