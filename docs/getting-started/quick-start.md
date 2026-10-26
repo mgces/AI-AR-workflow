@@ -70,7 +70,7 @@ bash <skill_dir>/scripts/ohos_env_bootstrap.sh --help     # 全部用法
 
 | 项 | 说明 |
 |---|---|
-| 真机 rk3568 | 经 hdc 可达（序列号自动探测，不写死） |
+| 运行目标 | rk3568 物理板经 hdc 自动探测；arm64_virt QEMU 使用配置固定的实例连接 |
 | Agent 已装 skills | 本 workflow 的全部 skills 已同步到 Agent 技能目录（见前置条件 1） |
 
 > 如果环境还没就绪（build.sh / hdc / 真机 / oh-gc 不会配），先看 [环境初始化](/getting-started/environment-init)。
@@ -95,9 +95,9 @@ bash <skill_dir>/scripts/ohos_env_bootstrap.sh --help     # 全部用法
 
 | 你做 | workflow 做 | 预计 |
 |---|---|---|
-| 在 Agent 里说 `/ohos-ar-dev-init`,先确认**环境形态**(openharmony / harmonyos-系统 / harmonyos-芯片)与要编译的部件(默认候选 hiview 部件) | 逐项校验 build/compile/git/testfwk/hdc/真机,设备序列号回填,写 `specs/initialized.flag` | 2 分钟（首次含编译探针更久） |
+| 在 Agent 里说 `/ohos-ar-dev-init`,先确认**环境形态**(openharmony/rk3568 / openharmony-qemu / harmonyos-系统 / harmonyos-芯片)与要编译的部件(默认候选 hiview 部件) | 逐项校验 build/compile/git/testfwk/hdc/所选运行目标,回填连接信息,写 `specs/initialized.flag` | 2 分钟（首次含编译探针更久） |
 
-> 💡 **环境形态 + 编译部件都是人工确认点**。跑 init 前先跟用户确认本 AR 属于哪种环境(`--environment` 缺失硬失败;harmonyos 时 `--component-type system|chip` 必填)、要编译哪个部件。裸 init 会硬失败,让用户输入,默认路径是 openharmony + hiview 仓。详见 [环境初始化](/getting-started/environment-init)。
+> 💡 **环境形态 + 编译部件都是人工确认点**。跑 init 前先确认本 AR 属于 `openharmony`(rk3568)、`openharmony-qemu`(arm64_virt) 或 `harmonyos`；后者还需 `--component-type system|chip`。同时确认要编译的部件。裸 init 会硬失败。详见 [环境初始化](/getting-started/environment-init)。
 
 ### 步骤 2：准备一个 AR
 
@@ -126,7 +126,7 @@ data/log/reliability/resource_leak/thread_leak/ 中
 
 | 你做 | workflow 做 | 预计 |
 |---|---|---|
-| 用 `advance.py status` 查当前阶段 | 每轮循环 `refresh_todo → 做事 → 跑门控 → advance` 自动推进 | 10 秒 |
+| 用 `advance.py status` 查当前阶段并刷新导航快照 | 每轮循环 `refresh_todo → 做事 → 跑门控 → advance` 自动推进 | 10 秒 |
 
 ```bash
 python3 $S/advance.py --pipeline-dir "$PDIR" status

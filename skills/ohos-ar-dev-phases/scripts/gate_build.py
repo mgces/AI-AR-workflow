@@ -29,8 +29,8 @@ import environments as envs  # noqa: E402
 
 # clang-tidy runs here (P4) because it needs a compile database, which only
 # exists after a successful build. Resolving the SAME guard the P2/P3 style gate
-# uses keeps one rule source; a missing guard degrades to advisory (never a hard
-# fail) so the pipeline is not held hostage to an optional AST backend.
+# uses keeps one rule source. Only the explicit P4 critical AST subset blocks;
+# a missing guard/tool/compdb/report fails closed (never an advisory pass).
 STYLE_GUARD = gl.resolve_dep("code-ruleset-style-check/scripts/code_ruleset_guard.py",
                              env_var="CODE_RULESET_GUARD")
 METRIC_GUARD = gl.resolve_dep("code-ruleset-style-check/scripts/code_ruleset_metric.py",
@@ -352,61 +352,27 @@ def _resolve_ninja(repo):
 def clang_tidy_substep(pdir, repo, changed_cxx, out_dir_rel, line_filter=None, component_root=None):
     """P4 post-build clang-tidy over the changed C/C++ files.
 
-    Contract (per user decision): when a compile database can be produced AND
-    clang-tidy is available, any finding is a HARD fail (caught here, before P5
-    test work and P6 device runs waste effort re-doing everything). When the
-    compdb cannot be produced or clang-tidy is missing, degrade to an advisory
-    note and let the phase pass — the note states plainly that CI will still scan
-    this class. Returns (hard_findings, evidence_rels, note).
+    Lifecycle policy (P4):
+      * only ``gatelib.P4_CRITICAL_AST_RULESET_IDS`` may block;
+      * every other content/AST finding stays in the signed JSON as observation
+        evidence and is owned by P8 review / remote CI;
+      * a missing tool, missing compile database, checker crash/timeout,
+        unreadable report or unparsable diagnostic is fail-closed — an
+        unexecuted critical subset cannot be called clean. Rule-id filtering is
+        applied only to content findings, never to backend findings.
+
+    Returns ``(blocking_findings, observed_findings, evidence_rels, note)``.
     """
     out_dir = os.path.join(repo, out_dir_rel)
     ct_json_rel = "evidence/phase4/clang_tidy_findings.json"
     note_rel = "evidence/phase4/clang_tidy_note.txt"
+    report_path = os.path.join(pdir, ct_json_rel)
     rels = [note_rel]
-    note = ""
 
     def _note(msg, degraded):
         with open(os.path.join(pdir, note_rel), "w", encoding="utf-8") as f:
             f.write("degraded=%s\n%s\n" % (degraded, msg))
         return "degraded=%s; %s" % (degraded, msg)
-
-    abs_cxx = [os.path.join(repo, f) for f in changed_cxx
-               if os.path.isfile(os.path.join(repo, f))]
-    if not abs_cxx:
-        return [], rels, _note("no changed C/C++ files to tidy", degraded=False)
-    if not STYLE_GUARD or not os.path.exists(STYLE_GUARD):
-        return [], rels, _note(
-            "code_ruleset guard missing (%s); clang-tidy skipped, CI will still scan"
-            % STYLE_GUARD, degraded=True)
-
-    # 1) produce the compile database (advisory: failure degrades, never blocks).
-    ninja = _resolve_ninja(repo)
-    compdb_path = os.path.join(out_dir, "compile_commands.json")
-    if not ninja:
-        return [], rels, _note(
-            "no ninja (host prebuilt or PATH) to generate compile_commands.json; "
-            "clang-tidy skipped, CI will still scan", degraded=True)
-    try:
-        with open(compdb_path, "w", encoding="utf-8") as db:
-            cp = subprocess.run([ninja, "-C", out_dir, "-w", "dupbuild=warn",
-                                 "-t", "compdb", "cc", "cxx"],
-                                cwd=repo, stdout=db, stderr=subprocess.PIPE,
-                                text=True, timeout=600)
-        if cp.returncode != 0 or not os.path.isfile(compdb_path) \
-                or os.path.getsize(compdb_path) == 0:
-            return [], rels, _note(
-                "compile_commands.json generation failed (rc=%d); clang-tidy "
-                "skipped, CI will still scan. stderr: %s"
-                % (cp.returncode, (cp.stderr or "")[:500]), degraded=True)
-    except Exception as exc:  # noqa: BLE001 — any compdb error degrades, not blocks
-        return [], rels, _note(
-            "compile_commands.json generation error: %s; clang-tidy skipped, "
-            "CI will still scan" % exc, degraded=True)
-
-    # 2) Only this invocation's structured report may authorize a clean scan.
-    # Explicit tool unavailability retains the agreed advisory policy; a
-    # checker crash, timeout or invalid report is a recordable backend failure.
-    report_path = os.path.join(pdir, ct_json_rel)
 
     def _include_current_report():
         if os.path.isfile(report_path) and ct_json_rel not in rels:
@@ -418,8 +384,11 @@ def clang_tidy_substep(pdir, repo, changed_cxx, out_dir_rel, line_filter=None, c
             "file": "", "line": 1, "rule_id": "clang-tidy-backend",
             "severity": "严重", "remediation": message,
         }
-        return [finding], rels, _note(message, degraded=False)
+        return [finding], [], rels, _note(message, degraded=True)
 
+    # Only a report produced by THIS invocation may authorize anything: clear the
+    # previous report before the first step so a compdb/tool failure cannot carry
+    # a stale clean result into the signed evidence.
     try:
         os.unlink(report_path)
     except FileNotFoundError:
@@ -427,6 +396,42 @@ def clang_tidy_substep(pdir, repo, changed_cxx, out_dir_rel, line_filter=None, c
     except OSError as exc:
         return _backend_failure(
             "clang-tidy backend failure: cannot clear previous report: %s" % exc)
+
+    abs_cxx = [os.path.join(repo, f) for f in changed_cxx
+               if os.path.isfile(os.path.join(repo, f))]
+    if not abs_cxx:
+        return [], [], rels, _note("no changed C/C++ files to tidy", degraded=False)
+    if not STYLE_GUARD or not os.path.exists(STYLE_GUARD):
+        return _backend_failure(
+            "clang-tidy backend failure: code_ruleset guard missing (%s)"
+            % STYLE_GUARD)
+
+    # 1) produce the compile database. Unavailability is blocking (fail-closed).
+    ninja = _resolve_ninja(repo)
+    compdb_path = os.path.join(out_dir, "compile_commands.json")
+    if not ninja:
+        return _backend_failure(
+            "clang-tidy backend failure: no ninja (host prebuilt or PATH) to "
+            "generate compile_commands.json")
+    try:
+        with open(compdb_path, "w", encoding="utf-8") as db:
+            cp = subprocess.run([ninja, "-C", out_dir, "-w", "dupbuild=warn",
+                                 "-t", "compdb", "cc", "cxx"],
+                                cwd=repo, stdout=db, stderr=subprocess.PIPE,
+                                text=True, timeout=600)
+        if cp.returncode != 0 or not os.path.isfile(compdb_path) \
+                or os.path.getsize(compdb_path) == 0:
+            return _backend_failure(
+                "clang-tidy backend failure: compile_commands.json generation "
+                "failed (rc=%d); stderr: %s"
+                % (cp.returncode, (cp.stderr or "")[:500]))
+    except Exception as exc:  # noqa: BLE001 — compdb errors are blocking here
+        return _backend_failure(
+            "clang-tidy backend failure: compile_commands.json generation "
+            "error: %s" % exc)
+
+    # 2) Run the shared guard. It already records execution failures and
+    # unparsable checker output as clang-tidy-backend findings.
     try:
         scope_args = []
         if line_filter is not None:
@@ -464,54 +469,120 @@ def clang_tidy_substep(pdir, repo, changed_cxx, out_dir_rel, line_filter=None, c
         return _backend_failure(
             "clang-tidy backend failure: report lacks valid findings or tool status")
     content_findings = data.get("findings", [])
-    if not isinstance(content_findings, list) or any(not isinstance(finding, dict) for finding in content_findings):
+    if not isinstance(content_findings, list) or any(
+            not isinstance(finding, dict) for finding in content_findings):
         return _backend_failure("clang-tidy backend failure: invalid content findings")
-    findings = findings + content_findings
-    # A partial-tool note must not hide the defects the checker did find.
-    if findings:
-        return findings, rels, _note(
-            "clang-tidy found %d issue(s) — HARD block; fix and re-run P2→P4"
-            % len(findings), degraded=False)
+    combined = findings + content_findings
+    backend = [f for f in combined
+               if f.get("rule_id") in gl.STATIC_BACKEND_RULE_IDS]
+    critical = [f for f in combined
+                if f.get("rule_id") in gl.P4_CRITICAL_AST_RULESET_IDS]
+    observed = [f for f in combined
+                if f.get("rule_id") not in gl.P4_CRITICAL_AST_RULESET_IDS
+                and f.get("rule_id") not in gl.STATIC_BACKEND_RULE_IDS]
+    # A guard-level "not executed" note is a blocking backend status: the
+    # critical subset did not run, so absence of findings proves nothing.
+    if ct_note:
+        blocking = backend + critical + [{
+            "file": "", "line": 1, "rule_id": "clang-tidy-backend",
+            "severity": "严重",
+            "remediation": "clang-tidy not executed: %s" % ct_note,
+        }]
+        return blocking, observed, rels, _note(
+            "clang-tidy backend unavailable (%s) — fail-closed" % ct_note,
+            degraded=True)
+    if backend or critical:
+        blocking = backend + critical
+        return blocking, observed, rels, _note(
+            "clang-tidy found %d blocking issue(s) from the P4 critical/backend "
+            "subset; %d non-blocking finding(s) recorded as observation"
+            % (len(blocking), len(observed)), degraded=bool(backend))
+    if combined:
+        return [], observed, rels, _note(
+            "clang-tidy PASS: 0 blocking critical finding(s); %d non-blocking "
+            "finding(s) recorded as observation" % len(observed), degraded=False)
     if cp.returncode != 0:
         return _backend_failure(
             "clang-tidy backend failure: checker exited rc=%d without findings; %s"
             % (cp.returncode, (cp.stderr or "")[:500]))
-    if ct_note:
-        return [], rels, _note(
-            "clang-tidy not executed by guard (%s); CI will still scan" % ct_note,
-            degraded=True)
-    return [], rels, _note("clang-tidy PASS: 0 findings over %d file(s)"
-                           % len(abs_cxx), degraded=False)
+    return [], observed, rels, _note(
+        "clang-tidy PASS: 0 findings over %d file(s)" % len(abs_cxx),
+        degraded=False)
 
 
 def metric_substep(pdir, repo, changed_cxx):
     """Run workbook metric/size rules over the locked changed files.
 
-    Unlike clang-tidy, this backend has a deterministic fallback and is a hard
-    gate. A missing script or unreadable JSON is therefore a dependency failure,
-    never an implicit PASS.
+    Observation-only under the lifecycle static policy: the findings JSON remains
+    a signed artifact so P8 review / remote CI can inspect it, but metric rows no
+    longer close P4. The previous report is removed before the run so a crashed
+    backend cannot leave stale observations looking current. A missing script or
+    unreadable report is still returned as a ``metric-backend`` finding so the
+    evidence states that the observation did not execute; the caller records it
+    without failing the build phase.
     """
     rel = "evidence/phase4/metric_findings.json"
+    path = os.path.join(pdir, rel)
     abs_cxx = [os.path.join(repo, f) for f in changed_cxx
                if os.path.isfile(os.path.join(repo, f))]
+
+    def _marker(message):
+        return {"file": "", "line": 1, "rule_id": "metric-backend",
+                "severity": "严重", "remediation": message}
+
+    def _write_marker(findings):
+        # The caller signs this path as a P4 artifact, so it must exist even when
+        # the (now observation-only) metric backend did not run. Keep the same
+        # payload keys as code_ruleset_metric.py so the artifact format does not
+        # change; only the status/note say the observation did not execute.
+        note = findings[0].get("remediation") if findings else None
+        try:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w", encoding="utf-8") as stream:
+                json.dump({
+                    "files": len(abs_cxx),
+                    "findings": findings,
+                    "function_metric_status": "unavailable",
+                    "function_metric_note": note,
+                }, stream, ensure_ascii=False, indent=2)
+        except OSError:
+            # Do not let an unwritable marker leave an old report eligible for
+            # signing: return an empty rel so the caller does not add it to arts.
+            return findings, ""
+        return findings, rel
+
     if not METRIC_GUARD or not os.path.isfile(METRIC_GUARD):
-        return [{"file": "", "line": 1, "rule_id": "metric-backend",
-                 "severity": "严重", "remediation":
-                 "code_ruleset_metric.py missing"}], rel
-    cp = subprocess.run(
-        [sys.executable, METRIC_GUARD, "--json", os.path.join(pdir, rel), *abs_cxx],
-        text=True, capture_output=True, timeout=600)
+        return _write_marker([_marker("code_ruleset_metric.py missing")])
     try:
-        with open(os.path.join(pdir, rel), encoding="utf-8") as stream:
-            findings = json.load(stream).get("findings") or []
+        os.unlink(path)
+    except FileNotFoundError:
+        pass
+    except OSError as exc:
+        return _write_marker(
+            [_marker("cannot clear stale metric report: %s" % exc)])
+    try:
+        cp = subprocess.run(
+            [sys.executable, METRIC_GUARD, "--json", path, *abs_cxx],
+            text=True, capture_output=True, timeout=600)
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        return _write_marker(
+            [_marker("metric observation did not execute: %s" % exc)])
+    try:
+        with open(path, encoding="utf-8") as stream:
+            data = json.load(stream)
+        if not isinstance(data, dict):
+            raise ValueError("metric report is not an object")
+        findings = data.get("findings") or []
+        if not isinstance(findings, list) or any(
+                not isinstance(item, dict) for item in findings):
+            raise ValueError("findings is not a list of objects")
     except (OSError, ValueError, TypeError):
-        findings = [{"file": "", "line": 1, "rule_id": "metric-backend",
-                     "severity": "严重", "remediation":
-                     "metric findings JSON missing or invalid (rc=%d)" % cp.returncode}]
+        return _write_marker(
+            [_marker("metric findings JSON missing or invalid (rc=%d)"
+                     % cp.returncode)])
     if cp.returncode != 0 and not findings:
-        findings = [{"file": "", "line": 1, "rule_id": "metric-backend",
-                     "severity": "严重", "remediation":
-                     "metric backend exited with rc=%d" % cp.returncode}]
+        return _write_marker(
+            [_marker("metric backend exited with rc=%d" % cp.returncode)])
     return findings, rel
 
 
@@ -629,10 +700,9 @@ def main():
                            problems=[check["id"] + ": " + check["reason"] for check in bad_post],
                            resume_hint="核对实际链接库、导出接口和 BUILD.gn 依赖，修复后回 P2 重走")
             sys.exit("PHASE 4 FAIL: " + reason)
-        # Post-build clang-tidy substep (user decision: run it at P4, right after
-        # the build succeeds, so AST-level defects are caught before P5/P6 waste
-        # work). Hard-fails when a compdb + clang-tidy are available; degrades to
-        # advisory otherwise. changed_files come from the signed contract.
+        # Post-build static substeps. Metric output is observation-only; the
+        # clang-tidy step blocks only the P4 critical AST subset, and fails closed
+        # when the tool/compdb/report cannot prove that subset ran.
         changed_cxx = [p for p in (contract.get("changed_files") or [])
                        if os.path.splitext(p)[1].lower() in CXX_EXTS] if c_ok else []
         line_filter = None
@@ -647,48 +717,56 @@ def main():
                 _record_result(pdir, "FAIL", str(exc), arts, failure_class="build_verdict_failed", static_analysis_status="FAIL")
                 sys.exit("PHASE 4 FAIL: cannot determine actual changed scope: %s" % exc)
         metric_findings, metric_rel = metric_substep(pdir, repo, changed_cxx)
-        arts.append(metric_rel)
-        if metric_findings:
-            reason = ("build ok but code_ruleset metrics found %d issue(s) (target=%s)"
-                      % (len(metric_findings), target))
-            _record_result(
-                pdir, "FAIL", reason, arts, cmd=cmd, exit_code=rc, target=target,
-                banner_ok=banner_ok, banner_err=banner_err,
-                artifacts_missing=artifacts_missing, contract_status=contract_status,
-                failure_class="build_verdict_failed",
-                problems=["metric: %s:%s %s" % (f.get("file"), f.get("line"),
-                                                    f.get("rule_id"))
-                          for f in metric_findings[:100]],
-                static_analysis_status="FAIL",
-                resume_hint="修复 metric 报告的函数/文件规模问题后回 P2 重走并重跑 gate_build.py")
-            sys.exit("PHASE 4 FAIL: %s" % reason)
-        ct_findings, ct_rels, ct_note = clang_tidy_substep(pdir, repo, changed_cxx, out_dir_rel, line_filter=line_filter, component_root=gl.resolve_git_dir(state))
+        if metric_rel:
+            arts.append(metric_rel)
+        metric_backend = [f for f in metric_findings
+                          if f.get("rule_id") == "metric-backend"]
+        if metric_backend:
+            metric_note = ("UNAVAILABLE (%s; non-blocking observation)"
+                           % (metric_backend[0].get("remediation")
+                              or "metric backend unavailable"))
+        elif metric_findings:
+            metric_note = ("OBSERVED %d issue(s) (non-blocking; P8 review/CI "
+                           "owns metric rows)" % len(metric_findings))
+        else:
+            metric_note = "PASS"
+        ct_findings, ct_observed, ct_rels, ct_note = clang_tidy_substep(
+            pdir, repo, changed_cxx, out_dir_rel, line_filter=line_filter,
+            component_root=gl.resolve_git_dir(state))
         arts += ct_rels
-        if not ct_findings and "degraded=True" in ct_note and state.get("optimization_policy_version") == 1:
-            ct_findings = [{"file":"", "line":0, "rule_id":"clang-tidy-unavailable", "remediation":ct_note}]
         if ct_findings:
-            reason = ("build ok but clang-tidy found %d issue(s) (target=%s); %s"
-                      % (len(ct_findings), target, ct_note))
+            blocking_rules = ", ".join(sorted({
+                str(f.get("rule_id")) for f in ct_findings}))
+            reason = ("build ok but clang-tidy found %d blocking issue(s) "
+                      "(target=%s); rules=%s; %s"
+                      % (len(ct_findings), target, blocking_rules, ct_note))
             _record_result(
                 pdir, "FAIL", reason, arts, cmd=cmd, exit_code=rc, target=target,
                 banner_ok=banner_ok, banner_err=banner_err,
                 artifacts_missing=artifacts_missing, contract_status=contract_status,
                 failure_class="build_verdict_failed",
-                problems=["clang-tidy: %s:%s %s" % (f.get("file"), f.get("line"),
-                                                    f.get("rule_id"))
+                problems=["clang-tidy %s at %s:%s: %s" % (
+                    f.get("rule_id"), f.get("file") or "(backend)", f.get("line"),
+                    str(f.get("remediation") or "")[:300])
                           for f in ct_findings[:100]],
+                suspect_locations=[{
+                    "file": f.get("file") or None, "line": f.get("line"),
+                    "rule": f.get("rule_id"),
+                    "message": f.get("remediation")} for f in ct_findings],
                 static_analysis_status="FAIL",
-                resume_hint="修复 clang-tidy 报告的 AST 级问题后回 P2 重走并重跑 gate_build.py")
+                resume_hint="修复 P4 critical clang-tidy 规则命中的 AST/内存安全问题后回 P2 重走并重跑 gate_build.py")
             sys.exit("PHASE 4 FAIL: %s" % reason)
         _record_result(
             pdir, "PASS",
             "exit=0, no error banner, artifacts verified (target=%s)%s "
-            "[success_banner=%s advisory; metric: PASS; clang-tidy: %s]"
-            % (target, contract_note, banner_ok, ct_note),
+            "[success_banner=%s advisory; metric: %s; clang-tidy: %s; "
+            "%d non-blocking static observation(s)]"
+            % (target, contract_note, banner_ok, metric_note, ct_note,
+               len(ct_observed)),
             arts, cmd=cmd, exit_code=rc, target=target,
             banner_ok=banner_ok, banner_err=banner_err,
             artifacts_missing=artifacts_missing, contract_status=contract_status,
-            static_analysis_status="UNAVAILABLE" if "degraded=True" in ct_note else "PASS")
+            static_analysis_status="PASS")
         print("PHASE 4 PASS — advance.py advance --phase 4")
         return
 

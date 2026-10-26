@@ -27,8 +27,8 @@
 ## 实际预检边界
 
 - P1 校验完整设计，并运行触发/注入可行性探针；探针证明已有运行时机制可用，不假装尚未实现的功能已经正确。
-- P2/P3 先做质量/规模检查及依赖保护；P4 复用实际 Git diff，包含新增测试，度量按整个文件，AST 内容检查按改动行。检查器执行失败不能被改动行过滤掉。
-- P4 按同一工具解析器使用预置或 PATH 工具；无法运行 AST 明确阻断优化模式。构建数据库由真实构建输出生成，不能把未生成当成已通过。
+- P2/P3 先做质量/规模检查及依赖保护；静态规则预检继续执行并记录，但 `author-rules` / `file-hygiene` 不再阻断阶段：阶段门只把 `gatelib.P2_P3_CRITICAL_RULESET_IDS` 作为硬门，guard 缺失或本轮报告不可读必须 fail-closed。P4 复用实际 Git diff，包含新增测试；AST 内容检查按改动行，检查器执行失败不能被改动行过滤掉。
+- P4 按同一工具解析器使用预置或 PATH 工具；ninja/clang-tidy/compdb/报告任一不可用都明确阻断（不再是 advisory）。构建数据库由真实构建输出生成，不能把未生成当成已通过。`early-metrics` 与非白名单 clang-tidy finding 仅记录，P4 只阻断 `gatelib.P4_CRITICAL_AST_RULESET_IDS` 与 backend 失败。
 - P5/P6/P7 核验在线设备、端点、用户态 ELF ABI、xdevice XML 和实际文件回收能力。小型回收探针 XML 使用唯一 token，类型不是测试报告，不能作为门禁证据。
 - P6 使用未转义的 `GATE_NONCE`；部署和场景选择一个重启 owner。`dev_restart_once deploy '实际重启命令'` 由门禁注入的本次生命周期目录记录重启，第二 owner 被拒绝。现有存活 PID、时间窗口、加载产物和运行标记检查不变。
 - 板端测试使用 `dev_test_run /data/local/tmp/实际目录 实际程序 参数`，固定工作目录和程序；真实 marker 由产品代码产生，不能放入场景脚本。

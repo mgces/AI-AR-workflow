@@ -218,6 +218,25 @@ hdc trigger
         self.assertTrue(any(r['status']=='FAIL' for r in results))
         self.assertFalse(any(r['id']=='trigger-1' for r in results))
 
+    def test_static_preflight_failures_do_not_abort_but_nonstatic_do(self):
+        self.init_state()
+        c = self.checks()
+        static_only = [
+            {'id': 'author-rules', 'status': 'FAIL', 'reason': 'non-critical finding'},
+            {'id': 'early-metrics', 'status': 'FAIL', 'reason': 'metric observation'},
+            {'id': 'file-hygiene', 'status': 'FAIL', 'reason': 'missing header'},
+        ]
+        with patch.object(c, 'stage_checks', return_value=static_only):
+            c.enforce(str(self.root), 3)  # must not raise
+        with patch.object(c, 'stage_checks', return_value=static_only + [
+                {'id': 'device-online', 'status': 'FAIL', 'reason': 'offline'}]):
+            with self.assertRaises(SystemExit):
+                c.enforce(str(self.root), 3)
+        with patch.object(c, 'stage_checks', return_value=static_only + [
+                {'id': 'rule-fingerprint', 'status': 'FAIL', 'reason': 'stale'}]):
+            with self.assertRaises(SystemExit):
+                c.enforce(str(self.root), 3)
+
     def test_enforce_stops_before_signed_gate_on_failed_preflight(self):
         self.init_state(); (self.root/'AR_design.md').write_text('no contract')
         with self.assertRaises(SystemExit): self.checks().enforce(str(self.root),1)

@@ -1,5 +1,10 @@
 # P7 功能测试 + 质量报告 + 代码 review(quality,物理 phase 7)
 
+`openharmony-qemu` 的 developer_test 和设备门复用 P0 的实例连接，原质量报告与人工确认继续生效。
+QEMU 是本流程的一种真机/设备目标；TCG 下测得的性能、功耗、外设表现和安全行为不代表 rk3568 实体硬件。
+验收依赖这些能力时补 rk3568 实体硬件证据，不能用基本启动替代缺失项目。详见
+[QEMU 接入与证据边界](../ohos-ar-dev-workflow/references/qemu-development.md)。
+
 P7 = **功能测试** ∧ **代码覆盖率测试用例编写和测试** ∧ **性能/功耗增量测试**
 ∧ **稳定性影响测试** ∧ **代码 review 问题清零**。本阶段必须把真实测试报告和
 code review 报告落到 `evidence/phase7/`,最终只看该阶段 manifest 最后一条 PASS。
@@ -8,7 +13,7 @@ code review 报告落到 `evidence/phase7/`,最终只看该阶段 manifest 最�
 
 ## A. 套件型功能与质量测试
 做事:
-- 用 `ohos-build-flash` 部署改动后的产物。
+- rk3568 使用 `ohos-build-flash` 部署改动后的产物；arm64_virt QEMU 使用 `ohos-qemu-run` 部署到本次固定实例。
 - 用 `ohos-test-ut-generation` / `tdd-enforcer` 补充功能测试和覆盖率测试用例。
 - 执行功能套件,生成 `summary_report.xml`。
 - 执行覆盖率采集并输出覆盖率报告。
@@ -47,12 +52,12 @@ python3 $S/gate_integration.py --pipeline-dir "$PDIR" \
 临时兼容旧流程时可加 `--allow-missing-quality-reports`,但正式流水线不应使用。
 
 ## B. 设备行为型集成(端到端场景)
-当功能验证是"多组件协同的真机行为"而非套件时,复用 P6 真机门控,指定 `--phase 7`:
+当功能验证是"多组件协同的设备行为"而非套件时,复用 P6 设备门控,指定 `--phase 7`:
 ```bash
 python3 $S/gate_device_func.py --pipeline-dir "$PDIR" \
     --deploy-script /path/deploy.sh --scenario-script /path/integ_scenario.sh \
     --marker "<集成成功标记>" \
-    --host-artifact "$OHOS_ROOT/out/rk3568/..." \
+    --host-artifact "$OHOS_ROOT/<环境产物目录>/..." \
     --device-artifact "/system/..." \
     --runtime-marker "<改动代码运行标记>" \
     --e2e-marker "<端到端集成成功标记>" \

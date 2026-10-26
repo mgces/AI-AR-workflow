@@ -110,20 +110,27 @@ reports/               # 人读 Markdown 审计报告(脱敏,可归档)——与
 
 ### `environment` / `component_type`(环境形态,init 时人工强确认)
 
-流水线支持两种环境形态,`init` 时**必须**用 `--environment` 显式指定(裸 init 缺 `--environment` 会硬失败),
+流水线支持三种环境形态,`init` 时**必须**用 `--environment` 显式指定(裸 init 缺 `--environment` 会硬失败),
 所有环境相关取值集中在 `scripts/lib/environments.py`(唯一真相源),各门控只调用它,不再各自写死编译/上库串。
 
 - `environment`
   - `openharmony`(**默认/向后兼容**):原 gitcode + rk3568 流程。编译 `./build.sh --product-name rk3568 ...`、
-    产物 `out/rk3568/`、成功横幅 `=====build.*successful=====`、上库走 `oh-gc` PR + OpenHarmony CI。
+    产物 `out/rk3568/`、成功横幅 `=====build.*successful=====`（诊断）、上库走 `oh-gc` PR + OpenHarmony CI。
     **旧 run 无此字段时自动当 openharmony**(`load_state` 不校验未知键,无需迁移)。
+  - `openharmony-qemu`:ARM64 QEMU，产品 `arm64_virt`、产物 `out/arm64_virt/`，GitCode 上库。
+    构建通过公共 QEMU 入口，连接固定 P0 检测的实例。详见 [QEMU 接入](qemu-development.md)。
   - `harmonyos`:HarmonyOS 形态。代码不下载、不提交 gitcode(无 oh-gc);上库走 **Gerrit**
     (`git push refs/for` + review 标签)。编译命令按组件分两种,**目前为占位**(未填时门控硬失败并提示)。
 - `component_type`(仅 harmonyos 有意义;openharmony 恒为 `null`)
   - `system`(系统组件)/ `chip`(芯片组件):两者编译命令不同,由 `environments.py` 的 profile 分别提供。
   - `--environment harmonyos` 时 `--component-type` **必填**,否则 init 硬失败。
-- `product`:由环境 profile 派生(openharmony→`rk3568`;harmonyos 占位未填时持久化为 `null`,
+- `product`:由环境 profile 派生(openharmony→`rk3568`;openharmony-qemu→`arm64_virt`;harmonyos 占位未填时持久化为 `null`,
   后续门控经 `environments.product_form()` 解析或硬失败),不再写死。
+- `qemu_config`:QEMU 配置绝对路径，`init --qemu-config` 指定，默认 `<repo>/qemu-workflow/config.json`。
+- `qemu_config_digest`:P0 记录的配置内容 SHA-256；后续构建/设备门拒绝配置漂移。
+  P0 的签名 `qemu.json` 同时记录摘要与 `connection_env`，后者包含 `HDC_NO_AUTOSTART=1`。
+- `qemu_instance_identity`:P0 记录 launcher 的实例目录、实例 manifest 摘要和 qcow2 overlay 的
+  设备号/inode；后续 QEMU 设备门检查相同磁盘实例，避免 HDC serial 复用时把另一份 userdata 当成本次运行。
 
 ## `current_substate` / `next_gate` / `required_inputs`
 

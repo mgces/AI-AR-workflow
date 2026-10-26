@@ -52,7 +52,8 @@ phase 2 闭合已锁定功能指纹。本阶段起**只允许增改独立测试�
 - 在新增测试文件或测试 BUILD 输入前，先加载
   `ohos-dev-cpp-coding-style` 和
   `code-ruleset-style-check/references/pre-write-contract.md`；测试代码、测试名、
-  fixture、字符串和构建输入都受同一套门禁规则约束。
+  fixture、字符串和构建输入都受同一套规则约束。P3 只把 critical 子集作为硬门，
+  其余规则与卫生留证；不要因此在测试代码中放松写法。
 - 依据 `AR_design.md` 的"完整测试框架/需测试的功能点"补测试,让每个契约 `test_cases[].gtest` 的
   suite 出现在本次 run 新增或修改的测试文件里。测试可在 P2 按 TDD 提前创建，P3 负责统一认领和签名。
 
@@ -66,22 +67,28 @@ python3 $S/gate_test_develop.py --pipeline-dir "$PDIR"
 脚本逻辑:
 1. 读 phase-2 冻结快照 `development_freeze_snapshot.json`(缺失 → FAIL,提示先跑 gate_develop.py)。
 2. 校验功能冻结:自冻结以来只能增改测试路径,任何新增非测试路径 → FAIL。
-3. 从**签名设计**恢复 ar-contract:absent(legacy/无契约)→ `AR-CONTRACT-BYPASS` PASS;
+3. 静态规则:对本次 run 新增/修改的 C/C++ 测试源运行共享 guard(`--rules-only`，按 changed-line
+   scope)。只把 `gatelib.P2_P3_CRITICAL_RULESET_IDS` 命中作为 FAIL；其他规则、敏感词与文件卫生
+   写入 `test_style_report.txt` / `test_hygiene_report.txt` 和本轮 JSON，仅作观察证据。
+   guard、写码前契约或本轮 JSON 报告缺失/不可读 → FAIL-closed（无法证明 critical 子集无命中）。
+4. 从**签名设计**恢复 ar-contract:absent(legacy/无契约)→ `AR-CONTRACT-BYPASS` PASS;
    tampered(设计条目在但证据/契约损坏)→ FAIL-closed;ok → 强制全量编写覆盖。
-4. 覆盖判据:**按 kind 分派**(gtest 走 `TEST` 宏注册,arkts 走 `describe()/it()` 于声明
+5. 覆盖判据:**按 kind 分派**(gtest 走 `TEST` 宏注册,arkts 走 `describe()/it()` 于声明
    `file`),每个契约 `test_cases[].gtest` 的 suite 须在本次 run 相对 `base_commit` 新增或修改的测试文件中
    **真实注册**；P2 已按 TDD 创建的测试同样有效，仓库中未改的历史测试不能冒充;
    再叠加设计点语义覆盖(该文件可执行代码区含 `point` 核心 token);
    缺任一即 FAIL,写 `evidence/phase3/authorship_coverage.txt` 列命中/缺失。
-5. 把新测试源文件快照进 `evidence/phase3/authored/<flattened>` 并作为签名 artifact(sha256)绑进
+6. 把新测试源文件快照进 `evidence/phase3/authored/<flattened>` 并作为签名 artifact(sha256)绑进
    manifest——后续删/改测试会被 `validate_closing_entry`(advance 闭合 phase 3 时)抓到。
-6. PASS 后 best-effort 调 `prepare_test_bundle.run_prepare` 产控制层导航(`signed_test_scope.json` /
+7. PASS 后 best-effort 调 `prepare_test_bundle.run_prepare` 产控制层导航(`signed_test_scope.json` /
    `test_intent_matrix.json` / status),控制写失败**不翻转 verdict**。
-证据:`authored_test_files.txt`、`authorship_coverage.txt`、`authored/*`(签名)。
+证据:`authored_test_files.txt`、`test_style_report.txt`、`test_hygiene_report.txt`、
+`authorship_coverage.txt`、`authored/*`(签名)。
 
 ## 通过条件
-phase-2 冻结快照存在 **且** 无新增非测试路径 **且**(契约 ok 时)每个 `test_cases[].gtest` 的 suite
-都被本次 run 新增或修改的测试文件引用。契约 absent → bypass PASS;契约 tampered → FAIL。
+phase-2 冻结快照存在 **且** 无新增非测试路径 **且** 本轮 guard 报告可读且 critical 子集无命中
+**且**(契约 ok 时)每个 `test_cases[].gtest` 的 suite 都被本次 run 新增或修改的测试文件引用。
+契约 absent → bypass PASS;契约 tampered → FAIL。format/非白名单规则/卫生仅是观察证据，不构成通过条件。
 
 ## 通过后
 ```bash

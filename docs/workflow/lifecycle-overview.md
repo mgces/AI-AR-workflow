@@ -29,9 +29,9 @@
 |---|---:|---|---|
 | P0 环境预检 | 0 | 校验 build/compile/git/testfwk/hdc/真机全部就绪 | `gate_env_init.py` |
 | P1 设计固化 | 1 | 校验 AR_design.md 7 章节（含 DFX 设计）+ ar-contract 契约并签名 | `gate_design.py` |
-| P2 代码开发 | 2 | 强制依赖签名设计 + consent + diff 非空 + C++ 门控;闭合锁功能指纹 | `gate_develop.py` |
-| P3 测试开发 | 3 | 编译前测试代码已写(契约每个 gtest suite 出现在新测试文件) | `gate_test_develop.py` |
-| P4 编译 | 4 | build.sh exit0 + 成功横幅 + build_artifacts 覆盖 | `gate_build.py` |
+| P2 代码开发 | 2 | 强制依赖签名设计 + consent + diff 非空 + critical 规则子集;闭合锁功能指纹 | `gate_develop.py` |
+| P3 测试开发 | 3 | 编译前测试代码已写(契约每个 gtest suite 出现在新测试文件) + critical 规则子集 | `gate_test_develop.py` |
+| P4 编译 | 4 | build.sh exit0 + 无 error 横幅 + build_artifacts 覆盖 + P4 critical AST/backend | `gate_build.py` |
 | P5 单元测试 | 5 | developer_test 报告 tests>0 且 fail==0 err==0 + 每个 gtest 通过 | `gate_test_ut.py` |
 | P6 端到端功能测试 | 6 | 部署 sha256 一致 + hilog 含 nonce/marker + 抗伪造三层证明 | `gate_device_func.py` |
 | P7 质量验证 | 7 | 功能 summary + 覆盖率/性能/功耗/稳定性 + review==0 | `gate_integration.py` |
@@ -51,18 +51,20 @@
 
 ### P2 代码开发
 - **输入**:签名 AR_design、P1 consent
-- **产物**:`diff.patch`、`changed_files.txt`、`style_report.txt`、`strict_cpp_report.txt`
+- **产物**:`diff.patch`、`changed_files.txt`、`style_report.txt`、`strict_cpp_report.txt`、`file_hygiene_report.txt`
 - **停下**:否,自动推进;闭合时锁定功能指纹
+- **静态策略**:仅 `gatelib.P2_P3_CRITICAL_RULESET_IDS` 阻断；format、其他规则与卫生留证
 
 ### P3 测试开发
 - **输入**:签名 AR_design 契约的 test_cases[].gtest
-- **产物**:`authored_test_files.txt`、`authorship_coverage.txt`、`authored/*` 签名快照；P2 已创建及 P3 新增/修改的本次测试均可认领
+- **产物**:`authored_test_files.txt`、`test_style_report.txt`、`test_hygiene_report.txt`、`authorship_coverage.txt`、`authored/*` 签名快照；P2 已创建及 P3 新增/修改的本次测试均可认领
 - **停下**:否,自动推进
 
 ### P4 编译
 - **输入**:build_target、build_artifacts 契约
-- **产物**:`build_tail.log`、`build_banner.txt`、`artifact_check.txt`
+- **产物**:`build_stdout.log`、`build_banner.txt`、`artifact_check.txt`、`clang_tidy_findings.json`、`clang_tidy_note.txt`、`metric_findings.json`
 - **停下**:否,自动推进
+- **静态策略**:仅 P4 critical AST 与 backend 失败阻断；工具/compdb/报告不可用 fail-closed；metric 与非白名单 finding 留证
 
 ### P5 单元测试
 - **输入**:test_target、suite、part

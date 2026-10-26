@@ -25,7 +25,7 @@ $REPO/specs/pipeline/{YYYYMMDD}-{slug}/
 规范状态,**只有 `advance.py` 能写**。关键字段:
 
 - `current_phase` — 当前物理阶段(0–8)
-- `environment` — 环境形态(`openharmony` | `harmonyos`),init 时确定,决定编译/上库后端
+- `environment` — 环境形态(`openharmony` | `openharmony-qemu` | `harmonyos`),init 时确定,决定编译/上库后端
 - `component_type` — HarmonyOS 组件类型(`system` | `chip`;openharmony 为 `null`)
 - `consent` — 人工确认令牌(签名 + 绑定 PASS 条目)
 - `functional_fingerprint` — P2 闭合时锁定的功能指纹
@@ -67,6 +67,7 @@ P1 固化的设计文档,**7 必含章节**:
 导航层:当前逻辑阶段 / 物理 phase / substate / 下一步。与 `controls/` 内有镜像。
 
 `advance.py next` 输出当前逻辑阶段 + 下一步(retry/repair/regenerate/escalate),并写此文件。
+`advance.py status` 每次读取也会按最新签名清单刷新该文件及 `controls/` 导航快照；它只更新导航，不推进阶段，也不替代签名证据。
 
 ## evidence/
 

@@ -40,6 +40,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
 import gatelib as gl  # noqa: E402
+import environments as envs  # noqa: E402
 
 DEVICE_SH = os.path.join(HERE, "lib", "device.sh")
 TEST_DEVELOP_STATUS_PARTS = ("test_develop", "phase1_test_develop.json")
@@ -637,8 +638,12 @@ def _merged_env(extra=None):
     HDC_WIN_PORT / HDC_BIN / DEVICE_SERIAL). A FRESH WINDOW that forgot to
     re-export still reaches the SAME device this run was pinned to. Explicit
     env in the current shell WINS (setdefault), so P0's config only fills gaps —
-    never overrides a deliberate override the operator set this window."""
+    never overrides a deliberate override the operator set this window.
+    QEMU connections are instead pinned to the P0 instance."""
     env = dict(os.environ)
+    if (_CONN_ENV or {}).get("HDC_NO_AUTOSTART") == "1":
+        env.update(_CONN_ENV)
+        env.pop("HDC_WIN_PORT", None)
     for k, v in (_CONN_ENV or {}).items():
         if v:
             env.setdefault(k, v)
@@ -683,6 +688,7 @@ def main():
     ap.add_argument("--phase", type=int, default=6, help="6 (device) or 7 (integration reuse)")
     args = ap.parse_args()
     phase = args.phase
+    pdir = gl.pipeline_dir(args.pipeline_dir)
     from workflow_checks import enforce
     enforce(pdir, phase, scenario=args.scenario_script, deploy=args.deploy_script)
     if phase == 6:
@@ -710,7 +716,6 @@ def main():
                      % args.host_artifact)
         host_sha = gl.sha256_file(args.host_artifact)
 
-    pdir = gl.pipeline_dir(args.pipeline_dir)
     gl.evidence_dir(pdir, phase)
 
     # A FRESH WINDOW inherits none of the process-level hdc connection env. P0
@@ -720,14 +725,34 @@ def main():
     # _merged_env). Best-effort: a legacy run without connection_env just relies
     # on the current env, exactly as before.
     global _CONN_ENV
+    _st = None
     try:
         _st = gl.load_state(pdir)
         gl.require_current_phase(_st, phase, "gate_device_func.py")
         _CONN_ENV = dict(_st.get("connection_env") or {})
         if _st.get("device_serial"):
             _CONN_ENV.setdefault("DEVICE_SERIAL", _st["device_serial"])
-    except Exception:
+    except Exception as error:
         _CONN_ENV = {}
+        # Do not run any device command when the pipeline state or phase cannot
+        # be validated. In particular, an unreadable QEMU state must not fall
+        # through to whatever HDC target happens to be exported in this shell.
+        sys.exit("PHASE %d FAIL — cannot load/validate pipeline state: %s" %
+                 (phase, error))
+
+    # QEMU runs must never fall back to a USB target or another server.
+    if _st and _st.get("environment") == "openharmony-qemu":
+        from qemu_support import connection
+        try:
+            _CONN_ENV = connection(_st)
+        except (envs.EnvironmentNotConfigured, OSError, ValueError,
+                subprocess.TimeoutExpired) as error:
+            rel = "evidence/phase%d/qemu_connection.json" % phase
+            with open(os.path.join(pdir, rel), "w", encoding="utf-8") as stream:
+                json.dump({"error": str(error), "config": _st.get("qemu_config")}, stream, indent=2)
+            gl.emit(pdir, phase, "gate_device_func.py", verdict="FAIL",
+                    reason="QEMU connection: %s" % error, artifacts_rel=[rel])
+            sys.exit("PHASE %d FAIL — QEMU connection: %s" % (phase, error))
 
     # CONTRACT COVERAGE (P4 hard gate): the signed ar-contract's device_cases[]
     # markers must ALL appear in the captured hilog window. Recovered from the

@@ -12,6 +12,17 @@ import time
 import uuid
 from xml.etree import ElementTree as ET
 
+# Static author-time scans are still executed and recorded in preflight history,
+# but they are no longer the P2/P3/P4 authority: the phase gate re-runs the
+# critical subset with the same changed scope and owns the verdict. Keeping
+# these ids out of enforce()'s abort set prevents an observation-only finding
+# from stopping the gate before it can classify it. Dependency/tool probes that
+# are not static findings (rule-fingerprint, clang-tidy, ninja, ...) keep their
+# existing blocking behavior.
+OBSERVATION_ONLY_PREFLIGHT_IDS = frozenset({
+    'author-rules', 'early-metrics', 'file-hygiene',
+})
+
 def canonical_path(value, source_root, git_root):
     """Normalize only known source/component prefixes; never arbitrary suffixes."""
     source = Path(source_root).resolve(); git = Path(git_root).resolve()
@@ -515,8 +526,11 @@ def enforce(pdir,phase,**kwargs):
     try: results=stage_checks(pdir,phase,**kwargs)
     except (OSError,ValueError,KeyError,TypeError) as exc:
         results=[{'id':'preflight-backend','status':'FAIL','reason':str(exc)}]; record_preflight(pdir,phase,results)
-    bad=[r for r in results if r['status']!='PASS']
+    bad=[r for r in results if r['status']!='PASS' and
+         r['id'] not in OBSERVATION_ONLY_PREFLIGHT_IDS]
     # Preserve all raw failures; a preflight FAIL isn't a signed phase verdict.
+    # Static observation ids are recorded above but do not abort: the owning gate
+    # applies the explicit critical-rule whitelist and signs the real verdict.
     if bad:
         if any(r['id'].startswith('device-') for r in bad):
             gl.start_human_wait(pdir,phase,'blocked_unplanned','device preflight: '+ '; '.join(r['reason'] for r in bad),source='workflow-preflight',record_intervention=False)

@@ -2,11 +2,13 @@
 
 > 本页拆解 P6(物理 phase 6)端到端阶段如何理解、deploy/scenario/runtime/e2e marker、为什么必须人工确认、hdc skill 与 flash skill 怎样协作。
 
+本页中的“真机/设备端”指本次选择的运行目标，包含 rk3568 物理开发板和 arm64_virt QEMU。rk3568 部署使用 `ohos-build-flash`；QEMU 部署、实例管理和截图使用 `ohos-qemu-run`，两者都由 P0 固定的 HDC 目标执行设备门控。完整 QEMU 准备步骤见 [ARM64 QEMU 开发](/skill-playbooks/qemu-development)。
+
 ## 端到端阶段如何理解
 
-P6 是端到端功能验证阶段——把编译产物部署到真机,跑 scenario 脚本从真实入口触发改动代码,抓取真机 hilog 证明功能真的在设备上跑起来了。门控脚本 `gate_device_func.py`(emit 6)。
+P6 是端到端功能验证阶段——把编译产物部署到本次选择的真机/设备目标,跑 scenario 脚本从真实入口触发改动代码,抓取设备端 hilog 证明功能真的在目标上跑起来了。门控脚本 `gate_device_func.py`(emit 6)。
 
-> 📌 P5 与 P6 都在**真机**上跑,区别是"单元 vs 端到端",不是"离线 vs 真机"。P5 白盒逐个 gtest 验单元逻辑;P6 黑盒从真实入口触发验端到端功能 + 抗伪造 + 人工确认(见 [P5 单元测试](/workflow/phase-5-test-ut))。
+> 📌 P5 与 P6 都在所选的**真机/设备目标**上跑，目标可以是 rk3568 物理开发板或 arm64_virt QEMU；区别是"单元 vs 端到端",不是"离线 vs 设备"。P5 白盒逐个 gtest 验单元逻辑;P6 黑盒从真实入口触发验端到端功能 + 抗伪造 + 人工确认(见 [P5 单元测试](/workflow/phase-5-test-ut))。
 
 设备 RTC 错乱,新鲜度不靠时间戳,而靠 per-run **nonce** + `/proc/uptime` 单调锚 + 内容切窗 + sha256。
 
@@ -64,9 +66,10 @@ python3 $S/advance.py --pipeline-dir "$PDIR" consent --phase 6 --token <人>
 ## hdc skill 与 flash skill 怎样协作
 
 - [`ohos-dev-hdc-command-usage`](/skill-playbooks/device-debug-and-hdc):设备连接、target 选择、日志抓取、文件推送、系统组件替换
-- [`ohos-build-flash`](/skill-playbooks/build-and-flash):增量构建 + updater 模式刷机 + send/dd 路径
+- [`ohos-build-flash`](/skill-playbooks/build-and-flash):rk3568 增量构建 + updater 模式刷机 + send/dd 路径
+- `ohos-qemu-run`:arm64_virt QEMU 实例管理、部署连接和截图，见 [ARM64 QEMU 开发](/skill-playbooks/qemu-development)
 
-真机阶段常见路径:build-flash 产增量构建 → hdc 部署到设备 → scenario 触发 → hdc 抓 hilog → gate 校验。
+设备端常见路径:按目标环境构建 → 使用对应部署技能经 HDC 部署 → scenario 触发 → hdc 抓 hilog → gate 校验。
 
 ## 顺序边界
 

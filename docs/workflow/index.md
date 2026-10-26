@@ -21,15 +21,15 @@ AR 可以由用户直接提供，也可以由作业线前段的 [需求分析与
    └──────────────────────────┼───────────────────────────────────────────┘
                               ▼
    ┌── P2 代码开发 gate_develop.py ── 强制依赖签名 AR_design + P1 consent + diff 非空 ──┐
-   │      + C++ 强门控 ── PASS ──▶ advance --phase 2 ── 闭合时锁定功能指纹              │
+   │      + P2/P3 critical 规则子集 ── PASS ──▶ advance --phase 2 ── 锁定功能指纹        │
    └──────────────────────────┼───────────────────────────────────────────┘
                               ▼
-   ┌── P3 测试开发 gate_test_develop.py ── 编译前测试代码已写 ──────────────────────────┐
+   ┌── P3 测试开发 gate_test_develop.py ── 编译前测试代码已写 + critical 规则子集 ──────┐
    │      契约每个 test_cases[].gtest 的 suite 出现在新测试文件;测试源签名快照         │
    │      PASS ──▶ advance --phase 3 ─▶ 才到 build                                       │
    └──────────────────────────┼───────────────────────────────────────────┘
                               ▼
-   ┌── P4 编译 gate_build.py ── build.sh exit0 + 成功横幅 + build_artifacts 覆盖 ────────┐
+   ┌── P4 编译 gate_build.py ── build.sh exit0 + 无 error + 产物 + critical AST/backend ─┐
    │      PASS ──▶ advance --phase 4                                                     │
    └──────────────────────────┼───────────────────────────────────────────┘
                               ▼

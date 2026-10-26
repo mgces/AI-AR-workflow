@@ -33,10 +33,12 @@ Best-effort control-layer navigation (signed_test_scope.json / test_intent_matri
 phases keep their suspect-scope map — but that layer never grants pass authority.
 """
 import argparse
+import json
 import os
 import re
 import subprocess
 import sys
+import tempfile
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 import gatelib as gl  # noqa: E402
@@ -48,17 +50,18 @@ REPAIR_PACKET_PARTS = ("repairs", "current.json")
 FREEZE_PARTS = ("test_develop", "development_freeze_snapshot.json")
 
 # Same guard P2 uses. In P3 we run it RULES-ONLY: gtest macro bodies legitimately
-# vary in layout so clang-format must not block authorship, but banned APIs /
-# sensitive strings in the *test* code must be caught here rather than leaking to
-# the CI gate. resolve_dep mirrors gate_develop so both phases share one source.
+# vary in layout so clang-format must not block authorship. Only the explicit
+# P2/P3 critical regex subset (gatelib.P2_P3_CRITICAL_RULESET_IDS) blocks; other
+# rules and file hygiene remain signed observation evidence. resolve_dep mirrors
+# gate_develop so both phases share one source.
 STYLE_GUARD = gl.resolve_dep("code-ruleset-style-check/scripts/code_ruleset_guard.py",
                              env_var="CODE_RULESET_GUARD")
 PREWRITE_CONTRACT = gl.resolve_dep(
     "code-ruleset-style-check/references/pre-write-contract.md",
     env_var="CODE_RULESET_PREWRITE_CONTRACT")
-# H1: same author-time file-hygiene guard P2 uses (license header). Test files
-# were never header-gated before P4/CI either, so run it here over the newly
-# authored tests so a missing header is caught at author time, not at CI.
+# Same author-time file-hygiene guard P2 uses (license header). It still runs
+# over newly authored tests and is signed as evidence, but P3 no longer blocks on
+# it; license/file hygiene is owned by P8 review and remote CI.
 HYGIENE_GUARD = gl.resolve_dep("code-ruleset-style-check/scripts/file_hygiene_guard.py",
                                env_var="FILE_HYGIENE_GUARD")
 CXX_EXTS = (".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx")
@@ -73,10 +76,18 @@ _HYPIUM_IT_RE = re.compile(
     r"\bit\s*\(\s*(?:\"|\'|`)(?P<case>[^\"\'`]{1,200})(?:\"|\'|`)")
 
 
-def _rule_check_authored_tests(pdir, gdir, test_paths):
-    """Run the code_ruleset guard (rules-only) over authored C/C++ test
-    files. Returns (problems, evidence_rel). A missing guard fails closed so a
-    silent bypass can never masquerade as a clean check."""
+def _rule_check_authored_tests(pdir, gdir, test_paths, line_filter_path=None):
+    """Run the code_ruleset guard (rules-only) over authored C/C++ test files and
+    split its current report under the P2/P3 critical policy.
+
+    Returns ``(problems, blocking_findings, observed_count, evidence_rel)``.
+    Only the explicit high-risk regex subset can fail P3. A missing guard,
+    missing pre-write contract, or missing/unreadable report fails closed —
+    an unexecuted scan cannot prove the critical subset was clean. Non-critical
+    findings stay in the signed JSON/report as observation evidence. The optional
+    ``line_filter_path`` keeps the deterministic scan on changed lines, matching
+    P2's changed-file/changed-line scope.
+    """
     cxx = [t for t in test_paths if os.path.splitext(t)[1].lower() in CXX_EXTS]
     rel = "evidence/phase3/test_style_report.txt"
     out = os.path.join(pdir, rel)
@@ -85,38 +96,76 @@ def _rule_check_authored_tests(pdir, gdir, test_paths):
             f.write("no C/C++ test files authored — code_ruleset rule check has no scope\n")
             f.write("(non-C/C++ test files, e.g. ArkTS .ets/.ts, are not covered by the "
                     "C/C++ code-ruleset workbook and are deliberately skipped)\n")
-        return [], rel
+        return [], [], 0, rel
     if not os.path.exists(STYLE_GUARD):
         with open(out, "w", encoding="utf-8") as f:
             f.write("BLOCKER: code_ruleset guard not found at %s\n" % STYLE_GUARD)
-        return ["code-ruleset-style-check guard missing: %s" % STYLE_GUARD], rel
+        return ["code-ruleset-style-check guard missing: %s" % STYLE_GUARD], [], 0, rel
     if not os.path.exists(PREWRITE_CONTRACT):
         with open(out, "w", encoding="utf-8") as f:
             f.write("BLOCKER: code-ruleset pre-write contract not found at %s\n" % PREWRITE_CONTRACT)
-        return ["code-ruleset pre-write contract missing: %s" % PREWRITE_CONTRACT], rel
+        return (["code-ruleset pre-write contract missing: %s" % PREWRITE_CONTRACT],
+                [], 0, rel)
     abs_cxx = [os.path.join(gdir, t) for t in cxx if os.path.isfile(os.path.join(gdir, t))]
     json_rel = "evidence/phase3/test_style_findings.json"
-    cp = subprocess.run(
-        [sys.executable, STYLE_GUARD, "--rules-only", "--json",
-         os.path.join(pdir, json_rel), "--repository-root", gdir, *abs_cxx],
-        text=True, capture_output=True)
-    with open(out, "w", encoding="utf-8") as f:
-        f.write("test files rule-checked (%d):\n%s\n\n"
-                "--- code_ruleset_guard --rules-only ---\nrc=%d\n%s\n%s"
-                % (len(cxx), "\n".join(cxx), cp.returncode, cp.stdout, cp.stderr))
+    report_path = os.path.join(pdir, json_rel)
     problems = []
-    if cp.returncode != 0:
-        problems.append(
-            "test code violates code_ruleset blockers (fix before build so it "
-            "does not surface at the CI gate): %s" % (cp.stderr or cp.stdout).strip()[:600])
-    return problems, rel
+    blocking, observed, advisory = [], [], []
+    cp = None
+    try:
+        # Never let a previous report authorize a crashed/aborted scan.
+        os.unlink(report_path)
+    except FileNotFoundError:
+        pass
+    except OSError as exc:
+        problems.append("cannot clear stale code_ruleset report: %s" % exc)
+    if not problems:
+        scope_args = (["--line-filter-json", line_filter_path]
+                      if line_filter_path else [])
+        cp = subprocess.run(
+            [sys.executable, STYLE_GUARD, "--rules-only", "--json",
+             report_path, "--repository-root", gdir, *scope_args, *abs_cxx],
+            text=True, capture_output=True)
+        findings, advisory, error = gl.load_ruleset_findings(pdir, json_rel)
+        if error:
+            problems.append("code_ruleset report unusable: %s" % error)
+        else:
+            # 0 = clean, 1 = findings/format observations; anything else means
+            # the scan did not finish normally and must not look like a clean run.
+            if cp.returncode not in (0, 1):
+                problems.append(
+                    "code_ruleset guard exited rc=%d (expected 0 or 1)"
+                    % cp.returncode)
+            blocking, observed = gl.partition_rule_findings(
+                findings, gl.P2_P3_CRITICAL_RULESET_IDS)
+            problems += [
+                "test code violates critical rule %s at %s:%s" % (
+                    f.get("rule_id"), f.get("file"), f.get("line"))
+                for f in blocking[:100]]
+    with open(out, "w", encoding="utf-8") as f:
+        f.write("test files rule-checked (%d):\n%s\n"
+                "changed_line_scope=%s\n\n"
+                "--- code_ruleset_guard --rules-only ---\nrc=%s\n%s\n"
+                "--- lifecycle static policy (P2/P3 critical subset) ---\n"
+                "critical_blocking=%d\nobserved_non_blocking=%d\nadvisory=%d\n"
+                "blocking_rules=%s\n"
+                % (len(cxx), "\n".join(cxx),
+                   "changed-lines" if line_filter_path else
+                   "(full files; scope unavailable)",
+                   cp.returncode if cp else "not-run",
+                   (cp.stdout + cp.stderr) if cp else "",
+                   len(blocking), len(observed) + len(advisory), len(advisory),
+                   ", ".join(sorted({str(f.get("rule_id")) for f in blocking}))
+                   or "(none)"))
+    return problems, blocking, len(observed) + len(advisory), rel
 
 
 def _hygiene_check_authored_tests(pdir, gdir, test_paths):
-    """H1: run the deterministic file-hygiene guard (license header) over newly
-    authored test files. Returns (problems, evidence_rel). A missing guard fails
-    closed so a silent bypass cannot masquerade as clean. The guard self-scopes
-    to header-bearing extensions, so we pass every authored test file on disk."""
+    """Run the deterministic file-hygiene guard (license header) over newly
+    authored test files and keep the result as observation evidence. Returns
+    (problems, evidence_rel); P3 does not fold these problems into its verdict.
+    The guard self-scopes to header-bearing extensions, so we pass every
+    authored test file on disk."""
     rel = "evidence/phase3/test_hygiene_report.txt"
     out = os.path.join(pdir, rel)
     abs_paths = [os.path.join(gdir, t) for t in test_paths
@@ -333,14 +382,43 @@ def main():
         f.write("\n")
     arts = [files_rel]
 
-    # RULE CHECK the authored test code now (rules-only). Test files were never
-    # style-gated before P4/CI, so banned APIs in tests leaked straight to the CI
-    # gate — this closes that gap at author time.
-    style_problems, style_rel = _rule_check_authored_tests(pdir, gdir, authored_tests)
+    # RULE CHECK the authored test code now (rules-only) on the same changed
+    # lines P2 would use. Only the explicit high-risk P2/P3 subset blocks; the
+    # rest stays in signed evidence.
+    # The line filter is scratch input for the guard, not a signed artifact: use
+    # a temp file so P3 adds no new evidence file or format to the pipeline.
+    line_scope_path = ""
+    temp_scope = ""
+    try:
+        from workflow_checks import current_scope
+        _git, _base, _changed, line_ranges = current_scope(state)
+        fd, temp_scope = tempfile.mkstemp(prefix="p3-line-scope-", suffix=".json")
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(line_ranges, f, ensure_ascii=False, indent=2)
+        line_scope_path = temp_scope
+    except (ValueError, OSError) as exc:
+        if temp_scope:
+            try:
+                os.unlink(temp_scope)
+            except OSError:
+                pass
+        # Scanning the whole authored file is stricter than the changed-line
+        # scope, so a scope-derivation failure must not silently skip the scan.
+        print("WARNING: P3 changed-line scope unavailable; scanning full files: %s" % exc)
+    try:
+        style_problems, style_blocking, style_observed, style_rel = (
+            _rule_check_authored_tests(
+                pdir, gdir, authored_tests, line_scope_path or None))
+    finally:
+        if line_scope_path:
+            try:
+                os.unlink(line_scope_path)
+            except OSError:
+                pass
     arts.append(style_rel)
 
-    # H1 FILE HYGIENE: license-header mirror of the CI file check over the newly
-    # authored test files. Blocking, fail-closed — same as P2.
+    # FILE HYGIENE observation: license-header mirror of the CI file check over
+    # the newly authored test files. Recorded, but owned by P8 review / CI.
     hygiene_problems, hygiene_rel = _hygiene_check_authored_tests(pdir, gdir, authored_tests)
     arts.append(hygiene_rel)
 
@@ -391,7 +469,7 @@ def main():
     if non_test_extra:
         problems += ["feature freeze violated by non-test path: %s" % p for p in non_test_extra]
     problems += style_problems
-    problems += hygiene_problems
+    # hygiene_problems is signed observation evidence only.
     if contract_status == "ok" and missing:
         problems += ["declared test_case not authored (suite not referenced by this run's test files): %s"
                      % g for g in missing]
@@ -400,8 +478,18 @@ def main():
 
     bypass = " (AR-CONTRACT-BYPASS: %s)" % c_detail if contract_status == "absent" else ""
     reason = ("test-develop authorship: contract=%s, required=%d authored=%d, "
-              "authored_test_files=%d%s") % (
-        contract_status or "n/a", len(required), len(covered), len(authored_tests), bypass)
+              "authored_test_files=%d, critical_rules_ok=%s, static_observed=%d, "
+              "hygiene_observed=%d%s") % (
+        contract_status or "n/a", len(required), len(covered), len(authored_tests),
+        not style_problems, style_observed, len(hygiene_problems), bypass)
+    blocking_rules = sorted({str(f.get("rule_id")) for f in style_blocking})
+    if blocking_rules:
+        reason += " BLOCKING_RULES: %s" % ", ".join(blocking_rules)
+    non_finding_problems = [
+        problem for problem in style_problems
+        if not problem.startswith("test code violates critical rule")]
+    if non_finding_problems:
+        reason += "; " + "; ".join(non_finding_problems[:3])
     if missing:
         reason += " MISSING: %s" % ", ".join(missing)
     print(reason)
@@ -421,8 +509,10 @@ def main():
                   "signed authorship gate still PASSED")
         except Exception as exc:  # pragma: no cover - defensive
             print("WARNING: control-layer bundle derivation failed: %s" % exc)
-        gl.write_phase_summary(pdir, PHASE, GATE, "PASS", reason,
-                               checks=["feature_freeze", "authorship_coverage"])
+        gl.write_phase_summary(
+            pdir, PHASE, GATE, "PASS", reason,
+            checks=["feature_freeze", "authorship_coverage", "critical_rules",
+                    "static_observations"])
         gl.clear_failure_report(pdir, PHASE)
     else:
         gl.write_phase_summary(pdir, PHASE, GATE, "FAIL", reason, checks=problems)
@@ -442,18 +532,20 @@ def main():
             last_failure_class=None)
     else:
         # S2: P3 now emits a repair packet (+ FAIL card) via finalize_control so
-        # a weak model gets a concrete author/repair route. A style finding is a
-        # code_ruleset finding in test code; otherwise authorship is incomplete.
-        style_failed = bool(style_problems) or bool(hygiene_problems)
+        # a weak model gets a concrete author/repair route. Only a blocking
+        # critical rule is a test_style_finding; hygiene observations never
+        # drive repair.
+        style_failed = bool(style_problems)
         failure_class = ("test_style_finding" if style_failed
                          else "test_authoring_incomplete")
-        # S3: backfill line-level suspects from the findings the guards already
-        # wrote for the authored tests. suspect_files stays the fallback.
-        suspect_locations = (
-            gl.suspect_locations_from_findings_json(
-                pdir, "evidence/phase3/test_style_findings.json")
-            + gl.suspect_locations_from_findings_json(
-                pdir, "evidence/phase3/test_hygiene_findings.json"))
+        # S3: backfill line-level suspects ONLY from the in-memory blocking
+        # findings. Non-critical/hygiene observations (and stale reports from an
+        # aborted scan) stay evidence-only and never drive repair.
+        suspect_locations = gl.normalize_suspect_locations([{
+            "file": f.get("file"), "line": f.get("line"),
+            "rule": f.get("rule_id"),
+            "message": f.get("message") or f.get("remediation")}
+            for f in style_blocking])
         gl.finalize_control(
             pdir, phase=PHASE, phase_name="test-develop", verdict="FAIL",
             repair_packet_parts=REPAIR_PACKET_PARTS,

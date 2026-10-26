@@ -20,6 +20,7 @@
 
 - [Workflow 编排器](/skill-playbooks/workflow-orchestration) — `ohos-ar-dev-workflow` 作为"大脑"的角色
 - [环境初始化](/skill-playbooks/environment-init) — 围绕 `ohos-ar-dev-init`
+- [ARM64 QEMU 开发](/skill-playbooks/qemu-development) — 四个 QEMU skill 与 AR 流水线接入
 - [编译与诊断](/skill-playbooks/build-and-diagnosis) — 围绕 `ohos-dev-build-execution-diagnosis` + `ohos-build-flash`
 - [单测生成](/skill-playbooks/unit-test-generation) — 围绕 `ohos-test-ut-generation`
 - [真机调试 hdc](/skill-playbooks/device-debug-and-hdc) — 围绕 `ohos-dev-hdc-command-usage`

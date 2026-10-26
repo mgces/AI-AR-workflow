@@ -1,6 +1,6 @@
 # P2 代码开发
 
-> 本页拆解 P2(物理 phase 2)的代码开发目标、依赖签名设计 + consent、改动非空、C++ 强门控、闭合锁功能指纹。
+> 本页拆解 P2(物理 phase 2)的代码开发目标、依赖签名设计 + consent、改动非空、critical 规则子集、闭合锁功能指纹。
 
 ## 代码开发目标
 
@@ -16,10 +16,13 @@ P2 是代码开发阶段——按 P1 固化的签名 `AR_design.md` 写真实代
 
 - 已有签名 AR_design **且** 已有绑定的 P1 设计 consent
 - 相对 `base_commit` 有 tracked/untracked 改动(diff 非空)
-- C/C++ 格式 guard + 强规则检查通过
+- 本轮 guard 报告可读，且 `gatelib.P2_P3_CRITICAL_RULESET_IDS` 无命中（`G.FUU.21`、
+  `G.FUU.21-CPP`、`G.STR.01`、`G.ARR.03`、`G.MEM.05`、`G.FUU.10`、`G.EXP.03`、
+  `G.EXP.33-CPP`、`G.INT.04`、`G.EXP.26-CPP`）
+- format、非白名单规则、敏感词、文件名/许可证卫生仅是签名观察证据，不构成通过条件
 - **闭合时锁功能指纹**(仅非测试路径内容,相对 base、commit 无关)
 
-产物落 `$PDIR/evidence/phase2/`:`diff.patch`、`changed_files.txt`、`style_report.txt`、`strict_cpp_report.txt`。
+产物落 `$PDIR/evidence/phase2/`:`diff.patch`、`changed_files.txt`、`style_report.txt`、`strict_cpp_report.txt`、`file_hygiene_report.txt`。
 
 ## 功能指纹分层
 
@@ -38,7 +41,7 @@ P2 是代码开发阶段——按 P1 固化的签名 `AR_design.md` 写真实代
 |---|---|
 | `ohos-dev-sa-codegen` | SA 代码生成 |
 | `ohos-dev-napi-module` | NAPI 模块生成 |
-| `code-ruleset-style-check` | C/C++ 格式与强规则门控 |
+| `code-ruleset-style-check` | C/C++ 规则扫描（critical 子集硬门，其余留证） |
 | `tdd-enforcer` | TDD 约束 |
 | `ohos-code-skeletons` | 写码脚手架(插件/单测/模块测试/模糊测试占位符骨架) |
 
@@ -54,7 +57,7 @@ P1 设计固化 → consent → P2 代码开发 → P3 测试开发
 
 - **想跳过设计直接开发**:不行。P2 强制依赖签名 AR_design + P1 consent
 - **改了功能代码想继续当前阶段**:不行。闭合后功能指纹已锁,漂移即被拒,必须 reset 回 P1
-- **以为 diff 非空就 advance**:不够。还要 C++ 格式 guard + 强规则检查 + 闭合锁指纹
+- **以为 diff 非空就 advance**:不够。还要本轮 guard 报告可读、critical 子集无命中、依赖/范围检查通过并闭合锁指纹
 - **`--no-style` 随便用**:仅无 C/C++ 改动时兼容;`--allow-missing-design` 仅 legacy run 留痕放行
 
 ## 延伸阅读

@@ -1140,6 +1140,9 @@ def _state_payload(pdir, state):
         "component_type": state.get("component_type"),
         "device_type": state.get("device_type"),
         "environment_profile_digest": state.get("environment_profile_digest"),
+        "qemu_config": state.get("qemu_config"),
+        "qemu_config_digest": state.get("qemu_config_digest"),
+        "qemu_instance_identity": state.get("qemu_instance_identity"),
         "product": state.get("product"),
         "current_phase": state.get("current_phase"),
         "current_phase_name": gl.PHASE_NAME.get(state.get("current_phase")),
@@ -1264,11 +1267,13 @@ def cmd_init(args):
     #   * --environment harmonyos --component-type system|chip.
     if not args.environment:
         sys.exit(
-            "ERROR: environment not confirmed. The pipeline supports two "
+            "ERROR: environment not confirmed. The pipeline supports three "
             "environments and the choice changes build + upload behavior, so it "
             "must be confirmed by a human before init.\n"
             "  * openharmony (gitcode / rk3568):\n"
             "      re-run init with --environment openharmony\n"
+            "  OpenHarmony ARM64 QEMU (gitcode):\n"
+            "      re-run init with --environment openharmony-qemu\n"
             "  * harmonyos (HarmonyOS / Gerrit; two component kinds):\n"
             "      re-run init with --environment harmonyos --component-type system|chip\n"
             "  Ask the user which environment this AR targets, then re-run init.")
@@ -1325,6 +1330,9 @@ def cmd_init(args):
         "environment": args.environment,
         "component_type": component_type,
         "device_type": device_type,
+        "qemu_config": (os.path.abspath(args.qemu_config) if args.qemu_config else
+                        os.path.join(repo, "qemu-workflow", "config.json"))
+                       if args.environment == "openharmony-qemu" else None,
         # Bind the run to the exact trusted environment profile resolved at
         # init. If an operator changes product/build/test paths later, every
         # accessor rejects the old run and forces a fresh P0 instead of
@@ -2059,6 +2067,10 @@ def cmd_status(args):
     metrics = gl.read_workflow_metrics(pdir)
     if metrics:
         gl.write_workflow_metrics(pdir, metrics)  # refresh live elapsed/excluded totals
+    # Navigation files are derived snapshots. Refresh them on every status read
+    # so a new gate result cannot leave a stale PASS/consent instruction behind.
+    # This does not mutate pipeline progress or signed evidence.
+    _write_next_action(pdir, state)
     payload = _state_payload(pdir, state)
     if args.json:
         print(json.dumps(payload, indent=2, ensure_ascii=False))
@@ -2202,6 +2214,8 @@ def main():
     p.add_argument("--device-serial", default="",
                    help="pin a device serial; default empty = auto-detect the single "
                         "connected device at P0 (or set $DEVICE_SERIAL)")
+    p.add_argument("--qemu-config", help="QEMU config JSON (default: <repo>/qemu-workflow/config.json); "
+                   "used with --environment openharmony-qemu, including snapshot configs")
     p.add_argument("--device-type", default="",
                    help="HarmonyOS build --device-type, bound to the source root "
                         "(e.g. general_all_phone_standard for system, "
@@ -2222,6 +2236,7 @@ def main():
     p.add_argument("--environment", choices=list(envs.ENVIRONMENTS),
                    help="target environment; REQUIRED (a bare init hard-fails). "
                         "'openharmony' = the original gitcode/rk3568 flow; "
+                        "'openharmony-qemu' = gitcode/arm64_virt QEMU; "
                         "'harmonyos' = HarmonyOS flow (Gerrit upload, no "
                         "gitcode/download). Ask the user which environment this AR "
                         "targets before init.")

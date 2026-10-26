@@ -44,6 +44,9 @@ def _sha256(path):
 _CLANG_TIDY_RULE_MAP = [
     ("google-explicit-constructor",              "G.CLS.03-CPP"),
     ("cppcoreguidelines-special-member-functions","G.CLS.04-CPP"),
+    # First match wins. The virtual-destructor checker is the G.CLS.10 rule;
+    # G.CLS.06 (virtual calls in ctor/dtor) has no local checker yet.
+    ("cppcoreguidelines-virtual-class-destructor","G.CLS.10-CPP"),
     ("cppcoreguidelines-virtual-class-destructor","G.CLS.06-CPP"),
     ("performance-noexcept-move-constructor",    "G.CLS.08-CPP"),
     ("modernize-use-override",                   "G.CLS.12-CPP"),
@@ -72,7 +75,6 @@ _CLANG_TIDY_RULE_MAP = [
     ("clang-analyzer-security.insecureAPI",      "G.STD.05-CPP"),
     # Phase J additions — broader clang-tidy mapping for remaining AST rules
     ("cppcoreguidelines-special-member-functions",   "G.CLS.07-CPP"),
-    ("cppcoreguidelines-virtual-class-destructor",   "G.CLS.10-CPP"),
     ("misc-throw-by-value-catch-by-reference",       "G.ERR.03-CPP"),
     ("bugprone-exception-escape",                    "G.ERR.04-CPP"),
     ("cppcoreguidelines-pro-type-member-init",       "G.EXP.08-CPP"),
@@ -190,6 +192,10 @@ _RAW_RULES = [
      "avoid direct dlopen with external data; use a validated loading wrapper", None),
     ("G.STD.15-CPP", "致命", r"\b(LoadLibrary|LoadLibraryEx[AW])\s*\(",
      "do not pass external data to module loading functions", None),
+    ("G.STD.15-CPP", "致命",
+     r"\b(execl|execlp|execle|execv|execvp|execvpe|execve|fexecve|"
+     r"posix_spawn|posix_spawnp)\s*\(",
+     "do not pass external data to process launch functions", None),
     # --- extern declarations (should use header includes) ---
     ("G.EXP.05-CPP", "严重", r"\bextern\s+(int|char|void|bool|long|short|unsigned|signed|float|double)\s+\w+\s*\(",
      "use header includes instead of extern function declarations", None),
@@ -423,14 +429,18 @@ RULES = [(rid, sev, re.compile(pat), fix, exts) for rid, sev, pat, fix, exts in 
 _TEXT_RULE_IDS = frozenset({
     "G.CMT.02", "G.CMT.02-CPP", "G.CMT.04", "G.CMT.04-CPP",
     "G.CMT.05-CPP", "G.CMT.06", "G.EXP.43-CPP", "G.OTH.05",
-    "G.OTH.06-CPP",
+    "G.OTH.06-CPP", "G.FIL.03",
 })
 # These rules need type, control-flow, paired-declaration, or comment-token
 # semantics that a line regex cannot prove. Keep their local hints visible, but
 # never block a change from the regex approximation alone.
+# G.INT.04 is deliberately NOT advisory: the lifecycle P2/P3 policy treats the
+# uint32-addition-without-widening SHAPE as a hard blocker. This is a shape-level
+# heuristic (the regex cannot see operand widths), so the remediation is to
+# widen/cast the operands explicitly.
 _ADVISORY_RULE_IDS = frozenset({
     "G.AST.02", "G.CLS.05-CPP", "G.CMT.02", "G.CMT.02-CPP",
-    "G.CNS.04-CPP", "G.CTL.03", "G.EXP.36-CPP", "G.INT.04",
+    "G.CNS.04-CPP", "G.CTL.03", "G.EXP.36-CPP",
     "G.RES.12-CPP", "G.STD.10-CPP",
 })
 
@@ -1009,8 +1019,14 @@ def _component_guard_ok(path, root):
 def _clang_tidy_findings(files, compile_commands_dir, clang_tidy=None, repository_root=None):
     """Run clang-tidy on *files* using a compilation database at
     *compile_commands_dir*, then map each warning to a workbook rule_id via
-    _CLANG_TIDY_RULE_MAP.  Returns [] if clang-tidy is unavailable or the
-    compilation database is missing (the caller logs those separately)."""
+    _CLANG_TIDY_RULE_MAP.
+
+    Returns ``(findings, note)``. A non-empty ``note`` means the checker was not
+    started at all (tool or compile database unavailable); a fail-closed caller
+    must treat that as blocking rather than clean. Once the checker ran, an
+    abnormal exit or a checker-tagged diagnostic we cannot parse is returned as
+    a ``clang-tidy-backend`` finding, so rule-id filtering can never swallow a
+    backend/report defect."""
     clang_tidy = clang_tidy or shutil.which("clang-tidy")
     if not clang_tidy:
         return [], "clang-tidy not found in PATH"
@@ -1020,18 +1036,27 @@ def _clang_tidy_findings(files, compile_commands_dir, clang_tidy=None, repositor
 
     cmd = [clang_tidy, "--config-file=" + str(CLANG_TIDY_CFG),
            "-p", str(ccd.parent), *map(str, files)]
-    def backend_error(detail):
-        return [{"file": "", "line": 0, "rule_id": "clang-tidy-backend",
-                 "severity": "严重", "remediation": detail}], ""
+
+    def backend_finding(detail):
+        return {"file": "", "line": 0, "rule_id": "clang-tidy-backend",
+                "severity": "严重", "remediation": detail}
+
     try:
         cp = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
     except (subprocess.TimeoutExpired, OSError) as exc:
-        return backend_error("clang-tidy execution failed: %s" % exc)
+        return [backend_finding("clang-tidy execution failed: %s" % exc)], ""
     findings = []
+    malformed = []
     for line in (cp.stdout + "\n" + cp.stderr).splitlines():
         # clang-tidy output: /path/file.cpp:42:5: warning: check-name [check-name]
         m = re.match(r'^(.*?):(\d+):(\d+):\s*(?:warning|error):\s+.*?\[([^\]]+)\]$', line)
         if not m:
+            # A checker-tagged diagnostic the strict parser cannot read means the
+            # report format is not trustworthy. Record it as a backend defect
+            # (never silently drop it as if the scan were clean).
+            if (re.search(r":\s*(?:warning|error):\s", line)
+                    and re.search(r"\[[^\]]+\]\s*$", line)):
+                malformed.append(line.strip()[:300])
             continue
         file_name, line_number, _column, check = m.groups()
         if check == "llvm-header-guard" and _component_guard_ok(file_name, repository_root):
@@ -1049,9 +1074,17 @@ def _clang_tidy_findings(files, compile_commands_dir, clang_tidy=None, repositor
                     "remediation": "clang-tidy: %s" % line.strip(),
                 })
                 break
+    if malformed:
+        findings.append(backend_finding(
+            "unparsable clang-tidy diagnostic(s); report format invalid: %s"
+            % " | ".join(malformed[:3])))
     if cp.returncode != 0:
+        # A non-zero exit is a backend failure even when some diagnostics were
+        # parsed: without --warnings-as-errors, warnings alone do not make
+        # clang-tidy fail, so rc!=0 means the scan did not complete cleanly.
         detail = (cp.stderr or cp.stdout or "unknown clang-tidy error").strip()
-        findings.extend(backend_error("clang-tidy failed with rc=%d: %s" % (cp.returncode, detail[:500]))[0])
+        findings.append(backend_finding(
+            "clang-tidy failed with rc=%d: %s" % (cp.returncode, detail[:500])))
     return findings, ""
 
 

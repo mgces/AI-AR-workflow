@@ -1,18 +1,25 @@
 # P6 端到端功能测试(device-functional,物理 phase 6)
 
+本流程中的“真机/设备端”指本次选定的运行目标，可以是 rk3568 物理开发板或 arm64_virt QEMU。
+`openharmony-qemu` 使用 `ohos-qemu-run` 管理实例、定向 HDC 与截图，按
+[QEMU 接入](../ohos-ar-dev-workflow/references/qemu-development.md) 部署本次 ARM64 产物。
+设备门核对 P0 的配置与实例连接，继续执行 hash、nonce、进程、功能 marker 与副作用断言。
+重打包不更新运行快照，不能把旧系统的成功当作新代码通过；P6 人工确认保持不变。
+
 > 📌 P5 单元测试与本阶段都在**真机**上跑;区别是 P5 逐个 gtest 验单元逻辑,P6 从真实入口触发验
 > 端到端功能(marker + 产物 sha256 + 抗伪造 + 人工确认)。"真机"不是本阶段独有,端到端才是。
 
 `gate_device_func.py` 签名 `emit(phase 6)`(默认 `--phase 6`;集成复用时 `--phase 7`,见 phase7-quality)。
 
 ## 做事(调用现有技能)
-- 部署改动到真机:`ohos-build-flash`(remount rw → `file send` → `restorecon` → 重启守护
-  `kill -9 $(pidof <svc>)`)。
-- 设备交互/抓日志命令:`ohos-dev-hdc-command-usage`。
+- rk3568 物理开发板部署:`ohos-build-flash`(remount rw → `file send` → `restorecon` → 重启守护
+  `kill -9 $(pidof <svc>)`)；arm64_virt QEMU 部署、实例和截图:`ohos-qemu-run`。
+- 两类设备的 HDC 交互/抓日志命令:`ohos-dev-hdc-command-usage`；QEMU 连接由配置固定到本实例。
 
 ## 准备两个 bash 片段(由你按组件写,门控逐字执行并留痕)
 - **deploy 片段**(可选):用 `dev_remount_rw`/`dev_send`/`dev_shell`(已由 device.sh 提供)
-  把 `out/rk3568/...` 的产物部署到 `/system/...` 并 `restorecon`、重启守护。
+  把所选环境的产物部署到 `/system/...` 并 `restorecon`、重启守护。产物目录由环境决定：
+  rk3568 为 `out/rk3568/`，arm64_virt QEMU 为 `out/arm64_virt/`。
 - **scenario 片段**(必需):驱动真实端到端场景,不能只 `log` 一个成功字符串。必须从真实入口触发,
   例如真实 API/SA IPC/ArkTS 调用/hdc shell 命令/系统事件注入/配置变更后重启服务等,让改动代码
   在设备进程里实际执行。环境变量 `$GATE_NONCE` 已导出,必须让组件或场景把它打进设备日志。
@@ -28,13 +35,13 @@
 > 声明好(见 `phase1-design.md`)。走到 P6 才发现"组件没日志、marker 不知从哪来" = P1 设计不完整,
 > **首选 `advance.py reset` 回 P1 补 DFX 设计**,而非在 P6 现编或绕门。下面是补救决策树。
 
-门控 `ok = marker_seen and …`(`gate_device_func.py`),**真机日志里命中一行 marker 是唯一硬锚,不可绕过**。
+门控 `ok = marker_seen and …`(`gate_device_func.py`),**目标设备日志里命中一行 marker 是唯一硬锚,不可绕过**。
 但这一行 marker **不是、也不该由"测试用例"来打**:它不是"测试通过标记",而是**把这次真机运行钉在
 本台设备、本次 nonce、目标进程上**的运行时痕迹(marker 行的 PID 还会反查进程身份/加载的 so)。
 所以它必须来自**真实运行时路径**,不能是脚本里写死的字面量(`find_marker_literals` 就是防这个)。
 
 先分清层级:**P5 单元测试**证明"逻辑对"(gtest/ArkTS 报告,不碰 hilog);**P6 端到端**证明
-"组件在真机上被真实触发、真的跑了那条路径"。"组件没 hilog" ≠ "不用验 hilog",而是"这次真机运行
+"组件在目标设备上被真实触发、真的跑了那条路径"。"组件没 hilog" ≠ "不用验 hilog",而是"这次设备运行
 当前不可观测"。按下面三种情况取一,**都不是去掉 hilog 校验**:
 
 - **情况 1 — 组件有成功路径、只是没打日志 → 在成功路径补一行 HILOG(首选)。**
@@ -54,7 +61,7 @@
   判据只有一条:**marker 源自被测组件被拉起后的真实运行时路径**,而非测试脚本里 `console.log('passed')`
   式的自说自话。谁触发的不重要,marker 来自哪条路径才重要。
 
-> 一句话:P6 要的不是"测试系统写 hilog",是"**被测组件在真机上真的跑起来了**"这个事实的运行时痕迹。
+> 一句话:P6 要的不是"测试系统写 hilog",是"**被测组件在所选目标设备上真的跑起来了**"这个事实的运行时痕迹。
 > 让它变可观测(情况 1)或用真实副作用作证(情况 2),**不要**去掉 hilog 校验——那是防伪设计,非可选项。
 
 ## 门控
@@ -63,11 +70,17 @@ python3 $S/gate_device_func.py --pipeline-dir "$PDIR" \
     --deploy-script /path/deploy.sh \
     --scenario-script /path/scenario.sh \
     --marker "<功能成功标记字符串>" \
-    --host-artifact "$OHOS_ROOT/out/rk3568/..." \
+    --host-artifact "$OHOS_ROOT/<环境产物目录>/..." \
     --device-artifact "/system/..." \
     --runtime-marker "<改动代码运行标记>" \
     --e2e-marker "<端到端场景成功标记>"
 ```
+
+QEMU 安全模式下如果真实应用启动探针返回 `10106102`，或日志/调用栈指向
+`UnlockScreenManager`，应判定为“设备仍锁定、场景前置条件未满足”。停止重复启动和点击重试，
+通过本次实例对应的 noVNC/人工解锁完成交互，再以应用真实进入前台或目标进程实际启动作为解锁证据；
+随后重新运行 P6 场景门。桌面可见、触摸命令返回 `No Error`、或 `aa start` 命令已发出都不能代替
+应用启动证明。若环境不能解锁或探针仍失败，保留失败证据并停在 P6 修复状态。
 脚本逻辑(RTC 无关三锚):生成 nonce → `dev_assert_online` → 采 `uptime_before` →
 执行 deploy(任一命令非 0 即 FAIL)→ 对设备产物执行 `sha256sum` 并比对主机产物 sha256 →
 读设备墙钟 `dev_now`(baseline/start 边界)→ 跑 scenario → 再读 `dev_now`(end 边界)→
@@ -88,12 +101,12 @@ deploy/scenario 脚本跑 `find_marker_literals` 防止把契约 marker 硬写�
 **且** `uptime_after > uptime_before > 0`。同时 `--runtime-marker`/`--e2e-marker` 及契约 device
 marker 都不得写死在 deploy/scenario 脚本中。缺少任一项即 FAIL。
 
-## ⚠️ 真机结果需人工确认(本阶段特殊)
-P6 与多数阶段不同:门控产出证据为 PASS 后**不自动放行**。脚本会停下并把真机真实结果与
-所有产物路径打印出来(含 hilog 抓取末尾片段),**等待人工核对真机测试结果**。编排器到这里
+## ⚠️ 设备结果需人工确认(本阶段特殊)
+P6 与多数阶段不同:门控产出证据为 PASS 后**不自动放行**。脚本会停下并把所选设备目标的运行结果与
+所有产物路径打印出来(含 hilog 抓取末尾片段),**等待人工核对本次设备测试结果**。编排器到这里
 **必须停住、把这些真实结果与产物呈现给用户,等用户确认**,不得自行继续。
 
-人工确认真机结果可接受后,记录 consent 再推进:
+人工确认 rk3568 或 QEMU 目标设备的结果可接受后,记录 consent 再推进:
 ```bash
 python3 $S/advance.py --pipeline-dir "$PDIR" consent --phase 6 --token <审核人>
 python3 $S/advance.py --pipeline-dir "$PDIR" advance  --phase 6
@@ -107,7 +120,7 @@ python3 $S/advance.py --pipeline-dir "$PDIR" advance  --phase 6
 python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-workflow/scripts/render_report.py" \
     --pipeline-dir "$PDIR" --kind device
 ```
-产出**单个** `reports/device_functional.md`(真机完整报告:nonce/marker/e2e、hilog 片段、
+产出**单个** `reports/device_functional.md`(目标设备完整报告:nonce/marker/e2e、hilog 片段、
 产物 sha256 一致,全部聚合进这一个 md)。渲染文本经脱敏;渲染失败不影响门控 verdict。
 
 P5 单元测试 + P6 端到端都通过后,再渲染**测试用例报告**(P5 单元测试执行结果 + P6 端到端关键证据点聚合,

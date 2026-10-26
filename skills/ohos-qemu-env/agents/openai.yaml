@@ -1,0 +1,4 @@
+interface:
+  display_name: "QEMU 环境准备"
+  short_description: "检查并离线恢复 WSL 上锁定版本的 ARM64 QEMU 与浏览器图形环境"
+  default_prompt: "用 $ohos-qemu-env 检查并准备当前 WSL 的 QEMU 运行环境。"

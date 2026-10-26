@@ -19,3 +19,10 @@ test part/suite -> built test -> deployment -> runtime trigger -> observable res
 ```
 
 任何写入 `AR_design.md` 或 `ar-contract` 的 target、artifact、test case、device marker 都必须有当前源码或真实验证锚点，不能引用知识库摘要作为证明。
+
+## ARM64 QEMU 开发入口
+
+本仓的四个 `ohos-qemu-*` skill 位于 [skills/](../../skills/ohos-qemu-workflow/SKILL.md)，
+环境/编译/运行可分别执行。AR 开发通过 `ohos-ar-dev-workflow` 的 `openharmony-qemu` 分支使用，
+见 [接入说明](../../skills/ohos-ar-dev-workflow/references/qemu-development.md)。运行器、产品选入、
+工具版本和测试能力仍需在当前源码树确认，历史基本启动证据不能推导本轮功能或真机验收通过。

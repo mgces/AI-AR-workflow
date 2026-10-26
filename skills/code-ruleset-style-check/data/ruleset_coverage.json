@@ -3,7 +3,7 @@
   "source": "黄区C语言门禁规则集_OAT_敏感词 - 20260126.xlsx",
   "source_sha256": "82180cd3c566141a183df0dac2f3d41c9d5f5208f79d28504e9e3d0f9fbd585a",
   "ruleset_data_sha256": "61f372ed94bc95e5b21c20b7b34b1b8f830ac31a677a58377f60bbb827bf63e5",
-  "guard_sha256": "7014365828a81ea3c5722fdf89a3ae020832142a9adb4afc50222efac3af3419",
+  "guard_sha256": "b24427393b9202bd41ee4895db8af212d238da9af587e9244f4d41300c8cafc3",
   "metric_sha256": "a8d0903b5be564d10e38e376aa1b3054829d75d4f82e94c5e675264a09bcf0ba",
   "backend_capabilities": {
     "sensitive-word": "deterministic-local",
@@ -678,15 +678,14 @@
       "rule_id": "G.INT.04",
       "severity": "一般",
       "backends": [
-        "advisory-regex"
+        "regex"
       ],
       "phases": [
         "P2",
-        "P3",
-        "P7"
+        "P3"
       ],
-      "author_time": false,
-      "coverage_claim": "advisory"
+      "author_time": true,
+      "coverage_claim": "executable"
     },
     {
       "row": 50,
@@ -7576,15 +7575,15 @@
   "summary": {
     "workbook_rows": 545,
     "mapped_rows": 545,
-    "author_time_rows": 414,
-    "later_stage_rows": 131,
-    "executable_local_rows": 414,
+    "author_time_rows": 415,
+    "later_stage_rows": 130,
+    "executable_local_rows": 415,
     "tool_dependent_rows": 108,
     "owner_only_rows": 12,
-    "advisory_rows": 11,
+    "advisory_rows": 10,
     "backend_counts": {
       "sensitive-word": 307,
-      "regex": 93,
+      "regex": 94,
       "multiline": 7,
       "clang-format": 39,
       "clang-tidy": 58,
@@ -7593,7 +7592,7 @@
       "static-gate": 1,
       "repository-oat": 8,
       "semantic-review": 4,
-      "advisory-regex": 11
+      "advisory-regex": 10
     }
   }
 }

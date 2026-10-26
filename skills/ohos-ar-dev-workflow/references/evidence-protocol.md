@@ -117,8 +117,8 @@
 ### P4(编译)
 
 - 直接捕获本次 `build.sh` 的 stdout 作为权威 fresh build 证据;
-- 通过条件:`rc==0` + success banner present + error banner absent;
-- 额外硬门控:签名 contract 的 `build_artifacts[]` 必须全部产出。
+- 通过条件:`rc==0` + error banner absent（success banner 仅诊断）+ 签名 contract 的 `build_artifacts[]` 全部产出;
+- 静态硬门:`gatelib.P4_CRITICAL_AST_RULESET_IDS` 与 `clang-tidy-backend`；ninja/clang-tidy/compdb/报告不可用一律 fail-closed，metric 与非白名单 finding 留证。
 - `build_artifacts[]` / `changed_files[]` 必须是无 `..` 的仓库相对 POSIX 路径；绝对路径、盘符、UNC、反斜杠与逃逸 symlink 均拒绝。
 
 相关导航摘要:

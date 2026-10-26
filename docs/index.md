@@ -32,7 +32,7 @@ features:
 
   - icon: 🛡️
     title: 证据门控
-    details: 每个阶段只能由确定性门控脚本基于"真实证据"判定通过——绝不能用模型的自由文本当作阶段结束。真实证据 = 真实构建日志的成功横幅、真机 hdc+hilog 抓取、gtest/xdevice 测试报告、CI 绿状态。
+    details: 每个阶段只能由确定性门控脚本基于"真实证据"判定通过——绝不能用模型的自由文本当作阶段结束。真实证据 = 真实构建的退出码/错误横幅与产物、真机 hdc+hilog 抓取、gtest/xdevice 测试报告、CI 绿状态；成功横幅仅作诊断。
     link: /workflow/evidence-and-gates
     linkText: 查看证据与门控机制
 

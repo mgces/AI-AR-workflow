@@ -7,8 +7,12 @@ This phase is code-shaped, not device-shaped, so its evidence is git state —
 which the host controls and which is RTC-independent (SHAs, not timestamps):
 
   * tracked diff or untracked files against base_commit must be non-empty;
-  * every changed C/C++ file must pass the packaged formatting guard;
-  * the shared code-ruleset guard and deterministic file-hygiene checks must pass.
+  * the shared code-ruleset guard must produce a current, readable report and
+    the changed C/C++ files must have no finding from the explicit high-risk
+    P2/P3 critical subset (gatelib.P2_P3_CRITICAL_RULESET_IDS);
+  * every other static result (clang-format, non-critical regex rules,
+    sensitive words, file hygiene) is retained as signed observation evidence
+    and left to P8 review / remote CI — it does not block this gate.
 
 If pipeline.json has no base_commit yet, the first run records the current HEAD
 as the base (so the diff is measured from where development started).
@@ -23,6 +27,7 @@ import os
 import re
 import subprocess
 import sys
+from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 import gatelib as gl  # noqa: E402
@@ -99,7 +104,8 @@ def _write_handoff_to_test_develop(pdir, contract, *, changed, present_declared,
             gl.control_artifact_ref(P2_RECEIPT_PARTS, "completion_receipt"),
         ],
         "facts_for_next_phase": [
-            "feature code passed style + strict + changed_files coverage",
+            "feature code passed the P2/P3 critical ruleset subset + dependency checks + changed_files coverage",
+            "format, non-critical rules and file hygiene remain signed observation evidence",
             "development freeze snapshot was recorded",
             "test authoring must not modify functional code",
         ],
@@ -147,11 +153,13 @@ def changed_line_ranges(gdir, base, changed, untracked):
     P2 content/style rules are author-time rules, so an old violation elsewhere
     in a touched legacy file must not be reclassified as part of this change.
     New files are wholly in scope; tracked files use zero-context diff hunks.
+    Keys are canonical resolved paths so the guard's Path.resolve() line-filter
+    lookup also matches when the checkout path traverses a symlink.
     """
     untracked_set = set(untracked)
     result = {}
     for rel in changed:
-        path = os.path.abspath(os.path.join(gdir, rel))
+        path = str(Path(os.path.join(gdir, rel)).resolve())
         if not os.path.isfile(path):
             continue
         if rel in untracked_set:
@@ -226,12 +234,32 @@ def static_rule_checks(gdir, source_relpaths):
     return checked, issues
 
 
+def classify_code_ruleset_report(pdir, report_rel):
+    """Classify a guard ``--json`` report under the lifecycle P2/P3 policy.
+
+    Returns ``(blocking, observed, advisory, error)``. Only the explicit
+    high-risk regex subset in gatelib may block; every other content finding is
+    observation evidence. ``error`` means the guard did not leave a trustworthy
+    current report, so the caller must fail closed instead of treating an
+    unexecuted scan as clean. Read-only: the guard CLI and JSON schema stay
+    unchanged.
+    """
+    findings, advisory, error = gl.load_ruleset_findings(pdir, report_rel)
+    if error:
+        return [], [], [], error
+    blocking, observed = gl.partition_rule_findings(
+        findings, gl.P2_P3_CRITICAL_RULESET_IDS)
+    return blocking, observed, advisory, ""
+
+
 def file_hygiene_checks(pdir, gdir, changed, phase, guard_path, line_filter_path=None):
-    """H1: run the deterministic file-hygiene guard (license header today) over
-    the changed files. Returns (problems, evidence_rel). A missing guard fails
-    closed — like the content guard — so a silent bypass cannot look clean. The
-    guard self-scopes (keeps only header-bearing extensions), so we pass every
-    changed path that exists on disk."""
+    """Run the deterministic file-hygiene guard (license header today) over the
+    changed files and keep its result as observation evidence. Returns
+    (problems, evidence_rel). P2 no longer blocks on hygiene (license/files are
+    owned by P8 review / remote CI), so callers must not fold ``problems`` into
+    the phase verdict; the report and findings JSON remain signed artifacts.
+    The guard self-scopes (keeps only header-bearing extensions), so we pass
+    every changed path that exists on disk."""
     rel = "evidence/phase%d/file_hygiene_report.txt" % phase
     out = os.path.join(pdir, rel)
     abs_paths = [os.path.join(gdir, f) for f in changed
@@ -429,18 +457,25 @@ def main():
                 artifacts_rel=arts)
         sys.exit("PHASE 2 FAIL: no changes vs base_commit")
 
-    # Strong C/C++ gate on changed files:
+    # Static gate on changed C/C++ files (lifecycle policy):
     #   * C/C++ changes cannot opt out with --no-style.
-    #   * the packaged code_ruleset guard must exist and pass.
-    #   * missing dependent skill sources fail closed instead of "treated as pass".
+    #   * the packaged code_ruleset guard must leave a CURRENT, readable report —
+    #     a missing/crashed scan fails closed because it cannot prove the
+    #     critical subset was clean.
+    #   * only the explicit P2/P3 high-risk regex subset blocks. clang-format,
+    #     non-critical rules, sensitive words, filename-only checks and file
+    #     hygiene stay in signed evidence but do not close the phase.
+    #   * missing dependent skill sources still fail closed.
     style_ok, style_detail = True, "no C/C++ files changed"
+    style_blocking, style_observed, style_advisory = [], [], []
+    style_report_error = ""
     cxx = source_files(gdir, changed)
     style_rel = "evidence/phase2/style_report.txt"
     strict_rel = "evidence/phase2/strict_cpp_report.txt"
-    strict_checked, strict_issues = static_rule_checks(gdir, cxx)
-    # Filename-extension blockers over the full changed set (.inc etc. bypass the
-    # C/C++ content filter above, so they must be checked against all changes).
-    strict_issues += disallowed_extension_checks(changed)
+    strict_checked, _strict_issues = static_rule_checks(gdir, cxx)
+    # Filename-only checks (.inc etc.) over ALL changed paths are observation
+    # now: the workbook rows they mirror are not in the critical subset.
+    strict_observed = disallowed_extension_checks(changed)
     dependency_issues = []
     if cxx and not os.path.exists(STYLE_GUARD):
         dependency_issues.append("code-ruleset-style-check guard missing: %s" % STYLE_GUARD)
@@ -452,27 +487,53 @@ def main():
         dependency_issues.append("--no-style is not allowed when C/C++ files changed")
 
     style_findings_rel = "evidence/phase2/code_ruleset_findings.json"
+    style_report_path = os.path.join(pdir, style_findings_rel)
     if cxx and not args.no_style and os.path.exists(STYLE_GUARD):
         abs_cxx = [os.path.join(gdir, f) for f in cxx if os.path.exists(os.path.join(gdir, f))]
-        # full guard: clang-format + the deterministic rule blockers. Running
-        # the rules here (not only clang-format) is what keeps banned APIs /
-        # sensitive strings from slipping past P2 into the CI gate. `--json`
-        # captures the same findings structurally (S3 suspect_locations backfill).
-        cp = subprocess.run(
-            [sys.executable, STYLE_GUARD, "--line-filter-json", line_scope_path,
-             "--baseline-git-dir", gdir, "--baseline-commit", base, "--json",
-             os.path.join(pdir, style_findings_rel), "--repository-root", gdir,
-             *abs_cxx],
-            text=True, capture_output=True)
-        style_ok = cp.returncode == 0
-        style_detail = (cp.stdout + cp.stderr)[:4000]
+        # full guard: clang-format + deterministic rules. The JSON report is the
+        # single input to the policy split below. Remove any previous report
+        # first: a crashed scan must never inherit an old clean result.
+        cp = None
+        try:
+            os.unlink(style_report_path)
+        except FileNotFoundError:
+            pass
+        except OSError as exc:
+            style_report_error = "cannot clear stale code_ruleset report: %s" % exc
+        if not style_report_error:
+            cp = subprocess.run(
+                [sys.executable, STYLE_GUARD, "--line-filter-json", line_scope_path,
+                 "--baseline-git-dir", gdir, "--baseline-commit", base, "--json",
+                 style_report_path, "--repository-root", gdir, *abs_cxx],
+                text=True, capture_output=True)
+            style_blocking, style_observed, style_advisory, style_report_error = (
+                classify_code_ruleset_report(pdir, style_findings_rel))
+            # The guard uses 0 for clean and 1 for findings/format observations.
+            # Any other code means the scan itself did not finish normally; a
+            # leftover/partial report must not be treated as a clean verdict.
+            if not style_report_error and cp.returncode not in (0, 1):
+                style_report_error = (
+                    "code_ruleset guard exited rc=%d (expected 0 or 1)"
+                    % cp.returncode)
+        style_ok = not style_report_error and not style_blocking
+        style_detail = ((cp.stdout + cp.stderr)[:4000] if cp else "")
+        style_detail += (
+            "\n\n--- lifecycle static policy (P2/P3 critical subset) ---\n"
+            "guard_rc=%s\ncritical_blocking=%d\nobserved_non_blocking=%d\n"
+            "advisory=%d\nreport_error=%s\nblocking_rules=%s\n"
+            % (cp.returncode if cp else "not-run", len(style_blocking),
+               len(style_observed), len(style_advisory),
+               style_report_error or "(none)",
+               ", ".join(sorted({str(f.get("rule_id")) for f in style_blocking}))
+               or "(none)"))
     elif cxx:
         style_ok = False
         style_detail = "\n".join(dependency_issues) or "style check skipped unexpectedly"
 
-    strict_ok = not strict_issues and not dependency_issues
+    strict_ok = not dependency_issues
     with open(os.path.join(pdir, style_rel), "w", encoding="utf-8") as f:
-        f.write("changed_cxx=%d style_ok=%s strict_ok=%s\n\n--- code_ruleset_guard (format+rules) ---\n%s"
+        f.write("changed_cxx=%d critical_rules_ok=%s deps_ok=%s\n\n"
+                "--- code_ruleset_guard (format+rules) ---\n%s"
                 % (len(cxx), style_ok, strict_ok, style_detail))
     arts.append(style_rel)
     with open(os.path.join(pdir, strict_rel), "w", encoding="utf-8") as f:
@@ -481,20 +542,24 @@ def main():
         f.write("  - code-ruleset-style-check/references/pre-write-contract.md\n")
         f.write("  - code_ruleset/黄区C语言门禁规则集_OAT_敏感词 - 20260126.xlsx\n\n")
         f.write("checked_files:\n%s\n\n" % ("\n".join(strict_checked) or "(none)"))
-        f.write("blocking_issues:\n%s\n\n" % ("\n".join(strict_issues + dependency_issues) or "(none)"))
+        f.write("blocking_issues:\n%s\n\n"
+                % ("\n".join(dependency_issues) or "(none)"))
+        f.write("observed_filename_checks (P8 review / CI owns these):\n")
+        f.write("%s\n\n" % ("\n".join(strict_observed) or "(none)"))
+        f.write("guard_observations:\n")
+        f.write("  see style_report.txt and code_ruleset_findings.json\n\n")
         f.write("manual_judgment_not_auto_enforced:\n")
         f.write("  - API comment quality, class copy/move intent, inheritance intent, input validation completeness\n")
         f.write("  - pointer lifetime, integer overflow proof, function size and parameter-count judgment\n")
     arts.append(strict_rel)
 
-    # H1 FILE HYGIENE: deterministic, no-false-positive CI mirror (license
-    # header) over ALL changed files (the guard self-scopes to header-bearing
-    # extensions). Blocking, fail-closed — pulls the CI header check to author
-    # time so it never first surfaces at the CI gate.
+    # FILE HYGIENE observation: the deterministic license-header mirror still
+    # runs over every changed file so the signed record shows what P8/CI would
+    # flag, but it no longer closes P2.
     hygiene_problems, hygiene_rel = file_hygiene_checks(
         pdir, gdir, changed, 2, HYGIENE_GUARD, line_scope_path)
     arts.append(hygiene_rel)
-    hygiene_ok = not hygiene_problems
+    hygiene_observed = len(hygiene_problems)
 
     # CHANGE BOUNDARY: v3 checks every actual file stays inside P1 allowed_paths
     # and freezes the exact P2 list; v2 retains legacy exact planned-file coverage.
@@ -542,25 +607,40 @@ def main():
                 reason="ar-contract unrecoverable: %s" % c_detail, artifacts_rel=arts)
         sys.exit("PHASE 2 FAIL: ar-contract unrecoverable: %s" % c_detail)
 
+    static_observed_count = (len(style_observed) + len(style_advisory) +
+                             len(strict_observed) + hygiene_observed)
     reason = ("base/head %s->%s, %d file(s) changed (%d untracked), "
-              "style_ok=%s strict_ok=%s hygiene_ok=%s%s%s") % (
+              "critical_rules_ok=%s deps_ok=%s static_observed=%d%s%s") % (
         base[:12], head[:12], len(changed), len(untracked), style_ok, strict_ok,
-        hygiene_ok, cov_note, design_bypass)
+        static_observed_count, cov_note, design_bypass)
+    blocking_rules = sorted({str(f.get("rule_id")) for f in style_blocking})
+    if blocking_rules:
+        reason += "; BLOCKING_RULES: %s" % ", ".join(blocking_rules)
+    if style_report_error:
+        reason += "; code_ruleset report unusable: %s" % style_report_error
+    if hygiene_observed:
+        reason += "; hygiene_observed=%d" % hygiene_observed
     if cov_missing:
         if c_ok and contract.get("version", 1) >= 3:
             reason += "; OUTSIDE change_scope: %s" % ", ".join(cov_missing)
         else:
             reason += "; MISSING changed_files: %s" % ", ".join(cov_missing)
     print(reason)
-    verdict = "PASS" if (style_ok and strict_ok and hygiene_ok and cov_ok) else "FAIL"
+    verdict = "PASS" if (style_ok and strict_ok and cov_ok) else "FAIL"
 
     problems = []
     if not style_ok:
-        problems.append("style check failed")
+        if style_report_error:
+            problems.append("code_ruleset report unusable: %s" % style_report_error)
+        problems += [
+            "blocking critical rule %s at %s:%s" % (
+                f.get("rule_id"), f.get("file"), f.get("line"))
+            for f in style_blocking[:100]]
+        if not style_report_error and not style_blocking:
+            problems.append("style check failed")
     if not strict_ok:
-        problems += (strict_issues + dependency_issues)
-    if not hygiene_ok:
-        problems += hygiene_problems
+        problems += dependency_issues
+    # hygiene_problems / strict_observed are signed observation evidence only.
     if cov_missing:
         if c_ok and contract.get("version", 1) >= 3:
             problems += ["touched file outside change_scope: %s" % m for m in cov_missing]
@@ -577,8 +657,10 @@ def main():
             pdir, contract or {}, changed=changed,
             present_declared=present_declared,
             freeze_snapshot=freeze_snapshot)
-        gl.write_phase_summary(pdir, 2, "gate_develop.py", "PASS", reason,
-                               checks=["diff", "style", "strict", "changed_files"])
+        gl.write_phase_summary(
+            pdir, 2, "gate_develop.py", "PASS", reason,
+            checks=["diff", "critical_rules", "dependencies",
+                    "changed_files", "static_observations"])
         gl.clear_failure_report(pdir, 2)
     else:
         gl.write_phase_summary(pdir, 2, "gate_develop.py", "FAIL", reason,
@@ -605,15 +687,16 @@ def main():
         # repair/escalate route instead of only "修复后重跑". The circuit breaker
         # (S1) accumulates even without a bundle_revision. Navigation only —
         # advance.py + the signed manifest still own the verdict.
-        failure_class = ("code_ruleset_finding" if (not style_ok or not hygiene_ok)
+        failure_class = ("code_ruleset_finding" if not style_ok
                          else "develop_gate_failed")
-        # S3: backfill line-level suspects from the findings the guards already
-        # wrote (code_ruleset + file_hygiene `--json`). suspect_files stays the
-        # non-empty fallback; locations are an advisory refinement.
-        suspect_locations = (
-            gl.suspect_locations_from_findings_json(pdir, style_findings_rel)
-            + gl.suspect_locations_from_findings_json(
-                pdir, "evidence/phase2/file_hygiene_findings.json"))
+        # S3: backfill line-level suspects ONLY from the in-memory blocking
+        # critical findings. Non-critical/hygiene observations (and any stale
+        # report from an aborted scan) must not drive repeated P2→P4 repair.
+        suspect_locations = gl.normalize_suspect_locations([{
+            "file": f.get("file"), "line": f.get("line"),
+            "rule": f.get("rule_id"),
+            "message": f.get("message") or f.get("remediation")}
+            for f in style_blocking])
         gl.finalize_control(
             pdir, phase=2, phase_name="feature-develop", verdict="FAIL",
             repair_packet_parts=REPAIR_PACKET_PARTS,

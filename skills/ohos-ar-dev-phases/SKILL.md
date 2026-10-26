@@ -8,9 +8,15 @@ description: >
 
 # 生命周期阶段(做事 + 门控)
 
+`openharmony-qemu` 使用 arm64_virt 开发目标，环境、编译与实例管理分别调用
+`ohos-qemu-env`、`ohos-qemu-build`、`ohos-qemu-run`，总入口为 `ohos-qemu-workflow`。
+先读取 [QEMU 接入与证据边界](../ohos-ar-dev-workflow/references/qemu-development.md)。
+P0–P8 的签名、契约、测试、质量与 consent 规则继续生效。
+
 新 workflow 运行按 [优化预检说明](optimization-preflight.md) 使用 `advance.py init --optimized-checks`。
 P1 在 `ar-contract` 中填写并签名 `verification_plan`；P1–P8 自动执行阶段预检并保留预检失败。
-预检不能代替签名 PASS。旧运行保持旧策略；未实测的优化效果不能宣称已验证。
+预检不能代替签名 PASS。旧运行只是不启用新增预检；P2/P3/P4 的 critical 静态策略对所有新跑的 Gate 生效，
+历史签名/证据不重写。未实测的优化效果不能宣称已验证。
 
 承重核心在 `scripts/`:`gate_*.py`(唯一 PASS 来源)、`advance.py`(唯一状态写入器)、
 `lib/gatelib.py`(签名账本)、`lib/device.sh`(hdc-over-WSL helper)。
@@ -53,7 +59,13 @@ P1 在 `ar-contract` 中填写并签名 `verification_plan`；P1–P8 自动执�
 - **写码前规则契约(P2/P3)**:开始新增或修改代码前，先加载
   `code-ruleset-style-check/references/pre-write-contract.md` 和
   `ohos-dev-cpp-coding-style`。这是共享规则的作者时指导层，不产生 PASS 证据；写完后仍必须运行
-  P2/P3 的共享 guard，且 guard 是唯一硬门禁来源。
+  P2/P3 的共享 guard。生命周期只把显式白名单 `gatelib.P2_P3_CRITICAL_RULESET_IDS`
+  作为硬门；format、非白名单规则、敏感词、文件名/许可证卫生与 metric 仍签名留证，由 P8 review
+  与远端 CI 兜底。guard 缺失、本轮 JSON 报告缺失或不可解析必须 fail-closed。
+- **P4 静态策略**:clang-tidy 只把 `gatelib.P4_CRITICAL_AST_RULESET_IDS` 作为硬门；
+  compdb、ninja、clang-tidy、报告或诊断不可用/不可解析必须 fail-closed。metric 与非白名单
+  clang-tidy finding 仅留证，不再阻断 P4。预检 `workflow_checks.py` 继续执行并记录，但静态预检
+  本身不写阶段 PASS，也不阻断阶段；非静态预检与工具探测规则不变。
 - **Finding 1:编译前测试代码已写(phase3)**:`gate_test_develop.py`(`emit(phase 3)`)是"先写完功能+测试
   代码再编译"的**真签名门**——不闭合 phase3 就到不了 phase4(build)。它证明测试**编写**(契约每个
   `test_cases[].gtest` 的 suite 出现在**新测试文件**里),测试**执行**留到 phase5(`gate_test_ut.py`)。
