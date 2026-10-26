@@ -186,6 +186,10 @@ AI-AR-workflow/
     │       ├── schemas/                    ← 控制层各包 draft-07 schema(stage_packet/handoff/repair/…/bundle_definition)
     │       └── lib/{gatelib.py, device.sh} ← 签名账本(HMAC 链+指纹分层)+ 控制层 helper + hdc-over-WSL helper
     ├── ohos-ar-dev-init/               ← 一次性环境配置
+    ├── ohos-qemu-workflow/             ← ARM64 QEMU 总流程及公共脚本
+    ├── ohos-qemu-env/                  ← QEMU/noVNC 环境与锁定软件包恢复
+    ├── ohos-qemu-build/                ← arm64_virt 整编、GN target、hb 部件构建
+    ├── ohos-qemu-run/                  ← 实例、HDC、图形、截图与启动验证
     │
     └── (被各阶段调用的能力技能,随包携带)
         ohos-dev-sa-codegen/  ohos-dev-napi-module/  code-ruleset-style-check/
@@ -237,9 +241,11 @@ bash sync-skills.sh --target "$HOME/.my-agent/skills"  # 任意 Agent
 |---|---|---|
 | OHOS 代码仓 | repo 多仓树,如 `$OHOS_ROOT` | `out/ohos_config.json` 产品=rk3568 |
 | 构建环境 | `./build.sh` 可用 | P0 `gate_env_init.py` 自检 |
-| 真机 rk3568 | 经 hdc 可达,**序列号自动探测**(不写死) | P0 自检 `dev_assert_online` |
+| rk3568 真机或 arm64_virt QEMU | 经 hdc 可达,**序列号自动探测**(不写死) | P0 自检 `dev_assert_online` |
 | developer_test | `test/testfwk/developer_test/start.sh` | P0 自检 |
 | `oh-gc`(P8 才需) | `npm i -g @oh-gc/cli@latest` + `oh-gc auth login` | **P0 SOFT 检查**(oh-gc 已装 + gitcode token 已配);缺失只告警并给配置指引 |
+
+本文中的“真机/设备端”泛指本次选择的运行目标，包含 rk3568 物理开发板和 arm64_virt QEMU；涉及物理性能、功耗或外设时会明确写“实体硬件”。
 
 > ⚠️ **OHOS 根目录不是 git 仓**(每个组件子目录才是)。`init` 时必须用 `--git-dir`
 > 指定你改动的**组件路径**(如 `base/hiviewdfx/hiview`);`build_target` 与
@@ -277,14 +283,14 @@ P0 会把探测到的序列号回填进 `pipeline.json` 与 `evidence/phase0/env
 
 | 阶段 | 做事(调用的技能) | 门控脚本 | 通过条件 | 落盘证据(`evidence/phaseN/`) |
 |---|---|---|---|---|
-| **P0** | ohos-ar-dev-init | `gate_env_init.py` | build/compile/git/testfwk/hdc 二进制/真机(自动探测并记录序列号)全部就绪;oh-gc + gitcode token 为 SOFT 告警 | `env.json` |
+| **P0** | ohos-ar-dev-init / ohos-qemu-env / ohos-qemu-run | `gate_env_init.py` | build/compile/git/testfwk/hdc 二进制/所选运行目标(rk3568 自动探测或 QEMU 配置固定实例)全部就绪;oh-gc + gitcode token 为 SOFT 告警 | `env.json` |
 | **P1 设计** | 需求验收矩阵 → kb_search 稳定导航 → 当前源码依赖验证 → 写 AR_design.md(7 章节 + ar-contract v3) | `gate_design.py`(emit 1) | 章节齐全 + 验收闭环 + 关键依赖均有源码/探针证据 + change_scope 合法并签名 | `AR_design.md`、`design_check.txt` |
 | **P2 开发** | ohos-dev-sa-codegen / -napi-module / code-ruleset-style-check / ohos-dev-cpp-coding-style(OHOS C++ 约定,可选) / ohos-dev-security-code-review(安全左移,advisory) / tdd-enforcer / ohos-code-skeletons | `gate_develop.py`(emit 2) | 已有签名 AR_design **且** 已有绑定的 P1 设计 consent **且** 相对 `base_commit` 有 tracked/untracked 改动 **且** 本轮 guard 报告可读 + `gatelib.P2_P3_CRITICAL_RULESET_IDS` 无命中（format/其他规则/卫生仅留证）;**闭合时锁功能指纹** | `diff.patch`、`changed_files.txt`、`style_report.txt`、`strict_cpp_report.txt`、`file_hygiene_report.txt` |
-| **P3 测试开发** | ohos-test-ut-generation / tdd-enforcer(只改测试路径；P2 TDD 测试可认领) | `gate_test_develop.py`(emit 3) | phase2 冻结快照存在 **且** 无新增非测试路径 **且** critical 规则子集无命中（其他规则/卫生留证）**且** 契约 suite 被本次 run 相对 base 新增/修改的测试文件真实注册(编写覆盖) | `authored_test_files.txt`、`test_style_report.txt`、`test_hygiene_report.txt`、`authorship_coverage.txt`、`authored/*`(签名快照) |
-| **P4 编译** | ohos-dev-build-execution-diagnosis / ohos-build-flash / code-ruleset-style-check(编译后 clang-tidy) | `gate_build.py`(emit 4) | exit=0 + 无 error 横幅 + 契约产物齐全；成功横幅仅辅助诊断；clang-tidy 只阻断 P4 critical AST/backend，工具/compdb/报告不可用 fail-closed；metric 与非白名单 finding 留证；summary 分列编译/产物/静态分析/阶段结论 | `build_stdout.log`、`build_banner.txt`、`artifact_check.txt`、`clang_tidy_findings.json`、`clang_tidy_note.txt`、`metric_findings.json`(失败再加 `error_distill.txt`) |
-| **P5 单元测试** | ohos-test-ut-generation / tdd-enforcer | `gate_test_ut.py`(emit 5) | 编出测试二进制 + developer_test 本次**新建**报告 + `tests>0 && failures==0 && errors==0` **且** 契约每个 `test_cases[].gtest` 通过(执行覆盖) | `summary_report.xml`、`result_*.xml`、`gtest_coverage.txt`、`start_sh_stdout.txt`、`report_dir.txt` |
-| **P6 端到端功能测试** | ohos-build-flash / ohos-dev-hdc-command-usage | `gate_device_func.py`(emit 6) | 部署命令全 exit 0 + 主机/设备产物 sha256 一致 + hilog 含**本次 nonce**、功能 marker、运行时 marker、端到端 marker + 契约每个 `device_cases[].marker` 命中 + uptime 单调 + **抗伪造三层**(进程溯源 `process` / `artifact_loaded` 加载证明 / `side_effect` shell 断言 / `absent_before_trigger` 负对照差分);**证据 PASS 后停下,人工核对真机真实结果并 `consent --phase 6` 才推进** | `hilog_capture.txt`、`device_cmds.txt`、`run_meta.txt`、`artifact_runtime_proof.txt`、`device_marker_coverage.txt` |
-| **P7 质量验证** | ohos-build-flash / developer_test(MST) / ohos-test-ut-generation / ohos-test-xts / check-test-code-quality / ohos-test-fuzz-generation / ohos-test-coverage / code-ruleset-style-check / ohos-ci-local-precheck(引擎可用时) / ohos-dev-security-code-review | `gate_integration.py`(emit 7;或 `gate_device_func.py --phase 7` + `gate_integration.py`) | 功能 summary `failures==0 && errors==0 && tests>0` **且 覆盖率、性能、功耗、稳定性报告全部生成并签名,代码 review 问题数为 0;证据 PASS 后需人工确认并 `consent --phase 7` 才进入 P8** | `summary_report.xml`、`coverage_report.*`、`performance_report.*`、`power_report.*`、`stability_report.*`、`code_review_report.txt`、`report_dir.txt` |
+| **P3 测试开发** | ohos-test-ut-generation / tdd-enforcer(只改测试路径；P2 TDD 可认领) | `gate_test_develop.py`(emit 3) | phase2 冻结快照存在 **且** 无新增非测试路径 **且** critical 规则子集无命中（其他规则/卫生留证）**且** 契约 suite 被本次 run 相对 base 新增/修改的测试文件真实注册(编写覆盖) | `authored_test_files.txt`、`test_style_report.txt`、`test_hygiene_report.txt`、`authorship_coverage.txt`、`authored/*`(签名快照) |
+| **P4 编译** | ohos-dev-build-execution-diagnosis / ohos-build-flash / ohos-qemu-build / code-ruleset-style-check(编译后 clang-tidy) | `gate_build.py`(emit 4) | exit=0 + 无 error 横幅 + 契约产物齐全；成功横幅仅辅助诊断；clang-tidy 只阻断 P4 critical AST/backend，工具/compdb/报告不可用 fail-closed；metric 与非白名单 finding 留证；summary 分列编译/产物/静态分析/阶段结论 | `build_stdout.log`、`build_banner.txt`、`artifact_check.txt`、`clang_tidy_findings.json`、`clang_tidy_note.txt`、`metric_findings.json`(失败再加 `error_distill.txt`) |
+| **P5 单元测试** | ohos-test-ut-generation / tdd-enforcer / ohos-qemu-build / ohos-qemu-run | `gate_test_ut.py`(emit 5) | 编出测试二进制 + developer_test 在所选目标上产生本次**新建**报告 + `tests>0 && failures==0 && errors==0` **且** 契约每个 `test_cases[].gtest` 通过(执行覆盖) | `summary_report.xml`、`result_*.xml`、`gtest_coverage.txt`、`start_sh_stdout.txt`、`report_dir.txt` |
+| **P6 端到端功能测试** | ohos-build-flash / ohos-dev-hdc-command-usage / ohos-qemu-run | `gate_device_func.py`(emit 6) | 部署命令全 exit 0 + 主机/设备产物 sha256 一致 + hilog 含**本次 nonce**、功能 marker、运行时 marker、端到端 marker + 契约每个 `device_cases[].marker` 命中 + uptime 单调 + **抗伪造三层**(进程溯源 `process` / `artifact_loaded` 加载证明 / `side_effect` shell 断言 / `absent_before_trigger` 负对照差分);**证据 PASS 后停下,人工核对真机真实结果并 `consent --phase 6` 才推进** | `hilog_capture.txt`、`device_cmds.txt`、`run_meta.txt`、`artifact_runtime_proof.txt`、`device_marker_coverage.txt` |
+| **P7 质量验证** | ohos-build-flash / ohos-qemu-run / developer_test(MST) / ohos-test-ut-generation / ohos-test-xts / check-test-code-quality / ohos-test-fuzz-generation / ohos-test-coverage / code-ruleset-style-check / ohos-ci-local-precheck(引擎可用时) / ohos-dev-security-code-review | `gate_integration.py`(emit 7;或 `gate_device_func.py --phase 7` + `gate_integration.py`) | 功能 summary `failures==0 && errors==0 && tests>0` **且 覆盖率、性能、功耗、稳定性报告全部生成并签名,代码 review 问题数为 0;证据 PASS 后需人工确认并 `consent --phase 7` 才进入 P8** | `summary_report.xml`、`coverage_report.*`、`performance_report.*`、`power_report.*`、`stability_report.*`、`code_review_report.txt`、`report_dir.txt` |
 | **P8 上库** | ohos-ci-gitcode-cli-usage / -gitcode-pr-review / ohos-committer-review(P8-A 补充维度) / -security-code-review / -openharmony-ci-analysis | `gate_upload_ci.py`(emit 8) | P1–P7 全过 + 上库前落全部代码 diff 供人工确认 + **A 本地自检零问题报告(commit 前硬控)** + `git commit -s`(DCO 签名)+ push + **`--issue` 绑定的 PR**(CI 门禁只对绑定 Issue 的 PR 触发)+ **B PR review 零问题报告(建 PR 后、CI 前硬控)** + consent --phase 8 + CI `overall∈{success,passed}` + PR head SHA==push SHA | `full_diff.patch`、`full_diff.stat.txt`、`local_code_review_report.*`、`pr.json`、`pr_create.txt`、`pr_review_report.*`、`ci_status.json` |
 
 每个阶段在 Agent 里的"做事"细节见 `skills/ohos-ar-dev-phases/phaseN-*.md`。
@@ -346,6 +352,15 @@ $REPO/specs/pipeline/{YYYYMMDD}-{slug}/
 | 阶段顺序报错 | 阶段不可跳;只能关闭 `current_phase` 指向的阶段。 |
 
 ---
+
+## ARM64 QEMU 开发
+
+四个 `ohos-qemu-*` skill 已纳入 `skills/`，随 `sync-skills.sh` 一起安装。AR 开发可使用
+`advance.py init --environment openharmony-qemu --qemu-config <快照配置>`，构建产品为
+`arm64_virt`，P5/P6/P7 固定实例连接，上库仍走 GitCode。原 `openharmony` 分支继续使用 rk3568。
+先准备运行器、工具、镜像和独立镜像快照；完整步骤见
+[AR QEMU 接入](skills/ohos-ar-dev-workflow/references/qemu-development.md) 和
+[QEMU 总流程](skills/ohos-qemu-workflow/SKILL.md)。基本启动不替代功能与质量门控。
 
 ## 9. 脚本速查(`skills/ohos-ar-dev-phases/scripts/`)
 

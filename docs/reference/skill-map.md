@@ -7,13 +7,13 @@
 | 阶段 | 常用 skill | 作用 |
 |---|---|---|
 | 需求分析与设计工作流（Requirement workflow）需求导入 | `ohos-req-intake-orchestration`（编排）+ `ohos-req-*` 关联技能 | 原始需求→01-05/IR/SR→AR.md |
-| P0 | `ohos-ar-dev-init` | 初始化环境与能力校验 |
+| P0 | `ohos-ar-dev-init` / `ohos-qemu-env` / `ohos-qemu-run` | 初始化环境与能力校验 |
 | P1 设计 | `ohos-ar-dev-workflow`（编排） / `ohos-dev-sa-codegen` / `ohos-dev-napi-module` / `code-ruleset-style-check` | 设计固化与代码骨架 |
 | P2 开发 | `ohos-dev-sa-codegen` / `ohos-dev-napi-module` / `code-ruleset-style-check` / `tdd-enforcer` / `ohos-code-skeletons` | 代码开发与门控 |
 | P3 测试开发 | `ohos-test-ut-generation` / `tdd-enforcer` / `code-ruleset-style-check` | 单测生成（只增独立测试） |
-| P4 编译 | `ohos-dev-build-execution-diagnosis` / `ohos-build-flash` | 编译与诊断 |
+| P4 编译 | `ohos-dev-build-execution-diagnosis` / `ohos-build-flash` / `ohos-qemu-build` | 编译与诊断 |
 | P5 单元测试 | `ohos-test-ut-generation` / `tdd-enforcer` | developer_test 跑通 |
-| P6 端到端功能测试 | `ohos-build-flash` / `ohos-dev-hdc-command-usage` | 部署 + scenario + hilog |
+| P6 端到端功能测试 | `ohos-build-flash` / `ohos-dev-hdc-command-usage` / `ohos-qemu-run` | 部署 + scenario + hilog |
 | P7 质量 | `ohos-test-xts` / `check-test-code-quality` / `ohos-test-fuzz-generation` / `ohos-test-coverage` / `code-ruleset-style-check` / `ohos-ci-local-precheck`（可选）/ `ohos-dev-security-code-review` | XTS、Fuzz、覆盖率、确定性预检与语义 review |
 | P8 上库 | `ohos-ci-local-precheck`（CI-near）/ `ohos-ci-gitcode-cli-usage` / `ohos-dev-gitcode-pr-review` / `ohos-dev-security-code-review` / `ohos-ci-openharmony-ci-analysis`（远端权威） | 上库、review 与 CI |
 
@@ -36,6 +36,10 @@
 | 写码脚手架 | `ohos-code-skeletons` |
 | 编译诊断 | `ohos-dev-build-execution-diagnosis` |
 | 增量构建与刷机 | `ohos-build-flash` |
+| ARM64 QEMU 总流程 | `ohos-qemu-workflow` |
+| QEMU/noVNC 环境准备 | `ohos-qemu-env` |
+| arm64_virt 整编、GN target、hb 部件构建 | `ohos-qemu-build` |
+| QEMU 启停、HDC、图形和截图 | `ohos-qemu-run` |
 | 生成单元测试 | `ohos-test-ut-generation` |
 | XTS 构建、执行与证据 | `ohos-test-xts` |
 | XTS/兼容性测试代码质量 | `check-test-code-quality` |

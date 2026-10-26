@@ -640,8 +640,9 @@ def main():
     run_cmd = shlex.join(run_argv)
     print("running: (cd %s && %s)" % (dt, run_cmd))
     with _temporary_xdevice_user_config(state, dt, pdir, arts):
+        from qemu_support import test_environment
         proc = subprocess.run(run_argv, cwd=dt, text=True,
-                              capture_output=True)
+                              capture_output=True, env=test_environment(state))
     stdout_rel = "evidence/phase5/start_sh_stdout.txt"
     with open(os.path.join(pdir, stdout_rel), "w", encoding="utf-8") as f:
         f.write(proc.stdout + "\n----stderr----\n" + proc.stderr)

@@ -1,26 +1,30 @@
 # P0 环境预检
 
+QEMU 开发使用 `--environment openharmony-qemu --qemu-config <配置>`：产品为 `arm64_virt`，
+P0 额外检查运行工具、源码运行器、当前实例及 AArch64，签名 `qemu.json`，固定 SDK HDC/server/serial。
+先按 [QEMU 开发指南](/skill-playbooks/qemu-development) 准备独立镜像快照与运行实例。
+
 > 本页拆解 P0 的初始化检查目标、产出证据、通过条件、常见失败、对应 skill。
 
 ## 初始化检查目标
 
 P0 是流水线的环境预检阶段——在真正开始一个 AR 之前,确认整套工具链就绪:
 
-- `build.sh` 可用(编译命令按环境 profile 解析,openharmony 为产品 rk3568)
+- `build.sh` 可用(编译命令按环境 profile 解析:openharmony 为 rk3568,openharmony-qemu 为 arm64_virt)
 - 编译探针真跑通(GN+ninja+ccache 工具链;HarmonyOS 编译命令占位未填则硬失败)
 - `--git-dir` 指向的组件子仓是 git 仓
 - `developer_test` 测试框架就绪
 - hdc 二进制可解析
-- 真机在线(唯一连接目标,自动探测序列号)
+- 目标设备在线(唯一连接目标,自动探测序列号；可以是 rk3568 真机或 arm64_virt QEMU)
 - 上库能力(SOFT 告警,不阻塞):gitcode 环境探 oh-gc + gitcode token;gerrit/HarmonyOS 环境探 git remote + commit-msg 钩子
 
-> **环境形态从 init 就区分**。`advance.py init` 必须带 `--environment openharmony|harmonyos`(缺失硬失败);`harmonyos` 时 `--component-type system|chip` 必填。环境相关的编译命令/产物目录/上库后端全部由 `lib/environments.py` 单点解析,门控不再写死。详见 [环境初始化](/getting-started/environment-init)。
+> **环境形态从 init 就区分**。`advance.py init` 必须带 `--environment openharmony|openharmony-qemu|harmonyos`(缺失硬失败);`harmonyos` 时 `--component-type system|chip` 必填。环境相关的编译命令/产物目录/上库后端全部由 `lib/environments.py` 单点解析,门控不再写死。详见 [环境初始化](/getting-started/environment-init)。
 
 ## 产出什么证据
 
 落盘到 `$PDIR/evidence/phase0/`:
 
-- `env.json` — 各项能力的校验结果 + 探测到的设备序列号
+- `env.json` — 各项能力的校验结果 + 运行目标连接信息(QEMU 另有 `qemu.json`)
 - `build_probe.log` — 编译探针日志(每仓首次 init 编译一次)
 
 并向 `evidence/manifest.jsonl` 追加一条 HMAC 签名记录。
@@ -36,7 +40,7 @@ P0 是流水线的环境预检阶段——在真正开始一个 AR 之前,确认
 | git | HARD | `--git-dir` 指向的组件子仓是 git 仓 |
 | testfwk | HARD | `test/testfwk/developer_test/start.sh` 存在 |
 | hdc_bin | HARD | 能解析到 hdc 二进制 |
-| device | HARD | 唯一真机在线 |
+| device | HARD | 所选目标在线(rk3568 自动探测；QEMU 使用 P0 配置固定实例连接) |
 | oh_gc | SOFT | (仅 gitcode)`oh-gc --version` 已装 |
 | gitcode_auth | SOFT | (仅 gitcode)`oh-gc auth status` 已登录 |
 | git_remote | SOFT | (仅 gerrit)`--git-dir` 有 git remote |
@@ -48,7 +52,7 @@ P0 是流水线的环境预检阶段——在真正开始一个 AR 之前,确认
 
 | 现象 | 原因 / 处理 |
 |---|---|
-| `environment not confirmed` | 裸 `init` 缺 `--environment` 硬失败;先跟用户确认 openharmony / harmonyos,再传 `--environment` |
+| `environment not confirmed` | 裸 `init` 缺 `--environment` 硬失败;先跟用户确认 openharmony / openharmony-qemu / harmonyos,再传 `--environment` |
 | `--component-type is required` | `--environment harmonyos` 缺组件类型;补 `--component-type system|chip` |
 | HarmonyOS 编译命令占位未填 | `lib/environments.py` 的 harmonyos profile 为 UNSET 占位;填入真实编译命令后重跑 |
 | `git_head` BAD | 用 `--git-dir` 指定**组件子仓**,而非 repo 根(根目录无 `.git`) |

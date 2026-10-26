@@ -80,6 +80,7 @@ python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase N
 | `init` | 建运行态,确定**环境形态**(`--environment`,缺失硬失败;harmonyos 需 `--component-type`)、组件/build_target/testpart/base_commit |
 | `migrate` | 在途旧 7 阶段 run 迁到 9 阶段(仅 current_phase<=1;只动 pipeline.json,不碰 manifest) |
 | `next` | 导航层:输出当前逻辑阶段+下一步(retry/repair/regenerate/escalate),并写 next_action.json |
+| `status` | 查询当前状态，并按最新签名清单刷新导航快照；不推进阶段、不改变放行结论 |
 
 ## 延伸阅读
 

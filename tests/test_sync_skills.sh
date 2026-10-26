@@ -28,6 +28,16 @@ test ! -e "$TARGET/check-test-code-quality/guides/R012_p7b_signature/signature_t
 test -f "$TARGET/ohos-test-fuzz-generation/tools/fuzz_check.py"
 test -f "$TARGET/ohos-test-coverage/SKILL.md"
 test -f "$TARGET/ohos-doc-quality-check/SKILL.md"
+for skill in ohos-qemu-workflow ohos-qemu-env ohos-qemu-build ohos-qemu-run; do
+  test -f "$TARGET/$skill/SKILL.md"
+  test -f "$TARGET/$skill/agents/openai.yaml"
+done
+test -f "$TARGET/ohos-qemu-env/references/packages.lock.json"
+test -f "$TARGET/ohos-qemu-build/references/build-and-deploy.md"
+test -f "$TARGET/ohos-qemu-workflow/references/config.example.json"
+python3 -B "$TARGET/ohos-qemu-workflow/scripts/workflow.py" --help >/dev/null
+PYTHONPATH="$TARGET/ohos-ar-dev-phases/scripts/lib" python3 -B -c \
+  'import environments, qemu_support; assert "openharmony-qemu" in environments.ENVIRONMENTS; assert qemu_support.ENTRY.is_file()'
 
 CODEX_TARGET="$TMP_DIR/codex/skills"
 AGENT_HOME="$TMP_DIR/codex" bash "$ROOT/sync-skills.sh" --agent codex >/dev/null

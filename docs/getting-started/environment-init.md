@@ -1,5 +1,9 @@
 # 环境初始化
 
+AR 支持 `openharmony-qemu` 环境（arm64_virt、GitCode）：先用四个 `ohos-qemu-*` skill
+准备环境和独立镜像集，再执行两步初始化。P0 记录配置摘要和实例连接；
+详见 [ARM64 QEMU 开发](/skill-playbooks/qemu-development)。
+
 > 本页围绕 `ohos-ar-dev-init` 技能,解释一次性环境校验的作用、为什么需要 P0、各项能力的校验逻辑,以及环境变量与设备连接方式。
 
 ## ohos-ar-dev-init 的作用
@@ -27,12 +31,12 @@ python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 0
 
 | 能力 | 级别 | 校验内容 | 服务阶段 |
 |---|---|---|---|
-| build | HARD | `./build.sh` 存在(编译命令按环境 profile 解析,openharmony 为产品 rk3568) | P2 |
+| build | HARD | `./build.sh` 存在(编译命令按环境 profile 解析:openharmony 为 rk3568,openharmony-qemu 为 arm64_virt) | P2 |
 | compile | HARD | 真实编译探针:默认 `hiview_package` 用**环境 profile 的编译命令/横幅**跑通(HarmonyOS 占位未填则硬失败)。每仓首次 init 编译一次,通过后写 `specs/.build-probe-ok` | P2 |
 | git | HARD | `--git-dir` 指向的**组件子仓**是 git 仓(记录 HEAD) | P1/P6 |
 | testfwk | HARD | `test/testfwk/developer_test/start.sh` 存在 | P3/P5 |
 | hdc_bin | HARD | 能解析到 hdc 二进制 | P0/P4/P5 |
-| device | HARD | 唯一真机在线(自动探测并记录序列号) | P4/P5 |
+| device | HARD | 所选目标在线：rk3568 自动探测并记录序列号；QEMU 按 P0 配置固定 HDC server 与实例 serial | P4/P5 |
 | oh_gc | SOFT | (**仅 gitcode 环境**)gitcode CLI `oh-gc` 已安装 | P8 |
 | gitcode_auth | SOFT | (**仅 gitcode 环境**)gitcode token 已配置(`oh-gc auth status` 已登录) | P8 |
 | git_remote | SOFT | (**仅 gerrit/HarmonyOS 环境**)`--git-dir` 有 git remote(Gerrit push 目标) | P8 |
@@ -45,10 +49,11 @@ python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 0
 跑 init 前必须先跟用户确认本 AR 属于哪种环境,`--environment` 缺失会**硬失败**:
 
 - `--environment openharmony`:gitcode / rk3568(默认形态),上库走 oh-gc
+- `--environment openharmony-qemu --qemu-config <配置>`:gitcode / arm64_virt QEMU
 - `--environment harmonyos --component-type system`:HarmonyOS 系统组件(Gerrit 上库)
 - `--environment harmonyos --component-type chip`:HarmonyOS 芯片组件(Gerrit 上库)
 
-`--environment harmonyos` 时 `--component-type system|chip` **必填**。HarmonyOS 两种组件编译命令不同且**目前为占位**,P0/P4 编译门与 P8 上库门会在 `lib/environments.py` 未填时**硬失败并打印"待填"提示**,绝不静默跑错——与编译部件确认同风格(宁可停下也不静默跑错)。真机测试(hdc/hilog)两环境一致,复用。
+`--environment harmonyos` 时 `--component-type system|chip` **必填**。HarmonyOS 两种组件编译命令不同且**目前为占位**,P0/P4 编译门与 P8 上库门会在 `lib/environments.py` 未填时**硬失败并打印"待填"提示**,绝不静默跑错——与编译部件确认同风格(宁可停下也不静默跑错)。HDC/hilog 门控复用同一实现，但连接目标按 P0 固定为 rk3568 物理板或 QEMU 实例。
 
 ## 编译部件是人工确认点
 

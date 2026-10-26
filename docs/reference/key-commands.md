@@ -16,7 +16,7 @@ S=$AGENT_SKILLS_DIR/ohos-ar-dev-phases/scripts
 
 ```bash
 python3 $S/advance.py --pipeline-dir "$PDIR" init \
-    --environment openharmony|harmonyos [--component-type system|chip] \
+    --environment openharmony|openharmony-qemu|harmonyos [--component-type system|chip] \
     --git-dir <组件> --build-target <t> --part <p> [--base-commit <sha>]
 python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase N
 python3 $S/advance.py --pipeline-dir "$PDIR" consent --phase N --token <s>

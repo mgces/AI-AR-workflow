@@ -1,0 +1,12 @@
+{
+  "product": "arm64_virt",
+  "qemu_dir": ".local-tools/qemu-arm64/bin",
+  "images": "out/arm64_virt/packages/phone/images",
+  "instance_root": "out/arm64_virt/qemu_instances",
+  "instance": "00",
+  "hdc": "prebuilts/ohos-sdk/linux/26.0.0/toolchains/hdc",
+  "hdc_server_port": 18710,
+  "novnc_root": ".local-tools/novnc/root",
+  "web_port": 6080,
+  "jobs": 4
+}

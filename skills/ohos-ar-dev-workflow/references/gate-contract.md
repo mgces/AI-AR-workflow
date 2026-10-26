@@ -2,6 +2,10 @@
 
 所有 `gate_*.py` 遵守同一契约，`advance.py` 只据**签名 manifest + artifact sha256 + consent 绑定**推进，绝不因为某个 JSON 摘要文件存在就放行。
 
+`openharmony-qemu` 遵守相同契约。P0 新增本次 QEMU 环境、配置摘要及实例连接的 `qemu.json`；
+P4/P5 构建通过公共入口执行 arm64_virt target，保留基础盘占用保护；P5/P6/P7 使用绑定实例。
+基本启动和桌面截图不能代替 UT、功能、质量报告或人工 consent，详见 [QEMU 接入](qemu-development.md)。
+
 ## 调用约定
 
 - 统一参数 `--pipeline-dir <PDIR>`（或环境变量 `PIPELINE_DIR`）。

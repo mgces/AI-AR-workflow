@@ -1,5 +1,8 @@
 # 环境初始化 skill 实战
 
+QEMU 环境使用 `init --environment openharmony-qemu --qemu-config <快照配置>`。
+准备过程和完整初始化命令见 [ARM64 QEMU 开发](/skill-playbooks/qemu-development)。
+
 > 围绕 `ohos-ar-dev-init`:适合何时调用、最常见用户命令、初始化后用户会得到什么。
 
 ## 适合何时调用
@@ -22,7 +25,7 @@
 ```bash
 S="$AGENT_SKILLS_DIR/ohos-ar-dev-phases/scripts"
 python3 $S/advance.py --pipeline-dir "$PDIR" init \
-    --environment openharmony|harmonyos [--component-type system|chip] \
+    --environment openharmony|openharmony-qemu|harmonyos [--component-type system|chip] \
     [--git-dir <组件路径> --build-target <gn目标> --part <testpart> | --confirm-defaults]
 python3 $S/gate_env_init.py --pipeline-dir "$PDIR"
 python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 0
@@ -30,12 +33,12 @@ python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 0
 
 默认候选部件 hiview:`--git-dir base/hiviewdfx/hiview` / `--build-target hiview_package` / `--part hiviewdfx`。
 
-> **环境形态从 init 强制区分**:`--environment openharmony`(gitcode/rk3568,默认)或 `--environment harmonyos --component-type system|chip`(HarmonyOS,Gerrit 上库)。`--environment` 缺失硬失败;harmonyos 时 `--component-type` 必填。跑 init 前先用 `AskUserQuestion` 跟用户确认。
+> **环境形态从 init 强制区分**:`--environment openharmony`(gitcode/rk3568)、`--environment openharmony-qemu`(gitcode/arm64_virt)或 `--environment harmonyos --component-type system|chip`(HarmonyOS,Gerrit 上库)。`--environment` 缺失硬失败;harmonyos 时 `--component-type` 必填。跑 init 前先用 `AskUserQuestion` 跟用户确认。
 
 ## 初始化后用户会得到什么
 
-- `specs/initialized.flag` — 记录仓路径、产品、连接方式、探测到的序列号、检查时间
-- `evidence/phase0/env.json` — 各项能力校验结果 + 设备序列号回填
+- `specs/initialized.flag` — 记录仓路径、产品、连接方式、运行目标连接信息和检查时间
+- `evidence/phase0/env.json` — 各项能力校验结果 + 运行目标连接信息
 - 之后由 `ohos-ar-dev-workflow` 为每个 AR 在 `specs/pipeline/{date}-{slug}/` 建独立流水线
 
 ## 能力校验逻辑
@@ -49,7 +52,7 @@ python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 0
 | git | HARD | `--git-dir` 组件子仓是 git 仓 |
 | testfwk | HARD | developer_test start.sh 存在 |
 | hdc_bin | HARD | 能解析到 hdc 二进制 |
-| device | HARD | 唯一真机在线(自动探测序列号) |
+| device | HARD | 所选目标在线(rk3568 自动探测；QEMU 使用 P0 固定实例连接) |
 | oh_gc / gitcode_auth | SOFT | (仅 gitcode)`oh-gc` 已装 + token 已登录 |
 | git_remote / gerrit_hook | SOFT | (仅 gerrit/HarmonyOS)git remote + commit-msg Change-Id 钩子 |
 

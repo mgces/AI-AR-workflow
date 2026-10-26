@@ -40,8 +40,10 @@ _hdc_server_args() {
 
 # Raw hdc with the resolved server args.
 hdcw() {
+  local no_autostart=()
+  [ "${HDC_NO_AUTOSTART:-}" = "1" ] && no_autostart=(-p)
   # shellcheck disable=SC2046
-  "$HDC_BIN" $(_hdc_server_args) "$@"
+  "$HDC_BIN" "${no_autostart[@]}" $(_hdc_server_args) "$@"
 }
 
 # Print the connect-key list (one per line), blanks/placeholders stripped.

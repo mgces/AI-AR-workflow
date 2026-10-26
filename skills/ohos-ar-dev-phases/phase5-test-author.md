@@ -1,12 +1,18 @@
 # P5 单元测试(test-author,物理 phase 5)
 
+本流程中的“真机/设备端”指本次选定的运行目标，可以是 rk3568 物理开发板或 arm64_virt QEMU。
+`openharmony-qemu` 的测试构建通过公共 QEMU 入口执行；developer_test 使用
+`-p arm64_virt` 和 P0 绑定的 SDK HDC、loopback server 与实例 serial。
+先按 [QEMU 接入](../ohos-ar-dev-workflow/references/qemu-development.md) 使用独立镜像集，
+保留测试报告新鲜度及 gtest 用例覆盖门控；基本启动通过不能证明 UT 通过。
+
 测试**编写**已在 phase 3(test-develop)签名固化;本阶段**执行**这些测试并按契约做全量通过校验。
 `gate_test_ut.py` 签名 `emit(phase 5)`。
 
 > 📌 **P5 与 P6 都在真机上跑,区别是"单元 vs 端到端",不是"离线 vs 真机"。**
-> P5 的 `developer_test` UT 走 `start.sh run -t UT`,同样把测试二进制**部署到真机执行**再回收
-> `summary_report.xml`;P0 的 `device` 能力对 **P4/P5/P6 都是 HARD**(真机不在线 P0 就 FAIL,
-> 走不到 P5)。所以没有真机 P5 起不来。两阶段的真正分工:
+> P5 的 `developer_test` UT 走 `start.sh run -t UT`,同样把测试二进制**部署到所选真机/设备目标执行**再回收
+> `summary_report.xml`;P0 的 `device` 能力对 **P4/P5/P6 都是 HARD**(rk3568 或 QEMU 目标不在线 P0 就 FAIL,
+> 走不到 P5)。所以没有可用设备目标 P5 起不来。两阶段的真正分工:
 > - **P5 单元测试**:白盒、逐个 `test_cases[].gtest` 在真机上执行通过(单元逻辑对不对)。
 > - **P6 端到端功能测试**:黑盒、从真实入口触发让改动代码在系统里真的跑起来,抓 hilog 验
 >   `device_cases[].marker` + 产物 sha256 + 抗伪造 nonce/窗口,且**需人工确认**(单元过 ≠ 端到端可用)。

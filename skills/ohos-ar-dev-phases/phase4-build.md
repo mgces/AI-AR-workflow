@@ -1,8 +1,14 @@
 # P4 编译验证(build-verify,物理 phase 4)
 
+`openharmony-qemu` 使用 `ohos-qemu-build` 与诊断技能，日志在 `out/arm64_virt/`。
+门控通过公共 QEMU 构建入口执行 target，不自动部署或重启；先按
+[QEMU 接入](../ohos-ar-dev-workflow/references/qemu-development.md) 把运行实例放在独立镜像集，
+禁止绕过基础镜像占用保护。契约产物应为本次 ARM64 构建的真实输出。
+
 ## 做事(调用现有技能)
-- 构建与失败诊断:`ohos-dev-build-execution-diagnosis`(读 `out/rk3568/build.log` / `error.log`)。
-- 需要刷机/部署辅助时:`ohos-build-flash`。
+- rk3568 构建与失败诊断:`ohos-dev-build-execution-diagnosis`(读 `out/rk3568/build.log` / `error.log`)。
+- arm64_virt QEMU 构建与失败诊断:`ohos-qemu-build`(经公共 QEMU 入口；输出在 `out/arm64_virt/`)。
+- rk3568 需要刷机/部署辅助时:`ohos-build-flash`；QEMU 的实例部署由 `ohos-qemu-run` 管理。
 - 编码规范 AST 复检:`code-ruleset-style-check`(`--clang-tidy`)——编译成功后由门控自动接入,见下。
 
 > 💡 **迭代编译加速(`--fast-rebuild`,HarmonyOS 已验证)**:P2↔P4 反复改源码重编时,若
@@ -22,6 +28,7 @@ python3 $S/gate_build.py --pipeline-dir "$PDIR"   # target 默认取 pipeline.js
 ```
 脚本逻辑:记录 `build.log` 启动前字节偏移 → 跑**环境 profile 解析出的编译命令**
 (openharmony 为 `./build.sh --product-name rk3568 --ccache --build-target <target>`;
+openharmony-qemu 经 `ohos-qemu-workflow` 公共入口构建 `arm64_virt`，并保护被运行实例使用的基础镜像；
 HarmonyOS 系统/芯片组件为各自命令,**占位未填时门控硬失败并提示在 `lib/environments.py` 填充**)→
 在本次输出中记录成功/错误横幅；**exit code + 新产物是权威证据，成功横幅仅作辅助诊断**，避免工具链
 文案变化把真实成功误判为失败；error 横幅仍与 rc=0 矛盾并阻塞。随后从签名 AR_design 取契约
@@ -35,10 +42,12 @@ HarmonyOS 系统/芯片组件为各自命令,**占位未填时门控硬失败并
 ### 编译成功后的静态子步
 编译成功后，门控从真实构建输出生成 `compile_commands.json`，紧接着运行 clang-tidy AST 复检。
 (这类规则正则判不了,又依赖编译数据库,所以放在 P4 而非 P2/P3):
-- 生成编译数据库:`ninja -C out/rk3568 -t compdb cc cxx > out/rk3568/compile_commands.json`
+- 生成编译数据库:`ninja -C <环境输出目录> -t compdb cc cxx > <环境输出目录>/compile_commands.json`
+  (rk3568 为 `out/rk3568`，arm64_virt QEMU 为 `out/arm64_virt`)
   (优先用 `prebuilts/build-tools/linux-x86/bin/ninja`,回退 PATH 上的 ninja)。
 - 对真实 Git diff 中的 C/C++ 文件（包含 P3 新增测试）调用
-  `code_ruleset_guard.py --clang-tidy out/rk3568 --json evidence/phase4/clang_tidy_findings.json`。
+  `code_ruleset_guard.py --clang-tidy <环境输出目录> --json evidence/phase4/clang_tidy_findings.json`。
+  (rk3568 为 `out/rk3568`，arm64_virt QEMU 为 `out/arm64_virt`)。
 - **只有 `gatelib.P4_CRITICAL_AST_RULESET_IDS` 命中才阻断 P4**：
   `G.RES.07-CPP`、`G.FUU.11`、`G.VAR.01`、`G.EXP.08-CPP`、`G.STD.04-CPP`、
   `G.EXP.12-CPP`、`G.INT.03`。
@@ -66,7 +75,7 @@ HarmonyOS 系统/芯片组件为各自命令,**占位未填时门控硬失败并
 探测仍按原规则阻断。
 
 ## 通过条件
-build.sh exit 0 **且** 无 error 横幅
+环境对应的构建入口 exit 0 **且** 无 error 横幅
 **且** 契约声明的全部 `build_artifacts` 都在产物中存在(全量覆盖硬门控)
 **且** clang-tidy 静态子步可执行且无 critical/backend 命中；
 非白名单 finding 与 metric 仅是观察证据，不构成通过条件。

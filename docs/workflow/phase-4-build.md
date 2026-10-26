@@ -1,5 +1,8 @@
 # P4 编译
 
+`openharmony-qemu` 分支经公共 QEMU 入口构建 arm64_virt，日志和产物位于 `out/arm64_virt/`。
+运行实例应使用独立镜像快照，门控保留基础盘占用保护。详见 [QEMU 开发](/skill-playbooks/qemu-development)。
+
 新运行通过 `init --optimized-checks` 启用 [优化预检](./workflow-optimization.md)。构建前检查工具及受影响矩阵；
 导出符号在当前构建成功后对实际库核验，保存并签名 `evidence/phase4/symbol_checks.json`。
 P4 只把 `gatelib.P4_CRITICAL_AST_RULESET_IDS` 作为静态硬门；ninja/clang-tidy/compdb/报告任一不可用
@@ -11,7 +14,7 @@ P4 只把 `gatelib.P4_CRITICAL_AST_RULESET_IDS` 作为静态硬门；ninja/clang
 
 P4 是真实编译验证阶段——真跑 `build.sh`,捕获真实输出,以退出码与产物为准,并校验契约 `build_artifacts` 全覆盖。门控脚本 `gate_build.py`(emit 4)。
 
-> **编译命令 / 成功横幅 / 产物目录按环境 profile 解析**(`lib/environments.py`,取自 `pipeline.json` 的 `environment`):openharmony 为 `./build.sh --product-name rk3568 …` + `out/rk3568/`;HarmonyOS 系统/芯片组件命令不同且**目前为占位**,占位未填时 P4 **硬失败并打印"待填"提示**,绝不静默跑错。门控不再写死 rk3568。
+> **编译命令 / 成功横幅 / 产物目录按环境 profile 解析**(`lib/environments.py`,取自 `pipeline.json` 的 `environment`):openharmony 为 `./build.sh --product-name rk3568 …` + `out/rk3568/`;openharmony-qemu 经公共 QEMU 构建入口编译 `arm64_virt` + `out/arm64_virt/`;HarmonyOS 系统/芯片组件命令不同且**目前为占位**,占位未填时 P4 **硬失败并打印"待填"提示**,绝不静默跑错。门控不再写死 rk3568。
 
 ## 成功横幅和 artifact 检查
 

@@ -3,7 +3,7 @@
 """
 environments.py — the SINGLE source of truth for environment-specific behavior.
 
-The pipeline supports two development environments that differ in build command,
+The pipeline supports three development environments that differ in build command,
 compile banners, artifact directory, product form, and upload backend:
 
   * "openharmony" — the original gitcode-based OpenHarmony flow on rk3568. Every
@@ -11,6 +11,9 @@ compile banners, artifact directory, product form, and upload backend:
     (build cmd, =====build.*successful===== banner, out/rk3568, product rk3568,
     oh-gc/gitcode upload). Keeping them identical is what makes the environment
     refactor a zero-behavior-change for existing runs.
+
+  * "openharmony-qemu" — arm64_virt with the shared QEMU build entry, live
+    backing-image protection, and instance-pinned HDC. Upload remains GitCode.
 
   * "harmonyos" — a HarmonyOS flow. Code is NOT downloaded and
     is NOT pushed to gitcode (no oh-gc); upload goes through Gerrit. HarmonyOS has
@@ -41,7 +44,7 @@ import shlex
 UNSET = None
 
 DEFAULT_ENVIRONMENT = "openharmony"
-ENVIRONMENTS = ("openharmony", "harmonyos")
+ENVIRONMENTS = ("openharmony", "harmonyos", "openharmony-qemu")
 COMPONENT_TYPES = ("system", "chip")  # HarmonyOS only
 PROFILE_FILE_ENV = "OHOS_ENV_PROFILE_FILE"
 _GERRIT_TEMPLATE_FIELDS = frozenset(("base", "project", "change_id", "sha", "topic"))
@@ -190,7 +193,7 @@ def _harmonyos_profile(component_type):
 
 def _profile_key(state):
     env = env_id(state)
-    return env if env == "openharmony" else "%s/%s" % (env, component_type(state))
+    return env if env != "harmonyos" else "%s/%s" % (env, component_type(state))
 
 
 def _validate_override(key, value):
@@ -311,6 +314,14 @@ def _resolved_profile(state):
     env = env_id(state)
     if env == "openharmony":
         return _ohos_profile()
+    if env == "openharmony-qemu":
+        profile = _ohos_profile()
+        profile.update(product="arm64_virt", out_dir="out/arm64_virt",
+                       build_template="qemu-workflow build target {target}",
+                       root_markers=[".gn", "build.sh", "test/testfwk/developer_test",
+                                     "vendor/ohemu/qemu_arm64_linux_full/qemu_run.sh",
+                                     "vendor/ohemu/virt/qemu_run/arm64/qemu_profile.json"])
+        return profile
     ctype = component_type(state)
     if ctype not in COMPONENT_TYPES:
         raise EnvironmentNotConfigured(
@@ -413,6 +424,9 @@ def build_argv(state, target):
     one literal argument and can never become syntax.
     """
     tmpl = _require(_profile(state)["build_template"], state, "build_template")
+    if env_id(state) == "openharmony-qemu":
+        from qemu_support import command
+        return command(state, "build", "target", target)
     fields = {"target": target}
     if "{device_type}" in tmpl:
         dt = (state or {}).get("device_type")

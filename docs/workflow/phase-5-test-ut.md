@@ -1,12 +1,15 @@
 # P5 单元测试
 
+QEMU 分支使用 `-p arm64_virt`，xdevice 固定到 P0 的 SDK HDC、server 和实例 serial；
+测试构建仍通过有镜像保护的公共入口，真实 UT 报告要求不变。见 [QEMU 开发](/skill-playbooks/qemu-development)。
+
 > 本页拆解 P5(物理 phase 5)的编出测试二进制、developer_test 本次新建报告、tests>0 且 fail==0 err==0、契约每个 gtest 通过(执行覆盖)。
 
 ## 阶段定位
 
 P5 是单元测试**执行**验证阶段——把 P3 已编写好的测试真正跑通,证明功能代码与测试都按契约执行通过。门控脚本 `gate_test_ut.py`(emit 5)。
 
-> 📌 P5 与 P6 都在**真机**上跑,区别是"单元 vs 端到端",不是"离线 vs 真机"。P5 白盒逐个 gtest 验单元逻辑;P6 黑盒从真实入口触发验端到端功能(见 [P6 端到端功能测试](/workflow/phase-6-device))。
+> 📌 P5 与 P6 都在所选的**真机/设备目标**上跑，目标可以是 rk3568 物理开发板或 arm64_virt QEMU；区别是"单元 vs 端到端",不是"离线 vs 设备"。P5 白盒逐个 gtest 验单元逻辑;P6 黑盒从真实入口触发验端到端功能(见 [P6 端到端功能测试](/workflow/phase-6-device))。
 
 与 P3 的区别:
 

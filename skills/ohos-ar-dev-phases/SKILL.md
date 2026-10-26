@@ -8,6 +8,11 @@ description: >
 
 # 生命周期阶段(做事 + 门控)
 
+`openharmony-qemu` 使用 arm64_virt 开发目标，环境、编译与实例管理分别调用
+`ohos-qemu-env`、`ohos-qemu-build`、`ohos-qemu-run`，总入口为 `ohos-qemu-workflow`。
+先读取 [QEMU 接入与证据边界](../ohos-ar-dev-workflow/references/qemu-development.md)。
+P0–P8 的签名、契约、测试、质量与 consent 规则继续生效。
+
 新 workflow 运行按 [优化预检说明](optimization-preflight.md) 使用 `advance.py init --optimized-checks`。
 P1 在 `ar-contract` 中填写并签名 `verification_plan`；P1–P8 自动执行阶段预检并保留预检失败。
 预检不能代替签名 PASS。旧运行只是不启用新增预检；P2/P3/P4 的 critical 静态策略对所有新跑的 Gate 生效，

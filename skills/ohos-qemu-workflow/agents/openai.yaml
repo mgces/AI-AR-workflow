@@ -1,0 +1,4 @@
+interface:
+  display_name: "OpenHarmony QEMU 工作流"
+  short_description: "贯通 ARM64 环境、编译、启动、HDC 和图形验证的可恢复工作流"
+  default_prompt: "用 $ohos-qemu-workflow 继续当前 ARM64 QEMU 的开发和验证。"

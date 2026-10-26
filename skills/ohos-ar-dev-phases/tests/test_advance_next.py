@@ -217,6 +217,25 @@ class TestAdvanceNext(unittest.TestCase):
         self.assertEqual(state["current_phase"], 0)
         self.assertEqual(gl.phase_state(state, 0)["status"], "pending")
 
+    def test_status_refreshes_stale_navigation_after_new_gate_evidence(self):
+        self._run("next")
+        path = os.path.join(self.pdir, "next_action.json")
+        with open(path) as stream:
+            stale = json.load(stream)
+        self.assertNotEqual(stale["current_substate"], "ready_to_advance")
+        self._emit_pass(0)
+
+        cp = self._run("status", "--json")
+        self.assertEqual(cp.returncode, 0, cp.stderr)
+        status = json.loads(cp.stdout)
+        with open(path) as stream:
+            refreshed = json.load(stream)
+        with open(os.path.join(self.pdir, "controls", "next_action.json")) as stream:
+            mirrored = json.load(stream)
+        self.assertEqual(status["current_substate"], "ready_to_advance")
+        self.assertEqual(refreshed["current_substate"], "ready_to_advance")
+        self.assertEqual(mirrored["current_substate"], "ready_to_advance")
+
     def test_next_phase3_test_develop_waits_for_signed_gate(self):
         # Path B1: test_develop is its own physical phase 3. Before a signed
         # gate_test_develop.py PASS closes it, next must point at that gate.

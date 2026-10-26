@@ -50,7 +50,11 @@ DEFAULT_PROBE_TARGET = "hiview_package"
 
 
 def run(cmd, env=None):
-    return subprocess.run(cmd, text=True, capture_output=True, env=env)
+    try:
+        return subprocess.run(cmd, text=True, capture_output=True, env=env)
+    except FileNotFoundError as error:
+        # Optional P8 tools are SOFT checks, even when the binary is absent.
+        return subprocess.CompletedProcess(cmd, 127, "", str(error))
 
 
 def dev(snippet, env=None):
@@ -99,6 +103,29 @@ def main():
     if not os.path.isabs(gdir):
         gdir = os.path.join(repo, gdir)
     gl.evidence_dir(pdir, 0)
+    qemu_rel = None
+    qemu_conn = None
+    if envs.env_id(state) == "openharmony-qemu":
+        from qemu_support import preflight
+        qemu_rel = "evidence/phase0/qemu.json"
+        try:
+            qemu_report = preflight(state)
+        except envs.EnvironmentNotConfigured as error:
+            with open(os.path.join(pdir, qemu_rel), "w", encoding="utf-8") as stream:
+                json.dump({"error": str(error)}, stream, indent=2)
+            gl.emit(pdir, 0, "gate_env_init.py", verdict="FAIL", reason=str(error),
+                    artifacts_rel=[qemu_rel])
+            _write_bootstrap_controls(pdir, "FAIL", blocker=str(error),
+                                      failure_class="bootstrap_input_missing")
+            sys.exit("PHASE 0 FAIL — %s" % error)
+        with open(os.path.join(pdir, qemu_rel), "w", encoding="utf-8") as stream:
+            json.dump(qemu_report, stream, indent=2)
+        qemu_conn = qemu_report["connection_env"]
+        state["qemu_config_digest"] = qemu_report["config_digest"]
+        state["connection_env"] = qemu_conn
+        state["device_serial"] = qemu_conn["DEVICE_SERIAL"]
+        state["qemu_instance_identity"] = qemu_report["instance_identity"]
+        gl.save_state(pdir, state)
 
     # --- source-root sanity: repo defaults to the directory Claude was opened in
     # ($OHOS_ROOT or cwd, set at `advance.py init`). The markers that make a
@@ -168,6 +195,9 @@ def main():
 
     # Pass an explicitly-pinned serial (if any) through to device.sh.
     env = dict(os.environ)
+    if qemu_conn:
+        env.update(qemu_conn)
+        env.pop("HDC_WIN_PORT", None)
     if state.get("device_serial"):
         env["DEVICE_SERIAL"] = state["device_serial"]
 
@@ -271,6 +301,10 @@ def main():
     serial = don.stdout.strip().splitlines()[-1] if (don.returncode == 0 and don.stdout.strip()) else ""
     add("device", "HARD", don.returncode == 0 and bool(serial),
         "serial=%s" % (serial or (don.stderr.strip() or "no unique device")), "P4/P5")
+    if qemu_conn:
+        arch = dev("dev_shell uname -m", env=env)
+        add("qemu_arch", "HARD", arch.returncode == 0 and arch.stdout.strip() == "aarch64",
+            arch.stdout.strip() or arch.stderr.strip(), "P5/P6/P7")
 
     # Upload prerequisites — needed only at P8 (upload). SOFT: warn with
     # actionable guidance, never block P0. Which prereqs to probe depends on the
@@ -333,7 +367,7 @@ def main():
     # tells the operator what to `export` before touching the device again. Only
     # non-empty vars are stored; native-USB runs store an empty dict (nothing to
     # re-export). This is CONFIG (how to reach the device), not signed evidence.
-    conn_env = {k: os.environ[k] for k in
+    conn_env = qemu_conn or {k: os.environ[k] for k in
                 ("HDC_HOST_OVERRIDE", "HDC_WIN_PORT", "HDC_BIN", "DEVICE_SERIAL")
                 if os.environ.get(k)}
     if serial and "DEVICE_SERIAL" not in conn_env:
@@ -345,7 +379,7 @@ def main():
     report = {
         "repo": repo, "git_dir": gdir, "head": head,
         "hdc_bin": hdc_bin, "device_serial": serial or None,
-        "connection": ("override=%s" % os.environ["HDC_HOST_OVERRIDE"]) if os.environ.get("HDC_HOST_OVERRIDE")
+        "connection": "qemu" if qemu_conn else ("override=%s" % os.environ["HDC_HOST_OVERRIDE"]) if os.environ.get("HDC_HOST_OVERRIDE")
                       else ("wsl_bridge_port=%s" % os.environ["HDC_WIN_PORT"]) if os.environ.get("HDC_WIN_PORT")
                       else "native_hdc",
         "connection_env": conn_env,
@@ -356,6 +390,8 @@ def main():
     with open(os.path.join(pdir, rel), "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2, ensure_ascii=False)
     arts = [rel]
+    if qemu_rel:
+        arts.append(qemu_rel)
     if os.path.exists(os.path.join(pdir, probe_rel)):
         arts.append(probe_rel)
 
@@ -367,7 +403,7 @@ def main():
     # no env macros — just the one command to run on the machine holding the
     # device, and what IP:port to hand back. device.sh already printed this to
     # stderr; echo it here too so it's front-and-center in the P0 summary.
-    if "device" in hard_fail:
+    if "device" in hard_fail and not qemu_conn:
         print("\n--- 真机没连上,按这一步操作 ---")
         print("请在【插着设备的那台电脑】上执行(端口用 10086):")
         print("    hdc -m -s 0.0.0.0:10086 start")

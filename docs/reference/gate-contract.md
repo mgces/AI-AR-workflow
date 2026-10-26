@@ -1,5 +1,11 @@
 # 门控契约
 
+`openharmony-qemu` 保留全部签名、契约和人工确认要求。P0 固定 QEMU 配置、HDC 连接和实例/overlay 身份证据，
+P4/P5 构建保留基础盘保护，P5/P6/P7 使用固定实例。启动检查不能替代功能或质量结果。
+详见 [QEMU 开发](/skill-playbooks/qemu-development)。
+
+本文中的“真机/设备端”指本次选择的目标设备，可以是 rk3568 物理开发板或 arm64_virt QEMU；TCG 不能替代实体硬件能力验证。
+
 > 提炼 `skills/ohos-ar-dev-workflow/references/gate-contract.md` 核心内容,不照搬原文。
 
 ## gate 不是建议,而是唯一 PASS 来源
@@ -16,13 +22,13 @@
 
 | 阶段 | 门控脚本 | emit | 通过条件摘要 |
 |---|---|---:|---|
-| P0 | `gate_env_init.py` | — | build/compile/git/testfwk/hdc/真机全就绪 |
+| P0 | `gate_env_init.py` | — | build/compile/git/testfwk/hdc/所选设备目标(rk3568 或 QEMU)全就绪 |
 | P1 | `gate_design.py` | 1 | AR_design.md 7 章节（含 DFX 设计）+ ar-contract 契约并签名 |
 | P2 | `gate_develop.py` | 2 | 强制依赖签名 AR_design + P1 consent + diff 非空 + P2/P3 critical 规则子集;闭合锁功能指纹 |
 | P3 | `gate_test_develop.py` | 3 | 契约每个 test_cases[].gtest 的 suite 出现在新测试文件 + P2/P3 critical 规则子集;测试源签名快照 |
-| P4 | `gate_build.py` | 4 | build.sh exit0 + 无 error 横幅 + build_artifacts 覆盖 + P4 critical AST/backend（工具不可用 fail-closed） |
-| P5 | `gate_test_ut.py` | 5 | developer_test 报告 tests>0 且 fail==0 err==0 + 每个 gtest 通过 |
-| P6 | `gate_device_func.py` | 6 | 部署 sha256 一致 + hilog 含 nonce/marker + 抗伪造三层 + 每个 device_cases[].marker 命中 |
+| P4 | `gate_build.py` | 4 | 环境对应构建入口 exit0 + 无 error 横幅 + build_artifacts 覆盖 + P4 critical AST/backend（工具不可用 fail-closed） |
+| P5 | `gate_test_ut.py` | 5 | developer_test 在所选设备目标生成报告，tests>0 且 fail==0 err==0 + 每个 gtest 通过 |
+| P6 | `gate_device_func.py` | 6 | 部署到所选设备目标且 sha256 一致 + hilog 含 nonce/marker + 抗伪造三层 + 每个 device_cases[].marker 命中 |
 | P7 | `gate_integration.py` | 7 | 功能 summary + 覆盖率/性能/功耗/稳定性 + review==0 |
 | P8 | `gate_upload_ci.py` | 8 | A 本地自检零问题 + B PR review 零问题 + PR + CI 绿(SHA 绑定) |
 

@@ -2,6 +2,8 @@
 
 > 本页拆解 P7(物理 phase 7)的功能 summary、覆盖率/性能/功耗/稳定性、review 报告为何是 gate 条件。
 
+arm64_virt QEMU 是本 workflow 的一种真机/设备目标，P7 质量门控和人工确认规则相同。TCG 下测得的性能、功耗、外设表现和安全行为不代表 rk3568 实体硬件；验收依赖这些能力时需补实体硬件证据。
+
 ## 功能 summary
 
 `gate_integration.py`(emit 7)先校验功能 summary:`failures==0 && errors==0 && tests>0`——这是基础门槛,功能测试必须全过才有资格谈质量。
@@ -25,7 +27,7 @@ gate_integration.py --pipeline-dir P [--testtype MST] --suites S1 [S2 …] [--pa
     [--code-review-report F]
 ```
 
-也可复用 `gate_device_func.py --phase 7` + `gate_integration.py`。
+也可复用 `gate_device_func.py --phase 7` + `gate_integration.py`。rk3568 设备行为走 `ohos-build-flash`，arm64_virt QEMU 走 `ohos-qemu-run`；两者都复用 P0 固定的设备连接。
 
 ## review 报告为何是 gate 条件
 
@@ -60,7 +62,7 @@ P6 端到端功能测试 → consent → P7 质量验证 → consent → P8 上�
 
 ## 常见 skill 参与 P7
 
-- `ohos-build-flash` / developer_test(MST)
+- `ohos-build-flash` / `ohos-qemu-run` / developer_test(MST)
 - `ohos-test-ut-generation`
 - coverage / performance / power / stability 报告生成
 - `code-ruleset-style-check` / `ohos-dev-security-code-review`

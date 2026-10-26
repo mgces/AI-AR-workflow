@@ -85,6 +85,7 @@ export default defineConfig({
             { text: 'Workflow 编排器', link: '/skill-playbooks/workflow-orchestration' },
             { text: '环境初始化', link: '/skill-playbooks/environment-init' },
             { text: '编译与诊断', link: '/skill-playbooks/build-and-diagnosis' },
+            { text: 'ARM64 QEMU 开发', link: '/skill-playbooks/qemu-development' },
             { text: '单测生成', link: '/skill-playbooks/unit-test-generation' },
             { text: '真机调试 hdc', link: '/skill-playbooks/device-debug-and-hdc' },
             { text: '增量构建与刷机', link: '/skill-playbooks/build-and-flash' },
