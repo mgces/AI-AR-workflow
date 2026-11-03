@@ -444,9 +444,9 @@ def clang_tidy_substep(pdir, repo, changed_cxx, out_dir_rel, line_filter=None, c
             [sys.executable, STYLE_GUARD, "--rules-only", "--clang-tidy", out_dir,
              "--json", report_path, "--repository-root", component_root or repo,
              "--ohos-root", repo, *scope_args, *abs_cxx],
-            text=True, capture_output=True, timeout=600)
+            text=True, capture_output=True, timeout=900)
     except subprocess.TimeoutExpired:
-        return _backend_failure("clang-tidy backend timeout after 600 seconds")
+        return _backend_failure("clang-tidy backend timeout after 900 seconds")
     except OSError as exc:
         return _backend_failure(
             "clang-tidy backend failure: checker could not start: %s" % exc)

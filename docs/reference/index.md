@@ -6,6 +6,7 @@
 
 - [状态机](/reference/workflow-state-machine) — `current_phase` / `consent` / `verify-all` / `reset` / `advance`
 - [门控契约](/reference/gate-contract) — 各 gate_*.py 的契约细节
+- [P4 clang-tidy 范围与 compdb 讨论](/reference/clang-tidy-p4-scope) — clang-tidy 定位、compdb 读取风险、timeout 与本地/CI 边界
 - [run 目录结构](/reference/pipeline-layout) — pipeline.json / AR_design.md / todo.md / evidence / reports
 - [关键命令](/reference/key-commands) — 按场景列关键命令
 - [Skill 映射](/reference/skill-map) — 阶段→技能 / 任务→技能 / 输入类型→技能 查表

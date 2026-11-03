@@ -1042,7 +1042,7 @@ def _clang_tidy_findings(files, compile_commands_dir, clang_tidy=None, repositor
                 "severity": "严重", "remediation": detail}
 
     try:
-        cp = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        cp = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
     except (subprocess.TimeoutExpired, OSError) as exc:
         return [backend_finding("clang-tidy execution failed: %s" % exc)], ""
     findings = []
