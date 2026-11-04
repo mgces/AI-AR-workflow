@@ -717,6 +717,7 @@ def main():
     run_cmd = shlex.join(run_argv)
     print("running: (cd %s && %s)" % (dt, run_cmd))
     from gate_test_ut import _temporary_xdevice_user_config
+    arts = []
     with _temporary_xdevice_user_config(state, dt, pdir, arts, phase=7):
         from qemu_support import test_environment
         proc = subprocess.run(run_argv, cwd=dt, text=True, capture_output=True,
@@ -724,7 +725,7 @@ def main():
     stdout_rel = "evidence/phase7/start_sh_stdout.txt"
     with open(os.path.join(pdir, stdout_rel), "w", encoding="utf-8") as f:
         f.write(proc.stdout + "\n----stderr----\n" + proc.stderr)
-    arts = [stdout_rel]
+    arts.append(stdout_rel)
 
     after = set(glob.glob(os.path.join(reports, "20*")))
     fresh = sorted(after - before)
