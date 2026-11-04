@@ -392,6 +392,30 @@ int main(void)
         self.assertGreaterEqual(len([f for f in report["findings"]
                                      if f["rule_id"].startswith("WordsTool.")]), 2)
 
+    def test_exact_huawei_legal_notice_is_not_a_sensitive_word(self):
+        source = (
+            "/*\n"
+            " * Copyright (c) 2026 Huawei Device Co., Ltd.\n"
+            " * Licensed under the Apache License, Version 2.0 (the \"License\");\n"
+            " */\n"
+            "int main() { return 0; }\n"
+        )
+        cp, report = self._run("notice.cpp", source)
+        self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+        self.assertNotIn("WordsTool.100", self._rule_ids(report))
+
+    def test_huawei_outside_legal_notice_still_flagged(self):
+        source = (
+            "/*\n"
+            " * Copyright (c) 2026 Huawei Device Co., Ltd.\n"
+            " * Licensed under the Apache License, Version 2.0 (the \"License\");\n"
+            " */\n"
+            "const char *label = \"Huawei\";\n"
+        )
+        cp, report = self._run("notice-and-code.cpp", source)
+        self.assertNotEqual(cp.returncode, 0)
+        self.assertIn("WordsTool.100", self._rule_ids(report))
+
     def test_semantic_regex_hint_is_advisory_not_blocking(self):
         cp, report = self._run("assertion.cpp", "void Check() { assert(true); }\n")
         self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
