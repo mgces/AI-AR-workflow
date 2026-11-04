@@ -205,6 +205,21 @@ class FileHygieneH2H5Test(unittest.TestCase):
         cp, data = self._run(p)
         self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
 
+    def test_exact_huawei_legal_notice_is_not_a_sensitive_word(self):
+        p = self._write(
+            "README.md",
+            "# Copyright (c) 2026 Huawei Device Co., Ltd.\n"
+            "# Licensed under the Apache License, Version 2.0.\n\n"
+            "A normal sentence.\n")
+        cp, data = self._run(p)
+        self.assertEqual(cp.returncode, 0, cp.stdout + cp.stderr)
+
+    def test_huawei_outside_legal_notice_still_flagged(self):
+        p = self._write("README.md", "# Title\nHuawei\n")
+        cp, data = self._run(p)
+        self.assertNotEqual(cp.returncode, 0)
+        self.assertIn("WordsTool.100", self._rules(data))
+
     # --- H5 GN source existence ---
     def test_gn_missing_source_flagged(self):
         # header present so H1 passes; the sources entry points at a file that

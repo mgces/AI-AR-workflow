@@ -552,6 +552,20 @@ def _load_sensitive_words():
 
 SENSITIVE_WORDS = _load_sensitive_words()
 
+# OAT.4 requires a legal copyright holder, and the workbook also flags the
+# upstream holder name as WordsTool.100. Keep the exact, standard OpenHarmony
+# legal notice in the leading header exempt; every other use stays in scope.
+_LEGAL_NOTICE_WINDOW = 8
+_LEGAL_NOTICE_RE = re.compile(
+    r"^\s*(?:\*|//|#|;|<!--)?\s*Copyright\s*\([Cc]\)\s*"
+    r"\d{4}(?:-\d{4})?\s+Huawei Device Co\., Ltd\.\s*(?:-->)?\s*$",
+    re.IGNORECASE)
+
+
+def is_legal_notice_line(line, lineno):
+    """True only for the exact upstream copyright line in the file header."""
+    return lineno <= _LEGAL_NOTICE_WINDOW and bool(_LEGAL_NOTICE_RE.match(line))
+
 
 # A line whose control flow cannot fall through to the next statement. The
 # terminator keyword must lead the line, so a conditional one-liner like
@@ -817,6 +831,8 @@ def _rule_findings(files):
             # Sensitive terms are a text policy: identifiers, comments and
             # string literals are all in scope, matching the author contract.
             for n, line in enumerate(lines, 1):
+                if rid == "WordsTool.100" and is_legal_notice_line(line, n):
+                    continue
                 if pat.search(line):
                     findings.append({
                         "file": str(path), "line": n, "rule_id": rid,

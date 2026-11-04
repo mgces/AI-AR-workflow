@@ -61,7 +61,8 @@ from pathlib import Path
 # guard's C/C++ scope, reused here to EXCLUDE C/C++ from H4 (code_ruleset_guard
 # already scans those) and to recognise GN source entries in H5.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from code_ruleset_guard import SENSITIVE_WORDS, EXTS as _CXX_EXTS  # noqa: E402
+from code_ruleset_guard import (  # noqa: E402
+    SENSITIVE_WORDS, EXTS as _CXX_EXTS, is_legal_notice_line)
 
 # Comment-capable, header-bearing source extensions. JSON is intentionally
 # absent (no comment syntax -> a header requirement would false-positive).
@@ -289,6 +290,8 @@ def _sensitive_findings(path):
     # rule_id only so the raw term never reaches evidence logs / model context.
     for rid, sev, pat, _word in SENSITIVE_WORDS:
         for n, line in enumerate(lines, 1):
+            if rid == "WordsTool.100" and is_legal_notice_line(line, n):
+                continue
             if pat.search(line):
                 out.append(_finding(path, n, rid,
                                     "remove banned/sensitive term flagged by %s" % rid,

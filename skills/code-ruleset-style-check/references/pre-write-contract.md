@@ -65,7 +65,10 @@ reach review, and the critical subset is deliberately small.
 
 - **Sensitive words (`WordsTool.*`)**: avoid all workbook-sensitive terms in
   identifiers, comments, strings, test names, and build metadata. The guard
-  reports only the rule ID; do not echo the matched term into evidence.
+  reports only the rule ID; do not echo the matched term into evidence. The one
+  exception is the standard upstream legal notice in the leading header
+  (`Copyright (c) YYYY Huawei Device Co., Ltd.`), which OAT.4 requires; the same
+  term anywhere else still fails.
 - **Headers and preprocessing**: use `.h`/`.cpp` for new C++ files, include
   guards instead of `#pragma once`, keep includes outside `extern "C"`, avoid
   function-like macro control flow and macro-local-name dependencies, and do
