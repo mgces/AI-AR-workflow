@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-06T09:56:43.322Z",
+  "generated_at": "2026-11-06T11:43:05.798Z",
   "source_label": "共享运行指标",
-  "source_count": 21,
+  "source_count": 23,
   "duplicate_count": 0,
   "warnings": [],
   "runs": [
@@ -834,6 +834,2773 @@
         "issues": 0
       },
       "preflight_failures": [],
+      "session_later_outcome": "",
+      "recording_quality": {
+        "status": "complete",
+        "initialization_count": 1,
+        "note": "指标历史连续保留；实际工作起点仍需登记。"
+      },
+      "import_origin": "browser"
+    },
+    {
+      "id": "20261102-hiperf-no-symbolic-host-deps",
+      "workflow": "ar-development",
+      "kind": "AR",
+      "status": "waiting",
+      "current_phase": "P7",
+      "agent": "Codex",
+      "model": "unknown",
+      "updated_at": "2026-11-04T07:39:37Z",
+      "started_at": "2026-11-02T11:32:45Z",
+      "source": "browser-import/ar-development/20261102-hiperf-no-symbolic-host-deps/workflow_metrics.json",
+      "phases": [
+        {
+          "id": "P0",
+          "name": "bootstrap",
+          "status": "passed",
+          "wall_seconds": 768,
+          "wait_seconds": 0,
+          "effective_seconds": 768,
+          "gate_attempts": 1,
+          "pass_attempts": 1,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 1,
+          "skills": [
+            "ohos-ar-dev-workflow",
+            "ohos-ar-dev-phases"
+          ],
+          "gate": "gate_env_init.py",
+          "opened_at": "2026-11-02T11:32:45Z",
+          "closed_at": "2026-11-02T11:45:33Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-11-02T11:32:45Z",
+              "closed_at": "2026-11-02T11:45:33Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P1",
+          "name": "design-orchestrate",
+          "status": "passed",
+          "wall_seconds": 1037,
+          "wait_seconds": 965,
+          "effective_seconds": 72,
+          "gate_attempts": 2,
+          "pass_attempts": 2,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 2,
+          "skills": [
+            "ohos-ar-dev-workflow",
+            "ohos-ar-dev-phases"
+          ],
+          "gate": "gate_design.py",
+          "opened_at": "2026-11-03T09:38:54Z",
+          "closed_at": "2026-11-03T09:46:48Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-11-02T11:45:33Z",
+              "closed_at": "2026-11-02T11:54:56Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T09:38:54Z",
+              "closed_at": "2026-11-03T09:46:48Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P2",
+          "name": "feature-develop",
+          "status": "passed",
+          "wall_seconds": 76075,
+          "wait_seconds": 0,
+          "effective_seconds": 76075,
+          "gate_attempts": 11,
+          "pass_attempts": 8,
+          "fail_attempts": 3,
+          "stage_attempts": null,
+          "rounds": 7,
+          "skills": [
+            "code-ruleset-style-check",
+            "ohos-dev-cpp-coding-style",
+            "tdd-enforcer",
+            "ohos-dev-build-execution-diagnosis",
+            "ohos-dev-hdc-command-usage",
+            "ohos-test-ut-generation",
+            "ohos-dev-security-code-review",
+            "ohos-doc-quality-check"
+          ],
+          "gate": "gate_develop.py",
+          "opened_at": "2026-11-04T04:00:52Z",
+          "closed_at": "2026-11-04T06:01:33Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-11-02T11:54:56Z",
+              "closed_at": "2026-11-03T06:17:41Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T07:22:56Z",
+              "closed_at": "2026-11-03T07:32:10Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T09:00:11Z",
+              "closed_at": "2026-11-03T09:02:45Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T09:24:02Z",
+              "closed_at": "2026-11-03T09:27:47Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T09:46:48Z",
+              "closed_at": "2026-11-03T09:47:06Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-04T01:52:39Z",
+              "closed_at": "2026-11-04T02:21:17Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-04T04:00:52Z",
+              "closed_at": "2026-11-04T06:01:33Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P3",
+          "name": "test-develop",
+          "status": "passed",
+          "wall_seconds": 1994,
+          "wait_seconds": 0,
+          "effective_seconds": 1994,
+          "gate_attempts": 10,
+          "pass_attempts": 8,
+          "fail_attempts": 2,
+          "stage_attempts": null,
+          "rounds": 6,
+          "skills": [
+            "code-ruleset-style-check",
+            "ohos-dev-cpp-coding-style",
+            "ohos-test-ut-generation",
+            "tdd-enforcer"
+          ],
+          "gate": "gate_test_develop.py",
+          "opened_at": "2026-11-04T06:01:33Z",
+          "closed_at": "2026-11-04T06:05:11Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-11-03T06:17:41Z",
+              "closed_at": "2026-11-03T06:19:27Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T07:32:10Z",
+              "closed_at": "2026-11-03T07:39:33Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T09:02:46Z",
+              "closed_at": "2026-11-03T09:03:08Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T09:27:47Z",
+              "closed_at": "2026-11-03T09:47:31Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-04T02:21:17Z",
+              "closed_at": "2026-11-04T02:21:38Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-04T06:01:33Z",
+              "closed_at": "2026-11-04T06:05:11Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P4",
+          "name": "build-verify",
+          "status": "passed",
+          "wall_seconds": 10676,
+          "wait_seconds": 0,
+          "effective_seconds": 10676,
+          "gate_attempts": 6,
+          "pass_attempts": 5,
+          "fail_attempts": 1,
+          "stage_attempts": null,
+          "rounds": 5,
+          "skills": [
+            "ohos-dev-build-execution-diagnosis",
+            "code-ruleset-style-check",
+            "ohos-build-flash"
+          ],
+          "gate": "gate_build.py",
+          "opened_at": "2026-11-04T06:05:11Z",
+          "closed_at": "2026-11-04T06:09:54Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-11-03T06:19:27Z",
+              "closed_at": "2026-11-03T08:50:03Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T09:03:08Z",
+              "closed_at": "2026-11-03T09:14:40Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T09:47:31Z",
+              "closed_at": "2026-11-03T09:52:16Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-04T02:21:38Z",
+              "closed_at": "2026-11-04T02:27:58Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-04T06:05:11Z",
+              "closed_at": "2026-11-04T06:09:54Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P5",
+          "name": "test-author",
+          "status": "passed",
+          "wall_seconds": 2425,
+          "wait_seconds": 0,
+          "effective_seconds": 2425,
+          "gate_attempts": 5,
+          "pass_attempts": 4,
+          "fail_attempts": 1,
+          "stage_attempts": null,
+          "rounds": 4,
+          "skills": [
+            "ohos-test-ut-generation",
+            "tdd-enforcer",
+            "ohos-dev-hdc-command-usage"
+          ],
+          "gate": "gate_test_ut.py",
+          "opened_at": "2026-11-04T06:09:54Z",
+          "closed_at": "2026-11-04T06:13:08Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-11-03T08:50:03Z",
+              "closed_at": "2026-11-03T09:22:01Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T09:52:16Z",
+              "closed_at": "2026-11-03T09:54:29Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-04T02:27:58Z",
+              "closed_at": "2026-11-04T02:30:58Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-04T06:09:54Z",
+              "closed_at": "2026-11-04T06:13:08Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P6",
+          "name": "device-functional",
+          "status": "passed",
+          "wall_seconds": 7802,
+          "wait_seconds": 2013,
+          "effective_seconds": 5789,
+          "gate_attempts": 4,
+          "pass_attempts": 3,
+          "fail_attempts": 1,
+          "stage_attempts": null,
+          "rounds": 3,
+          "skills": [
+            "ohos-dev-hdc-command-usage",
+            "tdd-enforcer",
+            "ohos-test-ut-generation",
+            "ohos-doc-quality-check",
+            "ohos-build-flash",
+            "ohos-test-coverage"
+          ],
+          "gate": "gate_device_func.py",
+          "opened_at": "2026-11-04T06:13:08Z",
+          "closed_at": "2026-11-04T06:19:39Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-11-03T09:22:01Z",
+              "closed_at": "2026-11-03T11:17:38Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-04T02:30:58Z",
+              "closed_at": "2026-11-04T02:38:52Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-04T06:13:08Z",
+              "closed_at": "2026-11-04T06:19:39Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P7",
+          "name": "quality-verify",
+          "status": "passed",
+          "wall_seconds": 53997,
+          "wait_seconds": 588,
+          "effective_seconds": 53409,
+          "gate_attempts": 5,
+          "pass_attempts": 3,
+          "fail_attempts": 2,
+          "stage_attempts": null,
+          "rounds": 3,
+          "skills": [
+            "ohos-test-coverage",
+            "ohos-dev-security-code-review",
+            "code-ruleset-style-check",
+            "ohos-dev-build-execution-diagnosis",
+            "ohos-doc-quality-check",
+            "ohos-dev-hdc-command-usage"
+          ],
+          "gate": "gate_integration.py",
+          "opened_at": "2026-11-04T06:19:39Z",
+          "closed_at": "2026-11-04T06:36:03Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-11-03T11:17:38Z",
+              "closed_at": "2026-11-04T01:48:03Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-04T02:38:52Z",
+              "closed_at": "2026-11-04T02:52:00Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-04T06:19:39Z",
+              "closed_at": "2026-11-04T06:36:03Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P8",
+          "name": "upload-review",
+          "status": "failed",
+          "wall_seconds": 21094,
+          "wait_seconds": 1189,
+          "effective_seconds": 19905,
+          "gate_attempts": 5,
+          "pass_attempts": 0,
+          "fail_attempts": 5,
+          "stage_attempts": null,
+          "rounds": 1,
+          "skills": [
+            "ohos-ci-gitcode-cli-usage",
+            "ohos-committer-review",
+            "code-ruleset-style-check",
+            "ohos-dev-security-code-review",
+            "ohos-doc-quality-check",
+            "ohos-dev-gitcode-pr-review",
+            "ohos-ci-openharmony-ci-analysis",
+            "git-rebase-push"
+          ],
+          "gate": "gate_upload_ci.py",
+          "opened_at": "2026-11-04T01:48:03Z",
+          "closed_at": "",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-11-04T01:48:03Z",
+              "closed_at": "",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        }
+      ],
+      "failure_details": [
+        {
+          "id": "",
+          "phase": "P2",
+          "gate": "gate_develop.py",
+          "reason": "未记录具体失败原因",
+          "at": "2026-11-04T06:01:03Z",
+          "source": "browser-import/ar-development/20261102-hiperf-no-symbolic-host-deps/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
+          "count": 3,
+          "category": "原因缺失",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "",
+          "phase": "P3",
+          "gate": "gate_test_develop.py",
+          "reason": "未记录具体失败原因",
+          "at": "2026-11-04T06:04:45Z",
+          "source": "browser-import/ar-development/20261102-hiperf-no-symbolic-host-deps/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
+          "count": 2,
+          "category": "测试与验证",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "",
+          "phase": "P4",
+          "gate": "gate_build.py",
+          "reason": "未记录具体失败原因",
+          "at": "2026-11-04T06:09:18Z",
+          "source": "browser-import/ar-development/20261102-hiperf-no-symbolic-host-deps/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
+          "count": 1,
+          "category": "编译构建",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "",
+          "phase": "P5",
+          "gate": "gate_test_ut.py",
+          "reason": "未记录具体失败原因",
+          "at": "2026-11-04T06:12:00Z",
+          "source": "browser-import/ar-development/20261102-hiperf-no-symbolic-host-deps/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
+          "count": 1,
+          "category": "测试与验证",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "",
+          "phase": "P6",
+          "gate": "gate_device_func.py",
+          "reason": "未记录具体失败原因",
+          "at": "2026-11-04T06:16:49Z",
+          "source": "browser-import/ar-development/20261102-hiperf-no-symbolic-host-deps/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
+          "count": 1,
+          "category": "设备连接",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "",
+          "phase": "P7",
+          "gate": "gate_integration.py",
+          "reason": "未记录具体失败原因",
+          "at": "2026-11-04T06:32:39Z",
+          "source": "browser-import/ar-development/20261102-hiperf-no-symbolic-host-deps/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
+          "count": 2,
+          "category": "原因缺失",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "",
+          "phase": "P8",
+          "gate": "gate_upload_ci.py",
+          "reason": "未记录具体失败原因",
+          "at": "2026-11-04T07:35:38Z",
+          "source": "browser-import/ar-development/20261102-hiperf-no-symbolic-host-deps/workflow_metrics.json",
+          "first_attempt": null,
+          "round": null,
+          "failure_kind": "",
+          "failure_category": "",
+          "resolution_status": "",
+          "verified_by": "",
+          "count": 5,
+          "category": "原因缺失",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        }
+      ],
+      "failures": 15,
+      "gate_attempts": 49,
+      "human_interventions": [
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P1 signed design review",
+          "phase": "P1"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "device functional test review",
+          "phase": "P6"
+        },
+        {
+          "category": "user_correction",
+          "reason": "用户明确指令：功耗暂时无法测试，本次不管功耗数据。仅本次功耗验收免测；P7已按工具原有显式降级路径通过，缺少power报告及QUALITY-GATE-DOWNGRADED保留在签名结果，决定见quality/power_waiver.md。",
+          "phase": "P7"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "quality reports and code review review",
+          "phase": "P7"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "device functional test review",
+          "phase": "P6"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "quality reports and code review review",
+          "phase": "P7"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P8 pre-upload diff and target review",
+          "phase": "P8"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "device functional test review",
+          "phase": "P6"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "quality reports and code review review",
+          "phase": "P7"
+        },
+        {
+          "category": "required_workflow",
+          "reason": "P8 pre-upload diff and target review",
+          "phase": "P8"
+        },
+        {
+          "category": "blocked_unplanned",
+          "reason": "本轮联合CI仅余6处有证据的工具误报；官方流程要求仓库Committer在DCP确认，澄清评论198214083已获用户批准并发布，等待外部处理后复验同一提交。",
+          "phase": "P8"
+        }
+      ],
+      "open_waits": 1,
+      "open_wait_details": [
+        {
+          "phase": "P8",
+          "category": "blocked_unplanned",
+          "reason": "本轮联合CI仅余6处有证据的工具误报；官方流程要求仓库Committer在DCP确认，澄清评论198214083已获用户批准并发布，等待外部处理后复验同一提交。",
+          "started_at_utc": "2026-11-04T07:39:37Z"
+        }
+      ],
+      "effective_seconds": 171113,
+      "wall_seconds": 175868,
+      "wait_seconds": 4755,
+      "first_gate_attempts": null,
+      "first_gate_failures": null,
+      "first_gate_passes": null,
+      "first_gate_review_holds": null,
+      "unrecorded_gate_attempts": null,
+      "preflight_summary": null,
+      "preflight_failures": [],
+      "session_later_outcome": "",
+      "recording_quality": {
+        "status": "unknown",
+        "initialization_count": null,
+        "note": "旧记录未验证历史完整性。"
+      },
+      "import_origin": "browser"
+    },
+    {
+      "id": "hdc-file-compress-20261103",
+      "workflow": "ar-development",
+      "kind": "AR",
+      "status": "completed",
+      "current_phase": "P8",
+      "agent": "codex",
+      "model": "GPT-6",
+      "updated_at": "2026-11-04T06:17:19Z",
+      "started_at": "2026-11-03T15:49:40Z",
+      "source": "browser-import/ar-development/hdc-file-compress-20261103/workflow_metrics.json",
+      "phases": [
+        {
+          "id": "P0",
+          "name": "bootstrap",
+          "status": "passed",
+          "wall_seconds": 19,
+          "wait_seconds": 0,
+          "effective_seconds": 19,
+          "gate_attempts": 1,
+          "pass_attempts": 1,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 1,
+          "skills": [
+            "ohos-ar-dev-workflow",
+            "ohos-ar-dev-init"
+          ],
+          "gate": "gate_env_init.py",
+          "opened_at": "2026-11-03T15:49:40Z",
+          "closed_at": "2026-11-03T15:49:59Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-11-03T15:49:40Z",
+              "closed_at": "2026-11-03T15:49:59Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P1",
+          "name": "design-orchestrate",
+          "status": "passed",
+          "wall_seconds": 1515,
+          "wait_seconds": 0,
+          "effective_seconds": 1515,
+          "gate_attempts": 4,
+          "pass_attempts": 4,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 3,
+          "skills": [
+            "ohos-hdc-code-architecture-interaction",
+            "hdc-usage",
+            "hdc-test-suites-execution"
+          ],
+          "gate": "gate_design.py",
+          "opened_at": "2026-11-03T17:18:34Z",
+          "closed_at": "2026-11-03T17:22:43Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-11-03T15:49:59Z",
+              "closed_at": "2026-11-03T16:06:16Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T16:56:20Z",
+              "closed_at": "2026-11-03T17:01:09Z",
+              "kind": "work",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T17:18:34Z",
+              "closed_at": "2026-11-03T17:22:43Z",
+              "kind": "work",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P2",
+          "name": "feature-develop",
+          "status": "passed",
+          "wall_seconds": 1937,
+          "wait_seconds": 0,
+          "effective_seconds": 1937,
+          "gate_attempts": 14,
+          "pass_attempts": 13,
+          "fail_attempts": 1,
+          "stage_attempts": null,
+          "rounds": 13,
+          "skills": [
+            "code-ruleset-style-check",
+            "ohos-dev-cpp-coding-style"
+          ],
+          "gate": "gate_develop.py",
+          "opened_at": "2026-11-04T01:57:53Z",
+          "closed_at": "2026-11-04T01:59:00Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-11-03T16:06:16Z",
+              "closed_at": "2026-11-03T16:17:02Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T16:22:29Z",
+              "closed_at": "2026-11-03T16:22:55Z",
+              "kind": "work",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T16:27:56Z",
+              "closed_at": "2026-11-03T16:28:29Z",
+              "kind": "work",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T16:47:29Z",
+              "closed_at": "2026-11-03T16:54:39Z",
+              "kind": "work",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T17:01:09Z",
+              "closed_at": "2026-11-03T17:01:14Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T17:22:43Z",
+              "closed_at": "2026-11-03T17:22:47Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T17:32:15Z",
+              "closed_at": "2026-11-03T17:35:55Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T17:59:12Z",
+              "closed_at": "2026-11-03T18:00:52Z",
+              "kind": "work",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T18:30:01Z",
+              "closed_at": "2026-11-03T18:30:05Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T18:45:18Z",
+              "closed_at": "2026-11-03T18:45:55Z",
+              "kind": "work",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-04T01:25:35Z",
+              "closed_at": "2026-11-04T01:31:26Z",
+              "kind": "work",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-04T01:33:25Z",
+              "closed_at": "2026-11-04T01:33:39Z",
+              "kind": "work",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-04T01:57:53Z",
+              "closed_at": "2026-11-04T01:59:00Z",
+              "kind": "work",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P3",
+          "name": "test-develop",
+          "status": "passed",
+          "wall_seconds": 327,
+          "wait_seconds": 0,
+          "effective_seconds": 327,
+          "gate_attempts": 13,
+          "pass_attempts": 13,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 15,
+          "skills": [
+            "ohos-test-ut-generation",
+            "code-ruleset-style-check",
+            "ohos-dev-cpp-coding-style"
+          ],
+          "gate": "gate_test_develop.py",
+          "opened_at": "2026-11-04T01:59:00Z",
+          "closed_at": "2026-11-04T01:59:02Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-11-03T16:17:02Z",
+              "closed_at": "2026-11-03T16:20:56Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T16:22:55Z",
+              "closed_at": "2026-11-03T16:22:57Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T16:28:29Z",
+              "closed_at": "2026-11-03T16:28:31Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T16:54:39Z",
+              "closed_at": "2026-11-03T16:54:43Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T17:01:14Z",
+              "closed_at": "2026-11-03T17:01:16Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T17:22:47Z",
+              "closed_at": "2026-11-03T17:22:49Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T17:32:15Z",
+              "closed_at": "2026-11-03T17:32:15Z",
+              "kind": "work",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-11-03T17:35:55Z",
+              "closed_at": "2026-11-03T17:35:57Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T18:00:52Z",
+              "closed_at": "2026-11-03T18:01:46Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T18:30:01Z",
+              "closed_at": "2026-11-03T18:30:01Z",
+              "kind": "work",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-11-03T18:30:05Z",
+              "closed_at": "2026-11-03T18:30:23Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T18:45:55Z",
+              "closed_at": "2026-11-03T18:45:57Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-04T01:31:27Z",
+              "closed_at": "2026-11-04T01:31:28Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-04T01:33:39Z",
+              "closed_at": "2026-11-04T01:33:41Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-04T01:59:00Z",
+              "closed_at": "2026-11-04T01:59:02Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P4",
+          "name": "build-verify",
+          "status": "passed",
+          "wall_seconds": 4200,
+          "wait_seconds": 0,
+          "effective_seconds": 4200,
+          "gate_attempts": 8,
+          "pass_attempts": 7,
+          "fail_attempts": 1,
+          "stage_attempts": null,
+          "rounds": 13,
+          "skills": [
+            "ohos-dev-build-execution-diagnosis"
+          ],
+          "gate": "gate_build.py",
+          "opened_at": "2026-11-04T01:59:02Z",
+          "closed_at": "2026-11-04T02:04:30Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-11-03T16:20:56Z",
+              "closed_at": "2026-11-03T16:22:29Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-11-03T16:22:57Z",
+              "closed_at": "2026-11-03T16:27:56Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-11-03T16:28:31Z",
+              "closed_at": "2026-11-03T16:47:29Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-11-03T16:54:43Z",
+              "closed_at": "2026-11-03T16:56:20Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-11-03T17:01:16Z",
+              "closed_at": "2026-11-03T17:07:54Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T17:22:49Z",
+              "closed_at": "2026-11-03T17:32:15Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-11-03T17:35:57Z",
+              "closed_at": "2026-11-03T17:38:59Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T18:01:46Z",
+              "closed_at": "2026-11-03T18:05:43Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T18:30:23Z",
+              "closed_at": "2026-11-03T18:34:28Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T18:45:57Z",
+              "closed_at": "2026-11-03T18:49:47Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-04T01:31:28Z",
+              "closed_at": "2026-11-04T01:33:25Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-11-04T01:33:41Z",
+              "closed_at": "2026-11-04T01:38:11Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-04T01:59:02Z",
+              "closed_at": "2026-11-04T02:04:30Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P5",
+          "name": "test-author",
+          "status": "passed",
+          "wall_seconds": 1924,
+          "wait_seconds": 0,
+          "effective_seconds": 1924,
+          "gate_attempts": 7,
+          "pass_attempts": 6,
+          "fail_attempts": 1,
+          "stage_attempts": null,
+          "rounds": 7,
+          "skills": [
+            "ohos-test-ut-generation",
+            "hdc-test-suites-execution"
+          ],
+          "gate": "gate_test_ut.py",
+          "opened_at": "2026-11-04T02:04:30Z",
+          "closed_at": "2026-11-04T02:06:53Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-11-03T17:07:54Z",
+              "closed_at": "2026-11-03T17:18:34Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-11-03T17:38:59Z",
+              "closed_at": "2026-11-03T17:49:01Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T18:05:43Z",
+              "closed_at": "2026-11-03T18:07:37Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T18:34:28Z",
+              "closed_at": "2026-11-03T18:36:54Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-03T18:49:47Z",
+              "closed_at": "2026-11-03T18:52:23Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-04T01:38:11Z",
+              "closed_at": "2026-11-04T01:40:14Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-04T02:04:30Z",
+              "closed_at": "2026-11-04T02:06:53Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P6",
+          "name": "device-functional",
+          "status": "passed",
+          "wall_seconds": 4456,
+          "wait_seconds": 1177,
+          "effective_seconds": 3279,
+          "gate_attempts": 7,
+          "pass_attempts": 7,
+          "fail_attempts": 0,
+          "stage_attempts": null,
+          "rounds": 6,
+          "skills": [
+            "ohos-dev-hdc-command-usage",
+            "hdc-usage"
+          ],
+          "gate": "gate_device_func.py",
+          "opened_at": "2026-11-04T02:06:53Z",
+          "closed_at": "2026-11-04T02:15:23Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-11-03T17:49:01Z",
+              "closed_at": "2026-11-03T17:59:12Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-11-03T18:07:37Z",
+              "closed_at": "2026-11-03T18:30:01Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-11-03T18:36:54Z",
+              "closed_at": "2026-11-03T18:45:18Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-11-03T18:52:23Z",
+              "closed_at": "2026-11-03T19:04:14Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-04T01:40:14Z",
+              "closed_at": "2026-11-04T01:53:10Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-04T02:06:53Z",
+              "closed_at": "2026-11-04T02:15:23Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P7",
+          "name": "quality-verify",
+          "status": "passed",
+          "wall_seconds": 2089,
+          "wait_seconds": 0,
+          "effective_seconds": 2089,
+          "gate_attempts": 4,
+          "pass_attempts": 3,
+          "fail_attempts": 1,
+          "stage_attempts": null,
+          "rounds": 3,
+          "skills": [
+            "ohos-test-coverage"
+          ],
+          "gate": "gate_integration.py",
+          "opened_at": "2026-11-04T02:15:23Z",
+          "closed_at": "2026-11-04T02:27:43Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-11-03T19:04:14Z",
+              "closed_at": "2026-11-03T19:22:00Z",
+              "kind": "phase",
+              "interrupted": false
+            },
+            {
+              "opened_at": "2026-11-04T01:53:10Z",
+              "closed_at": "2026-11-04T01:57:53Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-11-04T02:15:23Z",
+              "closed_at": "2026-11-04T02:27:43Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": null
+        },
+        {
+          "id": "P8",
+          "name": "upload-review",
+          "status": "passed",
+          "wall_seconds": 35590,
+          "wait_seconds": 0,
+          "effective_seconds": 35590,
+          "gate_attempts": 9,
+          "pass_attempts": 2,
+          "fail_attempts": 7,
+          "stage_attempts": null,
+          "rounds": 2,
+          "skills": [
+            "ohos-ci-openharmony-ci-analysis"
+          ],
+          "gate": "gate_upload_ci.py",
+          "opened_at": "2026-11-04T02:27:44Z",
+          "closed_at": "2026-11-04T06:17:19Z",
+          "rounds_detail": [
+            {
+              "opened_at": "2026-11-03T19:22:00Z",
+              "closed_at": "2026-11-04T01:25:35Z",
+              "kind": "phase",
+              "interrupted": true
+            },
+            {
+              "opened_at": "2026-11-04T02:27:44Z",
+              "closed_at": "2026-11-04T06:17:19Z",
+              "kind": "phase",
+              "interrupted": false
+            }
+          ],
+          "upload_wait_history": [
+            {
+              "kind": "pr_review_missing",
+              "reason": "PR saved; prepare --pr-review-report and rerun (no PR creation)",
+              "at": "2026-11-04T01:13:12Z",
+              "pr": 2588
+            },
+            {
+              "kind": "pr_review_missing",
+              "reason": "PR saved; prepare --pr-review-report and rerun (no PR creation)",
+              "at": "2026-11-04T02:37:26Z",
+              "pr": 2588
+            },
+            {
+              "kind": "ci_wait",
+              "reason": "pr=2588 overall=pending ci_ok=False pushed=788f54d51198 pr_head=788f54d51198 sha_ok=True fresh=True local_review=skipped (--pr re-verify) pr_review=issue_count=0 findings=0",
+              "at": "2026-11-04T02:44:41Z",
+              "pr": 2588
+            },
+            {
+              "kind": "ci_wait",
+              "reason": "pr=2588 overall=running ci_ok=False pushed=788f54d51198 pr_head=788f54d51198 sha_ok=True fresh=True local_review=skipped (--pr re-verify) pr_review=issue_count=0 findings=0",
+              "at": "2026-11-04T03:02:43Z",
+              "pr": 2588
+            }
+          ]
+        }
+      ],
+      "failure_details": [
+        {
+          "id": "manifest:4",
+          "phase": "P2",
+          "gate": "gate_develop.py",
+          "reason": "base/head afdbe8c9823a->afdbe8c9823a, 15 file(s) changed (0 untracked), critical_rules_ok=False deps_ok=True static_observed=1 change_scope=15/15 inside; code_ruleset report unusable: findings JSON missing or unreadable: [Errno 2] No such file or directory: '[敏感路径]'; hygiene_observed=1",
+          "at": "2026-11-03T16:14:04Z",
+          "source": "browser-import/ar-development/hdc-file-compress-20261103/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "resolved",
+          "verified_by": "manifest:5",
+          "count": 1,
+          "category": "其他门禁问题",
+          "fixes": [
+            {
+              "root_cause": "Automatic prebuilt selection chose linux-aarch64 clang-format on x86_64 WSL and aborted before JSON evidence",
+              "action": "Pin native x86_64 clang-format and clang-tidy through the existing guard override, preserving the complete ruleset and findings",
+              "change_ref": "[敏感路径]",
+              "verification_verdict": "PASS"
+            }
+          ],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:13",
+          "phase": "P4",
+          "gate": "gate_build.py",
+          "reason": "build ok but clang-tidy found 1 blocking issue(s) (target=//analysis/hdc-compress-20261103/source:hdcd_system); rules=clang-tidy-backend; degraded=True; clang-tidy found 1 blocking issue(s) from the P4 critical/backend subset; 6 non-blocking finding(s) recorded as observation",
+          "at": "2026-11-03T16:36:00Z",
+          "source": "browser-import/ar-development/hdc-file-compress-20261103/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 3,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "resolved",
+          "verified_by": "manifest:21",
+          "count": 1,
+          "category": "编译构建",
+          "fixes": [
+            {
+              "root_cause": "hb converted the qualified label to an independent component build from the original checkout, and clang-tidy analyzed headers outside their actual TU context",
+              "action": "Use verified private namespace source binding and unqualified GN target, retain real four-platform compilation records and dependency-proven TU/header contexts. This fix record is entered while retry preflight is in progress; the invocation already started.",
+              "change_ref": "[敏感路径];[敏感路径]",
+              "verification_verdict": "PASS"
+            }
+          ],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:30",
+          "phase": "P5",
+          "gate": "gate_test_ut.py",
+          "reason": "tests=0 failures=0 errors=0 fresh=2026-11-04-01-39-57 gtest_cov=0/10 MISSING: HdcCompressionTest.Parameters, HdcCompressionTest.LegacyOptions, HdcCompressionTest.RawAndCompressedBlocks, HdcCompressionTest.RejectMalformedBlocks, HdcCompressionTest.LargeOffsets, HdcCompressionTest.CapabilityBeforeWrite, HdcCompressionTest.BlockAcknowledgement, HdcCompressionTest.EmptyAndDirectoryState, HdcCompressionTest.FailureAndCompletion, HdcCompressionTest.PayloadCounters",
+          "at": "2026-11-03T17:40:00Z",
+          "source": "browser-import/ar-development/hdc-file-compress-20261103/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 2,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "resolved",
+          "verified_by": "manifest:31",
+          "count": 1,
+          "category": "测试与验证",
+          "fixes": [
+            {
+              "root_cause": "The installed workflow generated legacy device XML without the type, label and info attributes required by this xdevice consumer, so the device manager selected zero devices",
+              "action": "Emit both current typed info attributes and legacy child fields, retain exact pinned endpoint/serial, and put the selected native HDC binary first on the task PATH",
+              "change_ref": "[敏感路径]",
+              "verification_verdict": "PASS"
+            }
+          ],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:51",
+          "phase": "P7",
+          "gate": "gate_integration.py",
+          "reason": "type=UT exit=0 tests=14 failures=0 errors=0 fresh=2026-11-04-03-04-32 gtest_cov=10/10 | quality:coverage=evidence/phase7/coverage_report.md; performance=evidence/phase7/performance_report.md; power=evidence/phase7/power_report.md; stability=evidence/phase7/stability_report.md | review:observations=38 unresolved_review_errors=1 packet=394a23b5f7465f8bd0edfc5dbd0d038ba85760912e6c124f5608d2fae97cd272 | external_review evidence/phase7/external_code_review_report.json issue_count=0 findings=0",
+          "at": "2026-11-03T19:04:51Z",
+          "source": "browser-import/ar-development/hdc-file-compress-20261103/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "resolved",
+          "verified_by": "manifest:52",
+          "count": 1,
+          "category": "测试与验证",
+          "fixes": [
+            {
+              "root_cause": "The static guard serialized a Python set with process-random ordering, changing full report and review packet hashes despite identical diagnostics",
+              "action": "Serialize the coverage rule set in sorted order, regenerate the owning coverage manifest through its generator, and verify repeated full/scoped/format scans with independent hash seeds",
+              "change_ref": "[敏感路径];[敏感路径]",
+              "verification_verdict": "PASS"
+            }
+          ],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:54",
+          "phase": "P8",
+          "gate": "gate_upload_ci.py:consent-precheck",
+          "reason": "dry run prepared upload plan (no --allow-push)",
+          "at": "2026-11-04T01:03:11Z",
+          "source": "browser-import/ar-development/hdc-file-compress-20261103/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 1,
+          "failure_kind": "expected_review_hold",
+          "failure_category": "expected_review_hold",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:55",
+          "count": 1,
+          "category": "待人工确认",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:55",
+          "phase": "P8",
+          "gate": "gate_upload_ci.py",
+          "reason": "git push failed: error: git-remote-https died of signal 15",
+          "at": "2026-11-04T01:11:20Z",
+          "source": "browser-import/ar-development/hdc-file-compress-20261103/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "gate_still_failed_different_reason",
+          "verified_by": "manifest:58",
+          "count": 1,
+          "category": "其他门禁问题",
+          "fixes": [
+            {
+              "root_cause": "HTTPS git push remained blocked in its credential/transport process while remote reads worked and the branch was absent",
+              "action": "Stopped the owned HTTPS process, verified no remote branch was published, and confirmed existing SSH authenticates as MontSaintMichel; route this task's push through a command-scoped pushInsteadOf mapping",
+              "change_ref": "[敏感路径];[敏感路径]",
+              "verification_verdict": "FAIL"
+            }
+          ],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:58",
+          "phase": "P8",
+          "gate": "gate_upload_ci.py",
+          "reason": "pr=2588 overall= ci_ok=False pushed=94ed20f250c1 pr_head=94ed20f250c1 sha_ok=True fresh=False local_review=issue_count=0 findings=0 pr_review=issue_count=0 findings=0 failure_category=unknown",
+          "at": "2026-11-04T01:23:53Z",
+          "source": "browser-import/ar-development/hdc-file-compress-20261103/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "gate_still_failed_different_reason",
+          "verified_by": "manifest:59",
+          "count": 1,
+          "category": "其他门禁问题",
+          "fixes": [
+            {
+              "root_cause": "Private skill root did not include the CI analyzer dependency; the query failed before any remote verdict",
+              "action": "Bind the supported OHOS_CI_SCRIPT override to the installed analyzer and verify its real entrypoint; preserve the failed query evidence",
+              "change_ref": "[敏感路径]",
+              "verification_verdict": "FAIL"
+            }
+          ],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:59",
+          "phase": "P8",
+          "gate": "gate_upload_ci.py",
+          "reason": "pr=2588 overall=failed ci_ok=False pushed=94ed20f250c1 pr_head=94ed20f250c1 sha_ok=True fresh=True local_review=issue_count=0 findings=0 pr_review=issue_count=0 findings=0 failure_category=code_defect",
+          "at": "2026-11-04T01:24:39Z",
+          "source": "browser-import/ar-development/hdc-file-compress-20261103/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 1,
+          "failure_kind": "gate_failure",
+          "failure_category": "code_defect",
+          "resolution_status": "resolved",
+          "verified_by": "manifest:85",
+          "count": 1,
+          "category": "其他门禁问题",
+          "fixes": [
+            {
+              "root_cause": "Current-head remote static analysis reported added or worsened function metrics and formatting, plus a macro-hidden safe-function return check",
+              "action": "Extract bounded internal helpers, keep conditional help output byte-identical, apply changed-source formatting and explicit test checks; P2-P5 revalidated with actual source-bound builds and 14 device tests",
+              "change_ref": "[敏感路径];[敏感路径]",
+              "verification_verdict": "PASS"
+            }
+          ],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:77",
+          "phase": "P8",
+          "gate": "gate_upload_ci.py:consent-precheck",
+          "reason": "dry run prepared upload plan (no --allow-push)",
+          "at": "2026-11-04T02:27:44Z",
+          "source": "browser-import/ar-development/hdc-file-compress-20261103/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 2,
+          "failure_kind": "expected_review_hold",
+          "failure_category": "expected_review_hold",
+          "resolution_status": "failed_again_without_recorded_fix",
+          "verified_by": "manifest:78",
+          "count": 1,
+          "category": "待人工确认",
+          "fixes": [],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:78",
+          "phase": "P8",
+          "gate": "gate_upload_ci.py",
+          "reason": "PR head SHA does not match local upload SHA",
+          "at": "2026-11-04T02:36:09Z",
+          "source": "browser-import/ar-development/hdc-file-compress-20261103/workflow_metrics.json",
+          "first_attempt": true,
+          "round": 2,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "gate_still_failed_different_reason",
+          "verified_by": "manifest:82",
+          "count": 1,
+          "category": "其他门禁问题",
+          "fixes": [
+            {
+              "root_cause": "The ordinary push succeeded, but the first immediate PR API response still exposed the previous head",
+              "action": "Preserved the stale response, independently verified the remote Git ref and subsequent PR head equal 788f54d51198aae9f8bcb82f4dc1fe70df7919b5, and resume existing-PR verification without another push",
+              "change_ref": "[敏感路径];[敏感路径];[敏感路径]",
+              "verification_verdict": "FAIL"
+            }
+          ],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        },
+        {
+          "id": "manifest:82",
+          "phase": "P8",
+          "gate": "gate_upload_ci.py",
+          "reason": "pr=2588 overall=running ci_ok=False pushed=788f54d51198 pr_head=788f54d51198 sha_ok=True fresh=True local_review=skipped (--pr re-verify) pr_review=issue_count=0 findings=0 failure_category=unknown",
+          "at": "2026-11-04T02:58:09Z",
+          "source": "browser-import/ar-development/hdc-file-compress-20261103/workflow_metrics.json",
+          "first_attempt": false,
+          "round": 2,
+          "failure_kind": "gate_failure",
+          "failure_category": "unknown",
+          "resolution_status": "resolved",
+          "verified_by": "manifest:84",
+          "count": 1,
+          "category": "其他门禁问题",
+          "fixes": [
+            {
+              "root_cause": "Structured CI running status fell through a classifier that only recognized pending/queued text, so P8 rejected the valid wait state",
+              "action": "In the task-private classifier, map recognized active overall states to ci_wait only after explicit defect/platform/transport checks; red-first regression and full preflight/P8 recovery suites pass, including no green authorization and red/SHA/tamper blocking",
+              "change_ref": "[敏感路径];[敏感路径]",
+              "verification_verdict": "PASS"
+            }
+          ],
+          "session_findings": [],
+          "session_scope": "",
+          "session_source": ""
+        }
+      ],
+      "failures": 11,
+      "gate_attempts": 67,
+      "human_interventions": [],
+      "open_waits": 0,
+      "open_wait_details": [],
+      "effective_seconds": 50880,
+      "wall_seconds": 52057,
+      "wait_seconds": 1177,
+      "first_gate_attempts": 55,
+      "first_gate_failures": 8,
+      "first_gate_passes": 47,
+      "first_gate_review_holds": 2,
+      "unrecorded_gate_attempts": 0,
+      "preflight_summary": {
+        "attempts": 94,
+        "failed_attempts": 40,
+        "issues": 83
+      },
+      "preflight_failures": [
+        {
+          "id": "preflight-3",
+          "phase": "P2",
+          "at": "2026-11-03T16:13:26Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-4",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "tool:lizard",
+              "status": "UNAVAILABLE",
+              "reason": "lizard tool unavailable",
+              "rule_ids": []
+            },
+            {
+              "id": "early-metrics",
+              "status": "FAIL",
+              "reason": "probe exit=2 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.204"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-4",
+          "phase": "P2",
+          "at": "2026-11-03T16:14:04Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-5",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.204"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-5",
+          "phase": "P2",
+          "at": "2026-11-03T16:15:20Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-7",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.204"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-6",
+          "phase": "P3",
+          "at": "2026-11-03T16:20:08Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-8",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.204"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-7",
+          "phase": "P2",
+          "at": "2026-11-03T16:22:53Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-9",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.204"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-8",
+          "phase": "P3",
+          "at": "2026-11-03T16:22:57Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-10",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.204"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-9",
+          "phase": "P2",
+          "at": "2026-11-03T16:28:27Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-12",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.204"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-10",
+          "phase": "P3",
+          "at": "2026-11-03T16:28:31Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-13",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.204"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-11",
+          "phase": "P4",
+          "at": "2026-11-03T16:30:17Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-17",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.204"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-12",
+          "phase": "P2",
+          "at": "2026-11-03T16:54:35Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-15",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.204"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-13",
+          "phase": "P3",
+          "at": "2026-11-03T16:54:42Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-16",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.204"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-15",
+          "phase": "P2",
+          "at": "2026-11-03T17:01:12Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-20",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.204"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-16",
+          "phase": "P3",
+          "at": "2026-11-03T17:01:16Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-21",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.204"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-17",
+          "phase": "P4",
+          "at": "2026-11-03T17:01:48Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-22",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.204"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-18",
+          "phase": "P5",
+          "at": "2026-11-03T17:08:04Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-28",
+          "resolution_status": "resolved",
+          "checks": [
+            {
+              "id": "abi:analysis/hdc-compress-20261103/build/linux/hdc",
+              "status": "FAIL",
+              "reason": "user ELF ABI (32, 40); artifact ABI (64, 62)",
+              "rule_ids": []
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-20",
+          "phase": "P2",
+          "at": "2026-11-03T17:22:45Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-24",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.204"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-21",
+          "phase": "P3",
+          "at": "2026-11-03T17:22:49Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-25",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.204"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-22",
+          "phase": "P4",
+          "at": "2026-11-03T17:23:11Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-23",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.204"
+              ]
+            },
+            {
+              "id": "device",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-23",
+          "phase": "P4",
+          "at": "2026-11-03T17:29:34Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-26",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.204"
+              ]
+            },
+            {
+              "id": "device",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-24",
+          "phase": "P2",
+          "at": "2026-11-03T17:35:53Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-30",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.204"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-25",
+          "phase": "P3",
+          "at": "2026-11-03T17:35:57Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-31",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.204"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-26",
+          "phase": "P4",
+          "at": "2026-11-03T17:36:26Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-32",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.204"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-30",
+          "phase": "P2",
+          "at": "2026-11-03T18:00:27Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-37",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.204"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-31",
+          "phase": "P3",
+          "at": "2026-11-03T18:01:45Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-38",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100",
+                "WordsTool.204"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-32",
+          "phase": "P4",
+          "at": "2026-11-03T18:02:15Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-39",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100",
+                "WordsTool.204"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-37",
+          "phase": "P2",
+          "at": "2026-11-03T18:30:03Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-43",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100",
+                "WordsTool.204"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-38",
+          "phase": "P3",
+          "at": "2026-11-03T18:30:23Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-44",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100",
+                "WordsTool.204"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-39",
+          "phase": "P4",
+          "at": "2026-11-03T18:30:52Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-45",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100",
+                "WordsTool.204"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-43",
+          "phase": "P2",
+          "at": "2026-11-03T18:45:53Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-60",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "H2.CRLF",
+                "WordsTool.100"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-44",
+          "phase": "P3",
+          "at": "2026-11-03T18:45:57Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-61",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "H2.CRLF",
+                "WordsTool.100"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-45",
+          "phase": "P4",
+          "at": "2026-11-03T18:46:28Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-62",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "H2.CRLF",
+                "WordsTool.100"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-60",
+          "phase": "P2",
+          "at": "2026-11-04T01:31:07Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-63",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "G.EXP.02",
+                "G.EXP.29-CPP",
+                "G.STD.16-CPP",
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "H2.CRLF",
+                "WordsTool.100"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-61",
+          "phase": "P3",
+          "at": "2026-11-04T01:31:28Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-64",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "G.EXP.02",
+                "G.EXP.29-CPP",
+                "G.STD.16-CPP",
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "H2.CRLF",
+                "WordsTool.100"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-62",
+          "phase": "P4",
+          "at": "2026-11-04T01:32:05Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-65",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "G.EXP.02",
+                "G.EXP.29-CPP",
+                "G.STD.16-CPP",
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "H2.CRLF",
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "device",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "linux",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            },
+            {
+              "id": "windows",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": []
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-63",
+          "phase": "P2",
+          "at": "2026-11-04T01:33:28Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-70",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "G.EXP.02",
+                "G.EXP.29-CPP",
+                "G.STD.16-CPP",
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "H2.CRLF",
+                "WordsTool.100"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-64",
+          "phase": "P3",
+          "at": "2026-11-04T01:33:41Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-71",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "G.EXP.02",
+                "G.EXP.29-CPP",
+                "G.STD.16-CPP",
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "H2.CRLF",
+                "WordsTool.100"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-65",
+          "phase": "P4",
+          "at": "2026-11-04T01:34:25Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "preflight-72",
+          "resolution_status": "not_resolved",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "G.EXP.02",
+                "G.EXP.29-CPP",
+                "G.STD.16-CPP",
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "H2.CRLF",
+                "WordsTool.100"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-70",
+          "phase": "P2",
+          "at": "2026-11-04T01:57:55Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "",
+          "resolution_status": "",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "H2.CRLF",
+                "WordsTool.100"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-71",
+          "phase": "P3",
+          "at": "2026-11-04T01:59:02Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "",
+          "resolution_status": "",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "H2.CRLF",
+                "WordsTool.100"
+              ]
+            }
+          ],
+          "fixes": []
+        },
+        {
+          "id": "preflight-72",
+          "phase": "P4",
+          "at": "2026-11-04T01:59:34Z",
+          "status": "FAIL",
+          "policy_version": 1,
+          "verified_by": "",
+          "resolution_status": "",
+          "checks": [
+            {
+              "id": "author-rules",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "WordsTool.100"
+              ]
+            },
+            {
+              "id": "file-hygiene",
+              "status": "FAIL",
+              "reason": "probe exit=1 (expected 0)",
+              "rule_ids": [
+                "H2.CRLF",
+                "WordsTool.100"
+              ]
+            }
+          ],
+          "fixes": []
+        }
+      ],
       "session_later_outcome": "",
       "recording_quality": {
         "status": "complete",
