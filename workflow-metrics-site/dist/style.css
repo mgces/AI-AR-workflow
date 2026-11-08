@@ -34,6 +34,7 @@
 .weekly-line{stroke:var(--blue);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round}
 .weekly-point{position:absolute;transform:translate(-50%,-50%);display:grid;place-items:center;width:28px;height:28px;padding:0;border-radius:50%;background:transparent;color:#275aab}
 .weekly-point::before{content:"";width:11px;height:11px;border:2px solid #fff;border-radius:50%;background:var(--blue);box-shadow:0 0 0 1px var(--blue)}
+.weekly-point.is-earlier::before{background:#647eaa;box-shadow:0 0 0 1px #647eaa}
 .weekly-point:hover::before,.weekly-point[aria-pressed="true"]::before{box-shadow:0 0 0 4px #d6e7ff}
 .weekly-point span{position:absolute;bottom:calc(50% + 10px);left:50%;transform:translateX(-50%);font-size:13px;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
 .weekly-period{position:absolute;top:96%;transform:translateX(-50%);color:var(--muted);font-size:12px;white-space:nowrap}
@@ -56,9 +57,10 @@
 .focus-week summary:focus-visible{outline:3px solid #8eb9ff;outline-offset:2px}
 .focus-week summary span{margin-left:auto;font-size:12px;color:var(--muted);text-align:right}
 .focus-week dl{margin:0;padding:0 15px 13px 28px;display:grid;gap:9px;font-size:13px}
-.focus-week dt{font-weight:650;color:#304567}
+.focus-week dt{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;font-weight:650;color:#304567}
+.focus-stage{padding:2px 6px;border-radius:4px;background:#edf3fc;color:#3d5d8a;font-size:11px;white-space:nowrap}
 .focus-week dd{margin:2px 0 0;color:#5b6d85;overflow-wrap:anywhere}
-.focus-week-empty{padding:0 15px 13px 28px;font-size:13px;color:var(--muted)}
+.focus-week-empty,.focus-week-note{padding:0 15px 13px 28px;font-size:13px;color:var(--muted);overflow-wrap:anywhere}
 #failures .panel-title,.failure-stats{flex-wrap:wrap}
 .failure-stats{gap:6px 20px}
 .failure-signals{display:flex;flex-wrap:wrap;gap:6px;padding:0 24px 13px}
@@ -70,6 +72,8 @@
   .weekly-chart{grid-template-columns:26px minmax(0,1fr);gap:5px;padding:0 22px 23px 10px}
   .weekly-plot{height:140px}
   .weekly-axis span,.weekly-period{font-size:10px}
+  .weekly-period{text-align:center;line-height:1.25}
+  .weekly-period-end{display:block}
   .weekly-point span{font-size:11px}
   .weekly-change{font-size:10px;padding:4px 6px}
   .focus-grid{padding:0 16px 16px;gap:10px}

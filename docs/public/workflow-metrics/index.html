@@ -39,14 +39,14 @@
     <div id="live-summary" class="sr-only" aria-live="polite"></div>
     <section id="metrics" class="metric-grid" aria-label="核心指标"></section>
     <section class="panel weekly-panel" id="weekly-trend" aria-labelledby="weekly-heading">
-      <div class="panel-title"><div><h2 id="weekly-heading">每周门禁通过率</h2><p>按周报批次统计，含补录与重试；不随筛选变化</p></div><span id="weekly-change" class="weekly-change" hidden></span></div>
+      <div class="panel-title"><div><h2 id="weekly-heading">每周门禁通过率</h2><p>首点汇总 10/12 前的任务，其后按各期周报批次；不随筛选变化</p></div><span id="weekly-change" class="weekly-change" hidden></span></div>
       <div id="weekly-chart" class="weekly-chart"></div>
-      <div class="panel-foot weekly-foot"><p id="weekly-detail" aria-live="polite"></p><span>点击数据点查看当周统计</span></div>
+      <div class="panel-foot weekly-foot"><p id="weekly-detail" aria-live="polite"></p><span>点击数据点查看该期统计</span></div>
     </section>
     <div class="analysis-grid">
       <section class="panel" id="timing"><div class="panel-title"><div><h2>阶段耗时分布</h2><p>跨运行累计 · 按记录的阶段时长统计</p></div><select id="time-mode" aria-label="耗时口径"><option value="effective">有效耗时</option><option value="wall">含人工等待</option></select></div><div class="legend"><span><i class="blue"></i>有效耗时</span><span><i class="light-blue"></i>人工等待</span></div><div id="phase-chart" class="phase-chart"></div><div class="panel-foot" id="timing-note"></div></section>
       <section class="panel" id="failures" aria-labelledby="failure-heading">
-        <div class="panel-title"><div><h2 id="failure-heading">门禁失败分布</h2><p id="failure-caption">点击柱子查看对应运行和失败详情</p></div><select id="failure-scope" aria-label="失败分析统计范围"><option id="failure-period" value="recent">最近一周</option><option value="all">全部记录</option></select></div>
+        <div class="panel-title"><div><h2 id="failure-heading">门禁失败分布</h2><p id="failure-caption">点击柱子查看对应运行和失败详情</p></div><select id="failure-scope" aria-label="失败分析统计范围"><option value="all" selected>全部记录</option></select></div>
         <div id="failure-chart"></div><div id="failure-signals" class="failure-signals"></div>
         <div class="panel-foot failure-foot"><p id="failure-note"></p><a href="#review-focus">查看优化方向 ↓</a></div>
       </section>

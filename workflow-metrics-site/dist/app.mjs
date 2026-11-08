@@ -5,7 +5,7 @@ import {preflightDetails} from './preflight-view.mjs';
 import {validateSnapshot} from './import-data.mjs';
 import {createImportController} from './import-ui.mjs';
 import {failureReview} from './failure-review.mjs';
-import {latestWeekLabel,latestWeekRuns,mountWeeklyOverview} from './weekly-overview.mjs';
+import {selectFailureScope,mountWeeklyOverview} from './weekly-overview.mjs';
 const $=id=>document.getElementById(id);
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const labels={completed:'已完成',running:'进行中',blocked:'受阻',waiting:'等待人工',pending:'未开始',passed:'已通过',failed:'失败'};
@@ -22,17 +22,15 @@ function date(value){const d=new Date(value);return Number.isNaN(d.valueOf())?'�
 function runName(id){const name=String(id??'');return name.replace(/^(?:\d{4}-\d{2}-\d{2}|\d{8})[-_\s]+/,'')||name;}
 const badge=(s,source='')=>source&&s!=='completed' ? `<button type="button" class="badge status-action ${esc(s)}" data-status-run="${esc(source)}" aria-label="查看${esc(labels[s]||s)}状态说明">${esc(labels[s]||s)}</button>` : `<span class="badge ${esc(s)}">${esc(labels[s]||s)}</span>`;
 function filters(){return {query:$('search').value,kind:$('kind').value,model:$('model').value,status:$('status').value};}
-const recentFailuresOnly=()=>$('failure-scope').value==='recent';
-const failureScopeRuns=()=>recentFailuresOnly()?latestWeekRuns(selected):selected;
-const failureScopeLabel=()=>recentFailuresOnly()?`最近一周 · ${latestWeekLabel}`:'全部所选记录';
+const failureScope=()=>selectFailureScope(selected,$('failure-scope').value);
 function renderFailureAnalysis(){
- const runs=failureScopeRuns(), s=summarize(runs), phases=phaseTotals(runs);
+ const {runs,weekly}=failureScope(), s=summarize(runs), phases=phaseTotals(runs);
  $('failure-caption').textContent=`${runs.length} 条所选运行 · 点击阶段查看失败原因和复验`;
  const signals=$('failure-signals');
  signals.hidden=!runs.length;
  if(!runs.length){
   $('failure-chart').innerHTML='<p class="empty">当前筛选范围没有记录。</p>';
-  $('failure-note').textContent=recentFailuresOnly()?'可切换到全部记录查看往期或新导入的运行。':'调整上方筛选条件以查看其他运行。';
+  $('failure-note').textContent=weekly?'可切换到全部记录，或选择另一周。':'调整上方筛选条件以查看其他运行。';
   return;
  }
  const maxFail=Math.max(1,...phases.map(p=>p.failures||0));
@@ -84,12 +82,12 @@ function openStatus(source){
  $('status-dialog').showModal();
 }
 function openPhase(phaseId){
- const runs=failureScopeRuns();
+ const {runs,title}=failureScope();
  const phase=phaseTotals(runs).find(item=>item.id===phaseId);
  if(!phase)return;
  const rows=phaseFailureRuns(runs,phaseId);
  $('detail-kind').textContent='PHASE INSPECTOR';
- $('detail-title').textContent=`${phaseId} ${phaseNames[phaseId]||'阶段'} · 失败明细（${failureScopeLabel()}）`;
+ $('detail-title').textContent=`${phaseId} ${phaseNames[phaseId]||'阶段'} · 失败明细（${title}）`;
  $('detail-content').innerHTML=`<div class="detail-meta"><span>${fmt(phase.failures)} 次失败 / ${fmt(phase.attempts)} 次门禁尝试</span><span>${rows.length} 次运行涉及失败</span></div><div class="phase-run-list">${rows.map(({run,phase:runPhase,details})=>`<section class="phase-run"><div class="reason-head"><div><button class="run-link" data-run="${esc(run.source)}">${esc(runName(run.id))} ↗</button><p class="run-meta">${esc(run.model)} · ${badge(run.status,run.source)}</p></div><span class="small-tag">${fmt(runPhase.fail_attempts)} 次失败 / ${fmt(runPhase.gate_attempts)} 次尝试</span></div><div class="reason-list">${details.map(d=>`<article class="reason-item"><div class="reason-head"><b>${esc(d.gate)||'门禁未记录'}</b><span class="small-tag">${d.count===null?'仅最近结果':fmt(d.count)+' 次'}</span></div><p>${esc(d.reason)}</p>${fixDetails(d)}<p class="source">${esc(d.source)}${d.at?' · '+date(d.at):''}</p></article>`).join('')||'<p class="muted">此运行只有失败计数，缺少逐次原因</p>'}</div></section>`).join('')||'<p class="empty">当前筛选范围内，这个阶段没有失败记录。</p>'}</div>`;
  if(!$('detail').open)$('detail').showModal();
 }
