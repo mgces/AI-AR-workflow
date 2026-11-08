@@ -45,7 +45,11 @@
     </section>
     <div class="analysis-grid">
       <section class="panel" id="timing"><div class="panel-title"><div><h2>阶段耗时分布</h2><p>跨运行累计 · 按记录的阶段时长统计</p></div><select id="time-mode" aria-label="耗时口径"><option value="effective">有效耗时</option><option value="wall">含人工等待</option></select></div><div class="legend"><span><i class="blue"></i>有效耗时</span><span><i class="light-blue"></i>人工等待</span></div><div id="phase-chart" class="phase-chart"></div><div class="panel-foot" id="timing-note"></div></section>
-      <section class="panel" id="failures"><div class="panel-title"><div><h2>门禁失败分布</h2><p>点击柱子查看对应运行和失败详情</p></div><span class="small-tag">按阶段</span></div><div id="failure-chart"></div><div class="panel-foot" id="failure-note"></div></section>
+      <section class="panel" id="failures" aria-labelledby="failure-heading">
+        <div class="panel-title"><div><h2 id="failure-heading">门禁失败分布</h2><p id="failure-caption">点击柱子查看对应运行和失败详情</p></div><select id="failure-scope" aria-label="失败分析统计范围"><option id="failure-period" value="recent">最近一周</option><option value="all">全部记录</option></select></div>
+        <div id="failure-chart"></div><div id="failure-signals" class="failure-signals"></div>
+        <div class="panel-foot failure-foot"><p id="failure-note"></p><a href="#review-focus">查看优化方向 ↓</a></div>
+      </section>
     </div>
     <section class="panel focus-panel" id="review-focus" aria-labelledby="review-focus-heading">
       <div class="panel-title"><div><h2 id="review-focus-heading">近期失败复盘与优化方向</h2><p id="focus-summary"></p></div><a class="button" href="./optimization.html#latest-review">查看完整复盘 ↗</a></div>
@@ -55,6 +59,10 @@
         <article class="focus-card"><span class="small-tag">P5 · 测试就绪</span><h3>验证测试确实运行</h3><p>有运行只生成测试元数据，也有运行因设备配置不兼容而未执行测试。</p><p>正式门禁前核对测试二进制、设备识别和契约用例，回收本轮非空报告。</p></article>
       </div>
       <p id="focus-evidence" class="panel-foot"></p>
+      <section class="focus-archive" aria-labelledby="focus-archive-heading">
+        <h3 id="focus-archive-heading">往期失败复盘</h3>
+        <div id="focus-archive-list"></div>
+      </section>
     </section>
     <section class="panel records" id="runs"><div class="panel-title"><div><h2>运行记录 <span id="run-count" class="count"></span></h2><p>点击非“已完成”状态查看记录依据；选择运行查看完整明细</p></div><span class="muted small">按指标更新时间降序</span></div><div class="table-wrap"><table><thead><tr><th>运行 / 模型</th><th>快照状态</th><th>有效耗时</th><th>人工等待</th><th>门禁失败</th><th>阶段进度</th><th><span class="sr-only">操作</span></th></tr></thead><tbody id="run-rows"></tbody></table></div><div id="empty" class="empty" hidden>没有符合筛选条件的运行。<button class="text-button" id="empty-reset">重置筛选</button></div></section>
     <section class="method" id="method"><h2>读懂这些数字</h2><div class="method-grid"><p><b>有效耗时</b>优先使用记录器汇总值，扣除人工等待。重走阶段的耗时已累计；不随浏览页面的时间增长。</p><p><b>失败次数 ≠ 失败运行数</b>以 fail_attempts 计数。失败率 = 失败门禁尝试 / 全部门禁尝试；已恢复运行仍保留失败历史。FAIL 也可能是人工确认门禁。</p><p><b>有边界的数据</b>“—”表示未记录。Requirement 只有最近结果时，不推算历史失败数。快照状态按记录推断，不能证明进程仍在运行。</p></div><div id="quality-notes"></div></section>
