@@ -1,5 +1,5 @@
 // 进度只随仓库中的实现和验收证据更新，不在浏览器中临时改写。
-export const planUpdatedAt = '2026-10-18';
+export const planUpdatedAt = '2026-11-08';
 export const plans = [
   {
     "id": "WF-01",
@@ -759,21 +759,21 @@ const followUps = [
   {
     id:'WF-16', title:'固定格式化工具、配置与 P3 改动范围', phases:['P2','P3'], attributions:['gate','rule','environment'],
     problem:'新运行仍出现异架构 clang、缺少项目格式配置和 P3 全文件检查历史内容的问题；已有用例数量满足也不代表卫生检查通过。',
-    actions:['工具解析先执行 --version，排除不能在当前主机运行的预编译工具；显式记录格式配置来源。','对已跟踪文件复用 Git 改动行范围，新文件检查全文；独立呈现 authored 与 hygiene 结果。','将真实命中规则、文件和行号写入门禁结果；不能通过改名或放宽真实规则掩盖缺陷。'],
+    actions:['工具解析先核对主机架构并执行 --version，排除不可执行的预编译工具；记录工具路径、架构及格式配置来源。','对已跟踪文件复用 Git 改动行范围，新文件检查全文；独立呈现 authored 与 hygiene 结果。','将真实命中规则、文件和行号写入门禁结果；不能通过改名或放宽真实规则掩盖缺陷。'],
     acceptance:['异架构工具、缺配置、未修改版权行和新增非法内容分别得到正确结果。','已满足 authored 的 P3 失败能准确指向其他失败检查，修复后同检查复验。'],
     sourceCases:[caseFor('20261014-hitrace-source-completeness','P2','修复记录先指出选中了异架构 clang，后指出缺少项目配置而采用 LLVM 默认风格。','前一修改后仍 FAIL；使用项目风格并格式化改动行后记录 resolved。'),caseFor('20261014-hitrace-source-completeness','P3','required=16 authored=16 仍失败；修复记录指出全文件 hygiene 把旧内容计入当前改动。','复用 P2 Git 行范围后记录 resolved；不能据此确认所有部署环境已更新。'),caseFor('20261016-hicollie','P3','required=3 authored=3；whole-file hygiene 命中既有 BUILD.gn 版权行。','当次改写版权行后 PASS，仍需验证门禁范围而非要求每次改历史内容。'),caseFor('20261013-fd-leak-detect','P2','8 次 P2 失败包含 style_ok=False、改动范围越界及规则命中；首条格式/规则修改复验仍 FAIL。','保留实际规则与格式问题，后续部分重跑通过但未登记修改。')]
   },
   {
     id:'WF-17', title:'核对构建产物、符号工具与静态检查输入', phases:['P4'], attributions:['gate','environment','code'],
     problem:'构建返回成功仍有测试产物缺失、符号未匹配和 clang-tidy 阻断；编译数据库规模与符号反解工具也影响结果。',
-    actions:['构建前核对设备、UT、MST 目标及实际输出路径，构建后逐项验证产物。','记录 nm/反解器版本，先比较原始符号身份，再解释 GNU/LLVM 模板空格差异；真正缺符号仍阻断。','为真实目标依赖生成编译数据库，分开报告超时、工具失败和可定位代码告警。'],
-    acceptance:['缺产物、真正缺符号与仅反解格式不同的夹具得到不同诊断。','大编译数据库场景能完成真实目标检查；真实告警保留规则、位置及复验。'],
+    actions:['构建前核对设备、UT、MST 目标及实际输出路径，构建后逐项验证产物。','记录 nm/反解器版本，先比较原始符号身份，再解释 GNU/LLVM 模板空格差异；真正缺符号仍阻断。','流式处理真实目标的编译命令，记录内存峰值与文件覆盖；分别报告超时、内存不足、工具故障和真实告警。'],
+    acceptance:['缺产物、真正缺符号与仅反解格式不同的夹具得到不同诊断。','大编译数据库场景在约定的内存预算内完成全部目标检查；后端故障和真实告警仍阻断。'],
     sourceCases:[caseFor('20261014-hitrace-source-completeness','P4','修复记录涉及 GNU/LLVM 反解模板空格、3.8GB 编译数据库超时和 22 条后续告警。','前两次修改后报错变化；后续别名、所有权和路径处理后记录 resolved。'),caseFor('20261013-fd-leak-detect','P4','14 次失败包含缺 UT/MST 产物、导出符号未匹配及多轮 clang-tidy。','最终阶段通过，但多数条目未登记修复；不能把全部诊断归为误报。'),caseFor('2026-10-15-hiview-resmon','P4','多次 rc=1 且 libresmon.z.so 缺失；另一次构建成功但 clang-tidy 有 11 项。','快照记录后续重跑通过，未登记对应修复，根因需补编译与告警明细。')]
   },
   {
     id:'WF-18', title:'证明测试真正执行并写出契约结果', phases:['P5','P7'], attributions:['gate','environment','execution'],
     problem:'新报告目录不等于测试已执行；多次 tests=0，或 13/16 用例覆盖，实际原因涉及设备配置、XML 初始化顺序和设备不兼容旧用例。',
-    actions:['执行前验证 xdevice 设备节点和 ELF ABI，并运行最小启动探针。','在 InitGoogleTest 前配置 XML 输出；回收后校验 testcase 节点、契约用例身份和本轮报告索引。','设备能力不匹配的旧用例需要明确依据和跳过记录；不得跳过本次契约用例来获得通过。'],
+    actions:['构建后核对实际测试二进制；执行前验证 xdevice 设备识别、ELF ABI、依赖库和用例枚举。','在 InitGoogleTest 前配置 XML 输出；回收后校验 testcase 节点、契约用例身份和本轮报告索引。','设备能力不匹配的旧用例需要明确依据和跳过记录；不得跳过本次契约用例来获得通过。'],
     acceptance:['空目录、空 XML、进程提前退出和真实零失败报告可被区分。','契约用例全部出现在真实报告中，跳过项不被算作通过；保留 stdout、退出码与报告路径。'],
     sourceCases:[caseFor('20261016-hicollie','P5','tests=0 的修复记录先涉及 xdevice 配置，后涉及 gtest XML 未写出及设备不兼容旧用例提前退出。','配置修改后仍失败；显式 XML 与适用性处理后记录 resolved。'),caseFor('20261014-hitrace-source-completeness','P5','实际 13 个用例通过，但契约 16 个中缺三个 E2E testcase。','在 InitGoogleTest 前配置输出目录后记录 resolved。'),caseFor('2026-10-15-hiview-resmon','P5','先无本轮报告、测试目标构建失败，后 tests=0、契约覆盖 0/10。','最后重跑通过但未记录修复；不能从 tests=0 单独推断具体根因。'),caseFor('20261013-fd-leak-detect','P5','两次 tests=0 且契约 0/13；P7 另有无新报告和一条真实失败。','后续通过但未记录动作，应分别保留执行、回收与真实断言失败。'),caseFor('20261009-fd-leak-detect','P5','旧复盘运行曾有 tests=0、契约 0/10，且该运行历史被重新初始化覆盖。','当前快照后续通过；不能把不完整历史当成完整成本或已验证优化效果。')]
   },
@@ -800,20 +800,75 @@ const followUps = [
   },
   {
     id:'WF-22', title:'复核上库恢复机制的实际部署与 PR 时序', phases:['P8'], attributions:['gate','external','execution'],
-    problem:'既有恢复机制标为已实现，新记录仍出现已有 PR 的 409、缺评审报告和 PR head 暂时未更新，需要验证运行端版本与恢复路径。',
-    actions:['运行结果登记门禁版本、检查器摘要和恢复检查点版本，先核对实际使用的是哪份实现。','409 后重新查询并严格核对源/目标仓与分支；PR 元数据暂旧只允许有证据的限次查询。','真实远端代码红灯、CI 等待、预期授权停点分别保留，修复后的新 SHA 必须重新验证。'],
-    acceptance:['已有 PR 和短暂旧 head 不重复创建 PR、不强推，持续身份不符仍阻断。','远端真实规则失败保留问题、修改与新提交复验，不因本地通过而放行。'],
+    problem:'已有 PR 恢复机制仍需运行端验收。新记录出现 PR head 暂旧、运行中的 CI 被记为失败，以及 PR head 已更新但复验读取到旧提交的 CI 事件。',
+    actions:['登记门禁版本、检查器摘要和恢复检查点版本，确认实际运行端使用的实现。','核对源/目标仓和分支，复用同一 PR；对有证据的元数据延迟只做限次查询。','分别核对远端分支、PR head 与 CI 事件实际关联的提交；将预期审核停点、CI 等待、平台异常和真实红灯分别记录。'],
+    acceptance:['已有 PR 和短暂旧 head 不重复创建、不强推，持续身份不符仍阻断。','即使 PR head 已更新，旧提交的 CI 事件或无法核对提交的事件也不得放行；当前提交需获得对应的绿色结果。','当前提交的真实代码红灯保留问题、修改与复验，不能被等待状态覆盖。'],
     sourceCases:[caseFor('2026-10-15-hiview-resmon','P8','快照末尾缺 pr-review-report，并两次尝试创建已有 !4607 的 PR 得到 409。','快照仍受阻且未登记修复；这是机制复发线索，不能确认该运行使用了新版恢复代码。'),caseFor('20261014-hitrace-source-completeness','P8','PR head 暂旧；另有真实远端规则失败，修复记录涉及函数长度、测试常量、路径和 Python assert。','head 后续一致记录 resolved；远端代码修复仍 pending_verification，不能标为已验收。'),caseFor('20261013-fd-leak-detect','P8','5 次预期停点、PR head 不匹配与真实远端代码红灯同时存在。','保持分项统计；后续 PASS 不足以替代每条修改与复验。')]
   },
   {
     id:'WF-23', title:'补齐新导入历史的缺失原因与复验记录', phases:['P0','P1','P2','P3','P4','P5','P6','P7','P8'], attributions:['unknown','gate'],
-    problem:'unwinder、hdc、data-clean 三次运行共 54 次失败没有具体原因；加上旧 resmon 的 5 次，当前共 59 次缺原因。很多新失败仅重跑通过但无修改登记。',
+    problem:'部分运行只有阶段计数，另有失败仅记录重跑通过而没有修改登记。缺少具体原因的当前总数随快照更新；旧快照的缺口保留在对应案例中。',
     actions:['按运行与阶段补录可验证的原始证据、根因、修改及同检查复验；不能从门禁名称推测原因。','摘要自动读取当前快照和本浏览器导入；未复盘的新版本明确列为待人工复盘。','阶段级线索、次数未知、缺失历史与逐次 FAIL 分开展示，保留历史指标。'],
-    acceptance:['每份新导入都出现在运行复盘中；同一 ID 的新版本不会沿用旧版本已复盘结论。','缺日志的 54 次保持未知，补证据后可追溯；重跑 PASS 不能自动标记为修复已验证。'],
+    acceptance:['每份新导入都出现在运行复盘中；同一 ID 的新版本不会沿用旧版本已复盘结论。','缺少原始日志的失败保持未知，补证据后可追溯；重跑 PASS 不能自动标记为修复已验证。'],
     sourceCases:[caseFor('20260923-unwinder-memcpy','P4','该运行 30 次失败涉及 P0/P2–P8，当前只有阶段计数，均缺具体原因。','待补原始日志；不能根据阶段推测为编译或代码缺陷。','unknown'),caseFor('20260921-hdc-client-diagnostics-compatible','P5','P2 有 4 次、host CLI P5 有 2 次失败，均没有原始原因。','共 6 次保持未知，待补 host 执行与开发门禁证据。','unknown'),caseFor('20260921-data-clean-mode','P4','18 次失败中 P4 占 11 次，所有阶段均缺具体原因。','只能确认计数，不能把 11 次 P4 直接归因为编译错误。','unknown')]
   }
 ];
 plans.push(...followUps.map(p => ({...p,priority:'high',status:'planned',owner:'workflow 维护',changeRef:'',regressionEvidence:'',effectEvidence:'',updatedAt:'2026-10-18',benefit:'把新运行中观察到的问题转为可复验的后续改进，减少无证据的重复尝试。'})));
+
+// Curated from the 11/06 shared snapshot. A recorded repair only verifies the stated run.
+const recentCases = {
+  'WF-16':[
+    caseFor('hdc-file-compress-20261103','P2','x86_64 WSL 误选 ARM 版 clang-format，未生成规则检查报告。','显式指定本机工具后同门禁通过；仍需验证共享工具解析。'),
+    caseFor('hdc-transfer-progress-20261031','P2','x86_64 主机再次误选 ARM 版 clang-format。','使用现有配置入口指定本机工具后通过，未放宽规则。'),
+    caseFor('20261019-unwinder-memcpy','P3','5 个契约用例已编写，P3 仍因历史 BUILD.gn 版权行的卫生扫描失败。','恢复适用的版权行处理并重同步后通过，未改功能代码。')
+  ],
+  'WF-17':[
+    caseFor('20261103-env-init','P4','包装器将约 4.25 GB 编译数据库整体读入内存，后端被终止。','该任务改为流式读取后通过；需将有界内存处理与覆盖证据纳入通用回归。'),
+    caseFor('20261027-hiperf-no-symbols','P4','跨平台构建涉及公开依赖及生成头；全库编译数据库和串行扫描还触发后端超时。','提取真实目标命令并并行扫描，个别复验通过；仍有后端失败记录，不能视为通用修复。'),
+    caseFor('20261024-hdc-dynamic-loglevel','P4','主机目标缺失、宏名冲突及测试目标的链接依赖先后导致失败。','分项修复后有通过记录，整条运行仍在进行。')
+  ],
+  'WF-18':[
+    caseFor('20261103-env-init','P5','构建只生成测试元数据，没有测试二进制，执行器未生成报告。','实际编译并链接测试目标后复验通过。'),
+    caseFor('hdc-file-compress-20261103','P5','xdevice 配置不符合该版本解析要求，未选中设备，契约覆盖 0/10。','按设备配置格式修正后复验通过；应前置设备发现和用例校验。'),
+    caseFor('20261022-resmon-cpu-mem-io','P5','设备配置缺类型字段，测试执行器没有选中设备，结果为零用例。','生成兼容的设备配置后通过；跨运行仍复发。'),
+    caseFor('20261019-unwinder-memcpy','P5','设备旧库缺少测试所需符号，程序加载失败，报告为零用例。','核对并更新测试依赖库后，程序可枚举用例且同门禁通过。')
+  ],
+  'WF-19':[
+    caseFor('20261030-resmon-pwr-net-thr-stb','P6','原地覆盖被进程映射的动态库导致进程异常；固定等待也未覆盖服务重启退避。','避免原地截断并核对新进程后相关问题复验通过；另有临时 permissive 窗口的通过记录，仍需 Enforcing 复验。'),
+    caseFor('20261027-sym-map-aggregate','P6','短生命周期进程在事后读取 /proc 前已退出，原取证条件不可执行。','回到设计调整证据契约，保留真实输出、标记和触发窗口断言后复验通过。'),
+    caseFor('20261103-env-init','P6','设备缺少 tr，进程来源检查读取到错误输出。','该任务补齐兼容处理后通过；需前置探测取证命令。')
+  ],
+  'WF-21':[
+    caseFor('hdc-transfer-progress-20261031','P5','设备分区被历史测试夹具占满，Windows 传输测试报空间不足。','核对归属并归档指定夹具后复验通过；后续应在测试前检查空间和本批清理范围。')
+  ],
+  'WF-22':[
+    caseFor('hdc-transfer-progress-20261031','P8','推送后 PR head 暂旧；后来 PR head 已一致，但查询仍读到旧提交的 CI 事件。另有真实远端检查问题。','保存旧事件证据并核对新事件对应的提交；快照仍受阻，不能把所有红灯归为状态延迟。'),
+    caseFor('hdc-file-compress-20261103','P8','当前提交的 CI 仍在运行时被记为失败；同一任务也确有远端静态检查红灯。','任务内将明确的运行中状态归入等待，保留真实红灯并分别复验；共享运行端仍需验收。'),
+    caseFor('20261022-fd-leak-detector','P8','同时出现 PR head 暂旧、真实 CodeCheck 问题及后续平台异常。','按对应提交分别处理；平台重试通过不等于每项代码问题都已登记复验。'),
+    caseFor('20261102-hiperf-no-symbolic-host-deps','P8','等待记录显示需外部确认后复验同一提交，不能将它当作逐次失败原因。','当前仍等待人工；外部处理后再验证该提交。','context')
+  ],
+  'WF-23':[
+    caseFor('20261020-ftrace-rom-optimization','P8','该运行 P2–P5、P7–P8 共 19 次失败只保留阶段计数，其中 P8 有 8 次。','没有逐次原因，保留未知并补查日志。','unknown'),
+    caseFor('20261102-hiperf-no-symbolic-host-deps','P8','该运行 P2–P8 共 15 次失败缺逐次原因，其中 P8 有 5 次。','等待说明不能补写旧失败根因，需补原始门禁记录。','unknown')
+  ]
+};
+const repositoryEvidence = {
+  'WF-07':['3fd3a57：标准版权声明的窄范围适配已合入，正文仍受敏感词检查。','按提交原始字节复跑，版权声明正反例 4 项通过；工作区若换行改变规则摘要，须先恢复一致。'],
+  'WF-08':['1046bf1：P4 检查器和外层门禁的超时预算已调整。','后端故障和无效报告仍阻断，2 项回归通过；大型编译数据库的内存与耗时待真实运行验收。'],
+  'WF-13':['d4346d8：P7 在启动测试前初始化证据列表，保留设备配置和测试输出。','证据初始化及保留回归 1 项通过；实际设备、二进制与报告校验仍待后续运行验证。']
+};
+for(const plan of plans) {
+  if(recentCases[plan.id]) {
+    plan.sourceCases.push(...recentCases[plan.id]);
+    plan.updatedAt=planUpdatedAt;
+  }
+  if(repositoryEvidence[plan.id]) {
+    const [change,regression]=repositoryEvidence[plan.id];
+    plan.changeRef+='；'+change;
+    plan.regressionEvidence+='；'+regression;
+    plan.updatedAt=planUpdatedAt;
+  }
+}
 
 export const priorityLabels = {high:'高',medium:'中',low:'低'};
 export const statusLabels = {planned:'待优化',in_progress:'优化中',implemented:'已实现 · 待验收',verified:'效果已验证',deferred:'暂缓'};

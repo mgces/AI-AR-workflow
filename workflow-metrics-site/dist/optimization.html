@@ -22,7 +22,7 @@
       <p class="eyebrow">WORKFLOW 持续改进</p>
       <h1>门禁失败的下一步优化总结</h1>
       <p class="lead">将失败经验转成 workflow 自身的改进措施：完善门禁、预检、取证和规则，让后续运行减少重复失败与返工。</p>
-      <p class="meta">依据当前运行快照与历史复盘 · 计划更新 <time id="plan-updated">2026-10-18</time></p>
+      <p class="meta">依据当前运行快照与历史复盘 · 计划更新 <time id="plan-updated">2026-11-08</time></p>
     </section>
     <section class="kpis plan-kpis" aria-label="优化计划概览">
       <div><span>改进项</span><strong id="plan-total">—</strong></div>
@@ -33,12 +33,17 @@
     </section>
     <aside class="scope-note">
       <strong>进度以实现和验收证据为准</strong>
-      <p>历史会话中某次修复通过，只能证明当次问题已处理。本页的改进项需落实到 workflow，并完成回归及后续运行验证，才标记为“效果已验证”。本轮新增项均为待优化；最初三次快照的 90 次尝试、37 次 FAIL 是历史基线，当前统计见下方。一条 FAIL 可有多个原因，改进项数量不代表失败次数。</p>
+      <p>已纳入复盘表示核对过这版快照，缺少原始记录的原因仍标为未知。某次修复通过仅证明当次结果；改进项需落实到 workflow，并完成回归及后续运行验证，才标记为“效果已验证”。最初三次快照的 90 次尝试、37 次 FAIL 是历史基线，当前统计见下方。</p>
     </aside>
     <section class="review" id="latest-review" aria-labelledby="latest-heading">
       <div class="section-heading"><div><h2 id="latest-heading">最新运行失败复盘</h2><p id="review-state" role="status" aria-live="polite">正在读取当前共享快照与本浏览器导入…</p></div><button id="review-refresh" type="button">刷新总结</button></div>
       <div class="kpis" id="review-metrics" aria-label="当前快照失败概览"></div>
       <p id="review-limits" class="measurement"></p>
+      <aside class="scope-note" aria-label="本轮优先改进">
+        <strong>本轮优先：核对 P8 的 CI 事件是否属于当前提交</strong>
+        <p>11/02–11/08 周报批次的 54 次正式失败中，P8 占 32 次，包含 10 次明确的审核停点。按远端分支、PR head 和 CI 事件分别核对提交，并区分等待与真实红灯。</p>
+        <p><button type="button" class="evidence-link" data-plan-id="WF-22">WF-22 上库复验</button> · <button type="button" class="evidence-link" data-plan-id="WF-16">WF-16 工具架构</button> · <button type="button" class="evidence-link" data-plan-id="WF-17">WF-17 构建与内存</button> · <button type="button" class="evidence-link" data-plan-id="WF-18">WF-18 测试就绪</button> · <button type="button" class="evidence-link" data-plan-id="WF-23">WF-23 证据缺口</button></p>
+      </aside>
       <div class="table-wrap" tabindex="0" aria-label="最新运行的失败总结与改进措施"><table class="run-review-table"><thead><tr><th scope="col">运行与复盘状态</th><th scope="col">门禁 FAIL / 尝试</th><th scope="col">预检失败</th><th scope="col">失败总结、处理与原始证据</th><th scope="col">后续改进项</th></tr></thead><tbody id="review-rows"><tr><td colspan="5">正在读取运行记录…</td></tr></tbody></table></div>
     </section>
     <details class="historical-review"><summary>历史离线评估与首次实测复盘</summary>

@@ -1,5 +1,17 @@
 // Reviewed snapshot revisions are evidence boundaries, not a claim that a workflow fix shipped.
 export const reviewedRunUpdates = {
+  '20261103-env-init': '2026-11-04T09:12:42Z',
+  '20261102-hiperf-no-symbolic-host-deps': '2026-11-04T07:39:37Z',
+  'hdc-file-compress-20261103': '2026-11-04T06:17:19Z',
+  'hdc-transfer-progress-20261031': '2026-10-31T22:30:29Z',
+  '20261027-hiperf-no-symbols': '2026-10-31T09:38:15Z',
+  '20261030-resmon-pwr-net-thr-stb': '2026-10-31T01:53:20Z',
+  '20261027-sym-map-aggregate': '2026-10-28T06:30:08Z',
+  '20261024-hdc-dynamic-loglevel': '2026-10-24T07:23:53Z',
+  '20261022-resmon-cpu-mem-io': '2026-10-23T06:06:46Z',
+  '20261022-fd-leak-detector': '2026-10-22T08:40:48Z',
+  '20261020-ftrace-rom-optimization': '2026-10-22T02:37:35Z',
+  '20261019-unwinder-memcpy': '2026-10-20T03:11:30Z',
   '2026-10-15-hiview-resmon': '2026-10-16T11:24:01Z',
   '20261016-hicollie': '2026-10-16T08:48:57Z',
   '20261013-fd-leak-detect': '2026-10-15T03:21:14Z',
