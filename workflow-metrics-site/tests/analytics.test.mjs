@@ -20,6 +20,13 @@ test('empty results have no fabricated rates', () => {
   assert.equal(analytics.summarize([]).failureRate, null);
   assert.equal(analytics.summarize([]).average, null);
 });
+test('total gate pass rate is weighted by attempts and excludes unmeasured runs', () => {
+  const result=analytics.summarize([{failures:1,gate_attempts:1},{failures:0,gate_attempts:9},{failures:null,gate_attempts:15}]);
+  assert.equal(result.passes,9);
+  assert.equal(result.passRate,90);
+  assert.equal(analytics.summarize([{failures:0,gate_attempts:0}]).passRate,null);
+  assert.equal(analytics.summarize([{failures:2,gate_attempts:2}]).passRate,0);
+});
 test('filters combine search model workflow and status', () => {
   assert.equal(typeof analytics.filterRuns, 'function');
   const runs = [{id: 'Hiperf', model: 'm1', kind: 'AR', status: 'blocked'}, {id:'other', model:'m2',kind:'AR',status:'running'}];

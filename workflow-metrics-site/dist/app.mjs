@@ -4,6 +4,7 @@ import {summarize,filterRuns,phaseTotals,phaseFailureRuns,runStatusExplanation,k
 import {preflightDetails} from './preflight-view.mjs';
 import {validateSnapshot} from './import-data.mjs';
 import {createImportController} from './import-ui.mjs';
+import {mountWeeklyOverview} from './weekly-overview.mjs';
 const $=id=>document.getElementById(id);
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const labels={completed:'已完成',running:'进行中',blocked:'受阻',waiting:'等待人工',pending:'未开始',passed:'已通过',failed:'失败'};
@@ -25,13 +26,11 @@ function render(){
  const incomplete=selected.filter(r=>r.recording_quality?.status==='incomplete');
  $('recording-warning').hidden=!incomplete.length;
  $('recording-warning').textContent=incomplete.length?`${incomplete.length} 个运行的历史不完整，耗时和失败次数仅覆盖现有记录；不能作为完整任务成本。点击运行详情查看原因。`:'';
- $('live-summary').textContent=`当前显示 ${s.count} 次运行，已记录 ${fmt(s.failures)} 次门禁失败。`;
+ $('live-summary').textContent=`当前显示 ${s.count} 次运行，门禁通过率 ${s.passRate===null?'未记录':s.passRate.toFixed(1)+'%'}，已记录 ${fmt(s.failures)} 次门禁失败。`;
  $('metrics').innerHTML=[
-  ['累计有效耗时',duration(s.effective),`单次平均 ${duration(s.average)} · ${s.durationSamples} 个有效样本`,'featured','◷'],
+  ['总门禁通过率',s.passRate===null?'—':`${s.passRate.toFixed(1)}<small>%</small>`,s.passRate===null?'暂无可统计的门禁尝试':`${fmt(s.passes)} 次通过 / ${fmt(s.attempts)} 次尝试`,'featured','◎'],
   ['运行总数',`${s.count}<small>次</small>`,`已完成 ${s.completed} · 有失败历史 ${s.failureRuns}`,'','▤'],
-  ['门禁失败',`${fmt(s.failures)}<small>次</small>`,`失败率 ${s.failureRate===null?'—':s.failureRate.toFixed(1)+'%'} · ${fmt(s.attempts)} 次尝试`,'','⊗'],
-  ['首次通过率',s.firstPassRate===null?'—':`${s.firstPassRate.toFixed(1)}<small>%</small>`,s.firstAttempts===null?'旧记录缺少逐次历史':`首次通过 ${fmt(s.firstPasses)} / ${fmt(s.firstAttempts)} · 首次失败 ${fmt(s.firstFailures)}`,'','◎'],
-  ['人工等待',duration(s.wait),`阶段墙钟累计 ${duration(s.wall)}`,'','◴']
+  ['门禁失败',`${fmt(s.failures)}<small>次</small>`,`失败率 ${s.failureRate===null?'—':s.failureRate.toFixed(1)+'%'} · ${fmt(s.attempts)} 次尝试`,'','⊗']
  ].map(([title,value,note,cls,icon])=>`<article class="metric ${cls}"><div class="metric-label">${title}<span class="metric-icon" aria-hidden="true">${icon}</span></div><div class="metric-value">${value}</div><p class="metric-note">${note}</p></article>`).join('');
  const wall=$('time-mode').value==='wall';
  const max=Math.max(1,...phases.map(p=>wall?(p.effective_seconds||0)+(p.wait_seconds||0):p.effective_seconds||0));
@@ -117,4 +116,5 @@ if(document.modelContext?.registerTool){
  window.addEventListener('pagehide',()=>lifecycle.abort(),{once:true});
 }
 const importer=createImportController({getSnapshot:()=>published,onChange:applySnapshot});
+mountWeeklyOverview();
 load();

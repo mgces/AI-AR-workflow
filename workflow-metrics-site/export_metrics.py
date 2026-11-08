@@ -387,7 +387,7 @@ def main():
         public_path = args.public_dir / 'data.json'
         if public_path.exists():
             public_data = retain_browser_imports(public_data, json.loads(public_path.read_text(encoding='utf-8')))
-        for asset in ('index.html', 'style.css', 'app.mjs', 'analytics.mjs', 'preflight-view.mjs', 'timing-view.mjs', 'upload-view.mjs', 'import-data.mjs', 'import-ui.mjs', 'publish-data.mjs'):
+        for asset in ('index.html', 'style.css', 'app.mjs', 'analytics.mjs', 'weekly-overview.mjs', 'preflight-view.mjs', 'timing-view.mjs', 'upload-view.mjs', 'import-data.mjs', 'import-ui.mjs', 'publish-data.mjs'):
             copy2(Path(__file__).parent / 'dist' / asset, args.public_dir / asset)
         public_temp = public_path.with_suffix('.tmp')
         public_temp.write_text(json.dumps(public_data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')

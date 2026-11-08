@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Workflow 运行观测 · OpenHarmony</title>
-  <meta name="description" content="基于仓库 workflow_metrics.json 的运行统计，分析有效耗时、人工等待、门禁失败及原因。">
+  <meta name="description" content="基于运行快照的门禁通过率、每周趋势、阶段耗时及近期失败优化方向。">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23172542'/%3E%3Cpath d='M7 22V14h4v8zm7 0V7h4v15zm7 0V11h4v11z' fill='%235cbdff'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="./style.css"><script type="module" src="./app.mjs"></script>
 </head>
@@ -25,7 +25,7 @@
 <div class="workspace">
   <header class="topbar"><span>工作空间 <b>/</b> AI-AR-workflow</span><span class="snapshot-tag">仓库数据快照</span></header>
   <main id="overview">
-    <div class="page-heading"><div><p class="eyebrow">WORKFLOW ANALYTICS</p><h1>运行总览</h1><p class="muted">看清时间花在哪里，以及流程为什么停下来。</p></div><div class="heading-actions" role="group" aria-label="页面操作"><button id="open-import" class="button primary">导入 JSON / 管理员发布</button><a class="button" href="./optimization.html">优化总结 ↗</a><button id="refresh" class="button">↻ <span>刷新快照</span></button></div></div>
+    <div class="page-heading"><div><p class="eyebrow">WORKFLOW ANALYTICS</p><h1>运行总览</h1><p class="muted">追踪门禁通过率，找出重复失败和优先改进方向。</p></div><div class="heading-actions" role="group" aria-label="页面操作"><button id="open-import" class="button primary">导入 JSON / 管理员发布</button><a class="button" href="./optimization.html">优化总结 ↗</a><button id="refresh" class="button">↻ <span>刷新快照</span></button></div></div>
     <div class="snapshot-line"><span id="snapshot-time">正在读取指标…</span><span id="source-info"></span></div>
     <div id="recording-warning" class="notice" role="status" hidden></div>
     <div id="load-error" class="notice error" role="alert" hidden></div>
@@ -38,10 +38,24 @@
     </section>
     <div id="live-summary" class="sr-only" aria-live="polite"></div>
     <section id="metrics" class="metric-grid" aria-label="核心指标"></section>
+    <section class="panel weekly-panel" id="weekly-trend" aria-labelledby="weekly-heading">
+      <div class="panel-title"><div><h2 id="weekly-heading">每周门禁通过率</h2><p>按周报批次统计，含补录与重试；不随筛选变化</p></div><span id="weekly-change" class="weekly-change" hidden></span></div>
+      <div id="weekly-chart" class="weekly-chart"></div>
+      <div class="panel-foot weekly-foot"><p id="weekly-detail" aria-live="polite"></p><span>点击数据点查看当周统计</span></div>
+    </section>
     <div class="analysis-grid">
       <section class="panel" id="timing"><div class="panel-title"><div><h2>阶段耗时分布</h2><p>跨运行累计 · 按记录的阶段时长统计</p></div><select id="time-mode" aria-label="耗时口径"><option value="effective">有效耗时</option><option value="wall">含人工等待</option></select></div><div class="legend"><span><i class="blue"></i>有效耗时</span><span><i class="light-blue"></i>人工等待</span></div><div id="phase-chart" class="phase-chart"></div><div class="panel-foot" id="timing-note"></div></section>
       <section class="panel" id="failures"><div class="panel-title"><div><h2>门禁失败分布</h2><p>点击柱子查看对应运行和失败详情</p></div><span class="small-tag">按阶段</span></div><div id="failure-chart"></div><div class="panel-foot" id="failure-note"></div></section>
     </div>
+    <section class="panel focus-panel" id="review-focus" aria-labelledby="review-focus-heading">
+      <div class="panel-title"><div><h2 id="review-focus-heading">近期失败复盘与优化方向</h2><p id="focus-summary"></p></div><a class="button" href="./optimization.html#latest-review">查看完整复盘 ↗</a></div>
+      <div class="focus-grid">
+        <article class="focus-card focus-priority"><span class="small-tag">优先 · P8 上库</span><h3>按当前提交复验</h3><p id="focus-upload"></p><p>分别核对远端分支、PR head 和 CI 事件的提交；将人工确认、CI 等待和真实失败分开，复用已有 PR。</p></article>
+        <article class="focus-card"><span class="small-tag">P2 / P4 · 工具与构建</span><h3>先验证工具和构建输入</h3><p>两条 HDC 记录误选了 ARM 版格式化工具，环境初始化还遇到编译数据库处理内存不足。</p><p>在执行前验证工具架构和可执行性，流式读取大型编译数据库，保留完整检查范围。</p></article>
+        <article class="focus-card"><span class="small-tag">P5 · 测试就绪</span><h3>验证测试确实运行</h3><p>有运行只生成测试元数据，也有运行因设备配置不兼容而未执行测试。</p><p>正式门禁前核对测试二进制、设备识别和契约用例，回收本轮非空报告。</p></article>
+      </div>
+      <p id="focus-evidence" class="panel-foot"></p>
+    </section>
     <section class="panel records" id="runs"><div class="panel-title"><div><h2>运行记录 <span id="run-count" class="count"></span></h2><p>点击非“已完成”状态查看记录依据；选择运行查看完整明细</p></div><span class="muted small">按指标更新时间降序</span></div><div class="table-wrap"><table><thead><tr><th>运行 / 模型</th><th>快照状态</th><th>有效耗时</th><th>人工等待</th><th>门禁失败</th><th>阶段进度</th><th><span class="sr-only">操作</span></th></tr></thead><tbody id="run-rows"></tbody></table></div><div id="empty" class="empty" hidden>没有符合筛选条件的运行。<button class="text-button" id="empty-reset">重置筛选</button></div></section>
     <section class="method" id="method"><h2>读懂这些数字</h2><div class="method-grid"><p><b>有效耗时</b>优先使用记录器汇总值，扣除人工等待。重走阶段的耗时已累计；不随浏览页面的时间增长。</p><p><b>失败次数 ≠ 失败运行数</b>以 fail_attempts 计数。失败率 = 失败门禁尝试 / 全部门禁尝试；已恢复运行仍保留失败历史。FAIL 也可能是人工确认门禁。</p><p><b>有边界的数据</b>“—”表示未记录。Requirement 只有最近结果时，不推算历史失败数。快照状态按记录推断，不能证明进程仍在运行。</p></div><div id="quality-notes"></div></section>
     <footer><span>WORKFLOW / OBSERVABILITY</span><span>来源：workflow_metrics.json · 时间显示为北京时间</span></footer>
