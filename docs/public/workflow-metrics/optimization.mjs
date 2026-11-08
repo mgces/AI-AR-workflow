@@ -4,6 +4,13 @@ import {failureReview,runName} from './failure-review.mjs';
 const $ = id => document.getElementById(id);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const list = values => '<ul>'+values.map(v=>'<li>'+esc(v)+'</li>').join('')+'</ul>';
+let evidenceGap = null;
+const evidenceGapText = () => evidenceGap===null?'当前缺口随有效快照更新。':`当前快照：${evidenceGap} 次失败缺少具体原因。`;
+function setEvidenceGap(value) {
+  evidenceGap=value;
+  const note=$('plan-evidence-gap');
+  if(note)note.textContent=evidenceGapText();
+}
 function caseHtml(c) {
   return '<article class="case"><button type="button" class="evidence-link" data-evidence-run="'+esc(c.runId)+'" data-evidence-phase="'+esc(c.phase)+'">'+esc(runName(c.runId))+' · '+esc(c.phase)+'</button>'+
     '<p class="scope scope-'+esc(c.scope)+'">'+esc(scopeLabels[c.scope])+(c.confidence==='inferred'?' · 根据会话顺序推断':'')+'</p><p>'+esc(c.reason)+'</p><p><strong>当时处理结果：</strong>'+esc(c.result)+'</p></article>';
@@ -16,7 +23,7 @@ function rowHtml(p) {
     p.effectEvidence ? '<p class="progress-note">效果验证：'+esc(p.effectEvidence)+'</p>' : ''
   ].join('');
   return '<tr><td><span class="item-id">'+esc(p.id)+'</span><strong class="item-title">'+esc(p.title)+'</strong><span class="tag priority-'+esc(p.priority)+'">'+esc(priorityLabels[p.priority])+'优先级</span><div>'+p.phases.map(s=>'<span class="tag">'+esc(s)+'</span>').join('')+'</div></td>'+
-    '<td><p>'+esc(p.problem)+'</p>'+p.attributions.map(a=>'<span class="tag">'+esc(attributionLabels[a]||a)+'</span>').join('')+'</td>'+
+    '<td><p>'+esc(p.problem)+'</p>'+(p.id==='WF-23'?'<p class="progress-note" id="plan-evidence-gap">'+esc(evidenceGapText())+'</p>':'')+p.attributions.map(a=>'<span class="tag">'+esc(attributionLabels[a]||a)+'</span>').join('')+'</td>'+
     '<td>'+list(p.actions)+'<p class="benefit">'+esc(p.benefit)+'</p></td><td>'+list(p.acceptance)+'</td>'+
     '<td><span class="status status-'+esc(p.status)+'">'+esc(statusLabels[p.status])+'</span>'+progress+'<details><summary>失败案例与当时处理（'+p.sourceCases.length+'）</summary>'+p.sourceCases.map(caseHtml).join('')+'</details></td></tr>';
 }
@@ -84,11 +91,15 @@ async function renderLatestReview(){
   $('review-refresh').disabled=true;
   try{
     const data=await snapshot();const review=failureReview(data,plans);
-    $('review-state').textContent=review.runCount?'当前共享快照及本浏览器导入共 '+review.runCount+' 次运行；'+review.pending+' 次新增或更新记录待人工复盘。':'当前没有运行记录；在统计首页导入 JSON 后刷新本页。';
+    setEvidenceGap(review.runCount?review.missing:null);
+    $('review-state').textContent=review.runCount?'当前共享快照及本浏览器导入共 '+review.runCount+' 次运行；已纳入复盘 '+(review.runCount-review.pending)+' 次，'+review.pending+' 次新增或更新记录待复盘。':'当前没有运行记录；在统计首页导入 JSON 后刷新本页。';
     $('review-metrics').innerHTML=[['运行记录',review.runCount],['门禁 FAIL / 尝试',count(review.failures)+' / '+count(review.attempts)],['预检失败',count(review.preflight)],['缺少原因',review.missing+' 次']].map(([label,value])=>'<div><span>'+label+'</span><strong>'+value+'</strong></div>').join('');
     $('review-limits').textContent='预检计数缺失的运行 '+review.unknownPreflight+' 次，不按零处理。已有阶段级原因涉及 '+review.stage+' 次 FAIL，不能逐次归因；明确标记的人工审核停点 '+review.reviewHolds+' 次、CI 等待 '+review.ciWaits+' 次，仍保留在原始 FAIL 中，不能当作产品缺陷。'+(review.unknownFailures?review.unknownFailures+' 次运行缺门禁总数。':'')+(review.incomplete?review.incomplete+' 次运行历史不完整。':'')+'原始原因、修复与复验均按记录展示；后续 PASS 不等于已验证优化效果。';
     $('review-rows').innerHTML=review.rows.map(reviewRow).join('')||'<tr><td colspan="5" class="empty">暂无运行，历史优化清单仍可查看。</td></tr>';
   }catch{
+    setEvidenceGap(null);
+    $('review-metrics').replaceChildren();
+    $('review-limits').textContent='';
     $('review-state').textContent='当前运行快照读取失败，请刷新重试；历史优化清单仍可查看。';
     $('review-rows').innerHTML='<tr><td colspan="5" class="error">未读取到有效快照，未生成或猜测失败结论。</td></tr>';
   }finally{$('review-refresh').disabled=false;}
