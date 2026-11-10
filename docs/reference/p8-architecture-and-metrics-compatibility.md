@@ -1,83 +1,142 @@
 # P8 架构问题、指标兼容与演进边界
 
-> 状态：架构分析与兼容性讨论记录。本文不改变当前 Gate 行为，也不构成阶段 PASS 证据。
+> 状态：架构与兼容性结论记录。本文不改变当前 Gate 行为，也不构成阶段 PASS 证据。
 >
-> 本文如实记录本地分析材料：
-> - `development-assistant/core-architecture/p8-architecture-problems.md`
+> 主要来源：
+> - `development-assistant/core-architecture/p8-architecture-analysis-report.md`
 > - `development-assistant/core-architecture/p8-published-metrics-field-compatibility.md`
+>
+> `p8-architecture-problems.md` 已过时，只保留为历史风险清单，不作为本文结论依据。
 >
 > 本地分析材料不进入 Git；源码和实际 Gate 行为仍是唯一真源。
 
 ## 1. 结论摘要
 
-P8 当前是一个**局部最优、全局高耦合**的设计：
+**当前不建议对 P8 做整体状态机或授权协议重构。** 应保留当前 fail-closed 真相与授权边界，优先做证据充分、行为局部、可独立回滚的安全和观测加固。
 
-```text
-dry-run 的签名 FAIL
-  = 人工停点
-  = consent 锚点
-  = 导航状态
-  = 失败统计的一部分
-```
+理由：
 
-它用最小的新增状态换来了短期的稳定性：
+- 现有数据证明 P8 确实承受了线上状态传播延迟、CI pending、review 等待和高频重试；
+- 但尚不能证明引入新的持久状态层、改变签名/verdict 语义或替换跨调用状态机能够降低总成本；
+- 更不能证明这些改动不会制造假 PASS、授权错绑、重复 push 或旧 run 不兼容。
 
-- 不新增阶段；
-- 不新增授权文件；
-- 不改最终 PASS/FAIL；
-- 旧 run 全部可用。
+核心判断：
 
-但代价是 consent、truth、navigation、observability 和外部契约被压缩到同一条签名 FAIL 中，导致：
+> **收益明确存在于减少无效失败分类、重试和人工排查；收益尚未证明足以支撑 truth 层或授权层重构。**
 
-- consent 语义错误；
-- 失败统计被人工等待污染；
-- 任何修正都会同时影响多个层；
-- 外部 bridge/UI 与内部状态强耦合；
-- 继续局部修补的收益递减、风险递增。
+针对已发布指标：
 
-在已发布指标层面，结论是另一条更强的兼容约束：
+> **冻结现有字段的名称、类型、基础含义和既有值；不在旧字段上静默改变统计口径。**
 
-> **已发布字段的名称、类型、基础含义和既有值应冻结，不能通过原地修改 `fail_attempts` / `failures` 来“修正”P8 统计语义。**
+## 2. 当前 P8 的实际架构
 
-## 2. P8 架构问题
+### 2.1 四类责任
 
-### 2.1 Truth、Control、Navigation 未分层
-
-| 层 | 应负责 | 当前实际 |
+| 责任 | 当前载体 | 边界 |
 |---|---|---|
-| Truth layer | 签名 verdict | manifest PASS/FAIL |
-| Authorization layer | 人授权上传内容 | dry-run FAIL + consent |
-| Control layer | 当前停点、下一步 | phase_summary / substate / repair |
-| Projection layer | UI / metrics / bridge | 直接读 manifest / phase_summary |
+| 流水线阶段 truth | `evidence/manifest.jsonl` 的 HMAC 链；`validate_closing_entry` 检查最后 PASS 与 artifact 哈希 | 阶段闭合权威；phase summary/control packet 不能替代 |
+| P8 上传授权 | `consent-precheck` 签名 FAIL + `upload_consent_request.json` 中的 diff/stat 哈希与目标字段 | 特意不是最终 PASS；授权必须在 push 前生效 |
+| P8 子流程控制 | 七个子状态、failure-to-substate 映射、substate、checkpoint、repair packet | 控制/恢复输入，不能单独放行；多个文件需保持一致 |
+| 观测指标 | `workflow_metrics.json`：attempt_history、wait_history、失败分类、耗时 | 可用于运维分析，但不授权 |
 
-结果：
+额外的外部投影：
 
-- consent 被写成 FAIL；
-- 失败统计包含人工等待；
-- 导航状态和真相状态容易不一致；
-- 外部消费者直接依赖内部条目结构。
+- DSH / delivery bridge 调用既有 Python 门控；
+- 外围控制器不应形成替代签名 manifest 的权威。
 
-### 2.2 P8 没有单一显式状态机
-
-P8 状态由多个文件共同推导：
+### 2.2 当前主路径
 
 ```text
-manifest 最后一条 verdict
-+ consent_tokens["8"]
-+ upload_checkpoint.json
-+ repairs/current.json
-+ phase_summary.json
-+ upload_review/substate.json
-+ evidence_floor
-+ pipeline.json phases[8].status
+DRY：
+  生成 tracked/untracked full diff + 统计
+  写 upload_consent_request
+  写签名 consent-precheck FAIL
+  清除 repair/failure 控制
+  导航到 consent_await
+
+consent：
+  绑定当前签名 precheck
+
+publish：
+  A 本地 review 零问题
+  commit -s / push
+  创建或发现 PR，写签名 checkpoint
+  B PR review 零问题
+  CI / SHA 验证
+  写最终签名 PASS
+
+advance：
+  校验最终 PASS + consent
+  关闭 P8
 ```
 
-没有一份“合法状态 + 合法迁移 + 恢复动作”的单一模型。  
-因此只能靠局部 guard 维持一致性，修一个路径容易漏另一个路径。
+### 2.3 已有能力
 
-### 2.3 consent 与 gate verdict 混在一起
+P8 不是“没有状态机”，而是：
 
-dry-run 产生：
+- 已有七个显式子状态；
+- 已有签名授权预检；
+- 已有 push checkpoint；
+- 已有 CI 与 SHA 绑定；
+- 已有 WAIT/INFO；
+- 已有失败升级；
+- 已有多个恢复测试。
+
+更准确的描述是：
+
+> **已有局部状态机和多份权威/控制/观测工件，但跨工件状态所有权、版本化迁移和部分异常恢复尚未成为一个完整、可验证的协议。**
+
+## 3. 数据说明了什么
+
+对 `result/**/workflow_metrics*.json` 按 `run_id` 去重后：
+
+- 9 个不同 run；
+- 1 个旧 run 在 P8 无尝试；
+- 8 个有 P8 gate attempts；
+- 4 个最终 PASS 并闭合；
+- 2 个最终 FAIL；
+- 2 个最后状态 INFO（未闭合）。
+
+唯一运行级样本中：
+
+- 54 条 P8 `attempt_history`；
+- 累计 53 次 `fail_attempts`；
+- 21 条 `expected_review_hold`；
+- 27 条 `gate_failure`；
+- 6 条缺失 `failure_kind`；
+- `wait_history` 23 条，其中 12 条 `pr_review_missing`、11 条 `ci_wait`。
+
+这些数据能支持：
+
+1. **失败分类和 hold 表达值得改进**  
+   21 个预期 hold 仍进入 `fail_attempts`，未区分口径的失败率会偏高。应新增只读分析口径或分栏，不改变签名门禁语义。
+
+2. **远端 WAIT/重试可观测性有现实价值**  
+   23 条 wait 记录说明 PR review 和 CI 确实会等待；应能识别等待种类、上次观察时间和推荐复验动作。
+
+3. **post-push SHA 不匹配存在真实个案**  
+   `result/7` 中记录过 immediate PR head 旧于 pushed SHA、后续只读观察追上；同一 run 也有真实 CI failed/旧事件/未知状态。因此收益是减少外部状态误分类，不能把所有 FAIL 都算成假失败。
+
+数据不能支持：
+
+- 整体 P8 重构一定更快/更稳；
+- 27 次 gate_failure 都是平台抖动；
+- 21 次 hold 应从原始失败计数中无痕删除；
+- 新增传播延迟 ledger 一定能自愈或不会形成第二真相源。
+
+## 4. 架构问题与风险
+
+### 4.1 权威边界多，但跨文件协议未统一
+
+**事实：** final PASS、precheck consent、substate、checkpoint、repair/control、metrics 各自服务不同目的；签名 manifest 是最终阶段 PASS 真相，consent 在最终 PASS 前引用另一个签名 precheck。
+
+**风险：** 同一 run 的目标身份、SHA、substate、checkpoint 与 metrics 要在多处协调；异常中断、legacy 数据、显式 `--pr` 复验等场景可能触发不一致。现有验证函数提供局部约束，但尚无单一文档化的、覆盖所有入口的迁移/恢复表。
+
+**判断：** 中高结构风险，是架构演进成本；不等同于当前已存在假 PASS。
+
+### 4.2 人工授权被编码成 FAIL verdict
+
+**事实：** dry-run 的有意停点记录为：
 
 ```text
 gate = gate_upload_ci.py:consent-precheck
@@ -85,161 +144,86 @@ verdict = FAIL
 failure_class = dry_run_no_pass
 ```
 
-这条记录同时表示：
+这是为了提供 HMAC 链锚点供 consent 绑定，同时拒绝它闭合 P8。metrics 会把它分类为 `expected_review_hold`，但该事件仍递增 `fail_attempts`。
 
-- 上传前检查完成；
-- 等待人工确认；
-- 可以绑定 consent；
-- 不能被当作最终 PASS；
-- 不应要求 scoped_fix。
+**收益机会：** 把“人类授权待办”和“门禁失败”区分呈现，可提升失败率和首次通过率解释性。
 
-语义上它既不是失败，也不是 PASS，却被塞进了 FAIL。
+**变更风险：** 改 verdict/manifest schema 会影响 consent validator、advance、历史 run、失败修复关联、Metrics UI 和 DSH projection；不能作为局部统计清理悄悄修改。应先在只读分析层或新指标版本中拆分。
 
-### 2.4 一个脚本承担过多职责
+### 4.3 状态机存在，但覆盖范围和所有权分散
 
-`gate_upload_ci.py` 同时负责：
+**事实：** P8 已有七个子状态及 failure-to-substate 映射；DSH 又把 precheck/publish 拆为两个任务。
 
-- dry-run / prepare；
-- publish；
-- verify；
-- local review；
-- PR review；
-- PR 创建/发现；
-- CI 查询；
-- SHA 绑定；
-- consent 校验；
-- human wait；
-- repair packet；
-- metrics / navigation；
-- 外部 bridge 的数据来源。
+**风险：** 状态迁移与恢复规则分布在 gate、advance、gatelib 和消费者逻辑；更改 failure class 或 substate 时需要同步导航、恢复、指标和文档。
 
-职责过多，导致每个修改都跨层。
+**判断：**
 
-### 2.5 多套校验器并存
+> “无显式状态机”不成立；“显式子状态机尚未成为全系统统一协议”成立。
 
-当前至少涉及：
+### 4.4 线上观察延迟与 fail-closed 的操作成本
 
-- `validate_closing_entry`（最终 PASS）；
-- `validate_upload_consent_entry`（precheck/consent）；
-- target matcher；
-- checkpoint validator；
-- repair state validator；
-- 实验方案中曾出现的授权包 / content fingerprint 校验（已回退，不在当前基线）。
+**事实：** P8 的线上状态至少有本地 SHA、远端 git ref、PR/Change head、review、CI 事件；GitCode 不提供原子读取。同一时点可能出现“远端 ref 已更新但 PR head 仍旧”或“PR head 匹配但 CI 是旧事件”。
 
-不同入口使用不同校验器时，会出现：
+**收益机会：** 区分传播延迟、查询错误、真实 SHA 冲突、CI 红灯，减少把外部不稳定误导向代码修复。
 
-```text
-next 说可以 consent
-consent 说工作区已变化
-publish 说目标不匹配
-```
+**变更风险：** 把 mismatch 改成跨调用 WAIT 需要持久化预算、超时、进程中断、legacy checkpoint、跨 PR 隔离和重新查询条件；账本不是签名事实，损坏时恢复与 fail-closed 冲突。当前讨论已列出这些组合风险。因此更宜先改诊断/导航与数据采集，而不是引入新状态源。
 
-### 2.6 失败与恢复没有成对设计
+### 4.5 恢复有覆盖，但不能推导为全路径安全
 
-当前有大量 fail-closed，但缺少轻量恢复路径：
+已有：
 
-- final PASS artifact 缺失 → 通常只能 reset/repair 或人工恢复；
-- active repair → 某些路径无法继续；
-- legacy target 变化 → 可能只能删证据；
-- manifest 截断 → P8 多次重跑；
-- publish 失败后 checkpoint 不存在 → 可能重复执行不可逆动作。
+- checkpoint 恢复；
+- WAIT；
+- dry-run 幂等；
+- non-fast-forward preflight；
+- 409 冲突重查询。
 
-没有 recovery model 的 fail-closed，会把局部错误放大成流程停摆。
+这些主要是本地/模拟测试，不覆盖真实 GitCode/Gerrit 最终一致性、权限和 CI 事件时序。
 
-### 2.7 外部契约与内部状态强耦合
+准确结论：
 
-`delivery_bridge`、UI、metrics 读取：
+> 关键恢复机制有较强自动化回归，但外部平台契约与端到端时序尚未被这些测试证明。
 
-- `manifest.jsonl` 的 gate/verdict；
-- `phase_summary.json`；
-- `attempt_history` / `fail_attempts`；
-- `substate` / `next_action`。
+### 4.6 安全绑定是高影响审查点
 
-因此：
+授权意图包含 diff/stat 哈希、目标与 head SHA；`write_full_diff` 还尝试纳入未跟踪文件。这提供了重要安全基础，但仍需独立故障注入：
 
-- 新增授权机制会破坏旧 bridge；
-- 改变 consent 表示会改变统计/UI；
-- 外部格式冻结与内部架构演进直接冲突。
+- git 命令失败；
+- 未跟踪/忽略文件；
+- diff 与 `git add -A` 集合差异；
+- consent 后工作区变化；
+- checkpoint/PR 目标错配。
 
-### 2.8 安全绑定存在结构性缺口
+当前源码中 `write_full_diff` 未直接检查 `git diff` 返回码，这是**值得验证的安全假设**，不能仅凭文档断言“已能授权空 diff”；应先确认调用路径是否在前置检查中处理 git 错误，再决定是否修复。
 
-P8 是唯一不可逆阶段，但部分绑定仍依赖字符串和约定：
+`head_owner` 会由 `fork_qualified_head` 优先从 origin remote 推导，不能简单说目标完全未绑定。
 
-- diff 渲染失败时可能授权空 diff；
-- `head_owner` 可能是空字符串，实际推送目标由 remote 解析；
-- reviewed diff 在 publish 时可能被重新渲染并覆盖；
-- artifact 清理可能使已 PASS 的 P8 无法闭合。
+### 4.7 外部投影耦合需要逐消费者验证
 
-### 2.9 可观测性语义不纯
+公开资料显示：
 
-`fail_attempts`、`first_gate_failures_total`、`expected_review_hold`、`mode` 等字段混合了：
+- metrics UI 展示 `expected_review_hold`；
+- DSH runtime 以 Python bridge 调门控；
+- 平台/运行时维护独立的阶段与任务契约。
 
-- 真实门禁失败；
-- 人工等待；
-- dry-run / prepare；
-- checkpoint 复用；
-- verify；
-- 外部平台不稳定。
+但现有证据不足以支持“delivery_bridge/UI 都直接把 manifest 条目当状态权威”的笼统断言。
 
-历史数据一旦发布，就难以修正。
+结论：
 
-### 2.10 测试架构偏功能点
+> 消费者兼容风险存在，但必须按实际字段读取和契约测试来证明，不能预设所有外部层直接依赖 manifest 内部结构。
 
-当前测试主要验证：
+### 4.8 测试覆盖：内部控制强，外部真实语义弱
 
-- 正常流程；
-- 若干负向输入；
-- mock 的 PR/CI 行为。
+- P8 recovery/backend 有针对性测试，覆盖 consent、checkpoint、WAIT、SHA、CI、Gerrit 配置与解析；
+- DSH 有全流程与 precheck/publish 外层测试，但主要验证调用契约，不等于线上 API 演练；
+- `result/` 是实际交付证据，但样本少、受特定任务和平台时序影响，不是随机化或受控实验；
+- 仍缺真实 GitCode/Gerrit 沙箱的重复演练：push 成功但客户端超时、PR metadata 延迟、旧 CI event、跨 PR 参数、权限变化、进程中断恢复。
 
-缺少：
+## 5. 已发布 Metrics 的兼容结论
 
-- mode × authorization × repair × manifest × legacy 的状态迁移矩阵；
-- 失败后恢复路径测试；
-- 外部 bridge/UI 契约测试；
-- 真实 GitCode/Gerrit 演练。
+### 5.1 冻结已发布字段
 
-## 3. 架构问题的影响
-
-### 3.1 对流程
-
-- dry-run / consent 容易被误认为失败；
-- target 变化、checkpoint、repair 状态容易形成重试循环；
-- 弱模型依赖 `advance.py next` 时可能被导向必然失败的命令；
-- 失败恢复常需要回退 P1/P2。
-
-### 3.2 对统计和决策
-
-- dry-run hold 进入 `fail_attempts`；
-- P8 失败率被人工等待污染；
-- 周报和门禁趋势需要额外解释；
-- 已发布口径不能轻易修改。
-
-### 3.3 对兼容性
-
-- 新授权机制会让旧 bridge 失效；
-- legacy consent 需要长期保留；
-- 旧 packet 缺少新字段时需要 fallback；
-- UI / metrics 格式不能跟随内部状态演进。
-
-### 3.4 对安全与审计
-
-- reviewed diff 可能被 publish 重渲染覆盖；
-- 授权目标没有绑定实际 fork；
-- 空 diff 在 git 失败时可能被授权；
-- 最终 PASS artifact 被清理后难以证明当时证据。
-
-### 3.5 对维护
-
-- 每次修一个 guard 都可能引入另一个问题；
-- 同一状态被多套代码判断；
-- 状态空间持续增长；
-- 测试无法证明“至少不比以前差”。
-
-## 4. 已发布 Metrics 的兼容结论
-
-### 4.1 字段冻结
-
-建议冻结已发布字段的名称、类型、基础含义和既有值：
+建议冻结名称、类型、基础含义和既有值：
 
 - `phases[*].gate_attempts`
 - `phases[*].pass_attempts`
@@ -254,22 +238,22 @@ P8 是唯一不可逆阶段，但部分绑定仍依赖字符串和约定：
 - `summary.first_gate_review_holds_total`
 - 公开 snapshot 的 `failures`、`failure_details`、`first_gate_*` 等
 
-不允许在同一 schema version 下静默改变这些字段的含义。
+不允许在同一 schema version 下静默改变含义。
 
-### 4.2 不原地修改 `fail_attempts`
+### 5.2 不原地修改 `fail_attempts`
 
-`expected_review_hold` 确实会进入 `fail_attempts`，但已发布页面和公开数据已经把它定义为“门禁 FAIL 尝试（含确认停点）”。原地扣除 hold 会造成：
+`expected_review_hold` 确实进入 `fail_attempts`，但页面和公开数据已把它定义为“门禁 FAIL 尝试（含确认停点）”。原地扣除 hold 会造成：
 
 - 同字段跨时间异义；
 - 历史趋势不可比；
 - 旧 reader 静默给出错误含义；
-- 发布 merge / 浏览器备份 / 缓存混合两种口径；
+- 发布 merge、浏览器备份、缓存混合两种口径；
 - 计数与明细的一致性校验失败；
 - 数字下降被误读为质量改善。
 
 因此原地修改的边际收益有限，兼容风险无法低成本消除。
 
-### 4.3 推荐：Raw Contract + Derived View
+### 5.3 Raw Contract + Derived View
 
 **Raw Contract（冻结）**
 
@@ -294,9 +278,9 @@ classified_fail_attempts
 unclassified_fail_attempts
 ```
 
-回答：“为了运维和决策，应如何解释这些原始记录？”
+回答：“为了运维和决策，应如何解释原始记录？”
 
-派生公式示例：
+派生规则：
 
 ```text
 review_hold_attempts
@@ -307,20 +291,20 @@ operational_fail_attempts
   = fail_attempts - review_hold_attempts
 ```
 
-但只有在 `attempt_history` 足以对应所有失败时，派生值才可标记为 complete；历史明细不足时应为 `null` 或 `derivation_quality=incomplete`，不能把未知失败自动当作操作失败或审核停点。
+只有 `attempt_history` 足以对应所有失败时，派生值才能标记为 complete；历史明细不足时应为 `null` 或 `derivation_quality=incomplete`，不能把未知失败自动当作操作失败或审核停点。
 
-### 4.4 版本化与迁移
+### 5.4 何时必须升 schema
 
-满足任一条件必须升 schema：
+满足任一条件必须新版本：
 
-- 改变现有字段含义、单位、类型、null 语义或计算公式；
+- 改变字段含义、单位、类型、null 语义或计算公式；
 - 修改 `failures == sum(phases.fail_attempts)` 等一致性约束；
 - 将 review hold 从旧 failures 中扣除；
 - 给外部消费者提供新的正式统计口径；
 - 需要迁移/回填历史派生值；
-- 删除或重命名任何公开字段。
+- 删除或重命名公开字段。
 
-推荐路线：
+推荐：
 
 - 原始 metrics 与公开 snapshot 分别版本化；
 - 读旧写新；
@@ -329,9 +313,9 @@ operational_fail_attempts
 - v1/v2 页面兼容；
 - 灰度发布；
 - 可回滚；
-- 不回写历史原始指标。
+- 不重写历史原始指标。
 
-## 5. 当前约束下的实际选择
+## 6. 当前约束下的实际选择
 
 如果页面、已发布字段和 metrics 格式都不能修改：
 
@@ -340,14 +324,14 @@ operational_fail_attempts
 = 页面继续显示包含 review hold 的失败尝试数
 ```
 
-此时只能在页面之外解决：
+只能在页面之外解决：
 
-- 周报 / 分析脚本过滤 `expected_review_hold`；
+- 周报/分析脚本过滤 `expected_review_hold`；
 - 导出或报告同时给出 raw 与 derived 口径；
 - 文档说明原始 FAIL 包含确认停点；
 - 不把页面数字直接当成代码失败率。
 
-如果允许 UI 或 schema 演进，可选：
+如果允许 UI 或 schema 演进：
 
 - 只改标签与帮助文字；
 - 页面运行时派生 hold / operational failure；
@@ -356,84 +340,60 @@ operational_fail_attempts
 
 如果要把页面数字直接改“准确”，必须明确接受统计口径变化或正式重构，不能在旧字段下静默换义。
 
-## 6. 与 P8 Gate 演进的边界
+## 7. 推荐路线与门槛
 
-页面兼容策略不能反向要求 P8 truth layer 为了页面数字而改变 verdict。
+### 7.1 现在执行：不改权威语义的观测和验证
 
-优先级应为：
+- 保留 manifest、consent、checkpoint 和 PASS 条件；
+- 给 metrics/UI 增加显式分栏：`gate_failures`、`expected_review_holds`、`waits`、`external_observation_conflicts`；保留旧计数和历史字段，派生指标携带版本与计算口径；
+- 建立按 run_id、PR/Change（脱敏）、pushed SHA 聚合的 P8 复盘表；
+- 审计 full diff 与 `git add -A` 一致性、consent 后工作区变化、显式 `--pr` 与 checkpoint 身份、push 成功但命令超时等边界；先补测试；
+- 把 failure class 到恢复动作的矩阵作为代码和文档的共同测试输入。
 
-1. 页面文案和只读派生视图（若 UI 允许）；
-2. 字段词典、契约测试和历史重放；
-3. 正式公开派生 schema；
-4. 只有在独立 P8 协议重构成立时，才讨论源指标的新事件类型；
-5. 永不回写旧 manifest 或旧 workflow metrics 来统一外观。
+如果 UI 不能改，则“分栏/派生”只放在外部报告或分析数据中，不改页面。
 
-当前 `consent-precheck` 使用签名 FAIL，是为了在不可逆 push 前提供 HMAC 链锚点，同时确保它不能闭合 P8。即使长期认为 authorization 不应使用 FAIL，也应先建立新的授权协议版本，并让页面同时解释旧协议和新协议；不能先改 gate，再用页面兼容补救。
+### 7.2 暂缓：跨调用远端等待状态
 
-## 7. 架构演进路线
+只有满足以下条件再做一个独立原型：
 
-### 路线 A：接受现状，停止架构修改
+- 积累足够的去重样本，量化 mismatch 的发生率、自愈比例/时间、无效重跑/人工修复/reset 比例；
+- 证明 WAIT 的持久记录不授予 PASS，并定义账本损坏/截断、budget 耗尽、进程中断、PR 已关闭/换 head、显式 PR 错配、legacy checkpoint 与跨 PR 隔离的唯一处理方式；
+- ledger 的权威性、签名/哈希绑定和归档策略不与 manifest 冲突；
+- 在 GitCode 沙箱真实演练 propagation delay、重试/恢复和旧 CI 事件；Gerrit 独立保持现状或单独验证；
+- 有 feature flag、旧流程回退、无重复 push 的回滚演练。
 
-适合：
+### 7.3 不启动整体重构的条件
 
-- P8 数据不用于关键决策；
-- 当前稳定性优先；
-- 不愿承担迁移和真实环境验证成本。
+若核心收益只能表述为“代码更整齐/职责更清晰”，但不能量化当前线上损失、不能证明迁移降低端到端风险，或缺乏真实平台回滚演练，则保持现状并继续观测。
 
-措施：
+对于唯一不可逆阶段，结构优雅不能抵消授权或 SHA 绑定的回归风险。
 
-- 在分析/周报层过滤 `expected_review_hold`；
-- 不改变 UI、metrics 格式或 manifest；
-- 记录已知问题，不继续增量补 guard。
+## 8. 需要修订的旧结论
 
-### 路线 B：只做不改变状态的局部加固
+`p8-architecture-problems.md` 可作为风险清单，但以下表达已过时或过度：
 
-适合先降低安全风险、暂不动状态机：
+- **“没有显式状态机”**  
+  应改为：已有七状态子流程，但状态所有权、跨文件恢复协议仍分散。
 
-- diff 渲染 git 失败时 fail-closed；
-- 绑定实际 `head_owner`；
-- 禁止 publish 覆盖 reviewed artifact；
-- 增加输入校验。
+- **“consent/hold 被视作失败”**  
+  应限定为：签名 manifest 中有意用 FAIL 锚定 consent；metrics 已有 `expected_review_hold` 分类和 hold 汇总，但 hold 仍影响 `fail_attempts`。
 
-不触碰 consent 表示、substate 模型、repair 语义、UI/metrics 格式。
+- **“bridge/UI 直接依赖 manifest”**  
+  应改为待逐消费者验证；现有证据只足以证明 runtime bridge 调 Python 真相层、metrics UI 读取派生 metrics。
 
-### 路线 C：正式重构 P8
+- **“空 diff、head owner、reviewed artifact 覆盖、缺 checkpoint 恢复”**  
+  应提供复现条件和代码调用链；未验证前标注为风险假设，不写成既成缺陷。`head_owner` 实际由 `fork_qualified_head` 推导，不能简单说完全未绑定。
 
-适合 P8 数据用于复盘/门禁决策，且能接受项目级投入：
+- **“整体重构是默认路线”**  
+  应改为有门槛的长期选项；先采用报告层拆分和局部高收益修复。
 
-```text
-Truth layer: manifest 只记录真实 verdict
-Authorization layer: 独立授权包 + consent，不进入 verdict
-State machine: 显式状态、合法迁移、每状态恢复动作
-Executor: 只有 publish 执行不可逆动作
-Projection: UI/metrics/bridge 只读投影，不反向约束状态
-Compatibility: legacy 只读适配层，外部格式不变
-```
+- **`result/` 数据**  
+  样本少、按 run_id 去重、失败分类不完整、没有手工对照组；只能支持“需要更好区分等待与故障”，不能支持“整体重构一定有收益”。
 
-必须先完成：
+## 9. 最终判断
 
-1. P8 状态迁移矩阵；
-2. 失败恢复矩阵；
-3. legacy / 新授权兼容表；
-4. 外部 bridge/UI 契约测试；
-5. 真实 GitCode/Gerrit 演练；
-6. 回滚方案。
+**采用“保留权威架构、局部降低可观测性噪声、针对性修复经验证的安全问题、用真实数据决定是否演进”的路线。**
 
-## 8. 最终判断
+现在整体重构或新增跨调用 ledger 的预期收益不可量化，而对唯一不可逆线上门禁的影响面大、回滚成本高，风险收益比不成立。
 
-P8 当前的主要问题不是单个 bug，而是：
-
-- truth / control / navigation 未分层；
-- 状态机未形式化；
-- 失败与恢复未成对设计；
-- 外部契约与内部状态强耦合；
-- 已发布指标被人工等待污染，且不能原地换义。
-
-继续在现有架构上做增量 guard，收益递减、风险递增。
-
-现实选择只有：
-
-1. **接受旧架构的语义/统计缺陷，在页面之外派生正确口径；**
-2. **正式重构 P8，先建状态机、恢复模型和兼容层。**
-
-不要把页面数字作为唯一驱动去修改不可逆门禁的协议；也不要在已发布字段下静默改变统计定义。
+`result/` 已足以证明存在真实的 propagation/CI/review 等待成本和人工分类成本，因此不应什么都不做；应先改善只读诊断与统计，把发生次数、自愈时间、无效动作和人工介入成本测准。待收益达到事先定义的阈值、迁移协议通过故障矩阵和真实 GitCode/Gerrit 演练后，再讨论有限灰度的协议重构。

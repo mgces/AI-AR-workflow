@@ -8,7 +8,7 @@
 - [门控契约](/reference/gate-contract) — 各 gate_*.py 的契约细节
 - [P4 clang-tidy 范围与 compdb 讨论](/reference/clang-tidy-p4-scope) — clang-tidy 定位、compdb 读取风险、timeout 与本地/CI 边界
 - [P8 线上状态真值与传播延迟讨论](/reference/p8-remote-state-limits) — 多源 SHA/CI 状态异步、假失败分类、跨 PR 隔离与状态机风险
-- [P8 架构问题、指标兼容与演进边界](/reference/p8-architecture-and-metrics-compatibility) — truth/consent/control 耦合、失败恢复、已发布字段冻结与派生口径
+- [P8 架构问题、指标兼容与演进边界](/reference/p8-architecture-and-metrics-compatibility) — 基于 result 数据的架构评估、保留 fail-closed、局部观测加固与已发布字段冻结
 - [run 目录结构](/reference/pipeline-layout) — pipeline.json / AR_design.md / todo.md / evidence / reports
 - [关键命令](/reference/key-commands) — 按场景列关键命令
 - [Skill 映射](/reference/skill-map) — 阶段→技能 / 任务→技能 / 输入类型→技能 查表
