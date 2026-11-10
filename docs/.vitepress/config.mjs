@@ -126,6 +126,7 @@ export default defineConfig({
           items: [
             { text: '概览', link: '/reference/' },
             { text: '状态机', link: '/reference/workflow-state-machine' },
+            { text: 'P8 架构问题与指标兼容', link: '/reference/p8-architecture-and-metrics-compatibility' },
             { text: '门控契约', link: '/reference/gate-contract' },
             { text: 'run 目录结构', link: '/reference/pipeline-layout' },
             { text: '关键命令', link: '/reference/key-commands' },
