@@ -41,8 +41,9 @@
       <p id="review-limits" class="measurement"></p>
       <aside class="scope-note" aria-label="本轮优先改进">
         <strong>本轮优先：核对 P8 的 CI 事件是否属于当前提交</strong>
-        <p>11/02–11/08 周报批次的 54 次正式失败中，P8 占 32 次，包含 10 次明确的审核停点。按远端分支、PR head 和 CI 事件分别核对提交，并区分等待与真实红灯。</p>
-        <p><button type="button" class="evidence-link" data-plan-id="WF-22">WF-22 上库复验</button> · <button type="button" class="evidence-link" data-plan-id="WF-16">WF-16 工具架构</button> · <button type="button" class="evidence-link" data-plan-id="WF-17">WF-17 构建与内存</button> · <button type="button" class="evidence-link" data-plan-id="WF-18">WF-18 测试就绪</button> · <button type="button" class="evidence-link" data-plan-id="WF-23">WF-23 证据缺口</button></p>
+        <p>11/09–11/15 周报批次的 9 次正式失败中，P8 占 8 次，含 4 次预期审核停点。两条记录均出现 PR head 暂旧；ELF parser 补录还记录了同一提交上 CodeCheck 超时后重跑通过。</p>
+        <p>先完善状态诊断与复验记录，沿用签名门禁及授权边界。<a href="../reference/p8-architecture-and-metrics-compatibility.html">P8 架构与指标兼容说明</a> · <a href="../reference/p8-remote-state-limits.html">远端状态与传播延迟</a></p>
+        <p><button type="button" class="evidence-link" data-plan-id="WF-22">WF-22 上库复验</button> · <button type="button" class="evidence-link" data-plan-id="WF-19">WF-19 真机取证</button> · <button type="button" class="evidence-link" data-plan-id="WF-23">WF-23 证据缺口</button></p>
       </aside>
       <div class="table-wrap" tabindex="0" aria-label="最新运行的失败总结与改进措施"><table class="run-review-table"><thead><tr><th scope="col">运行与复盘状态</th><th scope="col">门禁 FAIL / 尝试</th><th scope="col">预检失败</th><th scope="col">失败总结、处理与原始证据</th><th scope="col">后续改进项</th></tr></thead><tbody id="review-rows"><tr><td colspan="5">正在读取运行记录…</td></tr></tbody></table></div>
     </section>

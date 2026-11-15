@@ -25,7 +25,15 @@ const weeks = [
   ]},
   {start:'11/02',end:'11/08',snapshot:'0e63802',runs:4,passes:164,attempts:218,
     runIds:['20261103-env-init','20261102-hiperf-no-symbolic-host-deps','hdc-file-compress-20261103','hdc-transfer-progress-20261031'],
-    review:{uploadFailures:32,preflightFailures:63,preflightRuns:3,missingReasons:15}}
+    note:'15 次失败缺少逐次原因，需补查原始门禁记录。',topics:[
+    [['P8 上库评审'],'按当前提交复验','32 次上库失败中有 10 次审核停点。分别核对远端分支、PR head 和 CI 事件对应的提交。'],
+    [['P2 开发','P4 编译验证'],'先验证工具和构建输入','HDC 误选 ARM 版格式化工具，环境初始化处理大型编译数据库时内存不足。先验证工具架构，流式读取编译数据库并保留检查覆盖。'],
+    [['P5 单元测试'],'验证测试确实运行','针对只生成测试元数据和设备配置不兼容的情况，先检查测试二进制、设备识别和契约用例，再核验本轮非空报告。']
+  ]},
+  {start:'11/09',end:'11/15',snapshot:'8e7eebb',runs:2,passes:29,attempts:38,
+    runIds:['20261112-dev-echo-path-prefix','20261105-elf-parser-batch-fix'],
+    countNote:'含 1 条 11/05 的补录；resmon 更新计入当前汇总',
+    review:{uploadFailures:8,reviewHolds:4,preflightFailures:2,preflightRuns:2}}
 ];
 
 const rate = week => 100 * week.passes / week.attempts;
@@ -43,7 +51,7 @@ export function mountWeeklyOverview() {
   const detail = document.getElementById('weekly-detail');
   const change = document.getElementById('weekly-change');
   const previous = weeks.at(-2);
-  const trendWeeks = [earlier,...weeks.slice(-4)];
+  const trendWeeks = [earlier,...weeks];
   const values = trendWeeks.map(rate);
   const low = Math.max(0, Math.floor(Math.min(...values) / 5) * 5 - 5);
   const high = Math.min(100, Math.ceil(Math.max(...values) / 5) * 5 + 5);
@@ -75,10 +83,9 @@ export function mountWeeklyOverview() {
   change.classList.toggle('is-down', delta<0);
   change.hidden = false;
   const failures = latest.attempts-latest.passes;
-  const {uploadFailures,preflightFailures,preflightRuns,missingReasons} = latest.review;
+  const {uploadFailures,reviewHolds,preflightFailures,preflightRuns} = latest.review;
   document.getElementById('focus-summary').textContent = `最近一周 · ${latestWeekLabel} · ${failures} 次正式失败 · ${preflightFailures} 次预检失败（${preflightRuns} 条运行有计数）`;
-  document.getElementById('focus-upload').textContent = `${uploadFailures} 次上库失败，占本期正式失败的 ${(100*uploadFailures/failures).toFixed(1)}%。`;
-  document.getElementById('focus-evidence').textContent = `另有 ${missingReasons} 次失败缺少逐次原因，需补齐原始证据和复验记录。以上方向仍待验证。`;
+  document.getElementById('focus-upload').textContent = `${uploadFailures} 次上库失败（${(100*uploadFailures/failures).toFixed(1)}%），含 ${reviewHolds} 次预期审核停点。`;
   const failureScope = document.getElementById('failure-scope');
   for(const week of weeks.slice().reverse()) {
     failureScope.add(new Option(week===latest?`${label(week)}（最近一周）`:label(week),week.snapshot));

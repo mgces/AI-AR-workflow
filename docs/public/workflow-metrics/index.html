@@ -54,11 +54,11 @@
     <section class="panel focus-panel" id="review-focus" aria-labelledby="review-focus-heading">
       <div class="panel-title"><div><h2 id="review-focus-heading">近期失败复盘与优化方向</h2><p id="focus-summary"></p></div><a class="button" href="./optimization.html#latest-review">查看完整复盘 ↗</a></div>
       <div class="focus-grid">
-        <article class="focus-card focus-priority"><span class="small-tag">优先 · P8 上库</span><h3>按当前提交复验</h3><p id="focus-upload"></p><p>分别核对远端分支、PR head 和 CI 事件的提交；将人工确认、CI 等待和真实失败分开，复用已有 PR。</p></article>
-        <article class="focus-card"><span class="small-tag">P2 / P4 · 工具与构建</span><h3>先验证工具和构建输入</h3><p>两条 HDC 记录误选了 ARM 版格式化工具，环境初始化还遇到编译数据库处理内存不足。</p><p>在执行前验证工具架构和可执行性，流式读取大型编译数据库，保留完整检查范围。</p></article>
-        <article class="focus-card"><span class="small-tag">P5 · 测试就绪</span><h3>验证测试确实运行</h3><p>有运行只生成测试元数据，也有运行因设备配置不兼容而未执行测试。</p><p>正式门禁前核对测试二进制、设备识别和契约用例，回收本轮非空报告。</p></article>
+        <article class="focus-card focus-priority"><span class="small-tag">优先 · P8 上库</span><h3>按当前提交复验</h3><p id="focus-upload"></p><p>分别核对远端分支、PR head 和 CI 事件。保留已有 PR，记录审核停点和状态传播延迟；当前提交的真实红灯继续阻断。</p></article>
+        <article class="focus-card"><span class="small-tag">P8 · CI 诊断</span><h3>核对失败的 CI 子任务</h3><p>ELF parser 补录的 CodeCheck 超时经同一提交重跑通过。记录失败子任务、事件与复验结果，区分基础设施超时和实际检查失败。</p></article>
+        <article class="focus-card"><span class="small-tag">P6 · 真机验证</span><h3>前置检查设备取证命令</h3><p>dev-echo 的设备缺少 tr，导致进程来源检查失败。该运行改用 /proc 进程映射取证后，P6 复验通过。</p></article>
       </div>
-      <p id="focus-evidence" class="panel-foot"></p>
+      <p class="panel-foot">近期优先改进 P8 状态诊断和复验记录。现有签名门禁与授权约束继续生效，效果待后续运行验收。</p>
       <section class="focus-archive" aria-labelledby="focus-archive-heading">
         <h3 id="focus-archive-heading">往期失败复盘</h3>
         <div id="focus-archive-list"></div>

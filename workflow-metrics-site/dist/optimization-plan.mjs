@@ -1,5 +1,5 @@
 // 进度只随仓库中的实现和验收证据更新，不在浏览器中临时改写。
-export const planUpdatedAt = '2026-11-08';
+export const planUpdatedAt = '2026-11-15';
 export const plans = [
   {
     "id": "WF-01",
@@ -801,8 +801,8 @@ const followUps = [
   {
     id:'WF-22', title:'复核上库恢复机制的实际部署与 PR 时序', phases:['P8'], attributions:['gate','external','execution'],
     problem:'已有 PR 恢复机制仍需运行端验收。新记录出现 PR head 暂旧、运行中的 CI 被记为失败，以及 PR head 已更新但复验读取到旧提交的 CI 事件。',
-    actions:['登记门禁版本、检查器摘要和恢复检查点版本，确认实际运行端使用的实现。','核对源/目标仓和分支，复用同一 PR；对有证据的元数据延迟只做限次查询。','分别核对远端分支、PR head 与 CI 事件实际关联的提交；将预期审核停点、CI 等待、平台异常和真实红灯分别记录。'],
-    acceptance:['已有 PR 和短暂旧 head 不重复创建、不强推，持续身份不符仍阻断。','即使 PR head 已更新，旧提交的 CI 事件或无法核对提交的事件也不得放行；当前提交需获得对应的绿色结果。','当前提交的真实代码红灯保留问题、修改与复验，不能被等待状态覆盖。'],
+    actions:['登记门禁版本、检查器摘要和恢复检查点版本，确认实际运行端使用的实现。','核对源/目标仓和分支，复用同一 PR；对有证据的元数据延迟只做限次查询。','分别核对远端分支、PR head 与 CI 事件实际关联的提交；记录 CI 失败子任务、超时证据、等待或真实检查结果。','按 GitCode 文档 d07b185 的兼容边界补充只读诊断，保留已发布指标字段和签名授权语义。'],
+    acceptance:['已有 PR 和短暂旧 head 不重复创建、不强推，持续身份不符仍阻断。','即使 PR head 已更新，旧提交的 CI 事件或无法核对提交的事件也不得放行；当前提交需获得对应的绿色结果。','用同一提交的 CodeCheck 超时和真实代码红灯分别回归，保留失败子任务与复验凭证。'],
     sourceCases:[caseFor('2026-10-15-hiview-resmon','P8','快照末尾缺 pr-review-report，并两次尝试创建已有 !4607 的 PR 得到 409。','快照仍受阻且未登记修复；这是机制复发线索，不能确认该运行使用了新版恢复代码。'),caseFor('20261014-hitrace-source-completeness','P8','PR head 暂旧；另有真实远端规则失败，修复记录涉及函数长度、测试常量、路径和 Python assert。','head 后续一致记录 resolved；远端代码修复仍 pending_verification，不能标为已验收。'),caseFor('20261013-fd-leak-detect','P8','5 次预期停点、PR head 不匹配与真实远端代码红灯同时存在。','保持分项统计；后续 PASS 不足以替代每条修改与复验。')]
   },
   {
@@ -815,7 +815,7 @@ const followUps = [
 ];
 plans.push(...followUps.map(p => ({...p,priority:'high',status:'planned',owner:'workflow 维护',changeRef:'',regressionEvidence:'',effectEvidence:'',updatedAt:'2026-10-18',benefit:'把新运行中观察到的问题转为可复验的后续改进，减少无证据的重复尝试。'})));
 
-// Curated from the 11/06 shared snapshot. A recorded repair only verifies the stated run.
+// Curated from the 11/06 and 11/13 shared snapshots. A recorded repair only verifies the stated run.
 const recentCases = {
   'WF-16':[
     caseFor('hdc-file-compress-20261103','P2','x86_64 WSL 误选 ARM 版 clang-format，未生成规则检查报告。','显式指定本机工具后同门禁通过；仍需验证共享工具解析。'),
@@ -834,6 +834,7 @@ const recentCases = {
     caseFor('20261019-unwinder-memcpy','P5','设备旧库缺少测试所需符号，程序加载失败，报告为零用例。','核对并更新测试依赖库后，程序可枚举用例且同门禁通过。')
   ],
   'WF-19':[
+    caseFor('20261112-dev-echo-path-prefix','P6','设备缺少 tr，导致 DC-1 的进程来源检查失败。','任务改用 /proc 进程映射作为证据，重签设计后同阶段复验通过。'),
     caseFor('20261030-resmon-pwr-net-thr-stb','P6','原地覆盖被进程映射的动态库导致进程异常；固定等待也未覆盖服务重启退避。','避免原地截断并核对新进程后相关问题复验通过；另有临时 permissive 窗口的通过记录，仍需 Enforcing 复验。'),
     caseFor('20261027-sym-map-aggregate','P6','短生命周期进程在事后读取 /proc 前已退出，原取证条件不可执行。','回到设计调整证据契约，保留真实输出、标记和触发窗口断言后复验通过。'),
     caseFor('20261103-env-init','P6','设备缺少 tr，进程来源检查读取到错误输出。','该任务补齐兼容处理后通过；需前置探测取证命令。')
@@ -842,6 +843,9 @@ const recentCases = {
     caseFor('hdc-transfer-progress-20261031','P5','设备分区被历史测试夹具占满，Windows 传输测试报空间不足。','核对归属并归档指定夹具后复验通过；后续应在测试前检查空间和本批清理范围。')
   ],
   'WF-22':[
+    caseFor('20261112-dev-echo-path-prefix','P8','第一次 push 后，远端分支已经到达目标提交，PR head 仍旧；之后同一提交的 CI 又返回失败。','PR head 刷新后复验记录已补，后续 CI 红灯仍未解决；该运行在快照中受阻。'),
+    caseFor('20261105-elf-parser-batch-fix','P8','先出现 PR head 不一致，后续总体失败标为代码缺陷。原始子任务记录显示这次 CodeCheck 超时，编译和测试仍在等待。','对同一提交重触发 CI 后通过。验收需保留子任务和复验记录，以识别平台超时和真实代码红灯。'),
+    caseFor('20261030-resmon-pwr-net-thr-stb','P8','补录的同一运行中，两次观察到远端分支已更新、PR head 仍返回旧提交。','已有 PR 在 head 传播到位后复验，快照显示运行完成；两次等待均保留在历史失败计数中。'),
     caseFor('hdc-transfer-progress-20261031','P8','推送后 PR head 暂旧；后来 PR head 已一致，但查询仍读到旧提交的 CI 事件。另有真实远端检查问题。','保存旧事件证据并核对新事件对应的提交；快照仍受阻，不能把所有红灯归为状态延迟。'),
     caseFor('hdc-file-compress-20261103','P8','当前提交的 CI 仍在运行时被记为失败；同一任务也确有远端静态检查红灯。','任务内将明确的运行中状态归入等待，保留真实红灯并分别复验；共享运行端仍需验收。'),
     caseFor('20261022-fd-leak-detector','P8','同时出现 PR head 暂旧、真实 CodeCheck 问题及后续平台异常。','按对应提交分别处理；平台重试通过不等于每项代码问题都已登记复验。'),

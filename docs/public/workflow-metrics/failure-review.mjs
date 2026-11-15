@@ -1,11 +1,13 @@
 // Reviewed snapshot revisions are evidence boundaries, not a claim that a workflow fix shipped.
 export const reviewedRunUpdates = {
+  '20261112-dev-echo-path-prefix': '2026-11-12T07:25:28Z',
+  '20261105-elf-parser-batch-fix': '2026-11-05T11:58:57Z',
   '20261103-env-init': '2026-11-04T09:12:42Z',
   '20261102-hiperf-no-symbolic-host-deps': '2026-11-04T07:39:37Z',
   'hdc-file-compress-20261103': '2026-11-04T06:17:19Z',
   'hdc-transfer-progress-20261031': '2026-10-31T22:30:29Z',
   '20261027-hiperf-no-symbols': '2026-10-31T09:38:15Z',
-  '20261030-resmon-pwr-net-thr-stb': '2026-10-31T01:53:20Z',
+  '20261030-resmon-pwr-net-thr-stb': '2026-11-12T07:55:10Z',
   '20261027-sym-map-aggregate': '2026-10-28T06:30:08Z',
   '20261024-hdc-dynamic-loglevel': '2026-10-24T07:23:53Z',
   '20261022-resmon-cpu-mem-io': '2026-10-23T06:06:46Z',
