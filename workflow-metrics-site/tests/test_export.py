@@ -62,6 +62,68 @@ class ExportTests(unittest.TestCase):
         self.assertEqual(run.get('recording_quality', {}).get('status'), 'incomplete')
         self.assertIn('重新初始化', run['recording_quality']['note'])
 
+    def test_p8_hold_exclusion_is_additive_and_raw_counts_stay_frozen(self):
+        metrics = dict(schema_version=2, run_id='p8-hold', updated_at_utc='2026-01-01T00:00:00Z',
+                       phases={'8': dict(name='upload', gate_attempts=3, pass_attempts=0,
+                          fail_attempts=3, review_hold_attempts=0,
+                          last_verdict='FAIL', attempt_history=[
+                              dict(id='manifest:1', gate='gate_upload_ci.py:consent-precheck',
+                                   verdict='FAIL', reason='dry run prepared upload plan',
+                                   at_utc='2026-01-01T00:00:00Z',
+                                   failure_kind='expected_review_hold'),
+                              dict(id='manifest:2', gate='gate_upload_ci.py',
+                                   verdict='FAIL', reason='PR head SHA does not match',
+                                   at_utc='2026-01-01T00:01:00Z',
+                                   failure_kind='gate_failure'),
+                              dict(id='manifest:3', gate='gate_upload_ci.py',
+                                   verdict='FAIL', reason='CI overall_result is not success',
+                                   at_utc='2026-01-01T00:02:00Z',
+                                   failure_kind='gate_failure')] )})
+        run = self.export({'a/workflow_metrics.json': metrics})['runs'][0]
+        phase = run['phases'][0]
+        self.assertEqual(run['failures'], 3)
+        self.assertEqual(run['gate_attempts'], 3)
+        self.assertEqual(phase['fail_attempts'], 3)
+        self.assertEqual(run['review_hold_attempts'], 1)
+        self.assertEqual(run['operational_fail_attempts'], 2)
+        self.assertEqual(run['operational_gate_attempts'], 2)
+        self.assertEqual(run['review_hold_derivation'], 'complete')
+        self.assertEqual(run['derivation_version'], module.DERIVATION_VERSION)
+        public = module.public_snapshot({'runs': [run]})
+        self.assertEqual(public['runs'][0]['failures'], 3)
+        self.assertEqual(public['runs'][0]['operational_fail_attempts'], 2)
+
+    def test_run_without_p8_is_not_applicable_for_hold_attribution(self):
+        metrics = dict(schema_version=2, run_id='no-p8', updated_at_utc='2026-01-01T00:00:00Z',
+                       phases={'1': dict(name='design', gate_attempts=1, pass_attempts=0,
+                          fail_attempts=1, last_verdict='FAIL', attempt_history=[
+                              dict(id='manifest:1', gate='gate_design.py', verdict='FAIL',
+                                   reason='missing contract field',
+                                   at_utc='2026-01-01T00:00:00Z',
+                                   failure_kind='gate_failure')] )})
+        run = self.export({'a/workflow_metrics.json': metrics})['runs'][0]
+        self.assertEqual(run['failures'], 1)
+        self.assertEqual(run['review_hold_attempts'], 0)
+        self.assertEqual(run['review_hold_derivation'], 'not_applicable')
+        self.assertEqual(run['operational_fail_attempts'], 1)
+
+    def test_missing_p8_history_keeps_unknown_holds_in_raw_failure(self):
+        metrics = dict(schema_version=2, run_id='p8-unknown', updated_at_utc='2026-01-01T00:00:00Z',
+                       phases={'8': dict(name='upload', gate_attempts=5, pass_attempts=0,
+                                         fail_attempts=5, last_verdict='FAIL')})
+        run = self.export({'a/workflow_metrics.json': metrics})['runs'][0]
+        self.assertEqual(run['failures'], 5)
+        self.assertEqual(run['review_hold_attempts'], 0)
+        self.assertEqual(run['operational_fail_attempts'], 5)
+        self.assertEqual(run['review_hold_derivation'], 'incomplete')
+        self.assertEqual(run['unclassified_fail_attempts'], 5)
+
+    def test_public_asset_list_contains_failure_review_dependency(self):
+        self.assertIn('failure-review.mjs', module.PUBLIC_ASSETS)
+        self.assertIn('analytics.mjs', module.PUBLIC_ASSETS)
+        for asset in module.PUBLIC_ASSETS:
+            self.assertTrue((Path(module.__file__).parent / 'dist' / asset).is_file(), asset)
+
     def export(self, files):
         self.assertIsNotNone(module, '需要实现指标导出器')
         with tempfile.TemporaryDirectory() as directory:

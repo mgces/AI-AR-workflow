@@ -26,6 +26,23 @@ class TimingTests(unittest.TestCase):
     def at(self, minute):
         self.now.return_value = '2026-10-10T00:%02d:00Z' % minute
 
+    def test_p8_consent_hold_is_counted_separately_from_raw_failures(self):
+        gl.observe_phase_opened(self.pdir, 8)
+        gl.observe_gate_attempt(
+            self.pdir, 8, 'FAIL', 'gate_upload_ci.py:consent-precheck',
+            reason='dry run prepared upload plan (no --allow-push)')
+        gl.observe_gate_attempt(
+            self.pdir, 8, 'FAIL', 'gate_upload_ci.py',
+            reason='PR head SHA does not match local upload SHA')
+        phase = gl.read_workflow_metrics(self.pdir)['phases']['8']
+        self.assertEqual(phase['gate_attempts'], 2)
+        self.assertEqual(phase['fail_attempts'], 2)
+        self.assertEqual(phase['review_hold_attempts'], 1)
+        self.assertEqual(phase['attempt_history'][0]['failure_kind'],
+                         'expected_review_hold')
+        self.assertEqual(phase['attempt_history'][1]['failure_kind'],
+                         'gate_failure')
+
     def test_reinit_preserves_all_three_phases_and_failures(self):
         for phase in (1, 2, 3):
             self.at(phase * 5)

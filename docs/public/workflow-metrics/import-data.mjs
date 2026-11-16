@@ -1,3 +1,5 @@
+import {deriveRunView} from './analytics.mjs';
+
 // Only dashboard fields survive import. Original JSON and credentials are never cached.
 export const STORAGE_KEY='workflow-metrics.browser-imports.v1';
 export const MAX_FILE_BYTES=10*1024*1024;
@@ -81,7 +83,7 @@ export function normalizeMetrics(d){
  for(const key of ['attempts','failures','passes','review_holds'])r['first_gate_'+key]=count(summary['first_gate_'+key+'_total']);r.unrecorded_gate_attempts=count(summary.unrecorded_gate_attempts_total);
  r.preflight_summary=d.preflight_summary==null?null:{attempts:count(d.preflight_summary.attempts),failed_attempts:count(d.preflight_summary.failed_attempts),issues:count(d.preflight_summary.issues)};
  r.preflight_failures=array(d.preflight_history).filter(a=>a.status!=='PASS').map(a=>({id:redact(a.id),phase:phaseId(a.phase),at:date(a.at_utc),status:redact(a.status),policy_version:count(a.policy_version),verified_by:redact(a.verified_by),resolution_status:redact(a.resolution_status),checks:array(a.checks).filter(c=>c.status!=='PASS').map(c=>({id:redact(c.id),status:redact(c.status),reason:redact(c.reason),rule_ids:[...new Set(redact(c.output).match(/\b(?:OAT\.\d+|H[1-5]\.[A-Z0-9_]+|G\.[A-Z]+\.\d+(?:-CPP)?|WordsTool\.\d+)\b/g)||[])].sort()})),fixes:array(a.fixes).map(f=>({cause:redact(f.cause),action:redact(f.action),verification_status:redact(f.verification_status)}))}));
- r.recording_quality=quality(d);return r;
+ r.recording_quality=quality(d);return deriveRunView(r);
 }
 
 // Explicit shapes also protect backups/public snapshots from extra untrusted fields.
@@ -89,8 +91,8 @@ function project(value,shape){if(!obj(value))fail('快照对象');const out={};f
 const textList=v=>array(v).map(redact),list=shape=>v=>array(v).map(x=>project(x,shape));
 const findingShape={phase:'s',reason:'s',action:'s',outcome:'s',basis:'s',evidence_refs:textList};
 const failureShape={id:'s',phase:'s',gate:'s',reason:'s',at:'d',source:'s',first_attempt:'b',round:'c',failure_kind:'s',failure_category:'s',resolution_status:'s',verified_by:'s',count:'c',category:'s',fixes:list({root_cause:'s',action:'s',change_ref:'s',verification_verdict:'s'}),session_findings:list(findingShape),session_scope:'s',session_source:'s'};
-const phaseShape={id:'s',name:'s',status:'s',wall_seconds:'n',wait_seconds:'n',effective_seconds:'n',gate_attempts:'c',pass_attempts:'c',fail_attempts:'c',stage_attempts:'c',rounds:'c',skills:textList,gate:'s',opened_at:'d',closed_at:'d',rounds_detail:list({opened_at:'d',closed_at:'d',kind:'s',interrupted:'b'}),upload_wait_history:v=>v==null?null:list({kind:'s',reason:'s',at:'d',pr:'c'})(v)};
-const runShape={id:'s',workflow:'s',kind:'s',status:'s',current_phase:'s',agent:'s',model:'s',updated_at:'d',started_at:'d',source:'s',phases:list(phaseShape),failure_details:list(failureShape),failures:'c',gate_attempts:'c',human_interventions:list({category:'s',reason:'s',phase:'s'}),open_waits:'c',open_wait_details:list({phase:'s',category:'s',reason:'s',started_at_utc:'d'}),effective_seconds:'n',wall_seconds:'n',wait_seconds:'n',first_gate_attempts:'c',first_gate_failures:'c',first_gate_passes:'c',first_gate_review_holds:'c',unrecorded_gate_attempts:'c',preflight_summary:v=>v==null?null:project(v,{attempts:'c',failed_attempts:'c',issues:'c'}),preflight_failures:list({id:'s',phase:'s',at:'d',status:'s',policy_version:'c',verified_by:'s',resolution_status:'s',checks:list({id:'s',status:'s',reason:'s',rule_ids:textList}),fixes:list({cause:'s',action:'s',verification_status:'s'})}),session_later_outcome:'s',recording_quality:{status:'s',initialization_count:'c',note:'s'},import_origin:'s'};
+const phaseShape={id:'s',name:'s',status:'s',wall_seconds:'n',wait_seconds:'n',effective_seconds:'n',gate_attempts:'c',pass_attempts:'c',fail_attempts:'c',review_hold_attempts:'c',operational_fail_attempts:'c',operational_gate_attempts:'c',review_hold_derivation:'s',unclassified_fail_attempts:'c',derivation_version:'s',stage_attempts:'c',rounds:'c',skills:textList,gate:'s',opened_at:'d',closed_at:'d',rounds_detail:list({opened_at:'d',closed_at:'d',kind:'s',interrupted:'b'}),upload_wait_history:v=>v==null?null:list({kind:'s',reason:'s',at:'d',pr:'c'})(v)};
+const runShape={id:'s',workflow:'s',kind:'s',status:'s',current_phase:'s',agent:'s',model:'s',updated_at:'d',started_at:'d',source:'s',phases:list(phaseShape),failure_details:list(failureShape),failures:'c',gate_attempts:'c',review_hold_attempts:'c',operational_fail_attempts:'c',operational_gate_attempts:'c',review_hold_derivation:'s',unclassified_fail_attempts:'c',derivation_version:'s',human_interventions:list({category:'s',reason:'s',phase:'s'}),open_waits:'c',open_wait_details:list({phase:'s',category:'s',reason:'s',started_at_utc:'d'}),effective_seconds:'n',wall_seconds:'n',wait_seconds:'n',first_gate_attempts:'c',first_gate_failures:'c',first_gate_passes:'c',first_gate_review_holds:'c',unrecorded_gate_attempts:'c',preflight_summary:v=>v==null?null:project(v,{attempts:'c',failed_attempts:'c',issues:'c'}),preflight_failures:list({id:'s',phase:'s',at:'d',status:'s',policy_version:'c',verified_by:'s',resolution_status:'s',checks:list({id:'s',status:'s',reason:'s',rule_ids:textList}),fixes:list({cause:'s',action:'s',verification_status:'s'})}),session_later_outcome:'s',recording_quality:{status:'s',initialization_count:'c',note:'s'},import_origin:'s'};
 export function validateSnapshot(snapshot){
  if(!obj(snapshot)||snapshot.schema_version!==1||!Array.isArray(snapshot.runs)||snapshot.runs.length>2000)fail('快照版本 / runs');
  const runs=snapshot.runs.map(v=>{const r=project(v,runShape);if(!r.id||!r.workflow||!r.phases.length||excluded.has(r.id))fail('运行标识 / 阶段');
@@ -101,7 +103,7 @@ export function validateSnapshot(snapshot){
   if(!['completed','blocked','waiting','running','pending'].includes(r.status)||!['AR','Requirement'].includes(r.kind))fail('运行状态');
   if(!['complete','incomplete','unknown'].includes(r.recording_quality.status))r.recording_quality={status:'unknown',initialization_count:null,note:'历史完整性未验证。'};
   if(r.id==='20261009-fd-leak-detect'&&r.started_at==='2026-10-09T12:50:46Z')r.recording_quality=quality({run_id:r.id,started_at_utc:r.started_at});
-  if(v.import_origin!=='browser')delete r.import_origin;return r;});
+  if(v.import_origin!=='browser')delete r.import_origin;return deriveRunView(r);});
  return {schema_version:1,generated_at:date(snapshot.generated_at),source_label:redact(snapshot.source_label),source_count:count(snapshot.source_count)??runs.length,duplicate_count:count(snapshot.duplicate_count)??0,warnings:array(snapshot.warnings).map(redact),runs,redacted:true,redaction_scope:'sensitive_fragments'};
 }
 export function parseImport(text){

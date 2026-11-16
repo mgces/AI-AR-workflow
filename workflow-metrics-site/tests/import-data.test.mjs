@@ -57,3 +57,35 @@ test('backups reject inconsistent phase counters and mixed workflow stages',asyn
  runs[0].phases[0].fail_attempts=1;runs[0].phases[0].id='R1';
  assert.throws(()=>parseImport(JSON.stringify({schema_version:1,runs})),/阶段/);
 });
+
+test('raw P8 attempt history derives operational fields while raw counters stay unchanged',async()=>{
+ const {parseImport}=await api();const d=raw();d.phases={'8':{name:'upload',last_verdict:'FAIL',gate_attempts:3,pass_attempts:0,fail_attempts:3,
+  attempt_history:[
+   {id:'manifest:1',verdict:'FAIL',gate:'gate_upload_ci.py:consent-precheck',reason:'dry run',failure_kind:'expected_review_hold'},
+   {id:'manifest:2',verdict:'FAIL',gate:'gate_upload_ci.py',reason:'PR head mismatch',failure_kind:'gate_failure'},
+   {id:'manifest:3',verdict:'FAIL',gate:'gate_upload_ci.py',reason:'CI failed',failure_kind:'gate_failure'}]}};
+ const [r]=parseImport(JSON.stringify(d));
+ assert.equal(r.failures,3);assert.equal(r.gate_attempts,3);
+ assert.equal(r.review_hold_attempts,1);assert.equal(r.operational_fail_attempts,2);assert.equal(r.operational_gate_attempts,2);
+ assert.equal(r.phases[0].operational_fail_attempts,2);assert.equal(r.review_hold_derivation,'complete');
+});
+test('old snapshots without derived fields are recomputed and forged fields are overwritten',async()=>{
+ const {parseImport,validateSnapshot}=await api();const d=raw();d.phases={'8':{name:'upload',last_verdict:'FAIL',gate_attempts:2,pass_attempts:0,fail_attempts:2,
+  attempt_history:[{id:'manifest:1',verdict:'FAIL',gate:'gate_upload_ci.py:consent-precheck',reason:'dry run',failure_kind:'expected_review_hold'},
+   {id:'manifest:2',verdict:'FAIL',gate:'gate_upload_ci.py',reason:'CI failed',failure_kind:'gate_failure'}]}};
+ const [derived]=parseImport(JSON.stringify(d));
+ const old=JSON.parse(JSON.stringify(derived));
+ for(const key of ['review_hold_attempts','operational_fail_attempts','operational_gate_attempts','review_hold_derivation','unclassified_fail_attempts','derivation_version'])delete old[key];
+ old.phases[0].operational_fail_attempts=999;
+ const [r]=validateSnapshot({schema_version:1,runs:[old]}).runs;
+ assert.equal(r.review_hold_attempts,1);assert.equal(r.operational_fail_attempts,1);assert.equal(r.operational_gate_attempts,1);
+});
+
+test('a raw run without P8 is not_applicable for P8 hold attribution',async()=>{
+ const {parseImport}=await api();const d=raw();d.phases={'1':{name:'design',last_verdict:'FAIL',gate_attempts:1,pass_attempts:0,fail_attempts:1,
+  attempt_history:[{id:'manifest:1',verdict:'FAIL',gate:'gate_design.py',reason:'missing field'}]}};
+ const [r]=parseImport(JSON.stringify(d));
+ assert.equal(r.review_hold_derivation,'not_applicable');
+ assert.equal(r.review_hold_attempts,0);
+ assert.equal(r.operational_fail_attempts,1);
+});

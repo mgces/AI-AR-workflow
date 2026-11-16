@@ -81,6 +81,87 @@ def category(reason, gate):
     return '其他门禁问题'
 
 
+DERIVATION_VERSION = 'p8-hold-exclusion-v1'
+MISSING_REASON_RE = re.compile(
+    r'未记录具体失败原因|逐次门禁原因未记录|原因未记录|仅记录最近结果|阶段原因（无法逐次对应）')
+
+
+def is_review_hold(detail):
+    """A human consent hold is a signed FAIL at a consent-precheck gate."""
+    return (detail.get('failure_kind') == 'expected_review_hold' or
+            str(detail.get('gate') or '').lower().endswith(':consent-precheck'))
+
+
+def derive_attribution(failures, attempts, details, known_holds=None):
+    """Derive the additive operational view without changing raw counts.
+
+    `known_holds` may come from the metrics writer. Otherwise holds are
+    counted from failure_details. Unknown failures stay in operational counts
+    (the conservative choice): only explicitly recognized holds are removed.
+    """
+    details = list(details or [])
+
+    def detail_count(detail):
+        value = detail.get('count')
+        return (value if isinstance(value, int) and not isinstance(value, bool)
+                and value >= 0 else None)
+
+    holds = known_holds
+    holds_unknown = False
+    if holds is None:
+        holds = 0
+        for detail in details:
+            if not is_review_hold(detail):
+                continue
+            count = detail_count(detail)
+            if count is None:
+                holds_unknown = True
+            else:
+                holds += count
+
+    known_total = 0
+    unknown_detail = False
+    missing_reason = 0
+    for detail in details:
+        count = detail_count(detail)
+        if count is None:
+            unknown_detail = True
+            continue
+        known_total += count
+        if (not is_review_hold(detail)
+                and MISSING_REASON_RE.search(str(detail.get('reason') or ''))):
+            missing_reason += count
+
+    unknown = failures is None or holds_unknown or unknown_detail
+    unclassified = None
+    quality = 'unknown'
+    operational = None
+    operational_attempts = None
+    if not unknown:
+        if known_total > failures or holds > failures:
+            quality = 'unknown'
+        else:
+            unclassified = max(0, failures - known_total) + missing_reason
+            quality = 'incomplete' if unclassified > 0 else 'complete'
+            operational = failures - holds
+            if attempts is not None and attempts >= holds:
+                operational_attempts = attempts - holds
+    return dict(review_hold_attempts=holds if not holds_unknown else None,
+                operational_fail_attempts=operational,
+                operational_gate_attempts=operational_attempts,
+                review_hold_derivation=quality,
+                unclassified_fail_attempts=unclassified,
+                derivation_version=DERIVATION_VERSION)
+
+
+PUBLIC_ASSETS = (
+    'index.html', 'style.css', 'app.mjs', 'analytics.mjs',
+    'failure-review.mjs', 'weekly-overview.mjs', 'preflight-view.mjs',
+    'timing-view.mjs', 'upload-view.mjs', 'import-data.mjs',
+    'import-ui.mjs', 'publish-data.mjs',
+)
+
+
 def evidence_events(path, root, warnings):
     manifest = path.parent / 'evidence' / 'manifest.jsonl'
     if not manifest.is_file() or manifest.is_symlink():
@@ -118,9 +199,11 @@ def normalize(data, path, root, warnings):
     requirement = any(str(p).upper().startswith('R') for p in raw_phases)
     workflow = clean(data.get('workflow')) or ('requirement' if requirement else 'ar-development')
     phases, details = [], []
+    source_holds = {}
     events = evidence_events(path, root, warnings)
     for key, item in sorted(raw_phases.items(), key=lambda pair: sort_phase(pair[0])):
         pid = phase_key(key)
+        source_holds[pid] = number(item.get('review_hold_attempts'))
         wall = number(item.get('elapsed_seconds'))
         wait = number(item.get('human_wait_excluded_seconds'))
         effective = number(item.get('effective_elapsed_seconds'))
@@ -222,6 +305,21 @@ def normalize(data, path, root, warnings):
             detail['session_findings'] = related
             detail['session_scope'] = session_analysis['scope']
             detail['session_source'] = session_analysis['source']
+    for phase in phases:
+        phase_details = [detail for detail in details if detail.get('phase') == phase['id']]
+        # Explicit detail is evidence; the persisted counter is only a fallback
+        # when the detail list has no recognizable hold.
+        has_hold_detail = any(is_review_hold(detail) for detail in phase_details)
+        known_holds = (None if has_hold_detail
+                       else source_holds.get(phase['id']))
+        phase.update(derive_attribution(
+            phase.get('fail_attempts'), phase.get('gate_attempts'),
+            phase_details, known_holds))
+    phase_holds = [phase.get('review_hold_attempts') for phase in phases]
+    has_run_hold_detail = any(is_review_hold(detail) for detail in details)
+    known_phase_holds = (None if has_run_hold_detail else
+                         (sum(phase_holds) if all(value is not None
+                                                  for value in phase_holds) else None))
     open_wait_details = [dict(phase=phase_key(item.get('phase', '')),
                               category=clean(item.get('category')),
                               reason=clean(item.get('reason')),
@@ -240,6 +338,17 @@ def normalize(data, path, root, warnings):
                human_interventions=[dict(category=clean(i.get('category')), reason=clean(i.get('reason')),
                                           phase=phase_key(i.get('phase', ''))) for i in data.get('human_interventions', []) if isinstance(i, dict)],
                open_waits=waiting, open_wait_details=open_wait_details)
+    run.update(derive_attribution(
+        run.get('failures'), run.get('gate_attempts'), details, known_phase_holds))
+    p8_phase = next((phase for phase in phases if phase['id'] == 'P8'), None)
+    if p8_phase is not None:
+        p8_details = [detail for detail in details if detail.get('phase') == 'P8']
+        run['review_hold_derivation'] = derive_attribution(
+            p8_phase.get('fail_attempts'), p8_phase.get('gate_attempts'),
+            p8_details, p8_phase.get('review_hold_attempts'))['review_hold_derivation']
+    else:
+        # No P8 phase: there is no P8 consent-hold evidence to classify.
+        run['review_hold_derivation'] = 'not_applicable'
     raw_preflight=data.get('preflight_summary')
     history=data.get('preflight_history')
     run['preflight_summary'] = ({key:number(raw_preflight.get(key)) for key in ('attempts','failed_attempts','issues')}
@@ -387,7 +496,7 @@ def main():
         public_path = args.public_dir / 'data.json'
         if public_path.exists():
             public_data = retain_browser_imports(public_data, json.loads(public_path.read_text(encoding='utf-8')))
-        for asset in ('index.html', 'style.css', 'app.mjs', 'analytics.mjs', 'weekly-overview.mjs', 'preflight-view.mjs', 'timing-view.mjs', 'upload-view.mjs', 'import-data.mjs', 'import-ui.mjs', 'publish-data.mjs'):
+        for asset in PUBLIC_ASSETS:
             copy2(Path(__file__).parent / 'dist' / asset, args.public_dir / asset)
         public_temp = public_path.with_suffix('.tmp')
         public_temp.write_text(json.dumps(public_data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')

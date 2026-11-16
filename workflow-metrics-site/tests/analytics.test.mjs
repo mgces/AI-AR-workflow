@@ -117,3 +117,105 @@ test('blocked explanation uses the filled reason in its original failure detail'
   assert.match(explanation,/changed-line static check rejected helper/);
   assert.match(explanation,/阶段级/);
 });
+
+test('derived operational view removes recognized holds without changing raw counts', () => {
+  const run = analytics.deriveRunView({
+    failures: 3, gate_attempts: 3, phases: [{id: 'P8', fail_attempts: 3, gate_attempts: 3}],
+    failure_details: [
+      {phase: 'P8', count: 1, failure_kind: 'expected_review_hold', gate: 'gate_upload_ci.py:consent-precheck'},
+      {phase: 'P8', count: 2, failure_kind: 'gate_failure', gate: 'gate_upload_ci.py'},
+    ],
+  });
+  assert.equal(run.failures, 3);
+  assert.equal(run.gate_attempts, 3);
+  assert.equal(run.review_hold_attempts, 1);
+  assert.equal(run.operational_fail_attempts, 2);
+  assert.equal(run.operational_gate_attempts, 2);
+  assert.equal(run.review_hold_derivation, 'complete');
+  const summary = analytics.summarize([run]);
+  assert.equal(summary.rawFailures, 3);
+  assert.equal(summary.rawAttempts, 3);
+  assert.equal(summary.operationalFailures, 2);
+  assert.equal(summary.operationalAttempts, 2);
+  assert.equal(summary.reviewHolds, 1);
+  assert.equal(summary.completeRuns, 1);
+  assert.equal(summary.incompleteRuns, 0);
+});
+
+test('incomplete P8 details keep unknown holds in the operational failure count', () => {
+  const run = analytics.deriveRunView({
+    failures: 5, gate_attempts: 5, phases: [{id: 'P8', fail_attempts: 5, gate_attempts: 5}],
+    failure_details: [{phase: 'P8', count: 5, reason: '未记录具体失败原因'}],
+  });
+  assert.equal(run.failures, 5);
+  assert.equal(run.review_hold_attempts, 0);
+  assert.equal(run.operational_fail_attempts, 5);
+  assert.equal(run.review_hold_derivation, 'incomplete');
+  assert.equal(run.unclassified_fail_attempts, 5);
+});
+
+test('unknown detail counts do not fabricate zero operational failures', () => {
+  const derived = analytics.deriveAttribution(2, 2, [{count: null, reason: '仅最近结果'}]);
+  assert.equal(derived.review_hold_derivation, 'unknown');
+  assert.equal(derived.operational_fail_attempts, null);
+  assert.equal(derived.operational_gate_attempts, null);
+  assert.equal(derived.unclassified_fail_attempts, null);
+});
+
+test('explicit hold details override a stale persisted phase counter', () => {
+  const run = analytics.deriveRunView({
+    failures: 2, gate_attempts: 2,
+    phases: [{id: 'P8', fail_attempts: 2, gate_attempts: 2, review_hold_attempts: 0}],
+    failure_details: [
+      {phase: 'P8', count: 1, failure_kind: 'expected_review_hold', gate: 'gate_upload_ci.py:consent-precheck'},
+      {phase: 'P8', count: 1, failure_kind: 'gate_failure', gate: 'gate_upload_ci.py'},
+    ],
+  });
+  assert.equal(run.review_hold_attempts, 1);
+  assert.equal(run.operational_fail_attempts, 1);
+  assert.equal(run.review_hold_derivation, 'complete');
+});
+
+test('summarize keeps unknown runs in operational totals conservatively', () => {
+  const complete = analytics.deriveRunView({
+    failures: 1, gate_attempts: 1, phases: [{id: 'P8', fail_attempts: 1, gate_attempts: 1}],
+    failure_details: [{phase: 'P8', count: 1, failure_kind: 'expected_review_hold', gate: 'gate_upload_ci.py:consent-precheck'}],
+  });
+  const unknown = analytics.deriveRunView({
+    failures: 1, gate_attempts: 1, phases: [{id: 'P8', fail_attempts: 1, gate_attempts: 1}],
+    failure_details: [{phase: 'P8', count: null, reason: '仅最近结果'}],
+  });
+  const summary = analytics.summarize([complete, unknown]);
+  assert.equal(summary.rawFailures, 2);
+  assert.equal(summary.operationalFailures, 1);
+  assert.equal(summary.operationalAttempts, 1);
+  assert.equal(summary.operationalSamples, 2);
+  assert.equal(summary.operationalFallbackRuns, 1);
+  assert.equal(summary.operationalUnavailableRuns, 0);
+});
+
+test('phaseTotals keeps unknown phases in operational totals conservatively', () => {
+  const phases = analytics.phaseTotals([
+    {phases: [{id: 'P8', fail_attempts: 1, gate_attempts: 1, review_hold_attempts: 1,
+               operational_fail_attempts: 0, operational_gate_attempts: 0}]},
+    {phases: [{id: 'P8', fail_attempts: 1, gate_attempts: 1, review_hold_attempts: null,
+               operational_fail_attempts: null, operational_gate_attempts: null}]},
+  ]);
+  assert.equal(phases[0].operationalFailures, 1);
+  assert.equal(phases[0].operationalAttempts, 1);
+  assert.equal(phases[0].operationalFallbackPhases, 1);
+  assert.equal(phases[0].operationalUnavailablePhases, 0);
+});
+
+test('a run without P8 is not_applicable for P8 hold attribution, not complete', () => {
+  const run = analytics.deriveRunView({
+    failures: 2, gate_attempts: 2,
+    phases: [{id: 'P1', fail_attempts: 2, gate_attempts: 2}],
+    failure_details: [{phase: 'P1', count: null, reason: '仅记录最近结果'}],
+  });
+  assert.equal(run.review_hold_derivation, 'not_applicable');
+  assert.equal(run.operational_fail_attempts, null);
+  const summary = analytics.summarize([run]);
+  assert.equal(summary.notApplicableRuns, 1);
+  assert.equal(summary.completeRuns, 0);
+});

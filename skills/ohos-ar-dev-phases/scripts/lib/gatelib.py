@@ -2044,6 +2044,7 @@ def init_workflow_metrics(pdir, run_id, *, agent="", model="", skills=None):
             "runs": ([{"opened_at_utc": now, "closed_at_utc": None}]
                      if i == 0 else []),
             "gate_attempts": 0, "pass_attempts": 0, "fail_attempts": 0,
+            "review_hold_attempts": 0,
             "attempt_history": [],
             "skills_used": (list(dict.fromkeys(skills or [])) if i == 0 else []),
         }
@@ -2191,6 +2192,7 @@ def observe_gate_attempt(pdir, phase, verdict, gate, *, entry=None, reason=None)
                     break
             first_attempt = (not same_gate_round if old_count == len(history)
                              else None)
+            review_hold = verdict == "FAIL" and gate.endswith(":consent-precheck")
             history.append({
                 "id": attempt_id,
                 "manifest_seq": entry.get("seq") if entry is not None else None,
@@ -2200,8 +2202,7 @@ def observe_gate_attempt(pdir, phase, verdict, gate, *, entry=None, reason=None)
                 "round": round_number,
                 "attempt_in_round": len(same_gate_round) + 1,
                 "first_attempt": first_attempt,
-                "failure_kind": ("expected_review_hold" if verdict == "FAIL" and
-                                 gate.endswith(":consent-precheck") else
+                "failure_kind": ("expected_review_hold" if review_hold else
                                  "gate_failure" if verdict == "FAIL" else None),
                 "failure_category": (__import__("workflow_checks").classify_failure(
                     entry.get("reason") if entry else reason, gate) if verdict == "FAIL" else None),
@@ -2211,6 +2212,9 @@ def observe_gate_attempt(pdir, phase, verdict, gate, *, entry=None, reason=None)
             item["gate_attempts"] = int(item.get("gate_attempts", 0)) + 1
             key = "pass_attempts" if verdict == "PASS" else "fail_attempts"
             item[key] = int(item.get(key, 0)) + 1
+            if review_hold:
+                item["review_hold_attempts"] = int(
+                    item.get("review_hold_attempts", 0)) + 1
         item["last_gate"] = gate
         item["last_verdict"] = verdict
         item["last_attempt_at_utc"] = _utc_now()
