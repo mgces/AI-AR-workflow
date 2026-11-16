@@ -67,11 +67,11 @@ function render(){
  const opPasses=known(s.operationalPasses)?s.operationalPasses:s.passes;
  const opFailureRate=known(s.operationalFailureRate)?s.operationalFailureRate:s.failureRate;
  const opPassRate=known(s.operationalPassRate)?s.operationalPassRate:s.passRate;
- $('live-summary').textContent=`当前显示 ${s.count} 次运行，操作性门禁通过率 ${opPassRate===null?'未记录':opPassRate.toFixed(1)+'%'}，已记录 ${fmt(opFailures)} 次操作性失败；历史原始值 ${fmt(s.failures)} 次失败 / ${fmt(s.attempts)} 次尝试。`;
+ $('live-summary').textContent=`当前显示 ${s.count} 次运行，操作性门禁通过率 ${opPassRate===null?'未记录':opPassRate.toFixed(1)+'%'}，已记录 ${fmt(opFailures)} 次操作性失败。`;
  $('metrics').innerHTML=[
-  ['总门禁通过率',opPassRate===null?'—':`${opPassRate.toFixed(1)}<small>%</small>`,s.passRate===null?'暂无可统计的门禁尝试':`${fmt(opPasses)} 次通过 / ${fmt(opAttempts)} 次操作性尝试 · 历史原始 ${s.passRate.toFixed(1)}%`,'featured','◎'],
+  ['总门禁通过率',opPassRate===null?'—':`${opPassRate.toFixed(1)}<small>%</small>`,s.passRate===null?'暂无可统计的门禁尝试':`${fmt(opPasses)} 次通过 / ${fmt(opAttempts)} 次操作性尝试`,'featured','◎'],
   ['运行总数',`${s.count}<small>次</small>`,`已完成 ${s.completed} · 有失败历史 ${s.failureRuns}`,'','▤'],
-  ['门禁失败',`${fmt(opFailures)}<small>次</small>`,`失败率 ${opFailureRate===null?'—':opFailureRate.toFixed(1)+'%'} · ${fmt(opAttempts)} 次操作性尝试 · 历史原始 ${fmt(s.failures)} 次 / ${fmt(s.attempts)} 次`,'','⊗']
+  ['门禁失败',`${fmt(opFailures)}<small>次</small>`,`失败率 ${opFailureRate===null?'—':opFailureRate.toFixed(1)+'%'} · ${fmt(opAttempts)} 次操作性尝试`,'','⊗']
  ].map(([title,value,note,cls,icon])=>`<article class="metric ${cls}"><div class="metric-label">${title}<span class="metric-icon" aria-hidden="true">${icon}</span></div><div class="metric-value">${value}</div><p class="metric-note">${note}</p></article>`).join('');
  const wall=$('time-mode').value==='wall';
  const max=Math.max(1,...phases.map(p=>wall?(p.effective_seconds||0)+(p.wait_seconds||0):p.effective_seconds||0));
