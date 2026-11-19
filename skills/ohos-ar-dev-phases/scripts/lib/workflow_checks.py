@@ -12,15 +12,12 @@ import time
 import uuid
 from xml.etree import ElementTree as ET
 
-# Static author-time scans are still executed and recorded in preflight history,
-# but they are no longer the P2/P3/P4 authority: the phase gate re-runs the
-# critical subset with the same changed scope and owns the verdict. Keeping
-# these ids out of enforce()'s abort set prevents an observation-only finding
-# from stopping the gate before it can classify it. Dependency/tool probes that
-# are not static findings (rule-fingerprint, clang-tidy, ninja, ...) keep their
-# existing blocking behavior.
+# Static author-time scans and P6 ABI symbol drift are recorded in preflight
+# history but never close a phase: the owning gate remains the authority.
+# Dependency/tool probes that are not static findings (rule-fingerprint,
+# clang-tidy, ninja, ...) keep their existing blocking behavior.
 OBSERVATION_ONLY_PREFLIGHT_IDS = frozenset({
-    'author-rules', 'early-metrics', 'file-hygiene',
+    'author-rules', 'early-metrics', 'file-hygiene', 'abi-symbol-diff',
 })
 
 def canonical_path(value, source_root, git_root):
@@ -105,6 +102,93 @@ def symbol_check(item, repo, protected):
     result['artifact_sha256']=_hash(path)
     result['required_symbols']=item['required_symbols']
     return result
+
+def compare_symbol_sets(host_symbols, device_symbols):
+    """Compare exported-defined symbol names; differences are record-only."""
+    host=set(host_symbols); device=set(device_symbols)
+    removed=sorted(device-host)
+    added=sorted(host-device)
+    matches=not removed and not added
+    return {
+        'status': 'PASS',
+        'reason': ('external symbols match'
+                   if matches else
+                   'external symbols differ (record-only): removed=%d added=%d' % (len(removed), len(added))),
+        'symbols_match': matches,
+        'decision_input': False,
+        'removed_count': len(removed),
+        'added_count': len(added),
+        'removed_symbols': removed[:50],
+        'added_symbols': added[:50],
+        'advisory': True,
+    }
+
+
+def _artifact_path(path, repo):
+    """Resolve a CLI artifact path against the repository when it is relative."""
+    path=Path(path)
+    return path if path.is_absolute() else Path(repo)/path
+
+
+def _is_elf(path):
+    try:
+        with open(path,'rb') as stream:
+            return stream.read(4)==b'\x7fELF'
+    except OSError:
+        return False
+
+
+def _dynamic_symbols(path):
+    """Return exported/defined dynamic symbol names from an ELF artifact."""
+    path=Path(path)
+    nm=shutil.which('llvm-nm') or shutil.which('nm')
+    if not nm: raise ValueError('nm tool unavailable')
+    if not path.is_file(): raise ValueError('ELF artifact missing: %s' % path)
+    if not _is_elf(path): raise ValueError('not an ELF artifact: %s' % path)
+    rc,output=_command([nm,'--dynamic','--defined-only','--demangle',str(path)],path.parent,120)
+    if rc: raise ValueError('nm failed rc=%d for %s' % (rc,path))
+    symbols=set()
+    for line in output.splitlines():
+        match=re.match(r'^\s*[0-9A-Fa-f]+\s+([A-Za-z])\s+(.+?)\s*$',line)
+        if match and match.group(1).upper()!='U':
+            symbols.add(match.group(2).split('@@',1)[0])
+    return symbols
+
+
+def abi_symbol_diff(host_artifact, device_artifact, hdc_argv, repo):
+    """Pull the pre-deploy device artifact and compare exported symbol names.
+
+    This is record-only: symbol drift is useful evidence for ABI skew, but it
+    must not be used as a P6 verdict input; stripped C++ libraries can also hide
+    layout changes, so symbol equality does not prove compatibility.
+    """
+    result={'id':'abi-symbol-diff','status':'UNAVAILABLE','advisory':True,
+            'decision_input':False,'reason':''}
+    try:
+        host=_artifact_path(host_artifact,repo)
+        if not host.is_file(): raise ValueError('host artifact missing: %s' % host)
+        if not device_artifact: raise ValueError('device artifact path missing')
+        with tempfile.TemporaryDirectory(prefix='workflow-abi-symbols-') as td:
+            local=Path(td)/'device-artifact'
+            pull=run_job({'id':'abi-symbol-diff:pull','argv':hdc_argv+['file','recv',device_artifact,str(local)],'timeout':30},repo,[])
+            result['pull']=pull
+            if pull['status']!='PASS':
+                result['reason']='device artifact unavailable: %s' % pull.get('reason','')
+                return result
+            if not local.is_file():
+                result['reason']='device artifact not received: %s' % device_artifact
+                return result
+            host_symbols=_dynamic_symbols(host)
+            device_symbols=_dynamic_symbols(local)
+            result.update(host_symbol_count=len(host_symbols),device_symbol_count=len(device_symbols))
+            result.update(compare_symbol_sets(host_symbols,device_symbols))
+            result['advisory']=True
+            return result
+    except (OSError,ValueError,subprocess.TimeoutExpired) as exc:
+        result['status']='UNAVAILABLE'
+        result['reason']=str(exc)
+        return result
+
 
 def post_build_checks(pdir,contract):
     import gatelib as gl
@@ -351,7 +435,8 @@ def record_preflight_fix(pdir,attempt_id,cause,action):
     attempt.setdefault('fixes',[]).append({'cause':cause,'action':action,'at_utc':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'verification_status':'pending'})
     if not gl.write_workflow_metrics(pdir,data): raise OSError('preflight fix could not be persisted')
 
-def stage_checks(pdir,phase,*,design=None,suites=None,scenario=None,deploy=None):
+def stage_checks(pdir,phase,*,design=None,suites=None,scenario=None,deploy=None,
+                 host_artifact=None,device_artifact=None):
     """Run policy before expensive stage execution; standalone CLI uses same code."""
     import gatelib as gl
     state=gl.load_state(pdir); repo=Path(state['repo']).resolve(); results=[]
@@ -429,8 +514,12 @@ def stage_checks(pdir,phase,*,design=None,suites=None,scenario=None,deploy=None)
         if isinstance(plan['symbol_checks'],list):
             results.append(tool_check('nm',shutil.which('llvm-nm') or shutil.which('nm')))
     if phase in (5,6,7):
-        results.extend(device_checks(state,contract,repo))
-        if any(r['status']!='PASS' for r in results):
+        results.extend(device_checks(
+            state,contract,repo,
+            host_artifact=host_artifact if phase==6 else None,
+            device_artifact=device_artifact if phase==6 else None))
+        if any(r['status']!='PASS' and r['id'] not in OBSERVATION_ONLY_PREFLIGHT_IDS
+               for r in results):
             record_preflight(pdir,phase,results,source_hash); return results
     if phase in (5,7) and not plan['test_isolation'].get('not_applicable'):
         results.extend(run_isolation(plan['test_isolation'],repo,protected,git_roots=source_roots))
@@ -471,7 +560,7 @@ def probe_report_collection(argv,repo):
     result['commands']=commands
     return result
 
-def device_checks(state,contract,repo):
+def device_checks(state,contract,repo,*,host_artifact=None,device_artifact=None):
     from xml.etree import ElementTree as ET
     import gate_test_ut as ut
     conn=state.get('connection_env') or {}; serial=conn.get('DEVICE_SERIAL') or state.get('device_serial')
@@ -517,6 +606,8 @@ def device_checks(state,contract,repo):
                         actual=elf_abi(path.read_bytes()[:64])
                         results.append({'id':'abi:'+rel,'status':'PASS' if abi==actual else 'FAIL','reason':'user ELF ABI %s; artifact ABI %s' % (abi,actual)})
             except (OSError,ValueError) as exc: results.append({'id':'device-abi','status':'FAIL','reason':str(exc)})
+    if host_artifact and device_artifact:
+        results.append(abi_symbol_diff(host_artifact,device_artifact,argv,repo))
     return results
 
 def enforce(pdir,phase,**kwargs):

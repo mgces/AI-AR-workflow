@@ -80,6 +80,8 @@ python3 $S/gate_device_func.py --pipeline-dir "$PDIR" \
     --e2e-marker "<端到端场景成功标记>"
 ```
 
+P6 preflight 还会在部署前拉取 `--device-artifact`，与 `--host-artifact` 对比动态导出符号（`abi-symbol-diff`）。该检查只做记录，不参与 P6 verdict 判定；导出符号差异不等于 ABI 不兼容，也不改变门禁结果。
+
 QEMU 安全模式下如果真实应用启动探针返回 `10106102`，或日志/调用栈指向
 `UnlockScreenManager`，应判定为“设备仍锁定、场景前置条件未满足”。停止重复启动和点击重试，
 通过本次实例对应的 noVNC/人工解锁完成交互，再以应用真实进入前台或目标进程实际启动作为解锁证据；

@@ -146,6 +146,37 @@ class PreflightTests(unittest.TestCase):
         self.assertEqual(c.exported_symbol_problems('000001 T Exported::Run()\n',['Exported::Run()']),[])
         self.assertTrue(c.exported_symbol_problems('000001 T Exported::RunOther()\n',['Exported::Run()']))
 
+    def test_symbol_diff_reports_removed_and_added_symbols(self):
+        c=self.checks()
+        result=c.compare_symbol_sets({'Shared','New'}, {'Shared','Old'})
+        self.assertEqual(result['status'],'PASS')
+        self.assertFalse(result['symbols_match'])
+        self.assertFalse(result['decision_input'])
+        self.assertEqual(result['removed_symbols'],['Old'])
+        self.assertEqual(result['added_symbols'],['New'])
+        self.assertTrue(result['advisory'])
+        self.assertTrue(c.compare_symbol_sets({'Same'},{'Same'})['symbols_match'])
+
+    def test_symbol_diff_is_recorded_without_failure_count(self):
+        c=self.checks(); gl.init_workflow_metrics(str(self.root),'abi-record')
+        c.record_preflight(str(self.root),6,[
+            {'id':'abi-symbol-diff','status':'PASS','symbols_match':False,
+             'decision_input':False,'advisory':True,'reason':'symbol drift'}])
+        metrics=gl.read_workflow_metrics(str(self.root))
+        self.assertEqual(metrics['preflight_summary']['failed_attempts'],0)
+
+    def test_artifact_path_resolves_relative_to_repo(self):
+        c=self.checks(); repo=self.root/'repo'; repo.mkdir()
+        self.assertEqual(c._artifact_path('out/lib.so',repo),repo/'out/lib.so')
+        self.assertEqual(c._artifact_path('/tmp/lib.so',repo),Path('/tmp/lib.so'))
+
+    def test_abi_symbol_diff_is_observation_only(self):
+        self.init_state()
+        c=self.checks()
+        result=[{'id':'abi-symbol-diff','status':'PASS','reason':'symbol drift','advisory':True}]
+        with patch.object(c,'stage_checks',return_value=result):
+            c.enforce(str(self.root),6)
+
     def test_preflight_failures_survive_metrics_write(self):
         c=self.checks(); gl.init_workflow_metrics(str(self.root),'test-optimization')
         c.record_preflight(str(self.root),4,[{'id':'lizard','status':'UNAVAILABLE','reason':'missing'}])

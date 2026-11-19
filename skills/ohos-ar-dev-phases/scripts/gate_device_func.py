@@ -690,7 +690,8 @@ def main():
     phase = args.phase
     pdir = gl.pipeline_dir(args.pipeline_dir)
     from workflow_checks import enforce
-    enforce(pdir, phase, scenario=args.scenario_script, deploy=args.deploy_script)
+    enforce(pdir, phase, scenario=args.scenario_script, deploy=args.deploy_script,
+            host_artifact=args.host_artifact, device_artifact=args.device_artifact)
     if phase == 6:
         missing = missing_phase4_proof_args(args)
         if missing:

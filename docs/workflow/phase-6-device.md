@@ -39,6 +39,8 @@ gate_device_func.py --pipeline-dir P \
 | e2e-marker | 端到端标记 |
 | nonce | per-run 防重放标记(`$GATE_NONCE`) |
 
+P6 preflight 还会对 `--host-artifact` 与部署前设备文件做动态导出符号对比（`abi-symbol-diff`）。该检查只做记录，不参与门禁 verdict 判定；导出符号差异不等于 ABI 不兼容，也不能替代消费者重建或头文件 ABI 检查。
+
 ## 抗伪造三层证明
 
 真机功能不再只认"日志里出现过 marker",而是叠加三层抗伪造:
