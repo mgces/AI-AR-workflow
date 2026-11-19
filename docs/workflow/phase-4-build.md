@@ -54,7 +54,7 @@ P4 是真实编译验证阶段——真跑 `build.sh`,捕获真实输出,以退�
 
 P4 先完成编译及产物校验，再执行度量与 clang-tidy。度量结果仅观察留证；clang-tidy 只阻断
 `gatelib.P4_CRITICAL_AST_RULESET_IDS`（`G.RES.07-CPP`、`G.FUU.11`、`G.VAR.01`、
-`G.EXP.08-CPP`、`G.STD.04-CPP`、`G.EXP.12-CPP`、`G.INT.03`）与 backend 失败。
+`G.EXP.08-CPP`、`G.STD.04-CPP`、`G.EXP.12-CPP`、`G.INT.03`、`G.CLS.10-CPP`）与 backend 失败。
 应分别查看 `phase_summary.json` 中的编译、产物和静态分析结果。
 
 每轮扫描先清除旧报告。ninja/clang-tidy 缺失、compdb 生成失败、扫描器异常退出、超时、

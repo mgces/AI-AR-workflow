@@ -47,9 +47,10 @@ the only static findings that can close P2/P3/P4:
 
 - **P2/P3 deterministic rules**: `G.FUU.21`, `G.FUU.21-CPP`, `G.STR.01`,
   `G.ARR.03`, `G.MEM.05`, `G.FUU.10`, `G.EXP.03`, `G.EXP.33-CPP`, `G.INT.04`,
-  `G.EXP.26-CPP`.
+  `G.EXP.26-CPP`, `G.STD.15-CPP`, `G.FUU.17`, `G.STD.07-CPP`, `G.FIL.03`,
+  `G.FUU.05`, `G.STD.17-CPP`, `G.CRY.03`, `G.FUU.09`.
 - **P4 clang-tidy AST rows**: `G.RES.07-CPP`, `G.FUU.11`, `G.VAR.01`,
-  `G.EXP.08-CPP`, `G.STD.04-CPP`, `G.EXP.12-CPP`, `G.INT.03`.
+  `G.EXP.08-CPP`, `G.STD.04-CPP`, `G.EXP.12-CPP`, `G.INT.03`, `G.CLS.10-CPP`.
 
 Everything else — clang-format, other regex rules, sensitive words, filename
 checks, file hygiene, metrics — is retained as signed observation evidence but is

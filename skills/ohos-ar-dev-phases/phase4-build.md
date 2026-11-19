@@ -54,7 +54,7 @@ HarmonyOS 系统/芯片组件为各自命令,**占位未填时门控硬失败并
   (rk3568 为 `out/rk3568`，arm64_virt QEMU 为 `out/arm64_virt`)。
 - **只有 `gatelib.P4_CRITICAL_AST_RULESET_IDS` 命中才阻断 P4**：
   `G.RES.07-CPP`、`G.FUU.11`、`G.VAR.01`、`G.EXP.08-CPP`、`G.STD.04-CPP`、
-  `G.EXP.12-CPP`、`G.INT.03`。
+  `G.EXP.12-CPP`、`G.INT.03`、`G.CLS.10-CPP`。
 - **其他 clang-tidy/内容 finding 仅留证**：写入本轮 JSON 与 `clang_tidy_note.txt`，
   不再触发 P4 FAIL，由 P8 review / 远端 CI 裁决。
 - **工具链不可用必须 fail-closed**：ninja/clang-tidy 缺失、compdb 生成失败、超时、

@@ -60,7 +60,8 @@ python3 $S/gate_develop.py --pipeline-dir "$PDIR"
 对改动的 C/C++ 文件运行 `code_ruleset_guard.py`(format+rules)并读取**本轮** `--json` 报告:
 - 仅 `gatelib.P2_P3_CRITICAL_RULESET_IDS` 命中时 FAIL:`G.FUU.21`、`G.FUU.21-CPP`、
   `G.STR.01`、`G.ARR.03`、`G.MEM.05`、`G.FUU.10`、`G.EXP.03`、`G.EXP.33-CPP`、
-  `G.INT.04`、`G.EXP.26-CPP`。
+  `G.INT.04`、`G.EXP.26-CPP`、`G.STD.15-CPP`、`G.FUU.17`、`G.STD.07-CPP`、
+  `G.FIL.03`、`G.FUU.05`、`G.STD.17-CPP`、`G.CRY.03`、`G.FUU.09`。
 - clang-format、其他内容规则、敏感词、`.inc` 文件名检查与文件卫生**不阻断 P2**；它们仍写入
   `style_report.txt` / `strict_cpp_report.txt` / `file_hygiene_report.txt` 和本轮 JSON，作为签名观察证据，
   交由 P8 review 与远端 CI 裁决。

@@ -18,7 +18,8 @@ P2 是代码开发阶段——按 P1 固化的签名 `AR_design.md` 写真实代
 - 相对 `base_commit` 有 tracked/untracked 改动(diff 非空)
 - 本轮 guard 报告可读，且 `gatelib.P2_P3_CRITICAL_RULESET_IDS` 无命中（`G.FUU.21`、
   `G.FUU.21-CPP`、`G.STR.01`、`G.ARR.03`、`G.MEM.05`、`G.FUU.10`、`G.EXP.03`、
-  `G.EXP.33-CPP`、`G.INT.04`、`G.EXP.26-CPP`）
+  `G.EXP.33-CPP`、`G.INT.04`、`G.EXP.26-CPP`、`G.STD.15-CPP`、`G.FUU.17`、
+  `G.STD.07-CPP`、`G.FIL.03`、`G.FUU.05`、`G.STD.17-CPP`、`G.CRY.03`、`G.FUU.09`）
 - format、非白名单规则、敏感词、文件名/许可证卫生仅是签名观察证据，不构成通过条件
 - **闭合时锁功能指纹**(仅非测试路径内容,相对 base、commit 无关)
 
