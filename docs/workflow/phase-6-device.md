@@ -85,6 +85,16 @@ P5 单元测试 → P6 端到端功能测试 → consent → P7 质量验证
 - **缺 runtime/e2e marker 或 hash 不一致**:scenario 必须从真实入口触发改动代码,并在成功路径输出 marker;同时确认 host/device-artifact 是本次产物/部署后文件
 - **以为日志有 marker 就 PASS**:不够。还要抗伪造三层证明(进程溯源 / 副作用断言 / 负对照差分)
 
+## 问题预警
+
+> 来源：历史运行去重统计；高可信=门控字段/症状直接可见，观察=根因聚类未统一。
+
+| 预警信号（历史次数 / 置信） | 先查什么 | 需要什么证据 | 停止条件 |
+|---|---|---|---|
+| `BAD_device_cases=...` / `device_cases<N/N`（6 次 / 高可信） | 先看 DC 的 provenance/artifact/side_effect 字段，再对照 `device_case_results.json` | `device_case_results.json`、`phase_summary.json` | 同一 DC 连续 2 次失败即停止 |
+| `scenario script exited 1`（3 次 / 高可信） | 先看 scenario 退出前的最后命令，再查 service 重启、hidumper、日志捕获 | scenario 日志、`run_meta.txt` | 未拿到 scenario stderr/最后命令前停止 |
+| `device not reachable` / `provenance=False` / 全部 DC 失败（4 次 / 观察） | 先查 HDC endpoint/serial，再查设备 `tr`，最后查 SELinux | `run_meta.txt`、`hdc list targets`、设备命令日志 | HDC/tr/SELinux 任一未验证前停止 |
+
 ## 延伸阅读
 
 - [Skill 实战:真机调试 hdc](/skill-playbooks/device-debug-and-hdc)

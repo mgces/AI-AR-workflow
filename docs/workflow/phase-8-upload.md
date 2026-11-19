@@ -132,6 +132,16 @@ P8 通过(`advance --phase 8` 成功)即流水线完成。
 - **PR head SHA 与 push SHA 不一致**:gate 校验 SHA 绑定,不一致即 FAIL
 - **本地自检报告有文字但没计数**:gate 只认机器可读计数,文字不算
 
+## 问题预警
+
+> 来源：历史运行去重统计；高可信=门控字段/症状直接可见，观察=根因聚类未统一。
+
+| 预警信号（历史次数 / 置信） | 先查什么 | 需要什么证据 | 停止条件 |
+|---|---|---|---|
+| `PR head SHA does not match local upload SHA`（12 次 / 高可信） | 先快照 PR head、push SHA、目标分支，再查是否有并发推送 | `pr view`、`git ls-remote`、push 日志 | SHA 不一致时重新 review，不盲目重推 |
+| `overall=pending/running/queued` / CI 事件为空（JSON `overall_result`；13 次 / 高可信） | 先确认 CI 事件对应本次 SHA，再查 `retry_after` | CI JSON 的 `overall_result`、事件时间戳、PR head SHA | 等待条件未满足时不重跑 |
+| `oh-gc pr view` 退出码非零 / `review_issue_count` 非零 / `push stderr` 非空（4 次 / 观察） | 先查 PR 身份/base/head，再看 review 报告，最后看网络/权限 | `pr view`、review 报告、push stderr | 三类证据任一缺失即停止 |
+
 ## 延伸阅读
 
 - [Skill 实战:GitCode PR 与 review](/skill-playbooks/gitcode-pr-and-review)

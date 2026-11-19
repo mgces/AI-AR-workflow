@@ -78,6 +78,15 @@ P3 测试开发 → P4 编译 → P5 单元测试
 - **build_artifacts 缺一个**:契约全量覆盖硬门控,缺任一即 FAIL
 - **以为编译过就 advance**:还要无 error 横幅、artifact 覆盖齐全、clang-tidy 子步可执行且无 critical/backend 命中
 
+## 问题预警
+
+> 来源：历史运行去重统计；高可信=门控字段/症状直接可见，观察=根因聚类未统一。
+
+| 预警信号（历史次数 / 置信） | 先查什么 | 需要什么证据 | 停止条件 |
+|---|---|---|---|
+| `rc=1` / `MISSING build_artifacts` / 产物齐全但 `banner_err=True`（7 次 / 观察） | 先看缺失产物清单；产物齐全时再查 banner 原文和构建日志；最后查测试 `BUILD.gn`/生成头/developer_test 前端 | `build_stdout.log`、`build_banner.txt`、`artifact_check.txt` | 缺失产物或 banner 未归因前停止 |
+| `host command exited 1` / `ld.lld: undefined symbol` / `expected unqualified-id`（4 次 / 观察） | 先看 host stderr 是宏冲突、符号未迁移还是链接范围 | host 编译日志、`ld.lld` 报错 | 未确认是代码还是测试链接前不改产品码 |
+
 ## 延伸阅读
 
 - [Skill 实战:编译与诊断](/skill-playbooks/build-and-diagnosis) — build-execution-diagnosis 详解

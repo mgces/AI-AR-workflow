@@ -13,6 +13,10 @@
 >   argv；缺字段或命令不可启动会在不可逆动作前硬失败，并给出可恢复的
 >   `failure_class=gerrit_query_failed`/配置错误。不得把内部 Gerrit 地址或凭据写入仓库。
 
+## 开工前预警
+
+> 开工前先看文末「问题预警」，可减少可避免的门控失败。
+
 ## 做事(调用现有技能)
 两道 code review 夹住上库,均要求**机器可读的零问题报告**(与 P7 同一 review 报告契约:
 JSON `issue_count/finding_count/...==0` 或 `issues/findings/...` 空数组,或文本 `review_issue_count=0`):
@@ -122,3 +126,11 @@ python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-workflow/scripts/archive_product.py" \
 `openharmony-knowledge-base/subsystems/<subsystem>/features/<feature>/README.md`(已存在则写
 `README.generated.md` 不覆盖)。不得复制本次 run 的文件、build target、测试结论、真机标记
 或实现分析;这些动态事实只保留在当前源码仓和流水线证据中。
+
+## 问题预警
+
+| 预警信号（result 次数 / 置信） | 先查什么 | 需要什么证据 | 停止条件 |
+|---|---|---|---|
+| `PR head SHA does not match local upload SHA`（12 次 / 高可信） | 先快照 PR head、push SHA、目标分支，再查是否有并发推送 | `pr view`、`git ls-remote`、push 日志 | SHA 不一致时重新 review，不盲目重推 |
+| `overall=pending/running/queued` / CI 事件为空（JSON `overall_result`；13 次 / 高可信） | 先确认 CI 事件对应本次 SHA，再查 `retry_after` | CI JSON 的 `overall_result`、事件时间戳、PR head SHA | 等待条件未满足时不重跑 |
+| `oh-gc pr view` 退出码非零 / `review_issue_count` 非零 / `push stderr` 非空（4 次 / 观察） | 先查 PR 身份/base/head，再看 review 报告，最后看网络/权限 | `pr view`、review 报告、push stderr | 三类证据任一缺失即停止 |

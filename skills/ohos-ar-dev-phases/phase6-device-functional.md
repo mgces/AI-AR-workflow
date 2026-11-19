@@ -11,6 +11,10 @@
 
 `gate_device_func.py` 签名 `emit(phase 6)`(默认 `--phase 6`;集成复用时 `--phase 7`,见 phase7-quality)。
 
+## 开工前预警
+
+> 开工前先看文末「问题预警」，可减少可避免的门控失败。
+
 ## 做事(调用现有技能)
 - rk3568 物理开发板部署:`ohos-build-flash`(remount rw → `file send` → `restorecon` → 重启守护
   `kill -9 $(pidof <svc>)`)；arm64_virt QEMU 部署、实例和截图:`ohos-qemu-run`。
@@ -131,3 +135,11 @@ python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-workflow/scripts/render_report.py" \
 ```
 产出**单个** `reports/test_report.md`:P5 单元测试总体/计数/逐用例/合约覆盖 + P6 端到端总体/抗伪造与
 窗口命中/nonce·marker/产物 sha256 一致/device_cases 逐项,全部聚合进这一个 md。
+
+## 问题预警
+
+| 预警信号（result 次数 / 置信） | 先查什么 | 需要什么证据 | 停止条件 |
+|---|---|---|---|
+| `BAD_device_cases=...` / `device_cases<N/N`（6 次 / 高可信） | 先看 DC 的 provenance/artifact/side_effect 字段，再对照 `device_case_results.json` | `device_case_results.json`、`phase_summary.json` | 同一 DC 连续 2 次失败即停止 |
+| `scenario script exited 1`（3 次 / 高可信） | 先看 scenario 退出前的最后命令，再查 service 重启、hidumper、日志捕获 | scenario 日志、`run_meta.txt` | 未拿到 scenario stderr/最后命令前停止 |
+| `device not reachable` / `provenance=False` / 全部 DC 失败（4 次 / 观察） | 先查 HDC endpoint/serial，再查设备 `tr`，最后查 SELinux | `run_meta.txt`、`hdc list targets`、设备命令日志 | HDC/tr/SELinux 任一未验证前停止 |

@@ -60,6 +60,15 @@ P1 设计固化 → consent → P2 代码开发 → P3 测试开发
 - **以为 diff 非空就 advance**:不够。还要本轮 guard 报告可读、critical 子集无命中、依赖/范围检查通过并闭合锁指纹
 - **`--no-style` 随便用**:仅无 C/C++ 改动时兼容;`--allow-missing-design` 仅 legacy run 留痕放行
 
+## 问题预警
+
+> 来源：历史运行去重统计；高可信=门控字段/症状直接可见，观察=根因聚类未统一。
+
+| 预警信号（历史次数 / 置信） | 先查什么 | 需要什么证据 | 停止条件 |
+|---|---|---|---|
+| `code_ruleset report unusable: findings JSON missing or unreadable`（3 次 / 高可信） | 先看 guard 退出码和 stderr，再查工具架构/报告路径/line-filter | `style_report`、guard stderr、本轮 findings JSON | 报告仍不可读时停止，不重跑 |
+| `WordsTool.*` / `style_ok=False` / clang-format 违规（4 次 / 观察） | 先看报告里的 `文件:行`，再确认是否在本次变更行 | `file_hygiene_report`、`style_report`、`changed_files.txt` | 没有具体 `文件:行` 时停止，不整库重扫 |
+
 ## 延伸阅读
 
 - [P1 设计与开发](/workflow/phase-1-design-and-develop) — P1 consent 的签名绑定

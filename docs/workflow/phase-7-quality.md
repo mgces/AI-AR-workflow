@@ -73,6 +73,14 @@ P6 端到端功能测试 → consent → P7 质量验证 → consent → P8 上�
 - **review 报告只给文字不给计数**:不行。必须携带机器可读问题计数,gate 只认计数
 - **想跳过 review**:不能。review==0 是 gate 条件
 
+## 问题预警
+
+> 来源：历史运行去重统计；高可信=门控字段/症状直接可见，观察=根因聚类未统一。
+
+| 预警信号（历史次数 / 置信） | 先查什么 | 需要什么证据 | 停止条件 |
+|---|---|---|---|
+| `auto_review_issues=1` / `guard rc=1`（3 次 / 高可信） | 先看 `code_review_report.txt` 的文件:行，再确认是否在本次增量 review 范围 | `style_report`、`code_review_report.txt`、changed_lines | 没有具体文件/规则时停止，不重跑 |
+
 ## 延伸阅读
 
 - [Skill 组合拳](/skill-playbooks/common-combinations) — 场景 C 上库前自检的 skill 组合

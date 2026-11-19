@@ -17,6 +17,10 @@
 > - **P6 端到端功能测试**:黑盒、从真实入口触发让改动代码在系统里真的跑起来,抓 hilog 验
 >   `device_cases[].marker` + 产物 sha256 + 抗伪造 nonce/窗口,且**需人工确认**(单元过 ≠ 端到端可用)。
 
+## 开工前预警
+
+> 开工前先看文末「问题预警」，可减少可避免的门控失败。
+
 ## ⚠️ 只增独立测试的硬约束
 本阶段仍**只能新增独立测试文件**(路径规则:`test/`、`unittest/`、`moduletest/`、`fuzztest/` 目录,
 或 `*Test.cpp`/`test_*.cpp` 等命名;test 目录下的 BUILD.gn 也算测试)。**不得改动被测组件的功能代码/配置/
@@ -67,3 +71,10 @@ python3 $S/gate_test_ut.py --pipeline-dir "$PDIR" \
 ```bash
 python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 5
 ```
+
+## 问题预警
+
+| 预警信号（result 次数 / 置信） | 先查什么 | 需要什么证据 | 停止条件 |
+|---|---|---|---|
+| `host command exited 1` / `TimeoutExpired`（4 次 / 高可信） | 先看 host stderr 是 libusb/WSL、owner server 启动还是设备存储 | host test stderr、设备存储状态 | 同一 host 错误连续 2 次即停止 |
+| `no new reports/<timestamp>/` / `tests=0`（3 次 / 高可信） | 先查 `-tp`/part 与 `module_out_path`，再查测试二进制和 device XML | `start_sh_stdout.txt`、reports 目录、xdevice XML | part/二进制/XML 任一未验证前停止 |

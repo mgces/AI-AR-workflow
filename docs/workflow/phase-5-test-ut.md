@@ -76,6 +76,15 @@ P5 在 P4 编译之后、P6 端到端功能测试之前——阶段顺序固定,
 P4 编译 → P5 单元测试 → P6 端到端功能测试
 ```
 
+## 问题预警
+
+> 来源：历史运行去重统计；高可信=门控字段/症状直接可见，观察=根因聚类未统一。
+
+| 预警信号（历史次数 / 置信） | 先查什么 | 需要什么证据 | 停止条件 |
+|---|---|---|---|
+| `host command exited 1` / `TimeoutExpired`（4 次 / 高可信） | 先看 host stderr 是 libusb/WSL、owner server 启动还是设备存储 | host test stderr、设备存储状态 | 同一 host 错误连续 2 次即停止 |
+| `no new reports/<timestamp>/` / `tests=0`（3 次 / 高可信） | 先查 `-tp`/part 与 `module_out_path`，再查测试二进制和 device XML | `start_sh_stdout.txt`、reports 目录、xdevice XML | part/二进制/XML 任一未验证前停止 |
+
 ## 延伸阅读
 
 - [P3 测试阶段](/workflow/phase-3-test) — 测试开发(编写覆盖)与 P5 的区别

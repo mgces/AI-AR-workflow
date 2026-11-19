@@ -5,6 +5,10 @@
 [QEMU 接入](../ohos-ar-dev-workflow/references/qemu-development.md) 把运行实例放在独立镜像集，
 禁止绕过基础镜像占用保护。契约产物应为本次 ARM64 构建的真实输出。
 
+## 开工前预警
+
+> 开工前先看文末「问题预警」，可减少可避免的门控失败。
+
 ## 做事(调用现有技能)
 - rk3568 构建与失败诊断:`ohos-dev-build-execution-diagnosis`(读 `out/rk3568/build.log` / `error.log`)。
 - arm64_virt QEMU 构建与失败诊断:`ohos-qemu-build`(经公共 QEMU 入口；输出在 `out/arm64_virt/`)。
@@ -84,3 +88,10 @@ HarmonyOS 系统/芯片组件为各自命令,**占位未填时门控硬失败并
 ```bash
 python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 4
 ```
+
+## 问题预警
+
+| 预警信号（result 次数 / 置信） | 先查什么 | 需要什么证据 | 停止条件 |
+|---|---|---|---|
+| `rc=1` / `MISSING build_artifacts` / 产物齐全但 `banner_err=True`（7 次 / 观察） | 先看缺失产物清单；产物齐全时再查 banner 原文和构建日志；最后查测试 `BUILD.gn`/生成头/developer_test 前端 | `build_stdout.log`、`build_banner.txt`、`artifact_check.txt` | 缺失产物或 banner 未归因前停止 |
+| `host command exited 1` / `ld.lld: undefined symbol` / `expected unqualified-id`（4 次 / 观察） | 先看 host stderr 是宏冲突、符号未迁移还是链接范围 | host 编译日志、`ld.lld` 报错 | 未确认是代码还是测试链接前不改产品码 |

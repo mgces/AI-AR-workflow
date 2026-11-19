@@ -11,6 +11,10 @@ code review 报告落到 `evidence/phase7/`,最终只看该阶段 manifest 最�
 `gate_integration.py` 签名 `emit(phase 7)`。证据 PASS 后仍需人工确认质量报告和 review 报告无问题,
 记录 `consent --phase 7` 后才可进入 P8。
 
+## 开工前预警
+
+> 开工前先看文末「问题预警」，可减少可避免的门控失败。
+
 ## A. 套件型功能与质量测试
 做事:
 - rk3568 使用 `ohos-build-flash` 部署改动后的产物；arm64_virt QEMU 使用 `ohos-qemu-run` 部署到本次固定实例。
@@ -87,3 +91,9 @@ python3 "$AGENT_SKILLS_DIR/ohos-ar-dev-workflow/scripts/render_report.py" \
 
 > ⚠️ 若本阶段(或任何阶段)发现需要**改代码**,先 `advance.py reset` 回 P1 重走,见
 > phase1 / 编排器护栏。改了码再继续 P7 会被 `advance` 以"代码指纹漂移"拒绝。
+
+## 问题预警
+
+| 预警信号（result 次数 / 置信） | 先查什么 | 需要什么证据 | 停止条件 |
+|---|---|---|---|
+| `auto_review_issues=1` / `guard rc=1`（3 次 / 高可信） | 先看 `code_review_report.txt` 的文件:行，再确认是否在本次增量 review 范围 | `style_report`、`code_review_report.txt`、changed_lines | 没有具体文件/规则时停止，不重跑 |

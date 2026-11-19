@@ -3,6 +3,10 @@
 功能代码开发是独立物理阶段。前置是**已签名的 P1 设计 + P1 设计 consent**。
 本阶段闭合门为 `gate_develop.py`(签名 `emit(phase 2)`)。
 
+## 开工前预警
+
+> 开工前先看文末「问题预警」，可减少可避免的门控失败。
+
 ## 🚨 动手前必做:先研究,别想当然
 写第一行代码前**必须先读懂要改的既有实现**,不允许凭猜测直接开写。弱模型最容易犯的错就是
 不看上下文就照 `AR_design.md` 的框架硬塞代码,结果接口对不上、复用了不该复用的、破坏既有约定。
@@ -83,3 +87,10 @@ python3 $S/advance.py --pipeline-dir "$PDIR" advance --phase 2
 `test_cases[].kind=="arkts"`,其 ArkTS 应用功能代码(`entry/src/main/...`、`AppScope/...` 等)同样算
 functional、在冻结锁内;P3 只对契约**声明的** arkts 测试工程路径(`file` 指向的 `entry/src/ohosTest/...`)
 放行新增,应用功能 `.ets` 的增改仍是 freeze 违规(与 C++ 功能改动同待遇)。
+
+## 问题预警
+
+| 预警信号（result 次数 / 置信） | 先查什么 | 需要什么证据 | 停止条件 |
+|---|---|---|---|
+| `code_ruleset report unusable: findings JSON missing or unreadable`（3 次 / 高可信） | 先看 guard 退出码和 stderr，再查工具架构/报告路径/line-filter | `style_report`、guard stderr、本轮 findings JSON | 报告仍不可读时停止，不重跑 |
+| `WordsTool.*` / `style_ok=False` / clang-format 违规（4 次 / 观察） | 先看报告里的 `文件:行`，再确认是否在本次变更行 | `file_hygiene_report`、`style_report`、`changed_files.txt` | 没有具体 `文件:行` 时停止，不整库重扫 |
