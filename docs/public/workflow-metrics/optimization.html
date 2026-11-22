@@ -40,10 +40,10 @@
       <div class="kpis" id="review-metrics" aria-label="当前快照失败概览"></div>
       <p id="review-limits" class="measurement"></p>
       <aside class="scope-note" aria-label="本轮优先改进">
-        <strong>本轮优先：核对 P8 的 CI 事件是否属于当前提交</strong>
-        <p>11/09–11/15 周报批次的 9 次正式失败中，P8 占 8 次，含 4 次预期审核停点。两条记录均出现 PR head 暂旧；ELF parser 补录还记录了同一提交上 CodeCheck 超时后重跑通过。</p>
-        <p>先完善状态诊断与复验记录，沿用签名门禁及授权边界。<a href="../reference/p8-architecture-and-metrics-compatibility.html">P8 架构与指标兼容说明</a> · <a href="../reference/p8-remote-state-limits.html">远端状态与传播延迟</a></p>
-        <p><button type="button" class="evidence-link" data-plan-id="WF-22">WF-22 上库复验</button> · <button type="button" class="evidence-link" data-plan-id="WF-19">WF-19 真机取证</button> · <button type="button" class="evidence-link" data-plan-id="WF-23">WF-23 证据缺口</button></p>
+        <strong>本轮优先改进 P6 部署取证与 P7 测试执行</strong>
+        <p>11/16–11/22 两条运行记录了 12 次原始失败，含 2 次 P8 审核停点。10 次操作性失败中，P6 占 5 次，P7、P8 各 2 次，P4 占 1 次；另有 21 次预检失败。</p>
+        <p>cleanup 的动态库替换、缺少 tr 与测试模块选择问题已有当次处理记录；ELF mmap 的连接和标记问题、cleanup 的当前提交 CI 仍待复验。<a href="../workflow/phase-6-device.html">P6 部署与符号观察</a> · <a href="../reference/p8-architecture-and-metrics-compatibility.html">P8 指标兼容说明</a></p>
+        <p><button type="button" class="evidence-link" data-plan-id="WF-19">WF-19 真机取证</button> · <button type="button" class="evidence-link" data-plan-id="WF-18">WF-18 测试报告</button> · <button type="button" class="evidence-link" data-plan-id="WF-22">WF-22 上库复验</button> · <button type="button" class="evidence-link" data-plan-id="WF-17">WF-17 构建检查</button></p>
       </aside>
       <div class="table-wrap" tabindex="0" aria-label="最新运行的失败总结与改进措施"><table class="run-review-table"><thead><tr><th scope="col">运行与复盘状态</th><th scope="col">门禁 FAIL / 尝试</th><th scope="col">预检失败</th><th scope="col">失败总结、处理与原始证据</th><th scope="col">后续改进项</th></tr></thead><tbody id="review-rows"><tr><td colspan="5">正在读取运行记录…</td></tr></tbody></table></div>
     </section>

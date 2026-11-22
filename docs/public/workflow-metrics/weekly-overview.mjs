@@ -33,7 +33,14 @@ const weeks = [
   {start:'11/09',end:'11/15',snapshot:'8e7eebb',runs:2,passes:29,attempts:38,
     runIds:['20261112-dev-echo-path-prefix','20261105-elf-parser-batch-fix'],
     countNote:'含 1 条 11/05 的补录；resmon 更新计入当前汇总',
-    review:{uploadFailures:8,reviewHolds:4,preflightFailures:2,preflightRuns:2}}
+    note:'2 条运行共 9 次原始失败，含 4 次审核停点；剔除已识别停点后通过率 85.3%。',topics:[
+    [['P8 上库评审'],'按当前提交复验','两条记录均出现 PR head 暂旧。ELF parser 补录的 CodeCheck 超时经同一提交重跑通过；dev-echo 的后续 CI 红灯在该快照仍受阻。'],
+    [['P6 功能验证'],'前置检查设备取证命令','dev-echo 的设备缺少 tr，改用 /proc 进程映射取证后 P6 复验通过。']
+  ]},
+  {start:'11/16',end:'11/22',snapshot:'312ad95',runs:2,passes:25,attempts:37,
+    runIds:['20261120-hiview-cleanup-sa','20261118-elf-mmap-dedup'],
+    countNote:'含 2 次已识别审核停点；剔除后 25 / 35，通过率 71.4%',
+    review:{uploadFailures:4,reviewHolds:2,deviceFailures:5,preflightFailures:21,preflightRuns:2}}
 ];
 
 const rate = week => 100 * week.passes / week.attempts;
@@ -83,9 +90,10 @@ export function mountWeeklyOverview() {
   change.classList.toggle('is-down', delta<0);
   change.hidden = false;
   const failures = latest.attempts-latest.passes;
-  const {uploadFailures,reviewHolds,preflightFailures,preflightRuns} = latest.review;
-  document.getElementById('focus-summary').textContent = `最近一周 · ${latestWeekLabel} · ${failures} 次正式失败 · ${preflightFailures} 次预检失败（${preflightRuns} 条运行有计数）`;
-  document.getElementById('focus-upload').textContent = `${uploadFailures} 次上库失败（${(100*uploadFailures/failures).toFixed(1)}%），含 ${reviewHolds} 次预期审核停点。`;
+  const {uploadFailures,reviewHolds,deviceFailures,preflightFailures,preflightRuns} = latest.review;
+  document.getElementById('focus-summary').textContent = `最近一周 · ${latestWeekLabel} · ${failures} 次原始失败（含 ${reviewHolds} 次审核停点） · ${preflightFailures} 次预检失败（${preflightRuns} 条有计数）`;
+  document.getElementById('focus-device').textContent = `P6 失败 ${deviceFailures} 次，占本期 ${failures-reviewHolds} 次操作性失败的 ${(100*deviceFailures/(failures-reviewHolds)).toFixed(1)}%。`;
+  document.getElementById('focus-upload').textContent = `P8 原始失败 ${uploadFailures} 次，含 ${reviewHolds} 次审核停点，操作性失败 ${uploadFailures-reviewHolds} 次。`;
   const failureScope = document.getElementById('failure-scope');
   for(const week of weeks.slice().reverse()) {
     failureScope.add(new Option(week===latest?`${label(week)}（最近一周）`:label(week),week.snapshot));

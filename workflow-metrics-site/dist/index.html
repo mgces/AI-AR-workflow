@@ -39,7 +39,7 @@
     <div id="live-summary" class="sr-only" aria-live="polite"></div>
     <section id="metrics" class="metric-grid" aria-label="核心指标"></section>
     <section class="panel weekly-panel" id="weekly-trend" aria-labelledby="weekly-heading">
-      <div class="panel-title"><div><h2 id="weekly-heading">每周门禁通过率</h2><p>首点汇总 10/12 前的任务，其后按各期周报批次；不随筛选变化</p></div><span id="weekly-change" class="weekly-change" hidden></span></div>
+      <div class="panel-title"><div><h2 id="weekly-heading">每周门禁通过率</h2><p>曲线使用含审核停点的原始口径，按各期周报快照统计；首点汇总 10/12 前任务</p></div><span id="weekly-change" class="weekly-change" hidden></span></div>
       <div id="weekly-chart" class="weekly-chart"></div>
       <div class="panel-foot weekly-foot"><p id="weekly-detail" aria-live="polite"></p><span>点击数据点查看该期统计</span></div>
     </section>
@@ -54,11 +54,11 @@
     <section class="panel focus-panel" id="review-focus" aria-labelledby="review-focus-heading">
       <div class="panel-title"><div><h2 id="review-focus-heading">近期失败复盘与优化方向</h2><p id="focus-summary"></p></div><a class="button" href="./optimization.html#latest-review">查看完整复盘 ↗</a></div>
       <div class="focus-grid">
-        <article class="focus-card focus-priority"><span class="small-tag">优先 · P8 上库</span><h3>按当前提交复验</h3><p id="focus-upload"></p><p>分别核对远端分支、PR head 和 CI 事件。保留已有 PR，记录审核停点和状态传播延迟；当前提交的真实红灯继续阻断。</p></article>
-        <article class="focus-card"><span class="small-tag">P8 · CI 诊断</span><h3>核对失败的 CI 子任务</h3><p>ELF parser 补录的 CodeCheck 超时经同一提交重跑通过。记录失败子任务、事件与复验结果，区分基础设施超时和实际检查失败。</p></article>
-        <article class="focus-card"><span class="small-tag">P6 · 真机验证</span><h3>前置检查设备取证命令</h3><p>dev-echo 的设备缺少 tr，导致进程来源检查失败。该运行改用 /proc 进程映射取证后，P6 复验通过。</p></article>
+        <article class="focus-card focus-priority"><span class="small-tag">优先 · P6 真机验证</span><h3>核对部署、连接与取证</h3><p id="focus-device"></p><p>cleanup 遇到动态库原地覆盖和设备缺少 tr；ELF mmap 记录了 HDC 断连及缺少运行标记。先验证产物加载、设备连接和取证命令，再复验场景。</p></article>
+        <article class="focus-card"><span class="small-tag">P7 · 测试报告</span><h3>匹配测试模块与契约套件</h3><p>cleanup 两次未生成本轮报告，涉及模块名与套件名不同，以及执行器对重复 -ts 参数的解析。任务调整测试目标后复验通过，通用执行入口仍需验收。</p></article>
+        <article class="focus-card"><span class="small-tag">P8 · 上库复验</span><h3>核对 CI 事件对应提交</h3><p id="focus-upload"></p><p>cleanup 已触发当前提交的新 CI，复验仍待完成。保留旧事件证据，核对本次提交对应的最终结果。</p></article>
       </div>
-      <p class="panel-foot">近期优先改进 P8 状态诊断和复验记录。现有签名门禁与授权约束继续生效，效果待后续运行验收。</p>
+      <p class="panel-foot">本期两条运行在快照中分别为受阻和进行中。P6 部署前符号对比已加入预检，仅供观察；实际运行效果待后续验收。</p>
       <section class="focus-archive" aria-labelledby="focus-archive-heading">
         <h3 id="focus-archive-heading">往期失败复盘</h3>
         <div id="focus-archive-list"></div>

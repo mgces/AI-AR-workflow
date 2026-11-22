@@ -1,5 +1,5 @@
 // 进度只随仓库中的实现和验收证据更新，不在浏览器中临时改写。
-export const planUpdatedAt = '2026-11-15';
+export const planUpdatedAt = '2026-11-22';
 export const plans = [
   {
     "id": "WF-01",
@@ -773,15 +773,15 @@ const followUps = [
   {
     id:'WF-18', title:'证明测试真正执行并写出契约结果', phases:['P5','P7'], attributions:['gate','environment','execution'],
     problem:'新报告目录不等于测试已执行；多次 tests=0，或 13/16 用例覆盖，实际原因涉及设备配置、XML 初始化顺序和设备不兼容旧用例。',
-    actions:['构建后核对实际测试二进制；执行前验证 xdevice 设备识别、ELF ABI、依赖库和用例枚举。','在 InitGoogleTest 前配置 XML 输出；回收后校验 testcase 节点、契约用例身份和本轮报告索引。','设备能力不匹配的旧用例需要明确依据和跳过记录；不得跳过本次契约用例来获得通过。'],
-    acceptance:['空目录、空 XML、进程提前退出和真实零失败报告可被区分。','契约用例全部出现在真实报告中，跳过项不被算作通过；保留 stdout、退出码与报告路径。'],
+    actions:['构建后核对实际测试二进制；执行前验证 xdevice 设备识别、ELF ABI、依赖库和用例枚举。','核对构建模块名与 gtest 套件名的映射，按执行器支持的单个或多值参数调用。','在 InitGoogleTest 前配置 XML 输出；回收后校验 testcase 节点、契约用例身份和本轮报告索引。','设备能力不匹配的旧用例需要明确依据和跳过记录；不得跳过本次契约用例来获得通过。'],
+    acceptance:['空目录、空 XML、进程提前退出和真实零失败报告可被区分。','模块名和套件名不同、多套件参数场景均能实际执行并产生本轮报告。','契约用例全部出现在真实报告中，跳过项不被算作通过；保留 stdout、退出码与报告路径。'],
     sourceCases:[caseFor('20261016-hicollie','P5','tests=0 的修复记录先涉及 xdevice 配置，后涉及 gtest XML 未写出及设备不兼容旧用例提前退出。','配置修改后仍失败；显式 XML 与适用性处理后记录 resolved。'),caseFor('20261014-hitrace-source-completeness','P5','实际 13 个用例通过，但契约 16 个中缺三个 E2E testcase。','在 InitGoogleTest 前配置输出目录后记录 resolved。'),caseFor('2026-10-15-hiview-resmon','P5','先无本轮报告、测试目标构建失败，后 tests=0、契约覆盖 0/10。','最后重跑通过但未记录修复；不能从 tests=0 单独推断具体根因。'),caseFor('20261013-fd-leak-detect','P5','两次 tests=0 且契约 0/13；P7 另有无新报告和一条真实失败。','后续通过但未记录动作，应分别保留执行、回收与真实断言失败。'),caseFor('20261009-fd-leak-detect','P5','旧复盘运行曾有 tests=0、契约 0/10，且该运行历史被重新初始化覆盖。','当前快照后续通过；不能把不完整历史当成完整成本或已验证优化效果。')]
   },
   {
     id:'WF-19', title:'部署前探测能力并验证加载实例', phases:['P1','P6','P7'], attributions:['execution','environment','gate'],
     problem:'文件传输输出混入路径、设备缺命令、服务不自动重启或触发进程过早退出，导致新产物未被实际加载或取证错过窗口。',
-    actions:['部署前探测设备命令、服务管理入口与权限；路径解析只接受预期字段。','替换前保存归属与回滚信息，验证大小和摘要、可执行位、重启结果及实际加载映射。','场景只指定一个生命周期负责人，记录启动 PID 并核对 /proc/exe；保持进程存活至取证完成。'],
-    acceptance:['混杂传输输出、缺 tr、无自动重启、错误执行位和多个同名进程都能给出具体阻断。','摘要正确但未加载、旧 PID 与提前退出不得通过；失败可恢复测试前状态。'],
+    actions:['部署前探测设备命令、HDC 连接、服务管理入口与权限；路径解析只接受预期字段。','替换前保存归属与回滚信息，使用临时文件和原子替换，验证摘要、重启结果及实际加载映射。','场景只指定一个生命周期负责人，记录启动 PID 并核对 /proc/exe；保持进程存活至取证完成。','使用 3cf62a1 已加入的部署前动态导出符号观察，结合加载与消费者证据核对兼容性。'],
+    acceptance:['混杂传输输出、缺 tr、连接中断、无自动重启和多个同名进程均能给出具体阻断。','已映射动态库替换、旧 PID 与提前退出均有真实场景回归，失败可恢复测试前状态。','符号差异作为观察记录保留；实际部署、加载和功能结果分别验收。'],
     sourceCases:[caseFor('20261016-hicollie','P6','修复记录依次指出 file recv 输出污染 readlink 路径、设备没有 tr、hiview 未重启及执行位缺失。','前三步修改后仍 FAIL 或报错变化；延长触发进程与调整 trace 写入后才记录 resolved。'),caseFor('20261014-hitrace-source-completeness','P6','pidof 同时匹配主进程及 fork 的异步工作进程。','保存启动 PID 并验证 /proc/exe 后记录 resolved。'),caseFor('20261013-fd-leak-detect','P6','两次证据分别缺运行标记、产物来源与加载证明；预检另报部署和场景同时负责重启。','后续通过但多数修改未登记；保留观察结果，不臆测全部根因。'),caseFor('2026-10-15-hiview-resmon','P6','场景退出 1；重跑后 marker/runtime 为真，但 provenance/artifact_loaded 为假。','后续通过未登记动作，应补齐加载实例证据。')]
   },
   {
@@ -815,7 +815,7 @@ const followUps = [
 ];
 plans.push(...followUps.map(p => ({...p,priority:'high',status:'planned',owner:'workflow 维护',changeRef:'',regressionEvidence:'',effectEvidence:'',updatedAt:'2026-10-18',benefit:'把新运行中观察到的问题转为可复验的后续改进，减少无证据的重复尝试。'})));
 
-// Curated from the 11/06 and 11/13 shared snapshots. A recorded repair only verifies the stated run.
+// Curated through the 11/21 shared snapshot. A recorded repair only verifies the stated run.
 const recentCases = {
   'WF-16':[
     caseFor('hdc-file-compress-20261103','P2','x86_64 WSL 误选 ARM 版 clang-format，未生成规则检查报告。','显式指定本机工具后同门禁通过；仍需验证共享工具解析。'),
@@ -823,17 +823,21 @@ const recentCases = {
     caseFor('20261019-unwinder-memcpy','P3','5 个契约用例已编写，P3 仍因历史 BUILD.gn 版权行的卫生扫描失败。','恢复适用的版权行处理并重同步后通过，未改功能代码。')
   ],
   'WF-17':[
+    caseFor('20261118-elf-mmap-dedup','P4','测试结构体先声明再 memset_s，仍命中 G.EXP.08-CPP 成员初始化规则。','改用值初始化并移除 memset_s 后，同门禁通过。'),
     caseFor('20261103-env-init','P4','包装器将约 4.25 GB 编译数据库整体读入内存，后端被终止。','该任务改为流式读取后通过；需将有界内存处理与覆盖证据纳入通用回归。'),
     caseFor('20261027-hiperf-no-symbols','P4','跨平台构建涉及公开依赖及生成头；全库编译数据库和串行扫描还触发后端超时。','提取真实目标命令并并行扫描，个别复验通过；仍有后端失败记录，不能视为通用修复。'),
     caseFor('20261024-hdc-dynamic-loglevel','P4','主机目标缺失、宏名冲突及测试目标的链接依赖先后导致失败。','分项修复后有通过记录，整条运行仍在进行。')
   ],
   'WF-18':[
+    caseFor('20261120-hiview-cleanup-sa','P7','构建模块 CleanupServiceTest 与契约套件 CleanupAbilityTest 名称不同；重复 -ts 参数与当前执行器解析不兼容，两次未生成本轮报告。','首次同时传名仍失败；任务增加匹配套件名的测试目标后记录通过。通用模块映射和参数兼容待验收。'),
     caseFor('20261103-env-init','P5','构建只生成测试元数据，没有测试二进制，执行器未生成报告。','实际编译并链接测试目标后复验通过。'),
     caseFor('hdc-file-compress-20261103','P5','xdevice 配置不符合该版本解析要求，未选中设备，契约覆盖 0/10。','按设备配置格式修正后复验通过；应前置设备发现和用例校验。'),
     caseFor('20261022-resmon-cpu-mem-io','P5','设备配置缺类型字段，测试执行器没有选中设备，结果为零用例。','生成兼容的设备配置后通过；跨运行仍复发。'),
     caseFor('20261019-unwinder-memcpy','P5','设备旧库缺少测试所需符号，程序加载失败，报告为零用例。','核对并更新测试依赖库后，程序可枚举用例且同门禁通过。')
   ],
   'WF-19':[
+    caseFor('20261120-hiview-cleanup-sa','P6','原地覆盖进程映射的动态库后 SA 崩溃，改为临时文件和原子替换后仍遇到缺 tr 的进程来源检查问题。','原子替换后门禁报错变化；任务安装经用户授权的测试 shim 后，同阶段通过。'),
+    caseFor('20261118-elf-mmap-dedup','P6','三次失败包含设备时钟读取时 HDC 通信中断、运行标记缺失及 1/2 设备用例通过。','当前运行仍在进行，逐次记录未登记修复，待补连接、加载和真实场景证据。'),
     caseFor('20261112-dev-echo-path-prefix','P6','设备缺少 tr，导致 DC-1 的进程来源检查失败。','任务改用 /proc 进程映射作为证据，重签设计后同阶段复验通过。'),
     caseFor('20261030-resmon-pwr-net-thr-stb','P6','原地覆盖被进程映射的动态库导致进程异常；固定等待也未覆盖服务重启退避。','避免原地截断并核对新进程后相关问题复验通过；另有临时 permissive 窗口的通过记录，仍需 Enforcing 复验。'),
     caseFor('20261027-sym-map-aggregate','P6','短生命周期进程在事后读取 /proc 前已退出，原取证条件不可执行。','回到设计调整证据契约，保留真实输出、标记和触发窗口断言后复验通过。'),
@@ -843,6 +847,7 @@ const recentCases = {
     caseFor('hdc-transfer-progress-20261031','P5','设备分区被历史测试夹具占满，Windows 传输测试报空间不足。','核对归属并归档指定夹具后复验通过；后续应在测试前检查空间和本批清理范围。')
   ],
   'WF-22':[
+    caseFor('20261120-hiview-cleanup-sa','P8','PR head 不匹配后又读取到 11/12 的旧 CI 事件；处理记录指出该事件与当前提交不对应。','已触发当前提交的新 CI，复验状态仍为待确认，运行保持受阻。'),
     caseFor('20261112-dev-echo-path-prefix','P8','第一次 push 后，远端分支已经到达目标提交，PR head 仍旧；之后同一提交的 CI 又返回失败。','PR head 刷新后复验记录已补，后续 CI 红灯仍未解决；该运行在快照中受阻。'),
     caseFor('20261105-elf-parser-batch-fix','P8','先出现 PR head 不一致，后续总体失败标为代码缺陷。原始子任务记录显示这次 CodeCheck 超时，编译和测试仍在等待。','对同一提交重触发 CI 后通过。验收需保留子任务和复验记录，以识别平台超时和真实代码红灯。'),
     caseFor('20261030-resmon-pwr-net-thr-stb','P8','补录的同一运行中，两次观察到远端分支已更新、PR head 仍返回旧提交。','已有 PR 在 head 传播到位后复验，快照显示运行完成；两次等待均保留在历史失败计数中。'),

@@ -1,5 +1,7 @@
 // Reviewed snapshot revisions are evidence boundaries, not a claim that a workflow fix shipped.
 export const reviewedRunUpdates = {
+  '20261120-hiview-cleanup-sa': '2026-11-20T09:18:06Z',
+  '20261118-elf-mmap-dedup': '2026-11-19T02:01:35Z',
   '20261112-dev-echo-path-prefix': '2026-11-12T07:25:28Z',
   '20261105-elf-parser-batch-fix': '2026-11-05T11:58:57Z',
   '20261103-env-init': '2026-11-04T09:12:42Z',
