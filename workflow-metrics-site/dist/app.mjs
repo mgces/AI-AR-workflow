@@ -5,7 +5,7 @@ import {preflightDetails} from './preflight-view.mjs';
 import {validateSnapshot} from './import-data.mjs';
 import {createImportController} from './import-ui.mjs';
 import {failureReview} from './failure-review.mjs';
-import {selectFailureScope,mountWeeklyOverview} from './weekly-overview.mjs';
+import {selectFailureScope,mountWeeklyOverview} from './weekly-overview.mjs?v=241e98d';
 const $=id=>document.getElementById(id);
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const labels={completed:'已完成',running:'进行中',blocked:'受阻',waiting:'等待人工',pending:'未开始',passed:'已通过',failed:'失败'};
