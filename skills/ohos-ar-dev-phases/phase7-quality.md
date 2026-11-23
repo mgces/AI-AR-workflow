@@ -52,8 +52,7 @@ python3 $S/gate_integration.py --pipeline-dir "$PDIR" \
    JSON 中 `issue_count/finding_count/problem_count/blocker_count` 为 0,或
    `issues/findings/problems/blockers` 数组为空;文本报告需包含 `review_issue_count=0`。
 
-通过条件:功能套件通过,四类质量报告全部存在并被签名,代码 review 问题数为 0。
-临时兼容旧流程时可加 `--allow-missing-quality-reports`,但正式流水线不应使用。
+详细通过条件见下文「## 通过条件」；`--allow-missing-quality-reports` 是显式降级，不是干净的 P7 PASS。
 
 ## B. 设备行为型集成(端到端场景)
 当功能验证是"多组件协同的设备行为"而非套件时,复用 P6 设备门控,指定 `--phase 7`:
@@ -68,8 +67,45 @@ python3 $S/gate_device_func.py --pipeline-dir "$PDIR" \
     --phase 7
 ```
 通过条件建议同 P6(主机/设备产物 sha256 一致 + nonce + marker + runtime_marker +
-e2e_marker + uptime 单调)。走此路时,仍必须另外产出覆盖率、性能、功耗、稳定性报告和
-代码 review 报告,并用 `gate_integration.py` 纳入 P7 证据;否则 P7 不完整。
+e2e_marker + uptime 单调)。该路径只证明设备行为；完整 P7 仍需 `gate_integration.py`
+核验覆盖率、性能、功耗、稳定性报告和 code review。
+
+> ⚠️ 当前 `gate_device_func --phase 7` 的签名 PASS 只覆盖设备行为，代码本身不会强制
+> 补齐四类质量报告和 review；`advance --phase 7` 只要求最后一条 P7 PASS。因此不能把
+> device-only PASS 当作完整 P7 质量结论，完整 P7 以 `gate_integration.py` 为准。
+
+## 通过条件
+
+`gate_integration.py` 的实际判定是：
+
+```text
+test_ok    = summary_report.xml 的 tests > 0 && failures == 0 && errors == 0
+quality_ok = coverage/performance/power/stability 四类报告都存在并被签名
+             OR --allow-missing-quality-reports 显式降级
+review_ok  = 自动 code_ruleset_guard 返回 0
+             AND metric_findings 为空
+             AND (未提供 external review OR 外部 review 零问题)
+PASS       = test_ok AND quality_ok AND review_ok
+```
+
+逐项说明：
+
+- `test_ok`：只看本次新报告目录里的 `summary_report.xml`；P7 门禁不逐项重查契约
+  `test_cases[].gtest`，契约执行覆盖由 P5 负责。
+- `quality_ok`：门禁只检查四类报告文件是否存在并纳入签名，不验证报告内容或新鲜度；
+  报告真实性由生成过程和 P7 人工 consent 负责。
+- `--allow-missing-quality-reports`：会把缺失报告降级为 `quality_ok=True`，并在签名 reason
+  写 `QUALITY-GATE-DOWNGRADED`；这是有签名的 waiver，不是干净 PASS，正式流水线不应使用。
+- `review_ok`：自动 review 对改动 C/C++ 跑完整 `code_ruleset_guard.py`（格式 + 规则），
+  metric findings 也阻断；外部 review 报告是可选输入，提供时必须零问题。
+  这与 P2/P4 的 observation-only 口径不同，不能假设 P2/P4 通过就意味着 P7 review 一定通过。
+- 若启用优化预检，进入门禁前还必须通过 P7 preflight：设备在线/端点/用户态 ABI、xdevice、
+  报告回传、test isolation、required-suites。预检不产生签名 PASS。
+- 人工 consent 不属于 gate verdict；门禁 PASS 后仍需 `consent --phase 7` 才能 `advance`。
+
+> P7 的 PASS 表示“本 AR 约定的质量证据完整、客观检查通过”；人工 consent 是 PASS
+> 之后进入 P8 的条件，不属于 PASS 本身。P7 PASS 也不等于覆盖率/性能/功耗/稳定性
+> 满足某个通用行业阈值。
 
 ## 通过后
 ```bash
